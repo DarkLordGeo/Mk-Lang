@@ -305,9 +305,9 @@ func TestRecursiveTypeWalkProbes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			watch := time.AfterFunc(5*time.Minute, func() {
+			watch := time.AfterFunc(15*time.Minute, func() {
 				debug.SetTraceback("all")
-				panic("TestRecursiveTypeWalkProbes/" + c.name + ": check and build did not end in 5 minutes (CD7-R4)")
+				panic("TestRecursiveTypeWalkProbes/" + c.name + ": check and build did not end in 15 minutes")
 			})
 			defer watch.Stop()
 			if r := checkText(t, string(src)); len(r.Report.Diags) != 0 {

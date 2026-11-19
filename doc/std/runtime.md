@@ -967,10 +967,12 @@ The running task's usable stack, [lo, hi). lo is above the guard page
 and, on Windows, above the reserve the overflow report keeps; the
 task's frames grow down from hi. On a stack that is no task's, such as
 a carrier's system stack or the main thread with no task, it is that
-thread's stack with its guard area left out. It is (0, 0) where the OS
-gives no bounds: Linux's main thread before tasks start, and a foreign
-thread. O(1): a few compares, or one system call off a task; allocates
-nothing.
+thread's stack with its guard area left out. Where the OS gives no
+bounds (Linux's main thread), they are the ones start-up recorded for
+that stack. It is (0, 0) when no bounds are known: Linux's main thread
+before start-up records them, and a foreign thread. O(1) on a task: a
+few compares; off a task, one system call and at most 256 loads;
+allocates nothing.
 
 ### `StackRemaining`
 

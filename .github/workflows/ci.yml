@@ -72,9 +72,12 @@ jobs:
       - name: Temporary directory
         run: |
           mkdir -p "$RUNNER_TEMP/tmp"
-          echo "TMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
-          echo "TEMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
-          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          tmp="$RUNNER_TEMP/tmp"
+          # Git Bash on Windows: a native path, not one with mixed separators.
+          if command -v cygpath >/dev/null; then tmp=$(cygpath -w "$tmp"); fi
+          echo "TMP=$tmp" >> "$GITHUB_ENV"
+          echo "TEMP=$tmp" >> "$GITHUB_ENV"
+          echo "TMPDIR=$tmp" >> "$GITHUB_ENV"
 
       - name: Toolchain
         run: |
