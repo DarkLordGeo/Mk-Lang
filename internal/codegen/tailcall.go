@@ -12,7 +12,9 @@
 // asserted: every argument is passed in registers, or is a parameter of the
 // caller passed on unchanged at its own position, whose incoming pointer is
 // forwarded; anything else is an internal error, since check refused it
-// (E0313). A lowered signature that differs from the caller's is an
+// (E0313). A callee with a byval parameter is called at its $tail body,
+// from the caller's own (tailbody.go): LLVM 21 cannot lower a musttail
+// call with a byval argument on x86-64. A lowered signature that differs from the caller's is an
 // internal error too, before LLVM's verifier would refuse the musttail.
 
 package codegen
@@ -56,6 +58,10 @@ func (fg *fnGen) tailCallTerm(t *mir.Terminator) {
 		}
 		fn := g.funcDecl(fi)
 		ls = g.callSig(fi, args)
+		if g.tailBody(fi) {
+			// A byval parameter: body to body (tailbody.go).
+			fn, ls = g.tailDecl(fi), g.tailSigOf(fi)
+		}
 		callee, fnTy, attrs = fn.Ref(), fn.Type(), callAttrs(fn)
 	case mir.CallValue:
 		fv := fg.operand(t.Callee.Value)
@@ -69,6 +75,11 @@ func (fg *fnGen) tailCallTerm(t *mir.Terminator) {
 		}
 		ls = g.lowerSig(params, len(params), false, g.tt.ReturnType(ft.Fn.Result, ft.Fn.Errors))
 		callee, fnTy = fv.v, g.m.FuncType(ls.ret, ls.ltypes, false)
+		for i, sl := range ls.s.Params {
+			if sl.Kind == abi.Indirect && sl.Byval {
+				source.ICEf(fg.spanOf(t.Span), "codegen: a tail call through a fn value passes argument %d byval (check's E0313)", i+1)
+			}
+		}
 	default:
 		source.ICEf(fg.spanOf(t.Span), "codegen: a tail call of callee kind %d", t.Callee.Kind)
 	}

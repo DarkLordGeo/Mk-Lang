@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"mk/internal/diag"
 	"mk/internal/toolchain"
 	"mk/internal/types"
 )
@@ -275,8 +276,9 @@ func TestLibHost_Windows(t *testing.T) {
 	}
 }
 
-// TestLibOutput_ObjectCut: kind "object" is refused with E0202, never
-// built as an executable.
+// TestLibOutput_ObjectCut: kind "object" is refused with E0202 at the
+// manifest step (manifest bins[0].kind, reason invalid), never built as an
+// executable. The check reads the code and facts, not the message's wording.
 func TestLibOutput_ObjectCut(t *testing.T) {
 	s, err := NewSession(Config{Root: libPackage(t, "object"), Target: types.X86_64Windows, Tools: needTools(t), CacheDir: t.TempDir()})
 	if err != nil {
@@ -286,7 +288,10 @@ func TestLibOutput_ObjectCut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(paths) != 0 || len(r.Report.Diags) != 1 || !strings.Contains(r.Report.Diags[0].Diag.Message, `"object" outputs are cut`) {
+	if len(paths) != 0 || len(r.Report.Diags) != 1 {
+		t.Fatalf("paths %v\n%s", paths, r.Report.Text(r.Sources))
+	}
+	if d := r.Report.Diags[0].Diag; d.Code != diag.E0202 || factText(d, "manifest") != "bins[0].kind" || factText(d, "reason") != "invalid" || !strings.Contains(d.Message, `"object"`) {
 		t.Fatalf("paths %v\n%s", paths, r.Report.Text(r.Sources))
 	}
 }

@@ -410,6 +410,11 @@ func TestDiffFloatDigits(t *testing.T) {
 			for _, prof := range []string{"dev", "release"} {
 				t.Run(target+"/"+prof, func(t *testing.T) {
 					t.Parallel()
+					// No build for a target this host cannot run: each build
+					// of the copied std takes gigabytes.
+					if _, err := runArgv(target, dir, "digits", nil, 0); ErrNoRunner(err) {
+						skipOrFatal(t, gateRun(), "%v", err)
+					}
 					if _, err := r.Build("digits.mk", target, prof); err != nil {
 						t.Fatal(err)
 					}

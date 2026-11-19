@@ -153,16 +153,55 @@ func imports(src, path string) bool {
 // unbuiltExcepted are the verdict-ok blocks this harness cannot build, each
 // with why: they need a generator or more of the real std than a stub
 // should copy. mk corpus judges each one. An entry that builds, or that
-// names no verdict-ok block, fails the test, so the list stays current.
+// names no verdict-ok block, fails the test, so the list stays current. A
+// doc block's key is "doc.md: line", one of its lines trimmed, so an edit
+// that moves the block keeps the key (docExcepted resolves it).
 var unbuiltExcepted = map[string]string{
-	"examples.md:109":    "the log store opens its file through fs.ReadWrite, Options and OpenWith, the real std.fs's options API",
-	"examples.md:260":    "gen dyn.Of writes the DeviceDyn type the block uses; this harness runs no generator",
-	"overview.md:670":    "gen dyn.Of writes the type the block uses; this harness runs no generator",
-	"overview.md:1302":   "gen derive.Eq, derive.Hash and json.Codec; this harness runs no generator and has no std.derive",
-	"reference.md:7529":  "gen derive.Eq; this harness runs no generator and has no std.derive",
-	"reference.md:7556":  "a generator function: Gen's Block, Str and Fields are std's generator API, which this harness does not declare",
-	"reference.md:7663":  "a generator function: Gen's Block, Str and Fields are std's generator API, which this harness does not declare",
-	"reference.md:10839": "gen derive.Eq; this harness runs no generator and has no std.derive",
+	"examples.md: const RecordSize: int = 20":                          "the log store opens its file through fs.ReadWrite, Options and OpenWith, the real std.fs's options API",
+	"examples.md: const Com1: u16 = 0x3F8":                             "gen dyn.Of writes the DeviceDyn type the block uses; this harness runs no generator",
+	"overview.md: gen dyn.Of(Shape)":                                   "gen dyn.Of writes the type the block uses; this harness runs no generator",
+	"overview.md: Same(a: &Color, b: &Color): bool {":                  "gen derive.Eq, derive.Hash and json.Codec; this harness runs no generator and has no std.derive",
+	"reference.md: gen derive.Eq(Tile)     // writes impl Eq for Tile": "gen derive.Eq; this harness runs no generator and has no std.derive",
+	"reference.md: export Describe(g: mut Gen, t: Type) {":             "a generator function: Gen's Block, Str and Fields are std's generator API, which this harness does not declare",
+	"reference.md: export Count(g: mut Gen, t: Type) {":                "a generator function: Gen's Block, Str and Fields are std's generator API, which this harness does not declare",
+	"reference.md: gen derive.Eq(Person) // #[derive(PartialEq)]":      "gen derive.Eq; this harness runs no generator and has no std.derive",
+}
+
+// docExcepted keys list's entries as the harness names units ("doc.md:<fence
+// line>" or "programs/<name>"). An entry "doc.md: line" names the one block
+// of doc.md that has a line equal to line, trimmed; an entry that names no
+// unit, or several blocks, fails the test.
+func docExcepted(t testing.TB, texts map[string]string, list map[string]string) map[string]string {
+	out := map[string]string{}
+	for k, why := range list {
+		doc, line, ok := strings.Cut(k, ".md: ")
+		if !ok {
+			if _, ok := texts[k]; !ok {
+				t.Errorf("an exception names %s, which is not a unit", k)
+			}
+			out[k] = why
+			continue
+		}
+		var found []string
+		for unit, src := range texts {
+			if !strings.HasPrefix(unit, doc+".md:") {
+				continue
+			}
+			for _, l := range strings.Split(src, "\n") {
+				if strings.TrimSpace(l) == line {
+					found = append(found, unit)
+					break
+				}
+			}
+		}
+		if len(found) != 1 {
+			sort.Strings(found)
+			t.Errorf("the exception %q names %d blocks (%s), not one", k, len(found), strings.Join(found, ", "))
+			continue
+		}
+		out[found[0]] = why
+	}
+	return out
 }
 
 // TestCorpusLowersAndValidates: every unit of every verdict-ok block lowers
@@ -180,6 +219,9 @@ func TestCorpusLowersAndValidates(t *testing.T) {
 	srcOf := map[string]string{}
 	for _, u := range units {
 		srcOf[u.key] = u.src
+	}
+	excepts := docExcepted(t, srcOf, unbuiltExcepted)
+	for _, u := range units {
 		w, b, ok := corpusWorld(t, core, pre, u)
 		if !ok {
 			unbuilt = append(unbuilt, u.key+": "+whyUnbuilt(w, b))
@@ -204,17 +246,15 @@ func TestCorpusLowersAndValidates(t *testing.T) {
 			continue
 		}
 		k := s[:strings.Index(s, ": ")]
-		if why, ok := unbuiltExcepted[k]; ok {
+		if why, ok := excepts[k]; ok {
 			seen[k] = true
 			t.Logf("not built here, %s: %s", why, s)
 			continue
 		}
 		t.Errorf("verdict-ok source not built by the harness: %s", s)
 	}
-	for k, why := range unbuiltExcepted {
-		if _, ok := srcOf[k]; !ok {
-			t.Errorf("unbuiltExcepted names %s, which is not a verdict-ok block", k)
-		} else if !seen[k] {
+	for k, why := range excepts {
+		if !seen[k] {
 			t.Errorf("%s builds now: remove it from unbuiltExcepted (%s)", k, why)
 		}
 	}

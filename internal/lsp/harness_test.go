@@ -23,6 +23,9 @@ import (
 var testCache string
 
 func TestMain(m *testing.M) {
+	// Fixtures are t.TempDir()s: a pkg.mk left in the temporary directory
+	// itself must not make them one package of the whole directory.
+	rootCeiling = pathKey(os.TempDir())
 	dir, err := os.MkdirTemp("", "mk-lsp-cache-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

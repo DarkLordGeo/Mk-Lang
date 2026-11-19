@@ -3,7 +3,8 @@
 // reach before and after tasks exist, and one way to end the process.
 //
 // What: RtState and RtWords, Init, R, Proc, Args, NativeIo, NextTaskId, the
-// system-stack registry (SetSysStack, SysStackOf), Exit, Abandon and Fatal.
+// system-stack registry (SetSysStack, SysStackOf, SysStackAt), Exit,
+// Abandon and Fatal.
 //
 // How: RtState lives in a page Init maps, not in a `var`: its fields are
 // then written through a raw pointer into memory no loan covers, and the
@@ -257,6 +258,29 @@ export SysStackOf(sp: uint): int {
         }
     }
     return -1
+}
+
+/// SysStackAt is the recorded system stack [lo, hi) that holds sp, or
+/// (0, 0) when none does. It gives the bounds where the OS gives none: on
+/// Linux, the main thread's stack, which StartOn records as carrier 0's
+/// before Main runs.
+/// O(256) loads; allocates nothing. Safe in a fault handler.
+export SysStackAt(sp: uint): (lo: uint, hi: uint) {
+    i := SysStackOf(sp)
+    st := R()
+    if i < 0 || raw.IsNull(st) {
+        return (lo: 0, hi: 0)
+    }
+    unsafe "st is R(), not null, which lives until exit; i is below 256" {
+        // Edge: as SysStackOf: hi between two loads of lo, and a changed lo
+        // means the entry moved under the read.
+        lo := Trunc[uint]((*st).sys_lo[i].Load())
+        hi := Trunc[uint]((*st).sys_hi[i].Load())
+        if lo == 0 || sp < lo || sp >= hi || Trunc[uint]((*st).sys_lo[i].Load()) != lo {
+            return (lo: 0, hi: 0)
+        }
+        return (lo: lo, hi: hi)
+    }
 }
 
 /// Fatal writes "panic: <msg>" with no site and exits with 101.

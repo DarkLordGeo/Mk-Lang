@@ -35,7 +35,8 @@ type RunIO struct {
 // Run builds one bin, Config.Bin or the only bin, into the store's bin/<link
 // key>/<bin>[.exe] (an executable already there has the same bytes and is
 // used as is, so a running one is never overwritten), then runs it with args
-// and returns its exit status. A package with several bins and no
+// and returns its exit status (128 plus the signal number for a death by
+// signal, as a shell reports it). A package with several bins and no
 // Config.Bin, a target this host cannot run, and an unknown bin are
 // *UsageError (exit 2). A compile failure returns status -1 and runs
 // nothing.
@@ -109,7 +110,7 @@ func (s *Session) Run(args []string, rio RunIO) (Result, int, error) {
 	case err == nil:
 		return r, 0, nil
 	case errors.As(err, &ee):
-		return r, ee.ExitCode(), nil
+		return r, childStatus(ee), nil
 	}
 	return r, -1, err
 }

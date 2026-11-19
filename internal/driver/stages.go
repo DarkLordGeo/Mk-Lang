@@ -284,22 +284,39 @@ func (a *accounting) accounted(c types.ItemID) bool {
 // and borrow pass must not start before that check ends. So units run in
 // phases by literal depth: other units first, then the literals they hold,
 // then the literals inside those, and so on.
+//
+// Within a depth, with a front cache, the units that are always checked
+// (contract predicates, literals, deferred consts: not reusable) run before
+// the units that may be looked up. A lookup validates reads such as a
+// callee's signature hash, which names the callee's contract bodies; run
+// side by side, a lookup could find such a body not lowered yet, take the
+// hash's ICE for a changed read and recheck a function that was unchanged,
+// depending on the schedule (TestInvalidation_ClauseTextReaderReused).
 func (b *build) bodies(cm *checker.Module, units []types.ItemID, late []*checker.Body, sigClean bool) []unitResult {
 	w := b.w
 	n := len(units) + len(late)
 	res := make([]unitResult, n)
-	depth := make([]int, n)
+	phase := make([]int, n)
 	most := 0
-	for i := range units {
-		for it := w.items.Get(units[i]); it.Kind == types.KindLiteral && it.Owner != types.NoItem; it = w.items.Get(it.Owner) {
-			depth[i]++
-		}
-		most = max(most, depth[i])
+	var m *modNode
+	if w.front != nil && sigClean && len(units) > 0 {
+		m = w.sem5.module(w.items.Get(units[0]).Module)
 	}
-	for d := 0; d <= most; d++ {
+	for i := range units {
+		depth := 0
+		for it := w.items.Get(units[i]); it.Kind == types.KindLiteral && it.Owner != types.NoItem; it = w.items.Get(it.Owner) {
+			depth++
+		}
+		phase[i] = 2 * depth
+		if m != nil && m.reusable(w.items.Get(units[i]), w.items) {
+			phase[i]++
+		}
+		most = max(most, phase[i])
+	}
+	for p := 0; p <= most; p++ {
 		var wg sync.WaitGroup
 		for i := 0; i < n; i++ {
-			if depth[i] == d {
+			if phase[i] == p {
 				b.bodyAt(cm, units, late, sigClean, res, i, &wg)
 			}
 		}

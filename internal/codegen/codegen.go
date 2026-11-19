@@ -202,6 +202,10 @@ type Unit struct {
 	// memoized under idxMu; trapsN is len(Funcs)+1 once it is set.
 	traps  bool
 	trapsN int
+	// tails is the items on a `become` edge (tailbody.go tailItems),
+	// memoized under idxMu; tailsN is len(Funcs)+1 once it is set.
+	tails  map[types.ItemID]bool
+	tailsN int
 }
 
 // index is u's shared exact index: built on the first call,

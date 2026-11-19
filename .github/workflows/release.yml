@@ -20,7 +20,7 @@ jobs:
   release:
     if: github.repository == 'zerodayokay/Mk-Lang'
     runs-on: [self-hosted, windows, x64, mk]
-    timeout-minutes: 180
+    timeout-minutes: 300
     defaults:
       run:
         # Git Bash by its short path: a plain `bash` on a Windows runner can
@@ -33,6 +33,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # A temporary directory of the job's own, which the runner empties after
+      # each job: files another program left in the user's temp directory (a
+      # stray pkg.mk there once made every test fixture one package) never
+      # reach the tests.
+      - name: Temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/tmp"
+          echo "TMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TEMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
 
       # Fresh caches in the job's own temporary directory, which the runner
       # empties after each job: a release never reads entries another job
@@ -48,7 +59,7 @@ jobs:
           go vet ./...
 
       - name: Test
-        run: go test -timeout 3600s $(go list ./... | grep -v '^mk/std$')
+        run: go test -timeout 3h $(go list ./... | grep -v '^mk/std$')
 
       - name: Documentation tests
         run: go run ./cmd/mk corpus

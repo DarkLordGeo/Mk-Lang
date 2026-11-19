@@ -53,6 +53,13 @@ type Config struct {
 	// passes in registers only what each answers Direct (E0313, become.go).
 	// Nil in tests: the rule then judges by size alone.
 	ParamClass func(tt *types.Table, layout func(types.TypeID) *types.Layout, target types.Target, t types.TypeID) types.AbiClass
+	// ParamByval reports whether target's C ABI lowering of a signature
+	// with parameter types params and result type result passes parameter
+	// i as a byval copy in memory (the driver's abi.Lower, which accounts
+	// for registers running out). A `become` through a fn value cannot pass
+	// such a parameter on (E0313, become.go). Nil in tests: more than 16
+	// bytes is byval.
+	ParamByval func(tt *types.Table, layout func(types.TypeID) *types.Layout, target types.Target, params []types.TypeID, result types.TypeID, i int) bool
 	// Imports is unused: Load reads types.Module.Imports, which the driver
 	// sets before any stage reads it. Kept only so the driver, which still
 	// sets it, builds; it may stop setting it.

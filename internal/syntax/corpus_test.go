@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -100,18 +101,26 @@ func programFiles(t testing.TB) []block {
 }
 
 // TestLexCoversText checks token coverage and print-back on every corpus
-// block.
+// block. A lexical diagnostic is an error unless the block is a reject
+// block whose verdict names its code and the diagnostic's line is marked
+// `// <- CODE` (the reference's lexical E0101 blocks).
 func TestLexCoversText(t *testing.T) {
 	t.Parallel()
 	for _, b := range append(docBlocks(t), programFiles(t)...) {
 		text := source.Normalize([]byte(b.text))
 		toks, diags := Lex(1, text)
-		f := &ast.File{Tokens: toks}
 		if err := ast.Validate(&ast.File{Base: ast.Base{NID: 1, Sp: source.Span{File: 1, End: uint32(len(text))}}, Tokens: toks, NodeCount: 1}, text); err != nil {
 			t.Errorf("%s: %v", b.name, err)
 		}
-		_ = f
+		codes, reject := strings.CutPrefix(b.verdict, "reject ")
+		lines := strings.Split(text, "\n")
 		for _, d := range diags {
+			c := d.Code.String()
+			ln := strings.Count(text[:min(int(d.At.Start), len(text))], "\n")
+			marked := strings.Contains(lines[ln], "// <- "+c)
+			if reject && slices.Contains(strings.Fields(codes), c) && marked {
+				continue
+			}
 			t.Errorf("%s: lexical %v at %d: %s", b.name, d.Code, d.At.Start, d.Message)
 		}
 	}
@@ -126,8 +135,9 @@ var knownDesignConflicts = map[string]string{}
 // every program of tests/programs) with zero diagnostics: verdict: parse
 // blocks with AllowBodiless, ok and reject blocks without. A reject block
 // may expect a parse-phase code (some of the reference's E0101 blocks):
-// then the parser emits exactly the verdict's codes, each on a line marked
-// `// <- CODE`.
+// then every diagnostic the parser emits has a code the verdict names and
+// sits on a line marked `// <- CODE`, and every line marked with one of the
+// codes it emits gets that diagnostic.
 func TestDocBlocksParse(t *testing.T) {
 	t.Parallel()
 	all := append(docBlocks(t), programFiles(t)...)
@@ -137,14 +147,30 @@ func TestDocBlocksParse(t *testing.T) {
 			r := parse(t, b.text, opts)
 			want := knownDesignConflicts[b.name]
 			if codes, ok := strings.CutPrefix(b.verdict, "reject "); ok && want == "" && len(r.diags) > 0 {
+				named := strings.Fields(codes)
 				lines := strings.Split(b.text, "\n")
+				emitted := map[string]bool{} // code -> emitted at all
+				at := map[string]bool{}      // "line:code" -> emitted there
 				for _, d := range r.diags {
+					c := d.Code.String()
 					ln := int(r.src.LineCol(d.At.Start).Line)
-					if ln < 1 || ln > len(lines) || !strings.Contains(lines[ln-1], "// <- "+d.Code.String()) {
+					emitted[c] = true
+					at[itoa(ln)+":"+c] = true
+					if !slices.Contains(named, c) {
+						t.Errorf("%s: %s at line %d is not in the verdict", b.name, c, ln)
+					}
+					if ln < 1 || ln > len(lines) || !strings.Contains(lines[ln-1], "// <- "+c) {
 						t.Errorf("%s: %s not on a line marked for it", b.name, d.Code)
 					}
 				}
-				want = strings.Join(strings.Fields(codes), " ")
+				for i, l := range lines {
+					for c := range emitted {
+						if strings.Contains(l, "// <- "+c) && !at[itoa(i+1)+":"+c] {
+							t.Errorf("%s: line %d is marked %s, and the parser reports none there", b.name, i+1, c)
+						}
+					}
+				}
+				return
 			}
 			if got := r.codeList(); got != want {
 				t.Errorf("%s (%s): got %q, want %q:\n  %s\n%s", b.name, b.verdict, got, want, strings.Join(r.codes(), "\n  "), b.text)

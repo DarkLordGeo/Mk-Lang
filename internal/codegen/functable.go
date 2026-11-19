@@ -135,6 +135,11 @@ func (g *packGen) funcRows() {
 			site = g.fnSite(it.Span, name, "mk.pos."+f.Symbol+".fn")
 		}
 		g.funcRow(g.defs[fi], site, rowMk)
+		if body, ok := g.tailDefs[fi]; ok {
+			// A split member's body (tailbody.go): a backtrace names
+			// both frames.
+			g.funcRow(body, site, rowMk)
+		}
 	}
 	for _, fn := range g.extraFns {
 		g.funcRow(fn, m.Null(), rowOther)

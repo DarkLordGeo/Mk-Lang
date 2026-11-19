@@ -9,8 +9,9 @@
 //
 // How: an argument passes if every built target passes its type in
 // registers (registerKind), or it is the caller's own parameter at the same
-// position passed on unchanged. A live linear value (E0402) and a loan on a
-// local (E0603) are borrow's checks, at the TermTailCall.
+// position passed on unchanged, and through a `fn` value no built target
+// passes it as a byval copy (byvalOnBuilt). A live linear value (E0402)
+// and a loan on a local (E0603) are borrow's checks, at the TermTailCall.
 
 package check
 
@@ -248,7 +249,8 @@ func (u *unit) pendingCleanup(s *ast.BecomeStmt) bool {
 // parameter of its position passed on unchanged (not `var`), whose memory
 // the caller's caller owns and whose incoming pointer codegen forwards. At
 // another position the memory would move between argument slots, which
-// System V's byval copies cannot do in place. The register-passed kinds are
+// System V's byval copies cannot do in place; through a `fn` value a byval
+// parameter cannot be passed on at all. The register-passed kinds are
 // integers, floats, bool, char, references, raw pointers, fn values, and
 // plain structs and records of 1, 2, 4 or 8 bytes (Win64 passes any other
 // size through memory the caller makes). reported says the call itself had
@@ -283,10 +285,20 @@ func (u *unit) tailArgs(call *ast.CallExpr, cu Use, reported bool) {
 		if u.registerKind(t) {
 			continue
 		}
+		name := u.c.cfg.Interner.Str(u.sig.Params[i].Name)
 		if p, ok := u.ownParam(a); ok && int(p) == i+1 {
+			if cu.Kind == UseFnValueCall && u.byvalOnBuilt(i) {
+				// codegen passes a byval parameter on only from one
+				// function's own body to another's (codegen/tailbody.go); a
+				// fn value is the C ABI entry, and LLVM's musttail lowering
+				// of a byval argument writes over the caller's return
+				// address.
+				u.err(diag.E0313, a.Span(), "the argument for `"+name+"` is a `"+u.str(t)+"`, which some target passes as a copy in memory, and a `become` through a `fn` value cannot pass that on").
+					Text("param", name).Text("type", u.str(t)).
+					Alt("`become` the function by name, or pass a reference: `&" + u.str(t) + "`")
+			}
 			continue
 		}
-		name := u.c.cfg.Interner.Str(u.sig.Params[i].Name)
 		if !u.inMemory(t) {
 			// A register-sized value of a kind the register list does not
 			// name (a niche optional, an enum): the list, not memory.
@@ -369,6 +381,39 @@ func (u *unit) inMemory(t types.TypeID) bool {
 		return !u.c.directOnBuilt(t)
 	}
 	return true
+}
+
+// byvalOnBuilt reports whether some built target's lowering of the
+// caller's signature passes parameter i as a byval copy (System V's MEMORY
+// class, or an aggregate once the registers run out; Config.ParamByval). A
+// signature with a type parameter's type may be any, so it answers true;
+// with no hook (a test's Config) more than 16 bytes is byval.
+func (u *unit) byvalOnBuilt(i int) bool {
+	c := u.c
+	params := make([]types.TypeID, len(u.sig.Params))
+	for j, p := range u.sig.Params {
+		if !c.closed(p.Type) {
+			return true
+		}
+		params[j] = p.Type
+	}
+	result := u.sig.ReturnType(u.tab)
+	if !c.closed(result) {
+		return true
+	}
+	if c.cfg.ParamByval == nil {
+		return c.Layout(params[i]).Shape.Size > 16
+	}
+	layout := func(t types.TypeID) *types.Layout {
+		l := c.Layout(t)
+		return &l
+	}
+	for _, tg := range types.AllTargets() {
+		if tg.Built && c.cfg.ParamByval(c.cfg.Types, layout, tg, params, result, i) {
+			return true
+		}
+	}
+	return false
 }
 
 // directOnBuilt reports whether every built target's classifier passes a

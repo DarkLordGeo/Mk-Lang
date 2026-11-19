@@ -3446,11 +3446,32 @@ A `become` must meet all of these:
 | No `defer` or `onerr` is pending, and the `become` is not inside a `scope` block | E0406 |
 | No linear value is left unconsumed | E0402 |
 | No argument borrows a local of the caller | E0603 |
-| Each argument is register-sized, or is the caller's own parameter at the same position and not a `var` parameter | E0313 |
+| Each argument is register-sized, or is the caller's own parameter at the same position and not a `var` parameter; through a `fn` value, not a parameter that some target passes as a copy in memory | E0313 |
 | `f` is not an `extern` function, an intrinsic, a function with `cpu` features the caller lacks, or a method reached through an interface bound | E0314 |
 | The operand is a call | E0101 |
 
 Register-sized means an integer, a float, `bool`, `char`, a reference, a raw pointer, a `fn` value, or a plain struct or record of 0, 1, 2, 4 or 8 bytes. An enum or an optional is never register-sized, however small: pass the caller's own parameter unchanged, or an integer. A `naked` function cannot use `become` (E0314).
+
+x86_64-linux passes a struct of more than 16 bytes, and one of more than 8 once the argument registers run out, as a copy in memory. A `become` that names its callee passes such a parameter on in constant stack; a `become` through a `fn` value cannot, so it is E0313 on every target. Name the function, or pass a reference.
+
+```mk
+// verdict: reject E0313
+struct Big {
+    a: int
+    b: int
+    c: int
+}
+
+Sum(b: Big, n: int): int {
+    return b.a + b.b + b.c + n
+}
+
+const Table: [1]fn(Big, int): int = [Sum]
+
+Through(b: Big, n: int): int {
+    become Table[0](b, n) // <- E0313
+}
+```
 
 ```mk
 // verdict: reject E0406

@@ -86,8 +86,12 @@ type fixedDiag struct {
 // rootKeyOf finds the root of a file: the nearest directory upwards that
 // holds pkg.mk, else the file alone; a std tree's files share its std root
 // (stdroot.go). The key is "pkg:", "file:" or "std:" and the path key.
+// The walk never reads rootCeiling or anything above it.
 func rootKeyOf(path string) string {
 	for dir := filepath.Dir(path); ; {
+		if rootCeiling != "" && pathKey(dir) == rootCeiling {
+			return "file:" + path
+		}
 		if std, manifest := stdTreeLevel(dir); std {
 			return "std:" + dir
 		} else if manifest {
@@ -100,6 +104,13 @@ func rootKeyOf(path string) string {
 		dir = up
 	}
 }
+
+// rootCeiling is the path key of a directory that rootKeyOf does not
+// climb into, or "" for none. The tests set it to the system temporary
+// directory: their fixtures live below it, and a stray pkg.mk left in it
+// would otherwise make every fixture without a manifest part of one
+// package spanning the whole directory.
+var rootCeiling string
 
 // foldKey is a root key's identity, case-folded where paths fold.
 func foldKey(k string) string {

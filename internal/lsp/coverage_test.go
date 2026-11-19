@@ -285,27 +285,28 @@ func TestLSPStdCoverage(t *testing.T) {
 		}
 	}
 	res := &covResult{kinds: map[string]*covTally{}, misses: map[string][]string{}}
+	// Each worker takes the next module when it finishes one, so std.core,
+	// a third of the sample's items, does not hold up the modules behind it.
 	workers := 2
+	queue := make(chan string, len(mods))
+	for _, m := range mods {
+		queue <- m
+	}
+	close(queue)
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
-		var mine []string
-		for i, m := range mods {
-			if i%workers == w {
-				mine = append(mine, m)
-			}
-		}
 		wg.Add(1)
-		go func(w int, mine []string) {
+		go func(w int) {
 			defer wg.Done()
 			c := startWith(t, Options{StdDir: std, CacheDir: testCache, Jobs: 2})
 			c.init(true)
-			for _, m := range mine {
+			for m := range queue {
 				begin := time.Now()
 				n := covModule(t, c, std, filepath.Join(dir, fmt.Sprintf("w%d", w)), m, res)
 				t.Logf("%s: %d items in %v", m, n, time.Since(begin).Round(time.Millisecond))
 			}
 			c.shutdown()
-		}(w, mine)
+		}(w)
 	}
 	wg.Wait()
 	covReport(t, res, full)

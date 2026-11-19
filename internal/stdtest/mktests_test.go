@@ -15,6 +15,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -191,8 +192,13 @@ func TestStdMkTests(t *testing.T) {
 	for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
 		t.Run(target.Name, func(t *testing.T) {
 			linux := target.Name == types.X86_64Linux.Name
-			if linux {
+			host := runtime.GOOS + "/" + runtime.GOARCH
+			switch {
+			case linux && runtime.GOOS == "windows":
+				// A Windows host runs the Linux leg through wsl.exe.
 				wslAnswers(t)
+			case linux && host != "linux/amd64", !linux && runtime.GOOS != "windows":
+				t.Skipf("no runner for %s on %s", target.Name, host)
 			}
 			for _, prof := range []types.Profile{types.TestProfile, types.Release} {
 				name := "dev"
@@ -232,7 +238,7 @@ func TestStdMkTests(t *testing.T) {
 									t.Setenv(k, v)
 									keys = append(keys, k)
 								}
-								if linux {
+								if linux && runtime.GOOS == "windows" {
 									wslenv := strings.Join(keys, ":")
 									if old := os.Getenv("WSLENV"); old != "" {
 										wslenv = old + ":" + wslenv

@@ -450,8 +450,8 @@ func runChild(tc *TestCase, argv, env []string, i int, timeout time.Duration, be
 		tc.Result, tc.Status = "timeout", -1
 	case err == nil:
 		tc.Result, tc.Status = "pass", 0
-	case errors.As(err, &ee) && ee.ExitCode() >= 0:
-		tc.Status = ee.ExitCode()
+	case errors.As(err, &ee) && childStatus(ee) >= 0:
+		tc.Status = childStatus(ee)
 		tc.Result = resultOf(tc.Status)
 	default:
 		tc.Result, tc.Status = "fail", -1

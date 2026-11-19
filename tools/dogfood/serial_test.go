@@ -240,8 +240,11 @@ func TestRunBootsWithSerialSocket(t *testing.T) {
 	if len(cases) != 2 || cases[0].Status != "pass" || !strings.Contains(cases[0].Command, "-serial chardev:com1") || strings.Contains(cases[0].Command, "stdio") {
 		t.Errorf("cases %+v", cases[0])
 	}
-	// Without QEMU, a file that is not an ELF fails the check.
+	// Without QEMU, a file that is not an ELF fails the check. The fake
+	// build writes text: the test binary itself is a static x86-64 ELF with
+	// a PT_NOTE on Linux, and passes.
 	t.Setenv("MK_DOGFOOD_QEMU", "none")
+	t.Setenv("DFH_BUILD_TEXT", "not an ELF\n")
 	out.Reset()
 	if code := run([]string{"run", "-dir", dogs, "-work", filepath.Join(tmp, "work"), "-mk", selfExe(t), "-target", targetFree, "-profile", "dev"}, &out, &out); code != 1 || !strings.Contains(out.String(), "QEMU not found, and the ELF check failed") {
 		t.Errorf("no QEMU: exit %d, want 1 and the ELF check\n%s", code, out.String())

@@ -255,9 +255,10 @@ func TestColumnsAndClasses(t *testing.T) {
 }
 
 // TestBuildCommandsFollowTheContract checks the build flags the benchmark
-// contract (tests/bench/README.md) fixes on every column's command.
+// contract (tests/bench/README.md) fixes on every column's command, for the
+// Windows table on any host (TestLinuxCommands has the Linux one).
 func TestBuildCommandsFollowTheContract(t *testing.T) {
-	tc := &toolchain{Mk: "mk", Clang: "clang", Rustc: "rustc", Zig: "zig", Go: "go", Work: "W", CEnv: []string{"INCLUDE=i", "LIB=l"}}
+	tc := &toolchain{Mk: "mk", Clang: "clang", Rustc: "rustc", Zig: "zig", Go: "go", Work: "W", CEnv: []string{"INCLUDE=i", "LIB=l"}, GOOS: "windows"}
 	r := &row{Name: "r", Dir: "D", Sources: map[string]string{"mk": "mk", "mk-wrap": "mkwrap", "c": "r.c", "rust": "r.rs", "zig": "r.zig", "go": "testdata/r.go"}}
 	want := map[string][]string{
 		"mk":       {"--release", "--pgo=off", "x86-64-v2", "--no-cache"},

@@ -288,6 +288,11 @@ func checkProgramCase(t *testing.T, r *Runner, c ProgramCase, target, prof strin
 	if !strict {
 		report = t.Logf
 	}
+	// No build for a target this host cannot run (x86_64-windows on Linux):
+	// it checks nothing here and costs memory.
+	if _, err := runArgv(target, r.dir, "x", nil, 0); ErrNoRunner(err) {
+		skipOrFatal(t, gate, "%v", err)
+	}
 	if _, err := r.Build(c.Program, target, prof); blockedBuild(err) != "" {
 		skipOrFatal(t, gate, "BLOCKED: %s", blockedBuild(err))
 	}

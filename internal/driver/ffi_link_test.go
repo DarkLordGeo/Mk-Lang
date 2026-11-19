@@ -320,7 +320,9 @@ func normLinkArg(a string) string {
 			return p + "<path>"
 		}
 	}
-	if filepath.IsAbs(a) || strings.HasPrefix(a, "/") && strings.Count(a, "/") > 1 {
+	// A lld-link option such as /nologo is absolute to filepath on a
+	// Unix host: a path that starts with '/' needs a second '/'.
+	if filepath.IsAbs(a) && !strings.HasPrefix(a, "/") || strings.HasPrefix(a, "/") && strings.Count(a, "/") > 1 {
 		ext := filepath.Ext(a)
 		if ext == "" {
 			return "<path>"

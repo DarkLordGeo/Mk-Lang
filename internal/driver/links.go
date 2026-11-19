@@ -1013,11 +1013,13 @@ func arMembers(b []byte) ([]arMember, error) {
 			if err != nil || n >= len(longNames) {
 				return nil, errors.New("bad long member name")
 			}
+			// A GNU entry ends "/\n"; a COFF entry ends in NUL. Either may
+			// hold a path with '/' in it (llvm-lib on Linux stores one).
 			rest := longNames[n:]
-			if j := bytes.IndexAny(rest, "/\n\x00"); j >= 0 {
+			if j := bytes.IndexAny(rest, "\n\x00"); j >= 0 {
 				rest = rest[:j]
 			}
-			name = string(rest)
+			name = strings.TrimSuffix(string(rest), "/")
 		default:
 			name = strings.TrimSuffix(name, "/")
 		}

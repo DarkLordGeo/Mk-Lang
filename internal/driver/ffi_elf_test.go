@@ -320,6 +320,13 @@ func TestFFI_Runtime(t *testing.T) {
 						if timed {
 							continue
 						}
+						if !baseline && strings.HasPrefix(tc.Name, "RT-Pin-JoinClears") {
+							// A pinned Thread is a joinable OS thread, which system-libc
+							// mode does not build: sys.ThreadStartJoin fails with ENOSYS
+							// (std/sys/linux/join.mk), and the block panics by design.
+							t.Logf("%s %q: not run in system-libc mode (no joinable thread)", tc.Module, tc.Name)
+							continue
+						}
 						if m == nil {
 							judgeStdTest(t, tc, len(prefix) > 0)
 							continue

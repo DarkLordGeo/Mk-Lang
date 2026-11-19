@@ -47,6 +47,9 @@ import (
 //     drop the readonly mark from the call's attributes; and the same
 //     bits of every function a const or asm operand of the pack names,
 //     whose declaration carries the marks (walkPackConsts);
+//   - per member, whether its item ends a `become` or is the direct callee
+//     of one anywhere in the unit (tailbody.go tailItems), which splits a
+//     member with a byval parameter into a wrapper and a $tail body;
 //   - every Global row: which pack defines it, relative to p, and Local.
 //
 // It reports false, so the pack is emitted and keyed by its IR as before,
@@ -127,6 +130,7 @@ func PackFacts(u *Unit, p int, env Env, cfg Config, h *source.Hasher) bool {
 		h.Bool(f.AddrTaken)
 		h.Bool(f.Spawned)
 		h.Bool(f.Local)
+		h.Bool(u.tailItems()[f.Item]) // split by tailbody.go: another pack's become reaches it
 		h.Bool(sc != nil && sc.outside[f.Item])
 		h.Bool(sg != nil && sg.smallFn(fi))
 		h.Bool(sg != nil && sg.crossSole(fi))

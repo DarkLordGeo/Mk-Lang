@@ -84,18 +84,24 @@ func judgeDesignFmt(blocks []designBlock, out []string) (changed []string, synta
 	}
 	for _, l := range out {
 		l = strings.TrimSpace(l)
-		if name, ok := byFile[filepath.Base(l)]; ok && strings.HasSuffix(l, ".mk") {
+		if name, ok := byFile[fileBase(l)]; ok && strings.HasSuffix(l, ".mk") {
 			changed = append(changed, name)
 			continue
 		}
 		if p, _, ok := strings.Cut(l, ".mk: "); ok {
-			if _, ok := byFile[filepath.Base(p+".mk")]; ok {
+			if _, ok := byFile[fileBase(p+".mk")]; ok {
 				syntax++
 			}
 		}
 	}
 	sort.Strings(changed)
 	return changed, syntax
+}
+
+// fileBase is the last element of a path split at / and at \, whichever
+// host wrote it: a block's file name holds neither.
+func fileBase(p string) string {
+	return p[strings.LastIndexAny(p, `/\`)+1:]
 }
 
 // designFmtStep runs mk fmt -l over every block of doc/ (skipped with the

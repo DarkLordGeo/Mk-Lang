@@ -198,7 +198,8 @@ ChainFrames(pcs: mut []uint, var fp: uint): int {
 }
 
 // StackRange is the running stack: a task's slot below its header, or the
-// thread's own stack; (0, 0) when neither is known.
+// thread's own stack, from the OS or, where the OS gives none (Linux's
+// main thread), from the recorded system stacks; (0, 0) when none is known.
 StackRange(): (lo: uint, hi: uint) {
     slot := CurrentSlot()
     if !raw.IsNull(slot) {
@@ -206,5 +207,8 @@ StackRange(): (lo: uint, hi: uint) {
         return (lo: SlotBase(hi + Trunc[uint](HeaderBytes)), hi: hi)
     }
     b := sys.ThreadStackBounds()
+    if b.lo == 0 && b.hi == 0 {
+        return SysStackAt(StackPointer())
+    }
     return (lo: b.lo, hi: b.hi)
 }

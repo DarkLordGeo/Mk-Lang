@@ -84,6 +84,7 @@ func skipBrackets(s string, i int) int {
 var (
 	boldLead   = regexp.MustCompile(`^\s*\*\*[^*]*\*\*\s*`)
 	moduleHead = regexp.MustCompile(`^// (std(?:\.[a-z][a-z0-9]*)+)`)
+	moduleLead = regexp.MustCompile("^\\*\\*`(std(?:\\.[a-z][a-z0-9]*)+)`\\*\\*")
 	sentence   = regexp.MustCompile("(?:[^.!?`]|`[^`]*`|[.!?][^\\s])*[.!?](?:\\s|$)")
 )
 
@@ -176,12 +177,19 @@ func generateSurfaceTable(t *testing.T) map[string][]byte {
 		}
 	}
 	// The prose's sentences that speak of an item: a code span spelling
-	// its key, or its last segment where its type is spelled too.
-	var sentences []string
+	// its key, or its last segment where its type is spelled too. A
+	// paragraph that opens with a module in bold (**`std.raw`**) speaks
+	// of that module's items only.
+	type proseSentence struct{ text, module string }
+	var sentences []proseSentence
 	for _, p := range prose {
+		mod := ""
+		if m := moduleLead.FindStringSubmatch(p); m != nil {
+			mod = m[1]
+		}
 		for _, s := range sentence.FindAllString(p, -1) {
 			if s = strings.TrimSpace(boldLead.ReplaceAllString(s, "")); s != "" {
-				sentences = append(sentences, s)
+				sentences = append(sentences, proseSentence{s, mod})
 			}
 		}
 	}
@@ -193,12 +201,30 @@ func generateSurfaceTable(t *testing.T) map[string][]byte {
 		if len(segs) > 1 {
 			owner = segs[len(segs)-2]
 		}
-		for _, s := range sentences {
-			spans := map[string]bool{}
-			for _, m := range codeSpan.FindAllStringSubmatch(s, -1) {
-				spans[trimSpan(m[1])] = true
+		// A type, and the owner of a method, is named by a span without a
+		// call: `Slice(p, n)` is std.raw's function, not the type Slice.
+		isType := false
+		for _, w := range []string{"struct ", "enum ", "error ", "interface ", "type "} {
+			isType = isType || strings.HasPrefix(e.lines[0], w)
+		}
+		for _, ps := range sentences {
+			if ps.module != "" && ps.module != e.module {
+				continue
 			}
-			if spans[key] || owner != "" && spans[last] && spans[owner] || owner != "" && spans[owner+"."+last] {
+			s := ps.text
+			spans, names := map[string]bool{}, map[string]bool{}
+			for _, m := range codeSpan.FindAllStringSubmatch(s, -1) {
+				k := trimSpan(m[1])
+				spans[k] = true
+				if !strings.Contains(m[1], "(") {
+					names[k] = true
+				}
+			}
+			self := spans[key]
+			if isType {
+				self = names[key]
+			}
+			if self || owner != "" && spans[last] && names[owner] || owner != "" && spans[owner+"."+last] {
 				if len(e.notes) < 3 {
 					e.notes = append(e.notes, s)
 				}

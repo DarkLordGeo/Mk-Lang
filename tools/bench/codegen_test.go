@@ -18,14 +18,16 @@ import (
 )
 
 func TestShimTool(t *testing.T) {
+	// The host's separator: C:/x/llvm/clang.exe is C:\x\llvm\clang.exe on
+	// Windows; ld.lld keeps its forward slashes on every host.
 	for argv0, want := range map[string]string{
-		`C:\x\llvm\clang.exe`:    "clang",
-		`C:\x\llvm\LLD-LINK.EXE`: "lld-link",
-		"/x/llvm/ld.lld":         "ld.lld",
-		`C:\x\llvm-lib.exe`:      "llvm-lib",
-		`C:\x\benchtool.exe`:     "",
-		"bench.test":             "",
-		`C:\x\clang-21.exe`:      "",
+		filepath.FromSlash("C:/x/llvm/clang.exe"):    "clang",
+		filepath.FromSlash("C:/x/llvm/LLD-LINK.EXE"): "lld-link",
+		"/x/llvm/ld.lld":                         "ld.lld",
+		filepath.FromSlash("C:/x/llvm-lib.exe"):  "llvm-lib",
+		filepath.FromSlash("C:/x/benchtool.exe"): "",
+		"bench.test":                             "",
+		filepath.FromSlash("C:/x/clang-21.exe"):  "",
 	} {
 		if got := shimTool(argv0); got != want {
 			t.Errorf("shimTool(%q) = %q, want %q", argv0, got, want)

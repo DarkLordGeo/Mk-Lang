@@ -22,11 +22,19 @@ import (
 	"mk/internal/types"
 )
 
-// becomeVarCallee: G and GT pass their Big on to H, whose var parameter
-// writes it. K and KT keep their own b across the call.
+// becomeVarCallee: G passes its Big on to H, and GT its Pair to HP through
+// a fn value; H and HP write their var parameter. K and KT keep their own
+// value across the call. Pair is 16 bytes: Win64 passes it in memory,
+// System V here in two registers, so a fn value may pass it on (a Big
+// through a fn value is E0313, TestBecome_ByvalThroughFnValue).
 const becomeVarCallee = `struct Big {
     a: int
     b: int
+    c: int
+}
+
+struct Pair {
+    a: int
     c: int
 }
 
@@ -40,9 +48,15 @@ G(b: Big, n: int): int {
     become H(b, n)
 }
 
-const Tab: [1]fn(Big, int): int = [H]
+HP(var b: Pair, n: int): int {
+    b.a = 99
+    b.c = 77
+    return b.a + n
+}
 
-GT(b: Big, n: int): int {
+const Tab: [1]fn(Pair, int): int = [HP]
+
+GT(b: Pair, n: int): int {
     become Tab[0](b, n)
 }
 
@@ -51,7 +65,7 @@ K(b: Big, n: int): int {
     return r * 1000 + b.a * 10 + b.c
 }
 
-KT(b: Big, n: int): int {
+KT(b: Pair, n: int): int {
     r := GT(b, n)
     return r * 1000 + b.a * 10 + b.c
 }
@@ -59,7 +73,7 @@ KT(b: Big, n: int): int {
 export Main(sys: &System): WriteError!void {
     x := Big(a: 1, b: 2, c: 3)
     k := K(x, 0)
-    kt := KT(x, 0)
+    kt := KT(Pair(a: 1, c: 3), 0)
     try sys.Print("K {k} KT {kt} x.a {a}\n", (k: k, kt: kt, a: x.a))
 }
 `
@@ -68,8 +82,10 @@ export Main(sys: &System): WriteError!void {
 // not var, so it would be marked readonly, and in release MemCpyOpt let K pass
 // its own b uncopied; G's tail call forwarded that pointer to H, which
 // wrote K's b (K 100067). A parameter a tail call passes on is not
-// readonly. System V passes Big byval, which the readonly rule leaves
-// alone: Linux must print 99013 too.
+// readonly. System V passes Big byval, and G and H are each split into a
+// C ABI wrapper and a body the tail call reaches (codegen/tailbody.go):
+// Linux must print 99013 too, in dev as well (a musttail call with a byval
+// argument wrote over G's return address there).
 func TestBecome_ReadonlyForward(t *testing.T) {
 	tools := needTools(t)
 	dir := writeTree(t, map[string]string{"pkg.mk": fixBecomeManifest, "src/main.mk": becomeVarCallee})
@@ -96,7 +112,7 @@ func TestBecome_ReadonlyForward(t *testing.T) {
 			})
 		}
 	}
-	if !linuxRun() {
+	if !linuxRun() && HostTarget().OS == types.OSWindows {
 		t.Logf("x86_64-linux: not run (%s)", linuxOff)
 	}
 }

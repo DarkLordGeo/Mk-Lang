@@ -165,6 +165,9 @@ func TestTmpPlaceholder(t *testing.T) {
 // stays the Windows one; a terminal case's job runs ptyrun with the
 // Linux paths of its files.
 func TestLinuxJobScratch(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("a Linux job goes through wsl.exe only on a Windows host; on Linux the cases run natively")
+	}
 	h := newHarness(&bytes.Buffer{})
 	h.scratch = `V:\w\dogfood\runs\run-42`
 	h.ptyrun = map[string]string{targetLinux: `V:\w\dogfood\runs\run-42\bin\ptyrun\x86_64-linux\ptyrun`}

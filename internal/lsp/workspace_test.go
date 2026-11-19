@@ -1,12 +1,13 @@
 // Why: edits, disk changes and several packages at once.
 // What: TestLSPWatchedFiles, TestLSPManifestEdit, TestLSPSeveralRoots,
-// TestLSPEditsDuringCheck.
+// TestLSPEditsDuringCheck, TestRootCeiling.
 // How: scripted sessions across several roots.
 
 package lsp
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -194,4 +195,26 @@ func pathFromURI(t *testing.T, uri string) string {
 		t.Fatalf("not a file URI: %s", uri)
 	}
 	return p
+}
+
+// TestRootCeiling: a file with no manifest of its own belongs to the
+// nearest pkg.mk above it, but never to one in or above rootCeiling.
+func TestRootCeiling(t *testing.T) {
+	top := t.TempDir()
+	below := filepath.Join(top, "a", "b")
+	must(t, os.MkdirAll(below, 0o755))
+	must(t, writeFile(filepath.Join(top, "pkg.mk"), fixtureManifest))
+	file := filepath.Join(below, "main.mk")
+	saved := rootCeiling
+	t.Cleanup(func() { rootCeiling = saved })
+	rootCeiling = ""
+	if got := rootKeyOf(file); got != "pkg:"+top {
+		t.Errorf("no ceiling: rootKeyOf = %q, want the package at %s", got, top)
+	}
+	for _, c := range []string{top, filepath.Join(top, "a")} {
+		rootCeiling = pathKey(c)
+		if got := rootKeyOf(file); got != "file:"+file {
+			t.Errorf("ceiling %s: rootKeyOf = %q, want the file alone", c, got)
+		}
+	}
 }

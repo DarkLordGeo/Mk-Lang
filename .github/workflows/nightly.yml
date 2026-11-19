@@ -30,7 +30,7 @@ jobs:
           - os: linux
             shell: bash
     runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
-    timeout-minutes: 360
+    timeout-minutes: 600
     defaults:
       run:
         # Git Bash by its short path: a plain `bash` on a Windows runner can
@@ -41,6 +41,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # A temporary directory of the job's own, which the runner empties after
+      # each job: files another program left in the user's temp directory (a
+      # stray pkg.mk there once made every test fixture one package) never
+      # reach the tests.
+      - name: Temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/tmp"
+          echo "TMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TEMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
 
       - name: Gate
         run: go run ./tools/gate -tier quick -skip linux,dogfood,timing,fuzz -work "${{ github.workspace }}/../.gate" -json "${{ runner.temp }}/gate.json"

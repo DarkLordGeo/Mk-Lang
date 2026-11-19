@@ -34,11 +34,17 @@ jobs:
       matrix:
         include:
           - os: windows
+            gate: "1"
+            testflags: "-p 4"
+            gomemlimit: ""
             shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
           - os: linux
+            gate: ""
+            testflags: "-p 1"
+            gomemlimit: "5GiB"
             shell: bash
     runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
-    timeout-minutes: 120
+    timeout-minutes: 360
     defaults:
       run:
         # Git Bash by its short path: a plain `bash` on a Windows runner can
@@ -46,12 +52,29 @@ jobs:
         # run the step's script, and CI must never start wsl.exe here.
         shell: ${{ matrix.shell }}
     env:
-      MK_GATE: "1"
+      # MK_GATE=1 turns a test that cannot run here into a failure; only the
+      # Windows job sets it, since on Linux the Windows legs cannot run.
+      MK_GATE: ${{ matrix.gate }}
+      # The Linux runner has about 16 GB: one test package at a time and a soft
+      # cap on each test binary's Go heap keep the largest tests (parallel
+      # build sessions, the corpus, the LSP sweep) inside it.
+      GOMEMLIMIT: ${{ matrix.gomemlimit }}
       MK_CACHE: ${{ github.workspace }}/../.mkcache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # A temporary directory of the job's own, which the runner empties after
+      # each job: files another program left in the user's temp directory (a
+      # stray pkg.mk there once made every test fixture one package) never
+      # reach the tests.
+      - name: Temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/tmp"
+          echo "TMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TEMP=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
 
       - name: Toolchain
         run: |
@@ -74,7 +97,7 @@ jobs:
           fi
 
       - name: Test
-        run: go test -timeout 3600s $(go list ./... | grep -v '^mk/std$')
+        run: go test ${{ matrix.testflags }} -timeout 3h $(go list ./... | grep -v '^mk/std$')
 
       - name: Documentation tests
         run: go run ./cmd/mk corpus

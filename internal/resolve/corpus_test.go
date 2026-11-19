@@ -112,28 +112,56 @@ var knownConflicts = map[string][]string{
 
 // notJudged are doc blocks the resolver alone cannot judge, each with why;
 // mk corpus judges them. An entry whose block passes here, or that names no
-// block, fails the test, so the list stays current.
+// block, fails the test, so the list stays current. A key is "doc.md: line",
+// one of the block's lines trimmed, so an edit that moves the block keeps
+// the key (docExcepted resolves it).
 var notJudged = map[string]string{
-	"reference.md:2360":  "the duplicate discriminant's E0206 is check's, after the values are known",
-	"reference.md:8911":  "this world has no std.fs, and the resolver reports no unused import of a module it could not load",
-	"reference.md:10252": "the E0101 of a function call in a requires is check's (a contract's form)",
-	"reference.md:7556":  "a generator function: Gen and Type are std's generator API, which this harness's prelude does not declare",
-	"reference.md:7663":  "a generator function: Gen and Type are std's generator API, which this harness's prelude does not declare",
+	"reference.md: Pop = 1 // <- E0206":                    "the duplicate discriminant's E0206 is check's, after the values are known",
+	"reference.md: import std.fs // <- E0208":              "this world has no std.fs, and the resolver reports no unused import of a module it could not load",
+	"reference.md: requires Now(io) > 0 // <- E0101":       "the E0101 of a function call in a requires is check's (a contract's form)",
+	"reference.md: export Describe(g: mut Gen, t: Type) {": "a generator function: Gen and Type are std's generator API, which this harness's prelude does not declare",
+	"reference.md: export Count(g: mut Gen, t: Type) {":    "a generator function: Gen and Type are std's generator API, which this harness's prelude does not declare",
+}
+
+// docExcepted keys list's entries by block name ("doc.md:<fence line>"). An
+// entry "doc.md: line" names the one block of doc.md that has a line equal
+// to line, trimmed; an entry that names no block, or several, fails the
+// test.
+func docExcepted(t testing.TB, blocks []docBlock, list map[string]string) map[string]string {
+	out := map[string]string{}
+	for k, why := range list {
+		doc, line, ok := strings.Cut(k, ".md: ")
+		if !ok {
+			t.Errorf("notJudged key %q is not \"doc.md: line\"", k)
+			continue
+		}
+		var found []string
+		for _, blk := range blocks {
+			if !strings.HasPrefix(blk.name, doc+".md:") {
+				continue
+			}
+			for _, l := range strings.Split(blk.text, "\n") {
+				if strings.TrimSpace(l) == line {
+					found = append(found, blk.name)
+					break
+				}
+			}
+		}
+		if len(found) != 1 {
+			sort.Strings(found)
+			t.Errorf("notJudged entry %q names %d blocks (%s), not one", k, len(found), strings.Join(found, ", "))
+			continue
+		}
+		out[found[0]] = why
+	}
+	return out
 }
 
 func TestCorpusDocBlocks(t *testing.T) {
 	t.Parallel()
 	blocks := readDocBlocks(t)
 	prelude := testPreludeBlock(t, blocks)
-	names := map[string]bool{}
-	for _, blk := range blocks {
-		names[blk.name] = true
-	}
-	for k := range notJudged {
-		if !names[k] {
-			t.Errorf("notJudged names %s, which is not a block", k)
-		}
-	}
+	excepts := docExcepted(t, blocks, notJudged)
 	n := 0
 	for _, blk := range blocks {
 		if blk.verdict != "ok" && !strings.HasPrefix(blk.verdict, "reject") {
@@ -182,7 +210,7 @@ func TestCorpusDocBlocks(t *testing.T) {
 				}
 			}
 			sort.Strings(want)
-			why, excepted := notJudged[blk.name]
+			why, excepted := excepts[blk.name]
 			switch same := strings.Join(got, " ") == strings.Join(want, " "); {
 			case same && excepted:
 				t.Errorf("%s passes now: remove it from notJudged (%s)", blk.name, why)

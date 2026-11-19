@@ -49,8 +49,12 @@ type packGen struct {
 	// siteRef memoizes siteRefType (&std.rt.Site).
 	siteRef types.TypeID
 	sigs    map[string]*lsig
-	// defs are the LLVM functions of this pack's members by Funcs index.
-	defs map[int]*llvm.Function
+	// defs are the LLVM functions of this pack's members by Funcs index;
+	// for a split member (tailbody.go) its C ABI wrapper, and tailDefs its
+	// $tail body, tailsigs the body's lowered signature by Funcs index.
+	defs     map[int]*llvm.Function
+	tailDefs map[int]*llvm.Function
+	tailsigs map[int]*lsig
 	// soleFx memoizes soleEffectOf by Funcs index (solecall.go); a packGen
 	// is used by one goroutine, so it needs no lock.
 	soleFx map[int]soleEffect
@@ -246,7 +250,22 @@ func (g *packGen) defineHeaders() {
 			g.addThunk(fi, fn, clk, cvis, cdso)
 		}
 		g.sectionOf(f, fn)
-		g.entryCount(fi, fn)
+		if g.tailBody(fi) {
+			// tailbody.go: fn is the C ABI wrapper, the body is $tail's.
+			tlk, tvis, tdso := g.tailLinkage(f)
+			body := g.m.AddFunction(f.Symbol+tailSuffix, g.funcSig(g.tailSigOf(fi), tlk, tvis, tdso,
+				g.pgoAttrs(fi, attrs.Without("alwaysinline"))))
+			g.sectionOf(f, body)
+			if g.tailDefs == nil {
+				g.tailDefs = map[int]*llvm.Function{}
+			}
+			g.tailDefs[fi] = body
+		}
+		if body, ok := g.tailDefs[fi]; ok {
+			g.entryCount(fi, body)
+		} else {
+			g.entryCount(fi, fn)
+		}
 		if p := g.pgoOf(fi); p != nil && p.gen {
 			g.defineCounters(fi, p)
 		}
@@ -316,6 +335,10 @@ func (g *packGen) emitFunc(fi int) {
 		return
 	}
 	fg := &fnGen{g: g, f: f, fi: fi, b: f.Body, fn: g.defs[fi], sig: g.funcSigOf(fi), pgo: g.pgoOf(fi)}
+	if body, ok := g.tailDefs[fi]; ok {
+		g.emitTailEntry(fi) // tailbody.go
+		fg.fn, fg.sig = body, g.tailSigOf(fi)
+	}
 	if g.cfg.Debug {
 		fg.fullSubprogram() // debug_full.go
 	} else {

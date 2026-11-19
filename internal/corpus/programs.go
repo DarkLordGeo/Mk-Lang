@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"mk/internal/driver"
@@ -218,15 +219,28 @@ func (r *Runner) runOnce(c ProgramCase, target, exe string) (RunResult, bool, er
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), limit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	cmd.Dir = run
-	// A killed client may leave its pipes open in a grandchild; Wait must
-	// not hang on them.
-	cmd.WaitDelay = 5 * time.Second
 	var out, errOut bytes.Buffer
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewReader(stdin), &out, &errOut
-	start := time.Now()
-	err = cmd.Run()
+	var start time.Time
+	for try := 0; ; try++ {
+		cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
+		cmd.Dir = run
+		// A killed client may leave its pipes open in a grandchild; Wait must
+		// not hang on them.
+		cmd.WaitDelay = 5 * time.Second
+		out.Reset()
+		errOut.Reset()
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = bytes.NewReader(stdin), &out, &errOut
+		start = time.Now()
+		err = cmd.Run()
+		// On Linux, exec of the copy fails with ETXTBSY while a process
+		// forked by another goroutine still holds the copy's write
+		// descriptor between its fork and its exec. That window is short:
+		// try again.
+		if !errors.Is(err, syscall.ETXTBSY) || try == 20 {
+			break
+		}
+		time.Sleep(time.Duration(try+1) * 10 * time.Millisecond)
+	}
 	ran := time.Since(start)
 	res := RunResult{Stdout: out.Bytes(), Stderr: DropBacktrace(errOut.Bytes())}
 	var ee *exec.ExitError
@@ -235,7 +249,7 @@ func (r *Runner) runOnce(c ProgramCase, target, exe string) (RunResult, bool, er
 		res.Exit, res.TimedOut = -1, true
 	case err == nil:
 	case errors.As(err, &ee):
-		res.Exit = ee.ExitCode()
+		res.Exit = shellExit(ee.ProcessState)
 		if wsl && wslKilled(res.Exit, ran, c.Timeout) {
 			res.Exit, res.TimedOut = -1, true
 		}
@@ -270,6 +284,17 @@ func runArgv(target, run, exe string, args []string, limit time.Duration) ([]str
 		return append(append(argv, "./"+filepath.Base(exe)), args...), nil
 	}
 	return nil, fmt.Errorf("no runner for %s on %s/%s", target, runtime.GOOS, runtime.GOARCH)
+}
+
+// shellExit is a finished process's exit status as a shell reports it,
+// and as wsl.exe relays it: 128 + the signal number for a process a signal
+// killed (139 for SIGSEGV), the exit code otherwise. Go's ExitCode reports
+// -1 for a signal.
+func shellExit(ps *os.ProcessState) int {
+	if ws, ok := ps.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+		return 128 + int(ws.Signal())
+	}
+	return ps.ExitCode()
 }
 
 // ErrNoRunner reports whether err is runArgv's "no runner" error.

@@ -161,7 +161,8 @@ func TestLSPStdSweep(t *testing.T) {
 		mods = append(mods, m)
 	}
 	sort.Strings(mods)
-	workers := 4
+	// Two workers: four peaked near 15 GB, more than a CI runner has.
+	workers := 2
 	res := &p2Result{kinds: map[string]*p2Tally{}, modules: map[string]*p2Tally{}, fails: map[string][]string{}, allowed: map[string]int{}}
 	start := time.Now()
 	var wg sync.WaitGroup

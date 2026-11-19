@@ -36,6 +36,7 @@ func gateRun() bool { return os.Getenv("MK_GATE") == "1" }
 // was missing.
 func checkSnapshot(t *testing.T, root string, c SnapshotCheck) (missing bool) {
 	t.Helper()
+	c.Got = snapshotTarget(c.Got)
 	if bytes.Contains(c.Got, []byte(conformanceDir)) {
 		t.Errorf("%s: the snapshot holds a repository path: %s", c.Key, c.Got)
 	}
@@ -56,6 +57,18 @@ func checkSnapshot(t *testing.T, root string, c SnapshotCheck) (missing bool) {
 	}
 	t.Errorf("%s: snapshot %s differs (go test ./internal/corpus -run %s -update, then read the diff)\n got: %s\nwant: %s", c.Key, c.File, updateRun(c), c.Got, c.Want)
 	return false
+}
+
+// snapshotTarget rewrites the host target's generated-code directory in a
+// check's JSON ("gen/x86_64-linux/", in E0905's facts) to x86_64-windows's,
+// the target the snapshots are taken for, so a run on another host
+// compares the same bytes.
+func snapshotTarget(got []byte) []byte {
+	host := driver.HostTarget().Name
+	if host == "x86_64-windows" {
+		return got
+	}
+	return bytes.ReplaceAll(got, []byte("gen/"+host+"/"), []byte("gen/x86_64-windows/"))
 }
 
 // Every passing codes/ unit's mk check --json bytes equal
@@ -350,6 +363,7 @@ func TestSnapshotsMatchMkCheck(t *testing.T) {
 			res := s.Check()
 			got := res.Report.WriteJSON(res.Sources)
 			got = bytes.ReplaceAll(got, []byte(filepath.ToSlash(filepath.Dir(p))+"/"), nil)
+			got = snapshotTarget(got)
 			known := slices.Contains(snapshotUnitsNeedingPkgMk, u.Key)
 			switch {
 			case bytes.Equal(got, want) && known:

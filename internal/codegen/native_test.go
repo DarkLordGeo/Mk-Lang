@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -420,9 +421,20 @@ func runExe(t *testing.T, target types.Target, exe, sh string) (string, int) {
 		if !errors.As(err, &ee) {
 			t.Fatalf("%q: %v", argv, err)
 		}
-		code = ee.ExitCode()
+		code = shellExitCode(ee.ProcessState)
 	}
 	return stdout.String(), code
+}
+
+// shellExitCode is the exit status of a finished process as a shell
+// reports it: 128 + the signal number for a process a signal killed (139
+// for SIGSEGV, 132 for SIGILL), which is what wsl.exe relays, and the exit
+// code otherwise. Go's ExitCode reports -1 for a signal.
+func shellExitCode(ps *os.ProcessState) int {
+	if ws, ok := ps.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+		return 128 + int(ws.Signal())
+	}
+	return ps.ExitCode()
 }
 
 // runTargets are the targets native tests build and run.

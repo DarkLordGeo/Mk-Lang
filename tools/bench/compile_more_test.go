@@ -245,8 +245,12 @@ func TestCompileLinuxRefusals(t *testing.T) {
 		t.Error("isELF")
 	}
 	args := strings.Join(compileLinuxArgs(o, `V:\w\linux\benchtool`, "mk built from abc"), " ")
-	for _, w := range []string{"-e taskset -c " + linuxCompileCPUs + " /mnt/v/w/linux/benchtool compile", "-platform linux -no-lock -publish -langs mk",
-		"-modules 3 -funcs 2 -structs 1", "-work /tmp/x", "(mk built from abc)"} {
+	want := []string{"-platform linux -no-lock -publish -langs mk", "-modules 3 -funcs 2 -structs 1", "-work /tmp/x", "(mk built from abc)"}
+	if runtime.GOOS == "windows" {
+		// The V:\ path becomes its /mnt/v path only on a Windows host.
+		want = append(want, "-e taskset -c "+linuxCompileCPUs+" /mnt/v/w/linux/benchtool compile")
+	}
+	for _, w := range want {
 		if !strings.Contains(args, w) {
 			t.Errorf("wsl.exe args lack %q: %s", w, args)
 		}

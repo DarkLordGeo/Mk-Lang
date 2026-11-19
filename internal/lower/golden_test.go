@@ -24,11 +24,19 @@ import (
 var update = flag.Bool("update", false, "rewrite testdata/*.golden")
 
 // corpusText lowers every corpus unit and prints its bodies, units in
-// corpus order, bodies by item key.
+// corpus order, bodies by item key. A doc block's header names it by its
+// place among the file's verdict-ok blocks, not by its line, so a prose
+// edit that moves a block leaves the golden unchanged.
 func corpusText(t *testing.T) string {
 	core, pre := corpusPrelude(t), testPrelude(t)
 	var sb strings.Builder
+	nth := map[string]int{}
 	for _, u := range corpusUnits(t) {
+		label := u.key
+		if doc, _, ok := strings.Cut(u.key, ".md:"); ok {
+			nth[doc]++
+			label = doc + ".md, ok block " + itoa(nth[doc])
+		}
 		w, b, ok := corpusWorld(t, core, pre, u)
 		if !ok {
 			continue
@@ -39,7 +47,7 @@ func corpusText(t *testing.T) string {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
-		sb.WriteString("== " + u.key + "\n")
+		sb.WriteString("== " + label + "\n")
 		p := &mir.Printer{Types: w.tab, Items: w.items}
 		for _, k := range keys {
 			sb.WriteString(p.Print(bodies[k]))

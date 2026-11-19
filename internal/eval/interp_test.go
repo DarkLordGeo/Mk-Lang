@@ -477,12 +477,15 @@ func TestContractArgsAreRefs(t *testing.T) {
 	}
 }
 
+// TestLongConstChainNoGoStack: a chain of n consts, each one more than the
+// last, evaluates from its far end with a Go stack of 1 MiB, about 5 bytes
+// per link: a Go call per link would overflow it.
 func TestLongConstChainNoGoStack(t *testing.T) {
-	n := 2_000_000
+	n := 200_000
 	if testing.Short() {
 		n = 20_000
 	}
-	old := debug.SetMaxStack(64 << 20)
+	old := debug.SetMaxStack(1 << 20)
 	defer debug.SetMaxStack(old)
 	w := newWorld(t)
 	cs := make([]types.ItemID, n+1)

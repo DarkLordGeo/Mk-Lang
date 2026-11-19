@@ -26,6 +26,12 @@ func TestLSPCompressProbes(t *testing.T) {
 	c.init(true)
 	c.open(uri, text)
 	c.diagnostics(uri)
+	// The library chapter's own line for Slice[T].Len, as the reference
+	// has it now.
+	lenLine := surfaceDocs["Slice.Len"].Lines
+	if len(lenLine) == 0 {
+		t.Fatal("the library surface lists no Slice[T].Len")
+	}
 	type probe struct {
 		line, at string
 		off      int
@@ -43,7 +49,7 @@ func TestLSPCompressProbes(t *testing.T) {
 		// compress.mk:77 `cap := out.Len()`.
 		{"cap := out.Len()", "cap", 0, []string{"(local) cap: int"}, "compress/compress.mk|cap := out.Len()"},
 		{"cap := out.Len()", "out", 0, []string{"(local) out: mut []u8", "Holds a loan from `buf`"}, "compress/compress.mk|var out := buf"},
-		{"cap := out.Len()", "Len", 0, []string{"Len(&self): int", "Here on `out: mut []u8`", "`Slice[T]` holds the methods of every sequence."}, "core/core_slice.mk|export Slice[T].Len(&self): int"},
+		{"cap := out.Len()", "Len", 0, []string{"Len(&self): int", "Here on `out: mut []u8`", "module std.core", lenLine[0]}, "core/core_slice.mk|export Slice[T].Len(&self): int"},
 	} {
 		line, col := lineOf(t, text, p.line)
 		col += strings.Index(p.line, p.at) + p.off

@@ -76,11 +76,11 @@ type JobResults struct {
 // `V:\a\b` is `/mnt/v/a/b` (internal/toolchain HostPathFor).
 func linuxPath(p string) string {
 	if len(p) < 3 || p[1] != ':' || (p[2] != '\\' && p[2] != '/') {
-		return filepath.ToSlash(p)
+		return strings.ReplaceAll(p, `\`, "/")
 	}
 	d := p[0] | 0x20
 	if d < 'a' || d > 'z' {
-		return filepath.ToSlash(p)
+		return strings.ReplaceAll(p, `\`, "/")
 	}
 	return "/mnt/" + string(d) + "/" + strings.ReplaceAll(p[3:], `\`, "/")
 }

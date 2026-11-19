@@ -123,6 +123,11 @@ func (w *world) startSemantics(testPrelude bool) {
 		ParamClass: func(tt *types.Table, l func(types.TypeID) *types.Layout, tg types.Target, t types.TypeID) types.AbiClass {
 			return abi.Classify(tt, l, tg, t)
 		},
+		// and its fn-value rule the lowering of the whole signature.
+		ParamByval: func(tt *types.Table, l func(types.TypeID) *types.Layout, tg types.Target, params []types.TypeID, result types.TypeID, i int) bool {
+			sl := abi.Lower(tt, l, tg, params, len(params), false, result).Params[i]
+			return sl.Kind == abi.Indirect && sl.Byval
+		},
 		// A C import's binding, from the module graph (every
 		// module of a build is noted before any is checked).
 		CImport: func(id types.ModuleID) bool {

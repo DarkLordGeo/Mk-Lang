@@ -1,8 +1,9 @@
 // Why: the library items KnownItems names must stay visible and usable where
 // the reference says they are, or generators and Map keys break.
 // What: TestGeneratorAPIIsPrelude and TestRefKeysHaveEqHash.
-// How: reads doc/reference.md and doc/memory.md and checks the prelude list,
-// the generator API sentence and the Eq, Ord and Hash rule for &T.
+// How: reads doc/reference.md, doc/std/core.md, doc/memory.md and std's Map
+// declaration, and checks the prelude list, the generator API sentence and
+// the Eq, Ord and Hash rule for &T.
 
 package types
 
@@ -96,19 +97,31 @@ func TestGeneratorAPIIsPrelude(t *testing.T) {
 }
 
 // TestRefKeysHaveEqHash: one of doc/memory.md's hard cases keys a Map
-// by a reference and Map keys need Hash + Eq, so the reference must give Eq,
-// Ord and Hash to &T whenever T has them, as it gives Format.
+// by a reference and std's Map declares its keys `K: Hash + Eq`, so the
+// prelude's page (doc/std/core.md) must give Eq, Ord and Hash to &T
+// whenever T has them, as it gives Format.
 func TestRefKeysHaveEqHash(t *testing.T) {
 	t.Parallel()
-	ref := readDoc(t, "reference.md")
-	if !strings.Contains(ref, "Map keys need `Hash + Eq`") {
-		t.Fatal("the reference no longer says Map keys need Hash + Eq; recheck this test")
+	decl, err := os.ReadFile(filepath.Join("..", "..", "std", "core", "coll_map.mk"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(ref, "`Eq`, `Ord` and `Hash` hold for `&T` whenever they hold for `T`") {
-		t.Error("the reference does not give Eq, Ord and Hash to &T")
+	if !regexp.MustCompile(`(?m)^export view struct Map\[K: Hash \+ Eq, V\]`).Match(decl) {
+		t.Fatal("std's Map no longer declares K: Hash + Eq; recheck this test")
+	}
+	core := readDoc(t, filepath.Join("std", "core.md"))
+	found := false
+	for _, para := range strings.Split(core, "\n\n") {
+		if strings.Contains(para, "`&T`") && strings.Contains(para, "`Eq`") && strings.Contains(para, "`Ord`") && strings.Contains(para, "`Hash`") && strings.Contains(para, "`Map[&K, V]`") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("doc/std/core.md has no paragraph giving Eq, Ord and Hash to &T so that Map[&K, V] works")
 	}
 	mm := readDoc(t, "memory.md")
-	if !regexp.MustCompile("(?m)^\\| H56 \\| `Map.Remove` on `Map\\[&K, &V\\]`").MatchString(mm) {
-		t.Error("doc/memory.md's H56 row no longer keys a Map by a reference; recheck this test")
+	if !regexp.MustCompile("(?m)^\\| H\\d+ \\| `Map\\.Remove` on `Map\\[&K, &V\\]`").MatchString(mm) {
+		t.Error("doc/memory.md has no hard case keying a Map by a reference; recheck this test")
 	}
 }

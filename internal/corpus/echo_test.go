@@ -60,6 +60,9 @@ func TestEchoServer(t *testing.T) {
 			// The VM ends a Linux server 10 s before the client side gives up,
 			// so no server outlives the test.
 			argv, err := runArgv(target, filepath.Dir(exe), exe, []string{"0", strconv.Itoa(echoConns)}, 170*time.Second)
+			if ErrNoRunner(err) {
+				skipOrFatal(t, gateRun(), "%v", err)
+			}
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -58,6 +58,10 @@ func fakeMain(args []string) int {
 		for i, a := range args {
 			if a == "-o" && i+1 < len(args) {
 				b, err := os.ReadFile(self)
+				if s := os.Getenv("DFH_BUILD_TEXT"); s != "" {
+					// An image that is no executable on any host.
+					b, err = []byte(s), nil
+				}
 				if err == nil {
 					err = os.WriteFile(args[i+1], b, 0o755)
 				}
