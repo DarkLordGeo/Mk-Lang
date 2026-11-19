@@ -1,0 +1,26 @@
+{
+  "name": "fixedheap-small",
+  "table": "idiomatic",
+  "std": ["std.mem.FixedHeap.New", "std.mem.FixedHeap.Alloc"],
+  "algorithm": "The task of tests/bench/idiomatic/alloc-small: a ring of 4,096 live objects of 8 to 256 bytes (sizes and contents from splitmix64), each step reading the oldest, allocating and filling a new one, then freeing the old; the Mk cell allocates from std.mem.FixedHeap over a 2 MiB buffer, every other cell from its language's general-purpose allocator; the wrapping sum of each object's length, first and last byte (../README.md).",
+  "overflow": "wraps",
+  "args": ["30000000", "1"],
+  "quick": ["2000000", "1"],
+  "checksum": "10526972103",
+  "quick_checksum": "703187759",
+  "sources": {
+    "mk": "mk",
+    "c": "fixedheap-small.c",
+    "rust": "fixedheap-small.rs",
+    "zig": "fixedheap-small.zig",
+    "go": "testdata/fixedheap-small.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; allocation has no arithmetic to wrap"
+  },
+  "no_counts": "an idiomatic row compares allocators; every column makes the same objects in the same order, and the checksum reads every object once",
+  "notes": [
+    "Allocators named: mk std.mem.FixedHeap over a 2 MiB buffer taken once from the program's arena (HeapList[u8] objects, and the ring in the same FixedHeap); c malloc and free of the static UCRT; rust System (HeapAlloc); zig std.heap.smp_allocator; go the garbage-collected runtime allocator (GOGC=100, labelled: it frees in batches).",
+    "No standard library of the four has an allocator over a caller's buffer that frees and reuses any block, so the other cells are alloc-small's: the same task through each general-purpose allocator. Read beside tests/bench/idiomatic/alloc-small, whose mk cell is std's general heap."
+  ]
+}

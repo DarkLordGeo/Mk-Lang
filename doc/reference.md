@@ -11101,7 +11101,7 @@ This table lists the importable modules and the names each one exports. The [lib
 | `std.sync` | `RwLock ReadGuard Select Selectable Shared Semaphore Notify Barrier Once` |
 | `std.atomic` | `AtomicInt AtomicBool Atomic Spin SpinGuard Order Relaxed Acquire Release AcqRel SeqCst Fence Unordered Pause` |
 | `std.mmio` | `Load Store Fence Reg`, every call inside an unsafe block |
-| `std.mem` | `Fixed Counting Null Pool PoolIter Handle AllocTable OffsetOf Prefetch` |
+| `std.mem` | `Fixed FixedHeap Fallback Counting Limit Failing Null Pool PoolIter Handle AllocTable OffsetOf Prefetch` |
 | `std.coll` | `Deque HeapDeque PriorityQueue BTree HeapBTree BTreeIter Bitset` |
 | `std.text` | `Graphemes Clusters Normalize Form FoldCase Width ToUtf16 FromUtf16 WordBounds SentenceBounds Bounds ParagraphBounds BidiLevels Levels Run Direction Mirror LineBreaks Breaks Capped Sink CategoryOf Category ScriptOf Script ScriptExtensions Has Property UnicodeVersion` |
 | `std.math` | `Min Max Abs Sqrt Rng Integer AddOverflow SubOverflow MulOverflow WrapI32 WrapU32 CastSat CastSatF32 MulWide DivWide AddCarry SubBorrow`, the functions of section 18 in `f64` and with an `F32` suffix in `f32`, the integer bit operations with a width suffix, `Gcd CheckedPow CheckedPowU64 Pi E Ln2 Sqrt2 Inf Nan ShortestDigits ExactDigits Digits DigitMode` |
@@ -12227,11 +12227,26 @@ mem.Prefetch[T](p: &T, write: bool)
 Fixed.New(buf: mut []u8): Fixed
 Fixed.Alloc(&self): &Alloc from self
 Fixed.Reset(mut self) ends self
+FixedHeap.New(buf: mut []u8): FixedHeap
+FixedHeap.Alloc(&self): &Alloc from self
+FixedHeap.Reset(mut self) ends self
+Fallback.New(inner: &Alloc, buf: mut []u8): Fallback from inner, buf
+Fallback.Alloc(&self): &Alloc from self
+Fallback.Reset(mut self) ends self
 Counting.New(inner: &Alloc): Counting
 Counting.Alloc(&self): &Alloc from self
 Counting.Bytes(&self): int
 Counting.Live(&self): int
 Counting.Peak(&self): int
+Limit.New(inner: &Alloc, max: int): Limit
+Limit.Alloc(&self): &Alloc from self
+Limit.Bytes(&self): int
+Limit.Left(&self): int
+Failing.New(inner: &Alloc, at: int): Failing
+Failing.NewFrom(inner: &Alloc, at: int): Failing
+Failing.Alloc(&self): &Alloc from self
+Failing.Requests(&self): int
+Failing.Failed(&self): int
 mem.Null(): &Alloc
 mem.Custom(ctx: *u8, table: &AllocTable): Alloc from table
 Pool[T].New(a: &Arena): Pool[T]

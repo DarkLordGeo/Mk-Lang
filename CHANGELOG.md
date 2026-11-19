@@ -2,6 +2,12 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Library
+
+- `std.mem` gains four allocators. `FixedHeap` is a general-purpose allocator over a caller's buffer: any block is freed and reused, and an allocation, a resize and a free are each O(1). `Fallback` serves from a buffer while requests fit it and from another allocator once they do not. `Limit` refuses what would take the bytes live through another allocator past a limit. `Failing` fails the requests a test picks by number, to reach the code that handles `OutOfMemory`.
+
 ## 0.1.0 (2026-11-19)
 
 The first public release of Mk: a small, memory-safe systems language with no garbage collector, compiled by a Go compiler that emits LLVM IR, with a runtime and standard library written in Mk and no C runtime.

@@ -1,0 +1,18 @@
+{
+  "name": "fallback",
+  "table": "idiomatic",
+  "std": ["std.mem.Fallback.New", "std.mem.Fallback.Alloc", "std.mem.Fallback.Reset"],
+  "algorithm": "Per round, splitmix64 gives r; a list of (r & 63) + 1 u64 values r + i, or of (r & 1023) + 1 when the top four bits of r are zero, is built with the standard growable list in an allocator that serves from a 1 KiB stack buffer and falls back to the general-purpose allocator, summed and released; the checksum is the wrapping sum over rounds (../README.md).",
+  "overflow": "wraps",
+  "args": ["20000000", "1"],
+  "quick": ["10000", "1"],
+  "checksum": "9742302623614896743",
+  "quick_checksum": "7807944316973958846",
+  "sources": {"mk": "mk", "zig": "fallback.zig"},
+  "skip": {
+    "c": "no allocator with a stack buffer and a fallback in the C standard library",
+    "rust": "no allocator with a stack buffer and a fallback in Rust's standard library (the Allocator API is unstable)",
+    "go": "no allocator with a stack buffer and a fallback in Go's standard library"
+  },
+  "notes": ["Mk: std.mem.Fallback over a 1 KiB stack buffer, then std's general heap, and HeapList[u64]; Zig: std.heap.BufferFirstAllocator over a 1 KiB stack buffer, then std.heap.smp_allocator, and std.ArrayList(u64). The lists grow differently (Mk max(4, 2 cap), Zig cap + cap/2 + 8), so a list leaves the buffer at a different length in each: Mk's holds 128 values in the buffer."]
+}

@@ -132,11 +132,15 @@ A heap container takes the allocator at every call that may allocate, and is lin
 |---|---|---|---|---|
 | `Arena` | Everything scoped: requests, queries, parse trees, short programs | No | No | `Free`, `Reset` |
 | `arena.Sub()` | Scratch space inside a function | No | No | `Free`, `Reset` |
-| `Arena.NewIn(a)` | An arena whose memory comes from another allocator, so a `Counting` or `Fixed` budget bounds it | No | No | `Free`, `Reset` |
+| `Arena.NewIn(a)` | An arena whose memory comes from another allocator, so a `Limit`, a `Fixed` or a `FixedHeap` bounds it and a `Counting` measures it | No | No | `Free`, `Reset` |
 | `Heap` | Long-lived data | Yes, as `&Heap` | Yes | Process end |
-| `mem.Fixed` | Over a caller's buffer, a stack array included | No | The last one only | The buffer's scope |
+| `mem.Fixed` | Over a caller's buffer, a stack array included | No | The last one only | The buffer's scope, `Reset` |
+| `mem.FixedHeap` | A general-purpose allocator over a caller's buffer: a kernel's heap, a subsystem on a fixed share of memory | No | Yes, and its bytes are used again | The buffer's scope, `Reset` |
+| `mem.Fallback` | Over a caller's buffer while requests fit, then another allocator: small containers stay off the heap | No | As `Fixed` in the buffer, as wrapped outside it | The buffer's scope, `Reset` |
 | `mem.Pool[T]` | Same-size objects, reused often | No | Yes, `Free(h)` | Its arena |
 | `mem.Counting` | Wraps another allocator, counts bytes and live objects, reports leaks in tests | No | As wrapped | |
+| `mem.Limit` | Wraps another allocator, refuses what would take the live bytes past a limit | No | As wrapped | |
+| `mem.Failing` | Wraps another allocator, fails the requests a test picks, to reach the code that handles `OutOfMemory` | No | As wrapped | |
 | `mem.Null` | Always fails. Proves at run time that a path allocates nothing | No | No | |
 
 An `&Alloc` never crosses to another task (E1002). A task that allocates on the heap takes the `&Heap` and calls `Alloc()` itself.
@@ -303,7 +307,7 @@ Each name links the module's page. Run `mk doc --std std.<module>` for one modul
 | [`std.linux`](linux.md) | The raw system call, on x86_64-linux only. Unsafe only |
 | [`std.log`](log.md) | A leveled logger, passed as a value |
 | [`std.math`](math.md) | Math functions, checked and wrapping integer helpers, bit operations, a seeded random generator, float-to-digits |
-| [`std.mem`](mem.md) | `Fixed`, `Counting`, `Null` and `Pool` allocators |
+| [`std.mem`](mem.md) | The `Fixed`, `FixedHeap`, `Fallback`, `Counting`, `Limit`, `Failing` and `Null` allocators, and `Pool` |
 | [`std.mmio`](mmio.md) | Volatile access to device registers. Unsafe only, Provisional |
 | [`std.net`](net.md) | TCP, UDP and Unix sockets, name resolution, addresses |
 | [`std.proc`](proc.md) | Child processes with captured output, signals, pseudo-terminals, `Supervise` for worker processes that share a listening socket |

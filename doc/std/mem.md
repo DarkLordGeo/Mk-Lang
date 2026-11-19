@@ -2,14 +2,18 @@
 
 `std.mem` adds allocators and a pool to the prelude's `Arena` and `Heap`.
 
-- `Fixed` serves memory from a buffer you give it.
+- `Fixed` serves memory from a buffer you give it, and frees its last block only.
+- `FixedHeap` serves memory from a buffer you give it, and frees and reuses any block.
+- `Fallback` serves memory from a buffer first, and from another allocator once a request does not fit.
 - `Counting` counts what passes through another allocator.
+- `Limit` refuses what would take another allocator past a number of bytes.
+- `Failing` fails the requests a test picks, to reach code that handles `OutOfMemory`.
 - `Null` refuses everything.
 - `Custom` is an allocator over your own functions.
 - `Pool` stores values under generational handles.
 - `OffsetOf` and `Prefetch` help with layout.
 
-Reach for it to put a hard budget on memory, or to check in a test that code frees what it allocates or allocates nothing. Its pool lets values name each other without references.
+Reach for it to put a hard budget on memory, to keep small containers off the heap, or to check in a test that code frees what it allocates, allocates nothing, or survives an allocation that fails. Its pool lets values name each other without references.
 
 Read the [library guide](README.md) first.
 
@@ -22,10 +26,11 @@ import std.mem
 
 - [The main pieces](#the-main-pieces)
 - [Allocators](#allocators)
+- [Choosing an allocator](#choosing-an-allocator)
 - [A budget for an arena](#a-budget-for-an-arena)
 - [Pools and handles](#pools-and-handles)
 - [Layout](#layout)
-- [Examples](#examples): [a list in a fixed buffer](#a-list-in-a-fixed-buffer), [an arena on a budget](#an-arena-on-a-budget), [count allocations](#count-allocations), [prove a path allocates nothing](#prove-a-path-allocates-nothing), [nodes that name each other](#nodes-that-name-each-other)
+- [Examples](#examples): [a list in a fixed buffer](#a-list-in-a-fixed-buffer), [a heap in a buffer](#a-heap-in-a-buffer), [small on the stack, large on the heap](#small-on-the-stack-large-on-the-heap), [an arena on a budget](#an-arena-on-a-budget), [a limit on the heap](#a-limit-on-the-heap), [count allocations](#count-allocations), [fail every allocation once](#fail-every-allocation-once), [prove a path allocates nothing](#prove-a-path-allocates-nothing), [nodes that name each other](#nodes-that-name-each-other)
 - [API](#api)
 
 ## The main pieces
@@ -33,33 +38,65 @@ import std.mem
 | Task | Use |
 |---|---|
 | Allocate from a buffer you own, a stack array included | `Fixed.New(buf)`, then `Fixed.Alloc()`; `Fixed.Reset` |
+| Allocate and free in any order inside a buffer you own | `FixedHeap.New(buf)`, then `FixedHeap.Alloc()`; `FixedHeap.Reset` |
+| Use a buffer while requests fit it, then another allocator | `Fallback.New(inner, buf)`, then `Fallback.Alloc()`; `Fallback.Reset` |
 | Count bytes and allocations, find leaks | `Counting.New(inner)`, then `Counting.Alloc()`; `Bytes`, `Live`, `Peak` |
+| Refuse what would pass a number of live bytes | `Limit.New(inner, max)`, then `Limit.Alloc()`; `Bytes`, `Left` |
+| Fail one allocation, or every one from some point on | `Failing.New(inner, at)` or `Failing.NewFrom(inner, at)`, then `Failing.Alloc()`; `Requests`, `Failed` |
 | Check that code allocates nothing | `Null()` |
 | An allocator over your own functions | `Custom(ctx, table)` with an `AllocTable` (unsafe) |
 | Store values under handles, reuse freed slots | `Pool[T]`: `Add`, `Get`, `GetMut`, `GetPair`, `Free`, `Iter`, `Sweep` |
 | A field's byte offset | `OffsetOf[T]("field")` |
 | A prefetch hint | `Prefetch(p, write)` |
 
-Each allocator gives an `&Alloc` (`Custom` an `Alloc`, which you pass as `&`), which a heap container (`HeapList`, `HeapMap`, `Box`, `coll.HeapDeque`, ...) or `Arena.NewIn` takes.
+Each allocator gives an `&Alloc` (`Custom` an `Alloc`, which you pass as `&`), which a heap container (`HeapList`, `HeapMap`, `Box`, `coll.HeapDeque`, ...) or `Arena.NewIn` takes. `Counting`, `Limit`, `Failing` and `Fallback` take an `&Alloc` themselves, so they stack in any order.
 
 ## Allocators
 
 - **`Fixed`** is a bump allocator over a caller's buffer, and never touches the system. An allocation is O(1). Only the last block can be freed, and freeing it gives back the alignment padding before it too. So frees in any last-in, first-out order return the buffer to where it was. The last block also grows in place, so a lone growing list costs no copies. Each block starts on at least an 8-byte boundary, so a block under 8 bytes takes 8, and up to 7 bytes at the start of the buffer go unused. `Reset` frees everything at once; it ends the `Fixed`, so nothing allocated from it can be used after it.
+- **`FixedHeap`** is a general-purpose allocator over a caller's buffer, and never touches the system either. Any block can be freed, in any order, and its bytes are used again. An allocation, a resize and a free are each O(1), whatever the buffer holds: a request takes a block from the first list of free blocks that is sure to fit it, found with two bit scans (two-level segregated fit). A freed block merges with the free blocks beside it at once, and a block grows in place into a free block after it.
+  - Each block costs 8 bytes besides its own, and its size rounds up to 8 bytes, so a block of 1 to 8 bytes takes 16. A block also keeps 8 bytes that follow it when they are too few to be a block of their own. Each block starts on an 8-byte boundary; alignments up to 2^30 are served.
+  - The bookkeeping lives at the start of the buffer: 4 + 68 bytes for the blocks under 128 bytes, and as much again for each doubling of the largest block's size above that, rounded up to 8. That is 416 bytes of a 4 KiB buffer and 960 bytes of a 1 MiB one. Up to 72 bytes at the end of the buffer go unused where more bookkeeping would cost more than they are worth. A longer buffer never has a smaller largest block.
+  - A buffer of under 96 bytes from its first 8-byte boundary refuses every request, and a buffer over 16 GiB is used up to 16 GiB.
+  - At an alignment of 8 or less, a request of up to 248 bytes is served whenever a free block of its size exists. A larger one is sure to be served when a free block at least one sixteenth larger exists.
+  - A request aligned over 8 bytes needs a free block larger than it by the alignment and 8 bytes.
+  - A free or a resize of a null pointer, of a pointer outside the buffer or of one off an 8-byte boundary changes nothing, and so does a second free of a block right after the first.
+  - `Reset` frees everything at once, as `Fixed.Reset` does.
+- **`Fallback`** serves a request from a caller's buffer when it fits there, and from another allocator when it does not. A container that stays small never reaches that allocator, and one that outgrows the buffer still works. The buffer is a `Fixed`: only its last block is freed or grown in place. A block that cannot grow in place is allocated again by its container, as over any allocator: in the buffer if the new size fits there, in the other allocator if not. The old block's bytes come back when it was the buffer's last block, and at `Reset` otherwise. Each block goes back to where it came from, told apart by its address. A zero-byte request goes to the other allocator, as a request for one byte. `Reset` makes the buffer free again.
 - **`Counting`** passes every request to another allocator and counts the bytes and allocations live through it, and the most bytes it has seen live. It fails exactly when the inner allocator does. `Live()` of zero at the end of a test means nothing leaked.
+- **`Limit`** passes requests to another allocator while the bytes live through it stay within a limit, and refuses the request that would pass it, without asking the inner allocator. It counts the sizes callers asked for, as `Counting` does. Freed bytes are available again at once, whatever the order of the frees, and a resize is charged the difference. It needs no memory of its own.
+- **`Failing`** passes requests to another allocator and fails the ones a test picks. It numbers, from zero, the requests that can fail: each allocation and each resize to more bytes. `Failing.New(inner, at)` fails request `at` and no other; `Failing.NewFrom(inner, at)` fails it and every later one, as an exhausted allocator does. A negative `at` fails none. A failed request does not reach the inner allocator. `Requests()` is how many were numbered, and `Failed()` how many failed.
 - **`Null()`** fails every request with `OutOfMemory`. Code that runs to the end with it allocated nothing on that run.
 - **`Custom(ctx, table)`** makes an `Alloc` over a program's own functions, for an embedder that hands Mk its own heap. Each request is one call of the table's `alloc`, `resize` or `free` entry with `ctx`. `Custom`, and the `Alloc.Bytes` and `FreeBytes` calls that reach the table, are callable only inside `unsafe` (E1101), since the entries are trusted to keep the table's rules. `AllocTable` and `Custom` are Provisional.
 
-`Fixed.Alloc()` and `Counting.Alloc()` return an `&Alloc` that borrows the `Fixed` or the `Counting`, so a container made from it keeps that value in place while it lives. `Counting.New(inner)` borrows `inner`, and `Fixed.New(buf)` borrows `buf` for writing.
+The `Alloc()` method of each returns an `&Alloc` that borrows the value, so a container made from it keeps that value in place while it lives. `Counting.New`, `Limit.New`, `Failing.New`, `Failing.NewFrom` and `Fallback.New` borrow `inner`, and `Fixed.New`, `FixedHeap.New` and `Fallback.New` borrow `buf` for writing. So the compiler refuses a read of the buffer while a block is live in it (E0504), and a `Reset` while a container made from the allocator lives (E0501).
 
-No `&Alloc` crosses to another task (E1002), and `Fixed` and `Counting` are not `Share`, so each `Fixed` or `Counting` serves one task at a time. `Null()` holds no state: any task may call it.
+No `&Alloc` crosses to another task (E1002), and none of these types is `Share`, so each value serves one task at a time. `Null()` holds no state: any task may call it.
+
+`Counting`, `Limit` and `Failing` also run at compile time, over the allocator of `EvalArena()`. `Fixed`, `FixedHeap` and `Fallback` read their buffer's address, so a compile-time evaluation refuses them (E0901).
+
+## Choosing an allocator
+
+| You have | Use |
+|---|---|
+| Data that dies together, at the end of a scope or a request | An `Arena` |
+| Long-lived data freed piece by piece, on a hosted target | The `Heap` |
+| A buffer, and frees in last-in, first-out order or none at all | `Fixed` |
+| A buffer, and frees in any order: a kernel's heap, a subsystem on a fixed share of memory, a target with no operating system | `FixedHeap` |
+| Containers that are small nearly always, and large now and then | `Fallback` over a stack array, then the `Heap` |
+| A budget in bytes, and no wish to set the bytes aside | `Limit` over the `Heap` |
+| A test of what a function does when memory runs out | `Failing`, one run per request number |
+| A test that a function frees everything | `Counting`, and `Live()` at the end |
+
+A `Fixed` and a `Limit` both bound memory, but not the same amount. A `Fixed` bounds what was ever handed out since the last `Reset`, since it frees only its last block. A `Limit` and a `FixedHeap` bound what is live at one time.
 
 ## A budget for an arena
 
-`Arena.NewIn(a)` makes an arena whose chunks, the first included, and its `Sub`s' chunks come from the allocator `a`, and go back to it at `Reset` and `Free`. So a `Counting` or `Fixed` under it bounds everything an API that takes `&Arena` puts in the arena. The example [an arena on a budget](#an-arena-on-a-budget) shows one.
+`Arena.NewIn(a)` makes an arena whose chunks, the first included, and its `Sub`s' chunks come from the allocator `a`, and go back to it at `Reset` and `Free`. So a `Limit`, a `Fixed` or a `FixedHeap` under it bounds everything an API that takes `&Arena` puts in the arena, and a `Counting` under it measures it. The example [an arena on a budget](#an-arena-on-a-budget) shows one.
 
 - The arena borrows `a`, and each `Sub` borrows the arena. So the allocator behind `a` is not reset, freed or moved while either lives.
 - An `Arena` is not `Send`, so it never calls `a` from another task.
-- A `Fixed` gets back only what is freed in last-in, first-out order. An arena that served a value aligned over 8 bytes, or a `Sub` freed before its parent's later chunks, may leave part of the buffer used until `Fixed.Reset`.
+- A `Fixed` gets back only what is freed in last-in, first-out order. An arena that served a value aligned over 8 bytes, or a `Sub` freed before its parent's later chunks, may leave part of the buffer used until `Fixed.Reset`. A `FixedHeap` and a `Limit` get every chunk back, in any order.
 - A std API that also uses the process heap says so in its documentation, as [`proc.Run`](proc.md) and a [`sim.Sim`](sim.md) do.
 
 ## Pools and handles
@@ -148,6 +185,79 @@ full after 32 values
 - The list doubles its capacity as it grows, in place since it is the last block. 32 values take 256 bytes; 64 would take 512, more than the buffer holds.
 - A failed `Push` leaves the list as it was, so it is still freed at the end.
 
+### A heap in a buffer
+
+```mk
+// verdict: ok
+import std.mem
+
+export Main(sys: &System): OutOfMemory|WriteError!void {
+    var buf: [4096]u8 = [0; 4096]
+    h := mem.FixedHeap.New(mut buf[..]) // every byte comes from buf
+    a := h.Alloc()
+    var total := 0
+    for round in 0..1_000 {
+        var m := HeapMap[int, int].New(a)
+        onerr m.Free(a)
+        for i in 0..50 {
+            try m.Set(a, i, i * round)
+        }
+        total += m.Len()
+        m.Free(a) // the next round uses these bytes again
+    }
+    try sys.Print("{total} entries through 4 KiB\n", (total))
+}
+```
+
+```text
+$ mk run heap.mk
+50000 entries through 4 KiB
+```
+
+- A map that grows frees its old table, which is not the last block. A `Fixed` keeps those bytes until `Reset` and runs out after a few rounds; a `FixedHeap` uses them again.
+- Past the buffer a `Set` fails with `OutOfMemory`, as it does over a `Fixed`.
+
+### Small on the stack, large on the heap
+
+```mk
+// verdict: ok
+import std.mem
+
+// Squares sums the squares below n, through a list on a.
+Squares(a: &Alloc, n: int): OutOfMemory!int {
+    var xs := HeapList[int].New(a)
+    onerr xs.Free(a)
+    for i in 0..n {
+        try xs.Push(a, i * i)
+    }
+    var sum := 0
+    for x in xs.Items() {
+        sum += x
+    }
+    xs.Free(a)
+    return sum
+}
+
+export Main(sys: &System): OutOfMemory|WriteError!void {
+    c := mem.Counting.New(sys.heap.Alloc()) // counts what reaches the heap
+    var buf: [2048]u8 = [0; 2048]
+    b := mem.Fallback.New(c.Alloc(), mut buf[..])
+    small := try Squares(b.Alloc(), 100)
+    try sys.Print("{small}, with {n} bytes from the heap\n", (small, n: c.Peak()))
+    large := try Squares(b.Alloc(), 10_000)
+    try sys.Print("{large}, reached the heap: {spilled}\n", (large, spilled: c.Peak() > 0))
+}
+```
+
+```text
+$ mk run fallback.mk
+328350, with 0 bytes from the heap
+333283335000, reached the heap: true
+```
+
+- `Squares` takes an ordinary `&Alloc` and knows nothing of the buffer. A hundred values grow in place inside it; ten thousand start there and move to the heap when they no longer fit.
+- The list is the buffer's last block, so its bytes there are freed when it moves out, and the buffer is whole again for the next call.
+
 ### An arena on a budget
 
 ```mk
@@ -181,6 +291,45 @@ $ mk run budget.mk
 
 - `Distinct` takes an ordinary `&Arena` and knows nothing of the budget. Past 4,096 bytes it fails with `OutOfMemory` instead of reaching the heap.
 
+### A limit on the heap
+
+```mk
+// verdict: ok
+import std.mem
+
+// Collect pushes n values into a list on a and returns how many it held.
+Collect(a: &Alloc, n: int): OutOfMemory!int {
+    var xs := HeapList[int].New(a)
+    onerr xs.Free(a)
+    for i in 0..n {
+        try xs.Push(a, i)
+    }
+    held := xs.Len()
+    xs.Free(a)
+    return held
+}
+
+export Main(sys: &System): OutOfMemory|WriteError!void {
+    l := mem.Limit.New(sys.heap.Alloc(), 64 * 1024) // at most 64 KiB live at once
+    n := try Collect(l.Alloc(), 1_000)
+    try sys.Print("{n} values fit, {left} bytes left\n", (n, left: l.Left()))
+    _ = Collect(l.Alloc(), 100_000) else {
+        try sys.Print("100,000 values pass the limit\n")
+    }
+    try sys.Print("{b} bytes live at the end\n", (b: l.Bytes()))
+}
+```
+
+```text
+$ mk run limit.mk
+1000 values fit, 65536 bytes left
+100,000 values pass the limit
+0 bytes live at the end
+```
+
+- Nothing is set aside: the 64 KiB are a ceiling on what the heap is asked for, not a buffer.
+- What the first call freed is available to the second. A growing list holds its old buffer and its new one for a moment, and both count.
+
 ### Count allocations
 
 ```mk
@@ -209,6 +358,58 @@ live 0, bytes 0, peak 16
 
 - `Bytes` counts the sizes callers asked for, not what the inner allocator rounded them up to.
 - A negative `Live` means something freed through the `Counting` a block it did not allocate.
+
+### Fail every allocation once
+
+```mk
+// verdict: ok
+import std.mem
+
+// Build fills a map and a list on a. A failure half-way must free both.
+Build(a: &Alloc): OutOfMemory!int {
+    var names := TextMap[int].New(a)
+    onerr names.Free(a)
+    var ids := HeapList[int].New(a)
+    onerr ids.Free(a)
+    words := ["ant", "bee", "cat", "dog", "eel", "fox"]
+    for i in 0..6 {
+        _ = try names.Ensure(a, words[i], i)
+        try ids.Push(a, i)
+    }
+    n := names.Len() + ids.Len()
+    names.Free(a)
+    ids.Free(a)
+    return n
+}
+
+export Main(sys: &System): WriteError!void {
+    c := mem.Counting.New(sys.heap.Alloc())
+    var at := 0
+    var failed := 0
+    var leaked := 0
+    for at < 1_000 {
+        f := mem.Failing.New(c.Alloc(), at) // fails request number at, and no other
+        _ = Build(f.Alloc()) else {
+            failed += 1
+        }
+        leaked += c.Live()
+        if f.Failed() == 0 {
+            break // the run made only at requests: each has now failed once
+        }
+        at += 1
+    }
+    try sys.Print("{at} requests, {failed} runs failed, {leaked} blocks leaked\n", (at, failed, leaked))
+}
+```
+
+```text
+$ mk run failing.mk
+11 requests, 10 runs failed, 0 blocks leaked
+```
+
+- Each run fails one request more than the last, so every `try` of `Build` that allocates takes its error path once. The `Counting` beneath shows that each path freed what it had.
+- One run did not fail though its request did: a list that cannot grow in place allocates a new buffer instead, so a refused resize is not an error.
+- `Failing.NewFrom` fails every request from `at` on. Use it to check the paths that run after memory is gone, which must not allocate.
 
 ### Prove a path allocates nothing
 
@@ -393,6 +594,126 @@ ctx. table must outlive the Alloc and every block it hands out.
 Callable only inside unsafe (E1101), since the entries are trusted to
 keep the table's rules. O(1); allocates nothing.
 
+### `Failing`
+
+```
+export view struct Failing
+```
+
+An allocator that passes requests to another and fails the ones a test
+picks by number, to drive code down its OutOfMemory paths.
+
+### `Failing.Alloc`
+
+```
+export Failing.Alloc(&self): &Alloc from self
+```
+
+- Flows: The result borrows from self.
+
+The allocator that fails the picked requests with OutOfMemory, without
+asking inner, and passes every other one on. A free, and a resize to
+the same or fewer bytes, is never failed and never counted. O(1) per
+request on top of inner's.
+
+### `Failing.Failed`
+
+```
+export Failing.Failed(&self): int
+```
+
+The requests self failed. Zero after a run means the run made no
+request with the number picked, so a loop over request numbers stops
+there. O(1).
+
+### `Failing.New`
+
+```
+export Failing.New(inner: &Alloc, at: int): Failing
+```
+
+- Flows: The result borrows from inner.
+
+A Failing over inner that fails exactly one request: the one numbered
+at, counting from zero the allocations and the resizes to more bytes
+made through it. A negative at fails none. The result borrows inner.
+O(1); allocates nothing.
+
+### `Failing.NewFrom`
+
+```
+export Failing.NewFrom(inner: &Alloc, at: int): Failing
+```
+
+- Flows: The result borrows from inner.
+
+A Failing over inner that fails the request numbered at and every one
+after it, as an exhausted allocator does. A negative at fails none. The
+result borrows inner. O(1); allocates nothing.
+
+### `Failing.Requests`
+
+```
+export Failing.Requests(&self): int
+```
+
+The requests made through self that could have failed: the allocations
+and the resizes to more bytes, the failed ones included. O(1).
+
+### `Fallback`
+
+```
+export view struct Fallback
+```
+
+An allocator that serves a request from a caller's buffer when it fits
+there, and from another allocator when it does not. A container that
+stays small then never reaches that allocator, and one that outgrows
+the buffer still works.
+
+The buffer is a Fixed: only its last block is freed or grown in place.
+A block that cannot grow in place is allocated again by its container,
+in the buffer if it fits there and in the other allocator if not.
+
+### `Fallback.Alloc`
+
+```
+export Fallback.Alloc(&self): &Alloc from self
+```
+
+- Flows: The result borrows from self.
+
+The allocator that tries the buffer first and inner second; it fails
+with OutOfMemory only when inner does. A block goes back to where it
+came from, whichever that was. A zero-byte request goes to inner, as
+a request for one byte. O(1) per request on top of inner's.
+
+### `Fallback.New`
+
+```
+export Fallback.New(inner: &Alloc, buf: mut []u8): Fallback from inner, buf
+```
+
+- Flows: The result borrows from inner and buf.
+
+A Fallback that serves from buf first, then from inner. inner stays
+borrowed, and buf borrowed (mut), for as long as the Fallback and
+anything allocated from it lives. As for Fixed.New, up to 7 bytes in
+front of buf's first 8-byte boundary are never handed out. O(1);
+allocates nothing.
+
+### `Fallback.Reset`
+
+```
+export Fallback.Reset(mut self) ends self
+```
+
+- Flows: Ends every borrow of self.
+
+Makes the whole buffer free again. It ends self, so nothing allocated
+from self can be used after it; what came from the other allocator was
+freed there by then. O(1).
+
 ### `Fixed`
 
 ```
@@ -445,6 +766,61 @@ export Fixed.Reset(mut self) ends self
 Makes the whole buffer free again. It ends self, so nothing allocated
 from self can be used after it. O(1).
 
+### `FixedHeap`
+
+```
+export view struct FixedHeap
+```
+
+A general-purpose allocator over a caller's buffer, which never touches
+the system: any block can be freed, in any order, and its bytes are
+used again. An allocation, a resize and a free are each O(1), whatever
+the buffer holds.
+
+A freed block merges with the free blocks beside it at once, and a
+block grows in place into a free block after it. Each block costs 8
+bytes besides its own, rounded up to 8, and starts on an 8-byte
+boundary; alignments up to 2^30 are served. The bookkeeping lives at
+the start of the buffer: 416 bytes of a 4 KiB buffer, 960 of a 1 MiB
+one. A buffer over 16 GiB is used up to 16 GiB.
+
+### `FixedHeap.Alloc`
+
+```
+export FixedHeap.Alloc(&self): &Alloc from self
+```
+
+- Flows: The result borrows from self.
+
+The allocator that hands out self's buffer; a request it cannot fit
+fails with OutOfMemory. A container made from it borrows self. O(1).
+
+### `FixedHeap.New`
+
+```
+export FixedHeap.New(buf: mut []u8): FixedHeap
+```
+
+- Flows: The result borrows from buf.
+
+A FixedHeap over buf, which stays borrowed (mut) for as long as the
+FixedHeap and anything allocated from it lives. Up to 7 bytes in front
+of buf's first 8-byte boundary are never handed out, and the
+bookkeeping takes the start of what follows; a buf too small for it
+and one block (under 96 bytes from that boundary) refuses every
+request. O(1) besides clearing the bookkeeping; allocates nothing.
+
+### `FixedHeap.Reset`
+
+```
+export FixedHeap.Reset(mut self) ends self
+```
+
+- Flows: Ends every borrow of self.
+
+Makes the whole buffer free again. It ends self, so nothing allocated
+from self can be used after it. O(1) besides clearing the bookkeeping.
+
 ### `Handle`
 
 ```
@@ -454,6 +830,58 @@ export struct Handle
 The name of a value in a Pool: 8 bytes, plain, Eq and Hash, with no
 public fields. It holds a slot index and that slot's 32-bit generation.
 To keep two kinds of handle apart, wrap each in a one-field struct.
+
+### `Limit`
+
+```
+export view struct Limit
+```
+
+An allocator that passes requests to another while the bytes live
+through it stay within a limit, and refuses the request that would
+pass it.
+
+### `Limit.Alloc`
+
+```
+export Limit.Alloc(&self): &Alloc from self
+```
+
+- Flows: The result borrows from self.
+
+The allocator that passes each request on to inner unless it would
+take Bytes() past the limit: then it fails with OutOfMemory and inner
+is not asked. It also fails whenever inner does. O(1) per request on
+top of inner's.
+
+### `Limit.Bytes`
+
+```
+export Limit.Bytes(&self): int
+```
+
+The bytes allocated through self and not freed: the sizes callers
+asked for, not what inner rounded them up to. O(1).
+
+### `Limit.Left`
+
+```
+export Limit.Left(&self): int
+```
+
+The bytes a request may still take: the limit less Bytes(). O(1).
+
+### `Limit.New`
+
+```
+export Limit.New(inner: &Alloc, max: int): Limit
+```
+
+- Flows: The result borrows from inner.
+
+A Limit of max bytes over inner, with nothing counted yet; a max below
+zero is zero, which refuses every request of one byte or more. The
+result borrows inner. O(1); allocates nothing.
 
 ### `Null`
 
