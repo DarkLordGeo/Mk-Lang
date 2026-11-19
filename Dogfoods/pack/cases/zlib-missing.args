@@ -1,0 +1,4 @@
+zlib
+--out
+$WORK/t.zz
+$CASES/data/tar/missing.bin

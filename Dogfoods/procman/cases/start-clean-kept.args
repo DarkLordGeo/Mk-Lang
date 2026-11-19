@@ -1,0 +1,6 @@
+--procfile
+$CASES/data/clean-kept.Procfile
+--log-level
+warn
+start
+--clean

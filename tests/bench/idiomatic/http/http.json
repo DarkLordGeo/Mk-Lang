@@ -1,0 +1,29 @@
+{
+  "name": "http",
+  "task": "Serve `GET /` with `200 OK`, `Content-Type: text/plain` and the 14-byte body `Hello, World!\n` (with Content-Length) over HTTP/1.1 keep-alive, with the language's std HTTP server.",
+  "body": "Hello, World!\n",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/http.go",
+    "zig": "http.zig"
+  },
+  "skip": {
+    "c": "no std HTTP (C's std has no sockets)",
+    "rust": "no std HTTP (std::net is TCP only; hyper and axum are crates)"
+  },
+  "models": {
+    "mk": "tasks (std.http.Serve, one task and one arena per connection, MK_CARRIERS=8)",
+    "go": "goroutines (net/http, GOMAXPROCS=8)",
+    "zig": "OS threads (std.http.Server, one Io.Group.concurrent thread per connection)"
+  },
+  "connections": 1000,
+  "warmup_s": 5,
+  "measure_s": 30,
+  "server_mask": "0xff",
+  "client_mask": "0xff00",
+  "threads": 8,
+  "sweeps": 3,
+  "notes": [
+    "The generator is tools/bench's own (httpbench.go): a raw HTTP/1.1 client on Go's net.Conn, one goroutine per connection, rather than net/http.Client, so it spends little per request; connections close with a reset, so no TIME_WAIT sockets pile up between sweeps. 1,000 connections hold 2,000 sockets on the machine at once, below the owner's 10,000 cap."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "crypto-p256-verify",
+  "table": "idiomatic",
+  "algorithm": "std ECDSA P-256 verification, DER form: <keys> keys and RFC 6979 signatures made at start, <reps> passes verify each, the digest flipped on odd passes (mk/crypto-p256-verify.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "64",
+    "1"
+  ],
+  "quick": [
+    "4",
+    "1",
+    "1"
+  ],
+  "checksum": "512",
+  "quick_checksum": "4",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-p256-verify.zig",
+    "go": "testdata/crypto-p256-verify.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard elliptic-curve or RSA library",
+    "rust": "no std crypto: Rust std has no ECDSA, ECDH or RSA; the p256 and rsa crates are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Zig: std.crypto.sign.ecdsa.EcdsaP256Sha256, PublicKey.fromSec1, Signature.fromDer, then verifyPrehashed per pass. Its signatures are made at start by signPrehashed, whose deterministic nonce mixes a noise block into RFC 6979's input, so r and s differ from Mk's and Go's; the checksum counts the signatures that verify, so it is the same (session 3, 2026-11-13).",
+    "Work per step: one ECDSA P-256 verification of a DER signature: Mk crypto.EcdsaVerify(..., SigFormat.Der, ...) (the DER read, the SEC 1 public key decoded and checked on the curve per call, Straus double multiplication over width-6 and width-5 NAFs with G's odd multiples precomputed, since 2026-11-13, complete formulas, fiat-crypto arithmetic), Go ecdsa.VerifyASN1 (the DER read; the public key is an ecdsa.PublicKey made once at start, and each call converts it with publicKeyToFIPS: pointFromAffine's on-curve check, then fips140/ecdsa.NewPublicKey decoding the point and checking it again, no cache; amd64 assembly, precomputed base table; Go 1.27.3's source), Zig as its note says. The setup (keys signed once) is in the timed run for every column. Since 2026-11-13 (review finding CR2-5) every column reads DER; before, Mk and Zig took Fixed form or a parsed signature while Go's ecdsa.Verify re-encoded r and s to DER and read it back (crypto/ecdsa/ecdsa_legacy.go), so the session 3 numbers of this row are of the old definition.",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-13, DER form); every column printed the same at both arg sets (tools/bench verify with and without -publish-size, 2026-11-13). Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

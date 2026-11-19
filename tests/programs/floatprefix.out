@@ -1,0 +1,28 @@
+"3.25" used 4 value 3.25 bits 400a000000000000
+"3.25abc" used 4 value 3.25 bits 400a000000000000
+"-0.5,1" used 4 value -0.5 bits bfe0000000000000
+"1e3x" used 3 value 1000 bits 408f400000000000
+"0.1 " used 3 value 0.1 bits 3fb999999999999a
+"1.5e" used 3 value 1.5 bits 3ff8000000000000
+"1.5e+" used 3 value 1.5 bits 3ff8000000000000
+"5." used 2 value 5 bits 4014000000000000
+"1_000" used 1 value 1 bits 3ff0000000000000
+"0x10" used 1 value 0 bits 0
+"" used 0 value nan bits 7ff8000000000000
+"." used 0 value nan bits 7ff8000000000000
+"+" used 0 value nan bits 7ff8000000000000
+" 1" used 0 value nan bits 7ff8000000000000
+"abc" used 0 value nan bits 7ff8000000000000
+"inf" used 3 value inf bits 7ff0000000000000
+"-Infinity!" used 9 value -inf bits fff0000000000000
+"infinit" used 3 value inf bits 7ff0000000000000
+"nan" used 3 value nan bits 7ff8000000000000
+"-nan" used 0 value nan bits 7ff8000000000000
+"1e400" used 5 value inf bits 7ff0000000000000
+"-1e400" used 6 value -inf bits fff0000000000000
+"1e-400" used 6 value 0 bits 0
+"-1e-400" used 7 value -0 bits 8000000000000000
+"9007199254740993" used 16 value 9007199254740992 bits 4340000000000000
+"2.2250738585072011e-308" used 23 value 2.225073858507201e-308 bits fffffffffffff
+"0.30000000000000004;" used 19 value 0.30000000000000004 bits 3fd3333333333334
+"123456789012345678901234567890e-10z" used 34 value 12345678901234567000 bits 43e56a95319d63e1

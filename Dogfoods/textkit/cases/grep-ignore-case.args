@@ -1,0 +1,4 @@
+grep
+--ignore-case
+--line-number
+^error

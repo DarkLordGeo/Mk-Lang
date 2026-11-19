@@ -1,0 +1,25 @@
+unix: 2023-11-14T22:13:20.123456789Z, seconds 1700000000, nanos 1700000000123456789
+add 36h: 2023-11-16T10:13:20.123456789Z, back 36h0m0s
+saturating add: 2262-04-11T23:47:16.854775807Z
+utc: 2023-11-14 22:13:20 offset 0 weekday 2 day 318
+fixed +05:30: 2023-11-15 3:43:20 offset 19800 weekday 3 day 319
+new york, winter: 2023-11-14 17:13:20 offset -18000 weekday 2 day 318
+new york, summer: 2024-7-3 5:46:40 offset -14400 weekday 3 day 185
+new york 2026-03-08 02:30: Skipped
+new york 2026-11-01 01:30: Repeated
+new york 2026-11-01 03:30: 2026-11-01T08:30:00Z
+berlin from tzif: 2024-7-3 11:46:40 offset 7200 weekday 3 day 185
+load ../etc/passwd: BadName
+load Mars/Olympus_Mons: NotFound
+load Asia/Kolkata: ok
+from tzif, broken bytes: BadData
+rfc 3339 2026-11-13T06:50:00Z: 2026-11-13T06:50:00Z
+rfc 3339 2026-11-13T07:50:00.5+01:00: 2026-11-13T06:50:00.5Z
+rfc 3339 2026-13-01T00:00:00Z: ParseError
+http date: Tue, 14 Nov 2023 22:13:20 GMT, parsed back 2023-11-14T22:13:20Z
+duration 1h30m: 1h30m0s, 5400000000000 ns
+duration 250ms: 250ms, 250000000 ns
+duration -2m3.5s: -2m3.5s, -123500000000 ns
+duration 1x: ParseError
+wall clock after 2026-01-01: true
+local zone: read

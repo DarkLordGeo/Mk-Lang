@@ -1,0 +1,7 @@
+subject   CN=expired,O=fetch test
+issuer    CN=fetch test root,O=fetch test
+name      localhost
+name      127.0.0.1
+valid     2020-01-01T00:00:00Z to 2021-01-01T00:00:00Z
+der       429 bytes
+$CASES/data/tls/expired.pem: verified for 'localhost'

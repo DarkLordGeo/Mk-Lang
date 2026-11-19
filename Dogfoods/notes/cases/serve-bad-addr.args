@@ -1,0 +1,5 @@
+serve
+--db
+$WORK/s.db
+--addr
+nowhere

@@ -1,0 +1,47 @@
+{
+  "name": "textkit",
+  "table": "app",
+  "algorithm": "Run two of the textkit dogfood's Unicode text tools over a generated text file: grep, counting the lines a case-folded regular expression matches (its bench case's flags, with a pattern this input matches), and wc, counting lines, words, characters, bytes and grapheme clusters by UAX 29 and the widest line in terminal columns (README.md).",
+  "args": [],
+  "quick": [],
+  "checksum": "",
+  "quick_checksum": "",
+  "package": {
+    "path": "Dogfoods/textkit",
+    "bin": "textkit"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "data": {
+    "kind": "words",
+    "file": "textkit-words-128mb.txt",
+    "bytes": 128000000,
+    "seed": 8
+  },
+  "variants": [
+    {
+      "name": "grep",
+      "args": ["grep", "--count", "--ignore-case", "\\b[aeiou][a-z]{3}\\b", "{data}"],
+      "quick": ["grep", "--count", "--ignore-case", "\\b[aeiou][a-z]{3}\\b", "{data}"],
+      "checksum": "sha256:8734fc08ee4f121eadfa265fd4be4d0808316c9f9a03ee3fedbe6d5280997c5d",
+      "quick_checksum": "sha256:8734fc08ee4f121eadfa265fd4be4d0808316c9f9a03ee3fedbe6d5280997c5d"
+    },
+    {
+      "name": "wc",
+      "args": ["wc", "--lines", "--words", "--chars", "--bytes", "--clusters", "--width", "{data}"],
+      "quick": ["wc", "--lines", "--words", "--chars", "--bytes", "--clusters", "--width", "{data}"],
+      "checksum": "sha256:8b2a98a641b06e4fe5d2feb8980d5c00ec2c1eacb9db2a00192d01b481764fe9",
+      "quick_checksum": "sha256:8b2a98a641b06e4fe5d2feb8980d5c00ec2c1eacb9db2a00192d01b481764fe9"
+    }
+  ],
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the textkit dogfood unchanged (its bin textkit), compared across mk binaries; no twin (the other languages' std has no UAX 29 or normalization), no defect line (README.md).",
+    "The input is tools/bench gen kind words (seed 8, 128,000,000 bytes): ASCII words, spaces and line ends, so the Unicode tables are read but no multi-byte path runs. The quick and publish arguments are one, since a row has one data spec.",
+    "The size (data.bytes) is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksums change with it."
+  ]
+}

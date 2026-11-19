@@ -1,0 +1,86 @@
+{
+  "name": "zlib-d",
+  "table": "app",
+  "algorithm": "Decompress a zlib stream (RFC 1950) made once by Go's compress/zlib at level 6 with each language's library, checking the Adler-32 trailer, reading the input and writing the output file in 64 KiB chunks; the check is the output file's SHA-256 (README.md).",
+  "args": [
+    "{data}",
+    "{out}"
+  ],
+  "quick": [
+    "{data}",
+    "{out}"
+  ],
+  "checksum": "sha256:2607c6ffb1e9c1260882e28b3301419e4b93d2581f77dbcd19d4b8fa9d57bcde file sha256:74b1696c72cf06c561bf29ec137e759fea7df4c4ee9af52a9131589800b2fd5f",
+  "quick_checksum": "sha256:2607c6ffb1e9c1260882e28b3301419e4b93d2581f77dbcd19d4b8fa9d57bcde file sha256:74b1696c72cf06c561bf29ec137e759fea7df4c4ee9af52a9131589800b2fd5f",
+  "sources": {
+    "mk": "mk",
+    "c": "zlibd.c",
+    "rust": "rs",
+    "zig": "zlibd.zig",
+    "go": "testdata/zlibd.go"
+  },
+  "skip": {},
+  "kinds": {
+    "mk": "std",
+    "c": "eco",
+    "rust": "eco",
+    "zig": "std",
+    "go": "std"
+  },
+  "libs": {
+    "c": [
+      {
+        "name": "zlib",
+        "version": "1.3.1",
+        "lang": "C",
+        "inside": "none (the portable C of adler32.c, crc32.c, deflate.c, trees.c, zutil.c and the inflate files; no assembly, no intrinsics)"
+      }
+    ],
+    "rust": [
+      {
+        "name": "flate2",
+        "version": "1.1.1",
+        "lang": "Rust",
+        "inside": "its default rust_backend: miniz_oxide 0.8.8 and adler2 2.0.0, which forbid unsafe code; crc32fast 1.4.2, linked, has unsafe SIMD (pclmulqdq) for gzip's CRC-32, which the zlib framing does not run; flate2's own unsafe code is in its C backends, not enabled"
+      }
+    ]
+  },
+  "crates": "crates/flate2-1.1.1",
+  "vendor": {
+    "dir": "vendor/zlib-1.3.1/zlib-1.3.1",
+    "files": [
+      "adler32.c",
+      "crc32.c",
+      "deflate.c",
+      "inffast.c",
+      "inflate.c",
+      "inftrees.c",
+      "trees.c",
+      "zutil.c"
+    ],
+    "c_flags": [],
+    "for": [
+      "c"
+    ]
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "output": {
+    "file": "zlibd.txt",
+    "check": "digest"
+  },
+  "data": {
+    "kind": "zlib",
+    "of": "words",
+    "file": "zlib-words-200mb.zz",
+    "bytes": 200000000,
+    "seed": 3
+  },
+  "notes": [
+    "The input is tools/bench gen kind zlib of words (seed 3, bytes 200,000,000: whole words up to that size, then a newline) compressed once by Go's compress/zlib at level 6; every cell reads the same compressed bytes. The size is provisional: verify -publish-size in the coordinator's window fixes it.",
+    "Every cell checks the trailer's Adler-32: inside the library for C (zlib), Rust (miniz_oxide), Go and Mk; the Zig program computes it with std's own hasher, because Zig 0.17's Decompress reads the trailer without comparing it (BS-1). Every cell also checks the header's FCHECK and refuses FDICT (RFC 1950 2.3); the Zig program checks those two bytes itself, because Decompress checks CM and CINFO only.",
+    "C: zlib 1.3.1 from Mk-evidence/vendor (D-588), compiled with the C column's flags. Rust: flate2 1.1.1 from a cargo vendor tree in Mk-evidence (crates), by directory source replacement (D-835)."
+  ]
+}

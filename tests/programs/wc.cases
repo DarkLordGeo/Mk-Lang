@@ -1,0 +1,12 @@
+# The ten most frequent words of wc.in, ties by word in byte order (internal/corpus's TestWcOutMatchesReference).
+case ok
+args wc.in
+files wc.in
+stdout wc.out
+
+# A missing file: Main returns fs.NotFound. Release prints only the first line; dev adds the trace.
+case missing-file
+profile release
+args missing.txt
+stderr notfound.err
+exit 1

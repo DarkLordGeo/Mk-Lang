@@ -1,0 +1,7 @@
+add "Debug me" "body"
+edit 1 title="Debugged"
+raw PATCH /notes/1 "[1]"
+raw PATCH /notes/1 "{\"tags\": 3}"
+raw PUT /notes/1 "{\"title\": \"\", \"body\": \"x\"}"
+raw PUT /notes/9 "{\"title\": \"t\", \"body\": \"x\"}"
+raw GET /notes/abc

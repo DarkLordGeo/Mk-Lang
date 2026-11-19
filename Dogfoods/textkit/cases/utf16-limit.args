@@ -1,0 +1,5 @@
+utf16
+encode
+--limit
+4
+$CASES/data/emoji.txt

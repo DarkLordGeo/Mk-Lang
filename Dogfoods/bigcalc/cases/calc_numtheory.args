@@ -1,0 +1,7 @@
+calc
+2 127 ^ 1 - =m 3 $m 1 - $m modpow p
+17 3120 inv p 3 -1 7 modpow p
+2 64 ^ 1 + 2 32 ^ 1 + gcd p
+10 50 ^ sqrt p 2 sqrt p
+100 fact p 1000 fib p 0 fact p 1 fact p 0 fib p
+-42 sign 0 sign 42 sign f clear

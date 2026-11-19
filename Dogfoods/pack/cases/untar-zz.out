@@ -1,0 +1,8 @@
+d rwxr-x---          -  2021-03-04T05:06:07Z  site/
+d rwxr-xr-x          -  2021-03-04T05:00:00Z  site/docs/
+f rw-r-----         14  2020-09-13T12:26:40Z  site/docs/readme.txt
+f rw-r--r--      98000  2020-09-13T12:28:43Z  site/docs/long.txt
+f rwxr-xr-x         21  2017-07-14T02:40:00Z  site/run.sh
+f rw-------          0  2014-05-13T16:53:20Z  site/empty
+- skipped    site/latest
+pack: $CASES/data/tar/site.tar.zz (tar.zz) holds 4 files, 2 directories, 98035 bytes, skipped 1 links and special files

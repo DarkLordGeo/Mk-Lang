@@ -1,0 +1,8 @@
+kvd sim: seeds 0..999, 3 clients of 16 steps
+  crashed at a log write: 733 runs, at 50 distinct writes, 150 torn
+  shut down cleanly:      267 runs
+  disk or network fault:  625 runs, 2361 steps refused
+  client gone mid-command: 111 runs
+  recovery crashed and ran again: 0 runs
+  every run recovered what its clients were told, twice
+  digest 4b45eede398f14ba

@@ -1,0 +1,38 @@
+{
+  "name": "fs",
+  "table": "idiomatic",
+  "algorithm": "std.fs's tree operations against each standard library's own, on a tree of 1,110 entries (10 directories d<i>, each with 10 directories s<j> of 10 one-byte files f<k>) made under the temporary directory (tests/bench-lanes/std-fs2/README.md). Variant walk: the tree listed reps times (Mk fs.Walk, Go filepath.WalkDir, Rust recursion over fs::read_dir and DirEntry::file_type, Zig Dir.walk, C FindFirstFileExW or opendir/readdir recursion), the root not counted; prints reps, directories, files and name bytes; the run also makes and removes the tree once (tools/bench subtracts a baseline only in a GB/s row, BS-3), which fs-mkrm measures alone. Variant mkrm: reps times the tree made (Mk fs.MakeDirAll and fs.WriteAll, Go os.MkdirAll and os.WriteFile, Rust fs::create_dir_all and fs::write, Zig Dir.createDirPath and Dir.writeFile, C mkdir and open/write) and removed (Mk fs.RemoveAll, Go os.RemoveAll, Rust fs::remove_dir_all, Zig Dir.deleteTree, C recursion with DeleteFileW and RemoveDirectoryW or unlinkat); prints reps, entries made and removals that left the root. Variant copy: the generated file copied reps times onto one destination (Mk fs.Copy, Go os.Create and io.Copy, Rust fs::copy, Zig Dir.copyFile, C CopyFileExW or copy_file_range); prints reps and bytes copied.",
+  "overflow": "never",
+  "args": ["walk", "1000"],
+  "quick": ["walk", "2"],
+  "checksum": "1000 110000 1000000 2220000",
+  "quick_checksum": "2 220 2000 4440",
+  "sources": {
+    "mk": "mk",
+    "c": "fs.c",
+    "rust": "fs.rs",
+    "zig": "fs.zig",
+    "go": "testdata/fs.go"
+  },
+  "skip": {
+    "mk-wrap": "the counts cannot overflow; the task has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "words",
+    "file": "words-32m.txt",
+    "bytes": 33554432,
+    "seed": 23
+  },
+  "variants": [
+    {"name": "walk", "args": ["walk", "1000"], "quick": ["walk", "2"], "checksum": "1000 110000 1000000 2220000", "quick_checksum": "2 220 2000 4440"},
+    {"name": "mkrm", "args": ["mkrm", "3"], "quick": ["mkrm", "1"], "checksum": "3 3330 0", "quick_checksum": "1 1110 0"},
+    {"name": "copy", "args": ["copy", "{data}", "40"], "quick": ["copy", "{data}", "2"], "checksum": "40 1342177480", "quick_checksum": "2 67108874"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; each walk's counts, each tree's entries and each copy's bytes check the work",
+  "notes": [
+    "Written by std-fs2 (plan/08-m8.md 4.2 and section 5's bench line); status/std-fs2.md records the hand timings and the ratio's cause and plan.",
+    "The tree lives in each language's temporary directory (TMP on Windows, TMPDIR or /tmp on Linux, the distribution's own file system), never beside the data file, so the Linux cells do not measure the drive's 9p mount.",
+    "Publish sizes are guesses until tools/bench publish times the row on a quiet machine: on the owner's machine under other agents' load one Windows walk of the tree took about 4 ms (Rust, Zig) to 14 ms (Mk) by hand, and one make-and-remove 127 ms (Rust) to 315 ms (Mk) in a one-shot verify run, several times that in other runs.",
+    "Not published: no number here is a measurement until tools/bench publish runs it under the machine lock."
+  ]
+}

@@ -1,0 +1,7 @@
+> hello
+< echo: hello
+> ping p1
+> raw bytes
+< binary of 9 bytes
+> bye
+< closed by the server with status 1000

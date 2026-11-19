@@ -1,0 +1,199 @@
+// Why: gen lines run generators inside the driver; what they emit must
+// check, be visible to importers and keep gen's diagnostics.
+// What: TestGenExportUsedByImporter, TestGenDeriveEqChecks,
+// TestE0704_GeneratedImplAtGenLine, TestGenCodes (E0903, E0905, E0906),
+// TestGenDeriveEqGolden, TestGenBoolArgument and TestGenFlowDiagWrapped.
+// How: checks small packages with the real std generators and compares
+// diagnostics, and derive.Eq's output with internal/gen's golden.
+
+package driver
+
+import (
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"mk/internal/diag"
+	"mk/internal/source"
+	"mk/internal/types"
+)
+
+// libManifest is a package with no bins: every directory is a module.
+func libManifest() string { return manifest(nil) }
+
+// TestGenExportUsedByImporter: g holds a generator that emits an
+// exported function, a imports g and has the gen line, b imports a and calls
+// a.Helper(). mk check is clean, with no E0201 in b.
+func TestGenExportUsedByImporter(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk": libManifest(),
+		"g/g.mk": "export Make(g: mut Gen) {\n    g.Emit(quote {\n        export Helper(): int {\n            return 1\n        }\n    })\n}\n",
+		"a/a.mk": "import g\n\ngen g.Make()\n",
+		"b/b.mk": "import a\n\nexport Use(): int {\n    return a.Helper() + 1\n}\n",
+	})
+	r := check(t, Config{Root: dir})
+	clean(t, r)
+}
+
+// TestGenDeriveEqChecks: std's derive.Eq over a struct of another module's
+// importer, used through the generated impl; with the module cache on, a
+// warm check equals the cold one, and the module with gen output is stored
+// and hits with its generated file (GenRef, genref.go).
+func TestGenDeriveEqChecks(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk":   libManifest(),
+		"lib/l.mk": "import std.derive\n\nexport struct User {\n    export name: str\n    export age: int\n}\n\ngen derive.Eq(User)\n",
+		"app/a.mk": "import lib\n\nexport Same(x: &lib.User, y: &lib.User): bool {\n    return x.Eq(y)\n}\n",
+	})
+	cfg := Config{Root: dir, CacheDir: t.TempDir()}
+	cold := frontCheck(t, cfg)
+	clean(t, cold)
+	if slices.ContainsFunc(cold.Trace.NotStored, func(s string) bool { return strings.HasPrefix(s, "lib") }) {
+		t.Errorf("not stored %q, want lib stored", cold.Trace.NotStored)
+	}
+	warm := frontCheck(t, cfg)
+	clean(t, warm)
+	if string(jsonOf(t, warm)) != string(jsonOf(t, cold)) {
+		t.Errorf("warm --json %s, cold %s", jsonOf(t, warm), jsonOf(t, cold))
+	}
+	if !slices.Contains(warm.Trace.ModulesFromCache, "lib") {
+		t.Errorf("lib did not come from the cache: %q", warm.Trace.ModulesFromCache)
+	}
+}
+
+// TestE0704_GeneratedImplAtGenLine: two gen lines emitting one
+// impl give one E0704 at the second gen line, not an E0905, citing the
+// first gen line and the first impl's place in the output.
+func TestE0704_GeneratedImplAtGenLine(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk":   libManifest(),
+		"lib/l.mk": "import std.derive\n\nexport struct User {\n    export name: str\n}\n\ngen derive.Eq(User)\n\ngen derive.Eq(User)\n",
+	})
+	r := check(t, Config{Root: dir})
+	expectLines(t, r, "lib/l.mk:9:1:E0704")
+	if len(r.Report.Diags) == 1 {
+		d := r.Report.Diags[0].Diag
+		at := func(key string) string {
+			f, ok := d.FactValue(key)
+			if !ok {
+				return ""
+			}
+			return diag.Location(r.Sources, f.At)
+		}
+		if got := at("first"); got != "lib/l.mk:7:1" {
+			t.Errorf("first = %q, want lib/l.mk:7:1", got)
+		}
+		if got := at("first_output"); !strings.HasPrefix(got, "lib/gen/") {
+			t.Errorf("first_output = %q, want a place in lib's gen output", got)
+		}
+	}
+}
+
+// TestGenCodes: the gen conformance units' verdicts (tests/conformance/codes
+// E0903, E0905, E0906), as packages.
+func TestGenCodes(t *testing.T) {
+	for _, c := range []struct {
+		name, gens, app string
+		want            string
+	}{
+		{"E0903", "export Refuse(g: mut Gen, t: Type) {\n    g.Fail(\"Refuse accepts no type\")\n}\n",
+			"import gens\n\nstruct Point {\n    x: i32\n}\n\ngen gens.Refuse(Point)\n", "app/a.mk:7:1:E0903"},
+		{"E0905", "export Broken(g: mut Gen, t: Type) {\n    g.Emit(quote {\n        $(t.Name()).Zero(): i32 {\n            return \"zero\"\n        }\n    })\n}\n",
+			"import gens\n\nstruct Point {\n    x: i32\n}\n\ngen gens.Broken(Point)\n", "app/a.mk:7:1:E0905"},
+		{"E0906", "export Make(g: mut Gen) {\n    g.Emit(quote {\n        struct Made {\n            n: int\n        }\n    })\n}\n\nexport Look(g: mut Gen, t: Type) {\n}\n",
+			"import gens\n\ngen gens.Make()\n\ngen gens.Look(Made)\n", "app/a.mk:5:15:E0906"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := writeTree(t, map[string]string{"pkg.mk": libManifest(), "gens/g.mk": c.gens, "app/a.mk": c.app})
+			r := check(t, Config{Root: dir})
+			expectLines(t, r, c.want)
+		})
+	}
+}
+
+// TestGenDeriveEqGolden (gen derive.Eq output reads like handwritten
+// code): std's derive.Eq over struct User { name: str, age: int }
+// prints internal/gen/testdata/derive_eq.golden, the text gen's own
+// TestDeriveEqShape checks, through the driver and the real std
+// generator. The golden's header names its test module main; this one is lib.
+func TestGenDeriveEqGolden(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk":   libManifest(),
+		"lib/l.mk": "import std.derive\n\nexport struct User {\n    export name: str\n    export age: int\n}\n\ngen derive.Eq(User)\n",
+	})
+	r := check(t, Config{Root: dir, Target: types.X86_64Windows})
+	clean(t, r)
+	f, ok := r.Sources.ByPath("lib/gen/x86_64-windows/gen.mk")
+	if !ok {
+		var paths []string
+		for _, f := range r.Sources.Files() {
+			paths = append(paths, f.Path)
+		}
+		t.Fatalf("no lib/gen/x86_64-windows/gen.mk in the source map: %q", paths)
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "gen", "testdata", "derive_eq.golden"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(strings.ReplaceAll(string(raw), "\r\n", "\n"), "gen lines of main ", "gen lines of lib ", 1)
+	if f.Text != want {
+		t.Errorf("derive.Eq output differs from derive_eq.golden:\n--- got\n%s\n--- want\n%s", f.Text, want)
+	}
+}
+
+// TestGenBoolArgument: true and false as gen arguments are universe names,
+// not BasicLits; genArg turns them into literals, so each line folds into a
+// bool parameter instead of failing with E0301. The two lines
+// emit different functions, and the importer uses both.
+func TestGenBoolArgument(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk": libManifest(),
+		"g/g.mk": "export Pick(g: mut Gen, on: bool) {\n    if on {\n        g.Emit(quote {\n            export On(): int {\n                return 1\n            }\n        })\n    } else {\n        g.Emit(quote {\n            export Off(): int {\n                return 0\n            }\n        })\n    }\n}\n",
+		"a/a.mk": "import g\n\ngen g.Pick(true)\n\ngen g.Pick(false)\n",
+		"b/b.mk": "import a\n\nexport Use(): int {\n    return a.On() + a.Off()\n}\n",
+	})
+	r := check(t, Config{Root: dir})
+	clean(t, r)
+}
+
+// TestGenFlowDiagWrapped: a borrow error (stage 7) inside generated code is
+// E0905 at the gen line, phase flow, with the E0501 as its inner (genWrap
+// over fdiags).
+func TestGenFlowDiagWrapped(t *testing.T) {
+	dir := writeTree(t, map[string]string{
+		"pkg.mk": libManifest(),
+		"g/g.mk": "export Bad(g: mut Gen) {\n    g.Emit(quote {\n        export Twice() {\n            var n := 1\n            a := mut n\n            b := mut n\n            *a += 1\n            *b += 1\n        }\n    })\n}\n",
+		"a/a.mk": "import g\n\ngen g.Bad()\n",
+	})
+	r := check(t, Config{Root: dir})
+	expectLines(t, r, "a/a.mk:3:1:E0905")
+	if len(r.Report.Diags) != 1 {
+		return
+	}
+	d := r.Report.Diags[0].Diag
+	if d.Phase != diag.PhaseFlow {
+		t.Errorf("phase %v, want flow", d.Phase)
+	}
+	in, ok := d.FactValue("inner")
+	if !ok {
+		t.Fatalf("no inner fact:\n%s", r.Report.Text(r.Sources))
+	}
+	if i := slices.Index(in.Keys, "code"); i < 0 || in.List[i].Code != diag.E0501 {
+		t.Errorf("inner %+v, want code E0501", in)
+	}
+	if got := diag.Location(r.Sources, mustAt(t, d, "output")); !strings.HasPrefix(got, "a/gen/") {
+		t.Errorf("output = %q, want a place in a's gen output", got)
+	}
+}
+
+// mustAt is the location of a FactAt fact.
+func mustAt(t *testing.T, d *diag.Diagnostic, key string) source.Span {
+	t.Helper()
+	f, ok := d.FactValue(key)
+	if !ok {
+		t.Fatalf("no %s fact", key)
+	}
+	return f.At
+}

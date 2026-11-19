@@ -1,0 +1,2 @@
+raft: check takes one file
+run raft --help for usage

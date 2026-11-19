@@ -1,0 +1,4 @@
+# std.time: civil dates, zones from the embedded database and from TZif bytes, the daylight-saving
+# gaps, RFC 3339 and HTTP dates, durations; the wall and local clocks are read, not printed.
+case ok
+stdout timezones.out

@@ -1,0 +1,3 @@
+textkit grep: bad pattern at byte 1:
+    a(b
+     ^

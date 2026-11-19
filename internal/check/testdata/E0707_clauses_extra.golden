@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0707","name":"impl-signature","phase":"types","root":1,"at":{"file":"m/00.mk","line":21,"col":2,"end_line":21,"end_col":6},"message":"`Keep` has no method `Take`","facts":{"expected":"nothing","found":"Take(&self, t: &Tok): str from t"},"fixes":[],"alternatives":[],"explain":"mk explain E0707"}],"omitted":0}

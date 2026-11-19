@@ -1,0 +1,10 @@
+usage: pack extract [options]
+
+Options:
+  --key <str>        Open a sealed archive with this secret key file
+  --signer <str>     Require a signature by this public key file
+  --dest <str>       Extract into this directory, made if missing (default: .)
+  --mem-limit <int>  Fail rather than hold more than this many bytes of archive data
+  --stats            Print memory use on stderr
+Arguments:
+  <archives>...      The archive to extract

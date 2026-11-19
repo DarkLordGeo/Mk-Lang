@@ -1,0 +1,5 @@
+# One client is recorded byte for byte, then dropped for sitting idle.
+ann: NICK ann
+ann: JOIN #quiet
+ann: !read
+ann: !eof

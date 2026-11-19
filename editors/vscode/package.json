@@ -1,0 +1,144 @@
+{
+  "name": "mk-lang",
+  "displayName": "Mk",
+  "description": "Mk language support: highlighting, and navigation, hover and diagnostics through mk lsp.",
+  "version": "0.1.0",
+  "publisher": "zerodayokay",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zerodayokay/Mk-Lang",
+    "directory": "editors/vscode"
+  },
+  "homepage": "https://github.com/zerodayokay/Mk-Lang/blob/main/doc/editors.md",
+  "bugs": {
+    "url": "https://github.com/zerodayokay/Mk-Lang/issues"
+  },
+  "engines": {
+    "vscode": "^1.91.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "In Restricted Mode only highlighting, snippets and editing support work: the language server (mk lsp) starts once the folder is trusted.",
+      "restrictedConfigurations": [
+        "mk.server.path",
+        "mk.server.std",
+        "mk.server.cache",
+        "mk.server.log",
+        "mk.server.extraArgs"
+      ]
+    }
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "mk",
+        "aliases": [
+          "Mk",
+          "mk"
+        ],
+        "extensions": [
+          ".mk"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configurationDefaults": {
+      "files.associations": {
+        "*.mk": "mk"
+      },
+      "[mk]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 4,
+        "editor.semanticHighlighting.enabled": true
+      }
+    },
+    "grammars": [
+      {
+        "language": "mk",
+        "scopeName": "source.mk",
+        "path": "./syntaxes/mk.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "mk",
+        "path": "./snippets/mk.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mk.restartServer",
+        "title": "Restart the language server",
+        "category": "Mk"
+      },
+      {
+        "command": "mk.showServerOutput",
+        "title": "Show the language server's output",
+        "category": "Mk"
+      }
+    ],
+    "configuration": {
+      "title": "Mk",
+      "properties": {
+        "mk.server.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The `mk` executable that runs `mk lsp --stdio`. `${workspaceFolder}` and a leading `~` are expanded. Empty: `mk` (`mk.exe` on Windows) at the root of a workspace folder if there is one, else `mk` on `PATH`. Build it from a source checkout with `go build -o mk ./cmd/mk`."
+        },
+        "mk.server.std": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The standard library directory, passed as `--std`. Empty: a workspace folder's `std` directory when that folder is the Mk repository (it holds `std/pkg.mk` and `cmd/mk`), else the std embedded in `mk`. With a directory, definitions into std open the real files instead of a read-only copy under the cache."
+        },
+        "mk.server.cache": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "The module cache directory, passed as `--cache`. Empty: `MK_CACHE`, else the per-user cache."
+        },
+        "mk.server.log": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "A file the server appends one line per message to, with its wall time (`--log`). Empty: no log."
+        },
+        "mk.server.extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "More arguments after `mk lsp --stdio`."
+        },
+        "mk.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "markdownDescription": "Trace the messages between VS Code and `mk lsp` in the Mk output channel."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "test": "node test/grammar.test.js",
+    "test:vscode": "node test/vscode/run.js",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "10.1.2"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "4.0.0",
+    "vscode-oniguruma": "2.0.1",
+    "vscode-textmate": "9.3.2"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "timers",
+  "table": "idiomatic",
+  "std": ["std.core.Io.Sleep", "std.core.Scope.CancelAfter"],
+  "algorithm": "Variant sleep: per round n tasks (Mk) or goroutines (Go), task i sleeping 1 to 50 ms (splitmix64) then adding i to one atomic counter if the clock shows it slept at least half that; rounds times. Variant deadline: n scopes (Mk Scope.CancelAfter) or contexts (Go context.WithTimeout), each left at once, with a 60 s deadline, which that disarms, or on every 1000th a 0 s deadline, expired already; prints the disarmed plus 3 times the expired (README.md).",
+  "overflow": "never",
+  "args": [
+    "sleep",
+    "100000",
+    "10",
+    "1"
+  ],
+  "quick": [
+    "sleep",
+    "10000",
+    "1",
+    "1"
+  ],
+  "checksum": "49999500000",
+  "quick_checksum": "49995000",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/timers.go"
+  },
+  "skip": {
+    "c": "no std tasks in C (<threads.h> is OS threads; 10^5 cannot be created on Windows, B19, as spawn), and no cancellation scope with a deadline",
+    "rust": "no std tasks in Rust (std::thread is OS threads; 10^5 cannot be created on Windows, B19, as spawn), and no cancellation scope with a deadline (async runtimes are crates)",
+    "zig": "no lightweight std tasks in Zig 0.17 on Windows: main's Io is std.Io.Threaded (lib/std/start.zig); Io.concurrent takes a pool thread per busy unit (concurrent_limit unlimited by default) and Io.Group's async, bounded by async_limit (logical CPUs less one), runs a unit at once on the caller past that limit (lib/std/Io/Threaded.zig), so 10^5 concurrent sleepers are not possible (B19, as spawn); its deadlines are std.Io.Timeout arguments of single operations, not a scope's",
+    "mk-wrap": "the sums stay below 2^62"
+  },
+  "variants": [
+    {"name": "sleep", "args": ["sleep", "100000", "10", "1"], "quick": ["sleep", "10000", "1", "1"], "checksum": "49999500000", "quick_checksum": "49995000"},
+    {"name": "deadline", "args": ["deadline", "5000000"], "quick": ["deadline", "100000"], "checksum": "5010000", "quick_checksum": "100200"}
+  ],
+  "concurrency": {
+    "mask": "0xff",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), Io.Sleep and Scope.CancelAfter",
+      "go": "goroutines (M:N, GOMAXPROCS 8), time.Sleep and context.WithTimeout"
+    }
+  },
+  "no_counts": "B24 does not apply: the sum of every task's index, each added only after its clock showed it slept, shows that every task slept and ran once, and the deadline checksum (disarmed plus 3 times expired) shows the 0 s deadlines fired and the 60 s ones did not; a 0 s deadline takes each std's at-once path, which arms no timer, so it does not show that a 60 s deadline was armed (README What the checksums show)",
+  "notes": [
+    "Concurrency row (B19): mask 0xff, 8 threads, as spawn. The sleep variant includes about 50 ms of waiting per round in every column (about 0.5 s at the publish size), which pulls its ratios towards 1. Each sleeper reads the clock twice; every 1000th deadline is 0 s and expires (README What the checksums show).",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish sizes unsized until the coordinator's verify -publish-size."
+  ]
+}

@@ -1,0 +1,4 @@
+# Each kernel's std.simd form against its scalar twin: every line's two numbers are equal,
+# and the last line says so. The numbers themselves were printed by the scalar twins.
+case ok
+stdout simdtwin.out

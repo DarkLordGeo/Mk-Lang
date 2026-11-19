@@ -1,0 +1,4 @@
+sign
+--key-scalar
+hex:00
+$CASES/data/pki/msg.txt

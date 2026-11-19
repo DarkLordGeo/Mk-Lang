@@ -1,0 +1,6 @@
+unzlib
+--max
+1000
+--out
+$WORK/o
+$CASES/data/tar/site.tar.zz

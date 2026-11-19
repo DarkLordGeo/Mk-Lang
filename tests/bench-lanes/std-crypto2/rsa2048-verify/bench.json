@@ -1,0 +1,32 @@
+{
+  "name": "crypto-rsa2048-verify",
+  "table": "idiomatic",
+  "algorithm": "std RSA-2048 verification, e = 65537: <reps> passes verify one PKCS#1 v1.5 and one PSS signature of Wycheproof's rsa_signature_2048_sha256 key, odd passes with a flipped digest byte (mk/crypto-rsa2048-verify.mk).",
+  "overflow": "wraps",
+  "args": [
+    "1",
+    "4000",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "10",
+    "1"
+  ],
+  "checksum": "4000",
+  "quick_checksum": "10",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-rsa2048-verify.zig",
+    "go": "testdata/crypto-rsa2048-verify.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard elliptic-curve or RSA library",
+    "rust": "no std crypto: Rust std has no ECDSA, ECDH or RSA; the p256 and rsa crates are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Zig: std.crypto.Certificate.rsa's PKCS1v1_5Signature.verify and PSSSignature.verify with SHA-256 (constant-time std.crypto.ff arithmetic). Zig's verify takes the message and hashes it, so a pass hands it the empty message or, on odd passes, the byte 0x01, where Mk and Go flip a digest byte: one SHA-256 compression per check, under 1 percent of the verification (session 3, 2026-11-13).",
+    "Work per step: one RSA-2048 PKCS#1 v1.5 and one PSS verification: Mk crypto.RsaVerifyPkcs1 and RsaVerifyPss (fixed-capacity CIOS Montgomery, R^2 mod n made per call), Go rsa.VerifyPKCS1v15 and VerifyPSS (crypto/internal/fips140/bigmod, amd64 assembly; R^2 mod n made per verification too: fipsPublicKey calls bigmod.NewModulus, whose newModulus computes rr, Go 1.27.3 crypto/rsa/rsa.go and bigmod/nat.go), Zig as its note says (its rsa.PublicKey keeps rr and m0inv, made once at start). The earlier note said Go caches R^2 in the key; that was wrong (review finding CR2-6).",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27, owner's machine, 2026-11-12); the Mk column (mk build --release, mk from the tree) printed the same at both arg sets. Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

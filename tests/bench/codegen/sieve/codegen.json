@@ -1,0 +1,11 @@
+{
+  "name": "sieve",
+  "algorithm": "Sieve of Eratosthenes over n + 1 byte flags set to 1 (Fill, untimed), counting the primes up to n (Run, timed); the algorithm of ../../same/sieve.",
+  "measures": "Mk's bounds checks and checked + and * on a store-bound loop with a run-time stride, against C with none",
+  "c": "sieve.c",
+  "args": ["10000000"],
+  "quick": ["100000"],
+  "checksum": "664579",
+  "quick_checksum": "9592",
+  "rounds": 21
+}

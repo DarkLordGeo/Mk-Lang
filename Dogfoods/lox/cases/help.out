@@ -1,0 +1,16 @@
+usage: lox [options] [script]
+
+Options:
+  --help               Print this help and exit
+  --disasm             List each compiled function's bytecode before it runs
+  --stats              Print heap and collection counts to stderr when done
+  --profile            Count the calls of each function and print them to stderr when done
+  --gc-log             Print one line to stderr for every collection
+  --gc-stress          Collect before every allocation (slow; finds values the collector misses)
+  --max-frames <int>   The deepest call nesting (default 256)
+  --max-objects <int>  The most live objects a collection may leave (default: no limit)
+  --seed <int>         The seed of random(), above 0 (default 1)
+  --define <str>       Define a global before the script runs, as name=value
+  --eval <str>         Run this code instead of a file
+Arguments:
+  <files>...           The script to run; with none, and no --eval, read entries from standard input

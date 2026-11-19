@@ -1,0 +1,13 @@
+INFO GET /health 200 15
+INFO POST /notes 201 73
+WARN POST /notes 400 46
+WARN POST /notes 422 85
+WARN DELETE /notes 405 0
+WARN GET /nowhere 404 0
+INFO HEAD /notes/1 200 73
+INFO PATCH /notes/1 200 70
+INFO GET /notes/1 200 70
+INFO GET /notes 200 92
+INFO GET /stats 200 44
+INFO DELETE /notes/1 200 16
+WARN GET /notes/1 404 40

@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1206","name":"semicolon","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":11,"end_line":2,"end_col":12},"message":"Mk ends statements with a newline, not `;`","facts":{"habits":["E1206"],"target":"    x := 1"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":11,"end_line":2,"end_col":12,"text":""}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1206"}],"omitted":0}
+

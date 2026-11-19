@@ -1,0 +1,32 @@
+import std.http
+import std.url
+
+// Visit fetches once.
+Visit(io: Io, h: &Heap, port: int, status: mut int) {
+    var a := Arena.New(h) else {
+        return
+    }
+    defer a.Free()
+    client := http.Client.New(h, http.DefaultClientLimits)
+    defer client.Close()
+    text := a.Fmt("http://127.0.0.1:{port}/hello", (port: port)) else {
+        return
+    }
+    u := url.Parse(&a, text, none) else {
+        return
+    }
+    hs := List[http.Header].New(&a).Done()
+    req := http.ClientRequest(method: "GET", url: &u, headers: hs[..], body: "".AsBytes())
+    reply := client.Fetch(&a, io, &req) else {
+        return
+    }
+    *status = reply.status
+}
+
+export Main(sys: &System): WriteError!void {
+    var status := 0
+    scope s := sys.io.Scope() {
+        s.go Visit(sys.io, sys.heap, 1, mut status)
+    }
+    try sys.Print("{status}\n", (status: status))
+}

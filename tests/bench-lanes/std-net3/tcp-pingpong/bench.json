@@ -1,0 +1,26 @@
+{
+  "name": "tcp-pingpong",
+  "table": "idiomatic",
+  "algorithm": "one loopback TCP connection of one thread, both ends with TCP_NODELAY; n rounds of 32 bytes written at the dialled end, read whole at the accepted end, written back and read whole at the dialled end; sum = 31 sum + byte 0 of each answer, wrapping. Mk mode conn does every read and write through net.Conn (Stream.Conn: Conn.WriteAll and Conn.Read, a lock and one indirect call each); mode stream through net.Stream, the cost Conn adds being the difference. README.md.",
+  "overflow": "wraps",
+  "args": ["100000", "conn"],
+  "quick": ["1000", "conn"],
+  "checksum": "100000 4307385197953819472 0",
+  "quick_checksum": "1000 2447299257384679924 0",
+  "sources": {
+    "mk": "mk",
+    "c": "tcppingpong.c",
+    "rust": "tcppingpong.rs",
+    "zig": "tcppingpong.zig",
+    "go": "testdata/tcppingpong.go"
+  },
+  "variants": [
+    {"name": "conn", "args": ["100000", "conn"], "quick": ["1000", "conn"], "checksum": "100000 4307385197953819472 0", "quick_checksum": "1000 2447299257384679924 0"},
+    {"name": "stream", "args": ["100000", "stream"], "quick": ["1000", "stream"], "checksum": "100000 4307385197953819472 0", "quick_checksum": "1000 2447299257384679924 0"}
+  ],
+  "notes": [
+    "Written by std-net3 (status/std-net3.md): the tools/bench row of Conn.Read and Conn.WriteAll over Stream.Conn, which std-net3 built. The checksum is udp-pingpong's formula over the same bytes (a Python model over i = 0..n-1: sum = 31 sum + (i mod 256), mod 2^64), and each column's run.",
+    "Go: net.TCPConn over the netpoller and io.ReadFull; Rust: std::net::TcpStream, blocking write_all and read_exact; C: blocking send and recv loops; Zig 0.17: std.Io.net (IpAddress.listen, connect, Server.accept) with Stream.reader and Stream.writer of 64-byte buffers (readSliceAll, writeAll then flush), and TCP_NODELAY through ws2_32's setsockopt (Linux: the setsockopt system call), since Zig 0.17's std.posix.setsockopt is a compile error and std.Io has no socket option. Mk: every call through the task scheduler's poller (IOCP on Windows).",
+    "A strict ping-pong never has unacknowledged data when it writes, so Nagle's algorithm does not delay it; NODELAY is set in every cell so the cells agree anyway."
+  ]
+}

@@ -1,0 +1,3 @@
+error: main.BadLine(line: 2)
+    at report.mk:36:13
+    at report.mk:54:13

@@ -1,0 +1,27 @@
+{
+  "name": "hashmap",
+  "table": "idiomatic",
+  "std": ["std.core.Map"],
+  "algorithm": "Hash map churn with each language's standard map and its default hash, u64 keys: n splitmix64-mixed keys inserted into a map that grows from empty, each looked up once with a hit and once with a miss, every other key removed, all n looked up again; rounds times with a fresh map (README.md; the std-hash lane's maphash task).",
+  "overflow": "wraps",
+  "args": ["3000000", "3", "1"],
+  "quick": ["100000", "3", "1"],
+  "checksum": "13500013500000",
+  "quick_checksum": "15000450000",
+  "sources": {
+    "mk": "mk",
+    "mk-keyed": "mkkeyed",
+    "rust": "hashmap.rs",
+    "zig": "hashmap.zig",
+    "go": "testdata/hashmap.go"
+  },
+  "skip": {
+    "c": "no std hash map in C",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own map; the checksum (every value found, every miss, every key left) checks that every map held the same keys",
+  "notes": [
+    "Hashes and DoS posture (B20): mk Map.New, DD-5's fast fixed hash, public key; mk-keyed Map.NewKeyed, SipHash-1-3 under a random per-process key; Rust HashMap, SipHash-1-3 under RandomState's random key; Zig AutoHashMap, wyhash-based autoHash with seed 0, fixed; Go map, AES-based runtime hash seeded per map.",
+    "The same task as tests/bench-lanes/std-hash/maphash, with the checksums that lane recorded; this row adds the mk-keyed column B20 asks for."
+  ]
+}

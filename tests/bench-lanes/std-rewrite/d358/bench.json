@@ -1,0 +1,228 @@
+{
+  "name": "d358",
+  "table": "simd",
+  "algorithm": "D-358's measurement: std.core's str.From (its SWAR ValidUtf8) against std.simd.ValidUtf8, and a one-byte str.Find (core's IndexByteIn) against std.simd.IndexByte, on validutf8's mixed 1- to 4-byte UTF-8 at 16 KiB and 32 MiB; mode 0 and 1 validate with a random byte planted in the last 64 bytes on half the reps, mode 2 and 3 search for one of 64 ASCII bytes only the last 64 bytes hold. Go is utf8.Valid and bytes.IndexByte.",
+  "overflow": "wraps",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/d358.go"
+  },
+  "skip": {
+    "c": "no std UTF-8 validator in C; memchr is libc's, compared in std-simd/indexbyte",
+    "rust": "compared in std-simd/validutf8 and indexbyte (std::str::from_utf8, memchr)",
+    "zig": "compared in std-simd/validutf8 and indexbyte",
+    "mk-wrap": "the checksum already uses the wrapping operators"
+  },
+  "variants": [
+    {
+      "name": "strfrom16k",
+      "args": [
+        "16384",
+        "1000000",
+        "1",
+        "0"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "0"
+      ],
+      "checksum": "17383841112485967517",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1",
+        "0"
+      ],
+      "bytes": 16384000000
+    },
+    {
+      "name": "simdvalid16k",
+      "args": [
+        "16384",
+        "1000000",
+        "1",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "1"
+      ],
+      "checksum": "17383841112485967517",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1",
+        "1"
+      ],
+      "bytes": 16384000000,
+      "skip": {
+        "go": "the same Go call as strfrom16k (utf8.Valid or bytes.IndexByte); measured there"
+      }
+    },
+    {
+      "name": "strfind16k",
+      "args": [
+        "16384",
+        "1000000",
+        "1",
+        "2"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "2"
+      ],
+      "checksum": "2106612775164521849",
+      "quick_checksum": "2731664717701300419",
+      "baseline": [
+        "16384",
+        "0",
+        "1",
+        "2"
+      ],
+      "bytes": 16384000000
+    },
+    {
+      "name": "simdindex16k",
+      "args": [
+        "16384",
+        "1000000",
+        "1",
+        "3"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "3"
+      ],
+      "checksum": "2106612775164521849",
+      "quick_checksum": "2731664717701300419",
+      "baseline": [
+        "16384",
+        "0",
+        "1",
+        "3"
+      ],
+      "bytes": 16384000000,
+      "skip": {
+        "go": "the same Go call as strfind16k (utf8.Valid or bytes.IndexByte); measured there"
+      }
+    },
+    {
+      "name": "strfrom32m",
+      "args": [
+        "33554432",
+        "400",
+        "1",
+        "0"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "0"
+      ],
+      "checksum": "4126210834813151499",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1",
+        "0"
+      ],
+      "bytes": 13421772800
+    },
+    {
+      "name": "simdvalid32m",
+      "args": [
+        "33554432",
+        "400",
+        "1",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "1"
+      ],
+      "checksum": "4126210834813151499",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1",
+        "1"
+      ],
+      "bytes": 13421772800,
+      "skip": {
+        "go": "the same Go call as strfrom32m (utf8.Valid or bytes.IndexByte); measured there"
+      }
+    },
+    {
+      "name": "strfind32m",
+      "args": [
+        "33554432",
+        "400",
+        "1",
+        "2"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "2"
+      ],
+      "checksum": "17559693025209094690",
+      "quick_checksum": "2731664717701300419",
+      "baseline": [
+        "33554432",
+        "0",
+        "1",
+        "2"
+      ],
+      "bytes": 13421772800
+    },
+    {
+      "name": "simdindex32m",
+      "args": [
+        "33554432",
+        "400",
+        "1",
+        "3"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1",
+        "3"
+      ],
+      "checksum": "17559693025209094690",
+      "quick_checksum": "2731664717701300419",
+      "baseline": [
+        "33554432",
+        "0",
+        "1",
+        "3"
+      ],
+      "bytes": 13421772800,
+      "skip": {
+        "go": "the same Go call as strfind32m (utf8.Valid or bytes.IndexByte); measured there"
+      }
+    }
+  ],
+  "no_counts": "B24 does not apply: the checksum folds every validation's result and every search's position",
+  "notes": [
+    "Written by std-rewrite, M6 session 3, 2026-11-08, for D-358: the ratio of each core form to its std.simd peer is the mk column of strfrom* over simdvalid*, and of strfind* over simdindex*. The buffer is an arena slice in the mk column (BS-4's labelled exception), 64-byte aligned in go. Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

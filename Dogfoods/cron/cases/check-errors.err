@@ -1,0 +1,20 @@
+$CASES/data/errors.tab:2: minute field, item 1: 61 is out of range
+$CASES/data/errors.tab:3: hour field, item 1: 24 is out of range
+$CASES/data/errors.tab:4: day-of-month field, item 1: 0 is out of range
+$CASES/data/errors.tab:5: month field, item 1: not a number or a name
+$CASES/data/errors.tab:6: day-of-week field, item 1: range runs backwards
+$CASES/data/errors.tab:7: minute field, item 1: bad step
+$CASES/data/errors.tab:8: day-of-week field, item 1: not a number or a name
+$CASES/data/errors.tab:9: @fortnightly: unknown schedule
+$CASES/data/errors.tab:10: @every 10ms: the shortest period is 1s
+$CASES/data/errors.tab:11: @every soon: not a duration such as 30s or 5m
+$CASES/data/errors.tab:12: the entry has no name
+$CASES/data/errors.tab:13: bad/name: a job name is letters, digits, '-', '_' and '.'
+$CASES/data/errors.tab:15: dup: a job of this name is already defined
+$CASES/data/errors.tab:16: retries=3: unknown option (timeout=, detach, input=)
+$CASES/data/errors.tab:17: timeout=0s: a timeout is above zero
+$CASES/data/errors.tab:18: jobkit: unknown option (timeout=, detach, input=)
+$CASES/data/errors.tab:19: a command stage is empty
+$CASES/data/errors.tab:20: a '"' is not closed
+$CASES/data/errors.tab:21: a command is at most two stages joined by one '|'
+$CASES/data/errors.tab:22: $NOT_SET is not set

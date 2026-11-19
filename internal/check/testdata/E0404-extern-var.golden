@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0404","name":"assign-immutable","phase":"flow","root":1,"at":{"file":"m/00.mk","line":5,"col":3,"end_line":5,"end_col":8},"message":"extern var `Ticks` is no Mk var: write it through its address, `*(&Ticks)`, in unsafe","facts":{"reason":"extern-var"},"fixes":[],"alternatives":[],"explain":"mk explain E0404"}],"omitted":0}

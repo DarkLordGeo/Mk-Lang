@@ -1,0 +1,3 @@
+# Web commands need the front end, which this run did not start.
+web: !ws /ws
+list: !get /rooms

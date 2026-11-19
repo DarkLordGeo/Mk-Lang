@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0203","name":"unknown-member","phase":"types","root":1,"at":{"file":"E0203.mk","line":9,"col":14,"end_line":9,"end_col":20},"message":"`Pair` has no member `middle`","facts":{"type":"Pair","members":["left","right"]},"fixes":[],"alternatives":[],"explain":"mk explain E0203"}],"omitted":0}

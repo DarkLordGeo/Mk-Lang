@@ -1,0 +1,3 @@
+mgrep: the pattern does not parse at byte 7:
+    needle (two
+           ^

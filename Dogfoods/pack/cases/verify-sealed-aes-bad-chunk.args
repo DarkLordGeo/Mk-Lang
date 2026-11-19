@@ -1,0 +1,4 @@
+verify
+--key
+$CASES/data/dave.key
+$CASES/data/sealed-aes-bad-chunk.pk

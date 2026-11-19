@@ -1,0 +1,85 @@
+{
+  "callHierarchyProvider": true,
+  "codeActionProvider": {
+    "codeActionKinds": [
+      "quickfix",
+      "source.organizeImports"
+    ]
+  },
+  "completionProvider": {
+    "resolveProvider": true,
+    "triggerCharacters": [
+      ".",
+      " "
+    ]
+  },
+  "definitionProvider": true,
+  "diagnosticProvider": {
+    "interFileDependencies": true,
+    "workspaceDiagnostics": false
+  },
+  "documentFormattingProvider": true,
+  "documentHighlightProvider": true,
+  "documentRangeFormattingProvider": true,
+  "documentSymbolProvider": true,
+  "executeCommandProvider": {
+    "commands": [
+      "mk.explain"
+    ]
+  },
+  "foldingRangeProvider": true,
+  "hoverProvider": true,
+  "implementationProvider": true,
+  "inlayHintProvider": true,
+  "positionEncoding": "utf-16",
+  "referencesProvider": true,
+  "renameProvider": {
+    "prepareProvider": true
+  },
+  "selectionRangeProvider": true,
+  "semanticTokensProvider": {
+    "full": {
+      "delta": true
+    },
+    "legend": {
+      "tokenModifiers": [
+        "declaration",
+        "unsafe",
+        "linear",
+        "view",
+        "unique"
+      ],
+      "tokenTypes": [
+        "comment",
+        "string",
+        "number",
+        "keyword",
+        "modifier",
+        "type",
+        "function",
+        "method",
+        "parameter",
+        "variable",
+        "property",
+        "namespace",
+        "enumMember",
+        "macro"
+      ]
+    }
+  },
+  "signatureHelpProvider": {
+    "triggerCharacters": [
+      "(",
+      ","
+    ]
+  },
+  "textDocumentSync": {
+    "change": 2,
+    "openClose": true,
+    "save": {
+      "includeText": false
+    }
+  },
+  "typeDefinitionProvider": true,
+  "workspaceSymbolProvider": true
+}

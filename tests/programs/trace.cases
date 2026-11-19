@@ -1,0 +1,46 @@
+# Error-return trace. Expected stderr written by hand
+# from trace.mk: each row is the line and column of a `fail` or `try` keyword, except the scope's
+# row, which is the site the scope record holds: its initializer `io.ScopeOf[Child]()`
+# (Enter's `site`), column 20 of line 37. Release prints the error line only.
+
+# Down(20): the fail at 21:9, then 11 of the 20 `try` edges at 23:5 (12 rows per task), and the
+# other 9 plus Main's 52:9 counted as 10 more.
+case deep-dev
+profile dev
+args deep
+stderr trace-deep-dev.err
+exit 1
+
+case deep
+profile release
+args deep
+stderr trace-deep.err
+exit 1
+
+# The handled `fail Handled` at 27:5 is not printed: the `try scope` at 37 resets the body
+# task's trace to the scope's site (37:20), then its own `try` (37:5) and Main's (54:9) append.
+case scope-dev
+profile dev
+args scope
+stderr trace-scope-dev.err
+exit 1
+
+case scope
+profile release
+args scope
+stderr trace-scope.err
+exit 1
+
+# The body's own `fail Body` (45:9) is an early exit: the child's Child is discarded, no reset,
+# and Main's `try` (56:9) appends.
+case early-dev
+profile dev
+args early
+stderr trace-early-dev.err
+exit 1
+
+case early
+profile release
+args early
+stderr trace-early.err
+exit 1

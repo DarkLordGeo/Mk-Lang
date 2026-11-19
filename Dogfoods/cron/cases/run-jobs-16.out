@@ -1,0 +1,12 @@
+cron: stopped: the time given by --stop-after passed
+job              started    ok  failed timed out  interrupted  detached overlaps
+hello                  1     1       0         0            0         0        0
+env                    1     1       0         0            0         0        0
+numbers                1     1       0         0            0         0        0
+shout                  1     1       0         0            0         0        0
+one-line               1     1       0         0            0         0        0
+fails                  1     0       1         0            0         0        0
+missing                1     0       1         0            0         0        0
+long                   1     1       0         0            0         0        0
+stamp                  1     1       0         0            0         0        0
+later                  1     1       0         0            0         0        0

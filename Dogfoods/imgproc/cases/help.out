@@ -1,0 +1,23 @@
+usage: imgproc [options] run IN OUT [OP...]
+       imgproc [options] info IN [OP...]
+       imgproc [options] compare A B
+IN and OUT are PGM or PPM files; OUT may be - for standard output.
+IN may be synth:WxH, a colour test pattern made in memory.
+Operations: invert, brighten=D, threshold[=T], equalize, levels,
+blur, sharpen, edge, emboss, box=N, conv=W:W:...[/D][+B],
+mirror, flip, gray, half, double, gain=F, sobel[=l1|max],
+resize=WxH, dilate, erode, swap=bgr|gbr|brg, posterize=B[:G:B], gamma=G
+
+Options:
+  --help              Print this help and exit
+  --path <str>        Kernel path: scalar, v128, w256, w512, v256, v512 or auto (default)
+  --tasks <int>       Most tile tasks alive at once (default 16)
+  --tile-rows <int>   Rows per tile (default 32)
+  --mem-limit <int>   Bytes allowed for image samples, intermediate images included
+  --timeout-ms <int>  Give up after this many milliseconds
+  --ascii             Write P2 or P3 text instead of binary P5 or P6
+  --pbm               Write a P4 bitmap: a sample at most half of maxval is black
+  --sim-fault <str>   Write OUT to a simulated disk instead, failing as asked: none, nospace or denied
+  --seed <int>        The simulated disk's seed (default 1)
+Arguments:
+  <words>...          The command, its files and its operations

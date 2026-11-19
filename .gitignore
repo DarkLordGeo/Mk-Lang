@@ -1,0 +1,11 @@
+/mk
+/mk.exe
+.mk-cache/
+**/gen/
+# internal/gen is the generator package (source), not a generated gen/ view.
+!internal/gen/
+*.mkprof
+!default.mkprof
+.idea/
+.vscode/
+/*.exe

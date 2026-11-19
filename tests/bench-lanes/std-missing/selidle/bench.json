@@ -1,0 +1,34 @@
+{
+  "name": "selidle",
+  "table": "idiomatic",
+  "algorithm": "a producer sends 0..n-1 on a channel of capacity 64 and closes it, and a consumer sums them, while k other tasks sit parked in the std select over two channels nobody sends on until the end, which then closes one of them; prints the sum of the n values plus k (README.md).",
+  "overflow": "never",
+  "args": ["4000000", "1"],
+  "quick": ["20000", "1"],
+  "checksum": "7999998000001",
+  "quick_checksum": "199990001",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/selidle.go"
+  },
+  "skip": {
+    "c": "no std channel in C",
+    "zig": "no std channel in Zig",
+    "rust": "Rust's std mpsc has no select over channels",
+    "mk-wrap": "the only arithmetic is the sum, which stays below 2^62"
+  },
+  "concurrency": {
+    "mask": "0x5",
+    "threads": 2,
+    "models": {
+      "mk": "tasks (M:N on 2 carriers), Chan, sync.Select",
+      "go": "goroutines (GOMAXPROCS 2), chan, select"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum shows every value arrived once and every select was released",
+  "notes": [
+    "G-MISS-R3 and C-STDMISS-CONC-2: what one parked Select costs unrelated channel traffic. Run with k = 0 for the baseline (no Select parked). Both columns sleep 20 ms before the stream so the k selects are parked; the sleep is in every cell.",
+    "Concurrency row (B19): logical CPUs 0 and 2 (mask 0x5), 2 threads, as idiomatic/chan.",
+    "Written by std-missing, M6 fix round, 2026-11-07; checksums from the arithmetic (sum 0..n-1 plus k)."
+  ]
+}

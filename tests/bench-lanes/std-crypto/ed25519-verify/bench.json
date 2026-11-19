@@ -1,0 +1,29 @@
+{
+  "name": "crypto-ed25519-verify",
+  "table": "idiomatic",
+  "algorithm": "std Ed25519 (RFC 8032) Verify, n times over 256 signed 64-byte messages under one key, the last signature corrupted (mk/crypto-ed25519-verify.mk).",
+  "overflow": "wraps",
+  "args": [
+    "30000",
+    "1"
+  ],
+  "quick": [
+    "100",
+    "1"
+  ],
+  "checksum": "15033810841890767062",
+  "quick_checksum": "15033810841890763785",
+  "sources": {
+    "go": "testdata/crypto-ed25519-verify.go",
+    "mk": "mk",
+    "zig": "crypto-ed25519-verify.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard Ed25519",
+    "rust": "no std crypto: Rust std has no Ed25519; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one verification of one 64-byte message: S checked canonical, A decoded, SHA-512 of R, A and message, the double multiplication [S]B - [k]A. Mk crypto.Ed25519.Verify and Go ed25519.Verify then encode the result and compare it with R bytewise (cofactorless). Zig Signature.verifyStrict is cofactorless too (CRY-3; Signature.verify, cofactored, would multiply S, A and R by 8 and accept more), but it also decodes R (one square root, about one field exponentiation), rejects an identity A, an identity R and a non-canonical R, and compares points: more work than Mk and Go, labelled here. Verifications per second = n / median.",
+    "Checksums: every column printed the same value at the quick and the publish args in `go run ./tools/bench verify` and `verify -publish-size` (mk built from the tree, Zig 0.17.0, Go 1.27.3) on the owner's machine, 2026-11-07 (std-crypto session 1, with the public half as a third argument; session 2, after D-319, with the key from Ed25519.FromSeed: the same checksums; session 3, with Zig's verifyStrict: the same checksums). Not published: no number here is a measurement."
+  ]
+}

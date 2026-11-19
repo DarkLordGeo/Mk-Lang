@@ -1,0 +1,9 @@
+Operands must be numbers.
+[line 2] in twice()
+[line 4] in script
+[line 6] Error at ';': Expect expression.
+no global 'b'
+:forget needs a name
+Undefined variable 'b'.
+[line 13] in script
+unknown command :what; try :help

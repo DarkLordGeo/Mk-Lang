@@ -1,0 +1,33 @@
+{
+  "name": "time-httpdate",
+  "table": "idiomatic",
+  "algorithm": "Make n whole-second instants of 1970 to 2099 (splitmix64, seed 1), then rounds times write each as an IMF-fixdate (RFC 9110 5.6.7, \"Sun, 06 Nov 1994 08:49:37 GMT\") and parse the text back; the checksum adds per instant and round the parsed seconds and the text's length, wrapping.",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "1000",
+    "10"
+  ],
+  "checksum": "40987740384417400",
+  "quick_checksum": "21051238424580",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/time-httpdate.go"
+  },
+  "skip": {
+    "c": "C's std has strftime but no parser of the three HTTP date forms (strptime is POSIX, not in the Windows CRT)",
+    "rust": "Rust's std has no calendar or HTTP date (httpdate is a crate)",
+    "zig": "Zig's std.http has no date formatter or parser",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the functions are tested against Go by the lane's Go tests (status/std-time2.md)",
+  "notes": [
+    "Mk: time.FormatHttpDate into an arena per round, freed at its end, then time.ParseHttpDate (IMF-fixdate first, then RFC 850 and asctime). Go: Time.AppendFormat with http.TimeFormat into one reused buffer, then net/http.ParseTime, which tries the three layouts with time.Parse in turn.",
+    "Written by std-time2, M8, 2026-11-13.",
+    "Checksums agree between Mk and Go at both sizes on the owner's machine (std-time2 session 2, 2026-11-13).",
+    "Not published: no number here is a measurement."
+  ]
+}

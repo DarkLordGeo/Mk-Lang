@@ -1,0 +1,4 @@
+[line 3] Error: Can't read local variable in its own initializer.
+[line 7] Error: Already a variable with this name in this scope.
+[line 12] Error: Can't capture a local of an enclosing function (no closures).
+[line 16] Error: Can't return from top-level code.

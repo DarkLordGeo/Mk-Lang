@@ -1,0 +1,8 @@
+# the rough clock: factorials, Fibonacci, a Mersenne prime's Fermat test
+3000 fact bitlen p
+20000 fib 1000000007 mod p
+2 4423 ^ 1 - =m
+3 $m 1 - $m modpow p
+10 3000 ^ sqrt 7 mod p
+2 4423 ^ 1 - 2 4253 ^ 1 - gcd p
+$m 12345678901234567890 inv 1000 mod p

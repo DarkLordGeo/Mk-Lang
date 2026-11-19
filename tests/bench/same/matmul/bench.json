@@ -1,0 +1,30 @@
+{
+  "name": "matmul",
+  "table": "same",
+  "algorithm": "Dense f64 matrix multiply, i-k-j loop over flat row-major arrays, repeated rounds times into one result; exact by construction (README.md).",
+  "overflow": "never",
+  "args": [
+    "512",
+    "76",
+    "1"
+  ],
+  "quick": [
+    "64",
+    "2",
+    "1"
+  ],
+  "checksum": "165617122137808",
+  "quick_checksum": "8460188244",
+  "sources": {
+    "mk": "mk",
+    "c": "matmul.c",
+    "rust": "matmul.rs",
+    "zig": "matmul.zig",
+    "go": "testdata/matmul.go"
+  },
+  "skip": {
+    "mk-wrap": "only index arithmetic is integer; a wrapping column is not needed for the budgets"
+  },
+  "no_counts": "B24: no data-dependent control flow; the i-k-j nest runs exactly n^3 * rounds inner steps, and the exact checksum pins the arithmetic",
+  "notes": []
+}

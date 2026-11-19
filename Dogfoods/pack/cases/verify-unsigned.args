@@ -1,0 +1,4 @@
+verify
+--signer
+$CASES/data/alice.pub
+$CASES/data/gzip.pk

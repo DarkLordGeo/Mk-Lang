@@ -1,0 +1,4 @@
+du
+--timeout
+0
+$CASES/data/tree

@@ -1,0 +1,5 @@
+sort
+--zero
+--buffer
+8
+$CASES/data/records.bin

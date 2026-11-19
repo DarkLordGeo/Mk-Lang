@@ -1,0 +1,9 @@
+deadline of a scope opened before the mask: expired true, masked sleep finished true, unmasked sleep cancelled true
+cancel of a scope opened before the mask: masked sleep finished true
+deadline of a scope opened after the mask: masked sleep cancelled true, expired true
+cancel of a scope opened after the mask: masked sleep cancelled true, expired false
+cancel of a scope opened below the mask from the unmasked Io: masked sleep finished true
+cancel of the scope enclosing the mask, under a scope opened below it from the unmasked Io: masked sleep finished true
+unmasked sleep in a scope from the unmasked Io, under no masked scope: cancelled true, expired false
+unmasked sleep in a scope from the unmasked Io, inside a masked scope: finished true
+bounded shutdown: flushed true, gave up true, timed out true

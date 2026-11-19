@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0711","name":"cannot-infer","phase":"types","root":1,"at":{"file":"m/00.mk","line":6,"col":7,"end_line":6,"end_col":12},"message":"cannot infer `T`; write it in brackets","facts":{"param":"T"},"fixes":[],"alternatives":[],"explain":"mk explain E0711"}],"omitted":0}

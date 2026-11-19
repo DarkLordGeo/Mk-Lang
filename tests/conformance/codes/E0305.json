@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0305","name":"field-names","phase":"types","root":1,"at":{"file":"E0305.mk","line":8,"col":12,"end_line":8,"end_col":21},"message":"`Pos` names its fields exactly once each","facts":{"missing":["y"]},"fixes":[],"alternatives":[],"explain":"mk explain E0305"}],"omitted":0}

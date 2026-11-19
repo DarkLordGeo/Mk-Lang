@@ -1,0 +1,27 @@
+{
+  "name": "run",
+  "table": "idiomatic",
+  "algorithm": "n runs of the program itself with the argument child, which writes 64 bytes to standard output and exits 0; standard output and standard error captured, standard input the null device, each exit waited for (tests/bench-lanes/std-proc2/README.md).",
+  "overflow": "never",
+  "args": [
+    "1000"
+  ],
+  "quick": [
+    "20"
+  ],
+  "checksum": "1000 64000 0",
+  "quick_checksum": "20 1280 0",
+  "sources": {
+    "mk": "mk",
+    "rust": "run.rs",
+    "go": "testdata/run.go",
+    "zig": "run.zig"
+  },
+  "notes": [
+    "Written by std-proc2 (status/std-proc2.md, M6 session 1) over the public proc.Run. Every column counts a failed run or a non-zero exit as a fail (session 4, G-PROC2-R6) and starts the program by the path of its own executable.",
+    "Zig column (session 2): std.process.run, whose Io.File.MultiReader drains both pipes at once, standard input ignored."
+  ],
+  "skip": {
+    "c": "no std facility: ISO C has no process creation or capture (posix_spawn and CreateProcessW are OS APIs, not the C library), so no hand-written OS code stands in (plan/06-m6.md 4.1; G-PROC2-R5: the old column drained its pipes one after the other and skipped the handle list Mk builds)"
+  }
+}

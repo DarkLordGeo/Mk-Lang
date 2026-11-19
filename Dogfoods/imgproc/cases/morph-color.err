@@ -1,0 +1,1 @@
+imgproc: dilate and erode work on gray images; put gray before them

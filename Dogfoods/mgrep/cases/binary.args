@@ -1,0 +1,7 @@
+-a
+-c
+needle
+$CASES/data/tree/bin.dat
+$CASES/data/bigbin.dat
+--path-separator
+/

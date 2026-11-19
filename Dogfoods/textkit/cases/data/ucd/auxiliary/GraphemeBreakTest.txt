@@ -1,0 +1,5 @@
+# GraphemeBreakTest excerpt for the ucdcases case
+÷ 000D ÷ 000D ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) ÷ [4.0] <CARRIAGE RETURN (CR)> (CR) ÷ [2.0]
+÷ 000D ÷ 0308 ÷ 000D ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) ÷ [4.0] COMBINING DIAERESIS (Extend_ConjunctExtender) ÷ [5.0] <CARRIAGE RETURN (CR)> (CR) ÷ [2.0]
+÷ 000D × 000A ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) × [3.0] <LINE FEED (LF)> (LF) ÷ [2.0]
+÷ 000D ÷ 0308 ÷ 000A ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) ÷ [4.0] COMBINING DIAERESIS (Extend_ConjunctExtender) ÷ [5.0] <LINE FEED (LF)> (LF) ÷ [2.0]

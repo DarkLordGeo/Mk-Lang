@@ -1,0 +1,15 @@
+# std.vm's code region and runtime.AddFaultFilter: written code runs, a
+# filter resumes after a guard-page write, a filter resumes a code-region access fault and an
+# illegal instruction (FaultKind.Illegal on both targets) at an edited pc, and an unresumed fault
+# of either kind in a code region is "panic: fault in a code region", exit 101.
+# Both profiles, both targets. coderegion/app/main.mk says what each part does.
+case ok
+stdout coderegion.out
+case unresumed
+args unresumed
+stderr coderegion-unresumed.err
+exit 101
+case unresumed-illegal
+args unresumed-illegal
+stderr coderegion-unresumed.err
+exit 101

@@ -1,0 +1,37 @@
+{
+  "name": "stat",
+  "table": "idiomatic",
+  "algorithm": "the facts of one existing file (the generated input), n times, through each standard library's stat call that follows links (Mk fs.Stat, Go os.Stat, Rust fs::metadata, Zig Dir.statFile, C GetFileAttributesExW or stat(2)); sum adds each answer's size; prints n, sum and the failed calls (tests/bench-lanes/rt-io2/README.md).",
+  "overflow": "never",
+  "args": [
+    "{data}",
+    "200000"
+  ],
+  "quick": [
+    "{data}",
+    "1000"
+  ],
+  "checksum": "200000 819400000 0",
+  "quick_checksum": "1000 4097000 0",
+  "sources": {
+    "mk": "mk",
+    "c": "stat.c",
+    "rust": "stat.rs",
+    "zig": "stat.zig",
+    "go": "testdata/stat.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum adds sizes that cannot overflow; the task has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "words",
+    "file": "words-4k.txt",
+    "bytes": 4096,
+    "seed": 17
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; each call's answer is checked by the size sum",
+  "notes": [
+    "Written by rt-io2 (std/sys/STATUS.md, M6 session 7) for G-RTIO2-17: Mk runs a stat on its blocking pool (plan/18-runtime.md 4.11), the others on the calling thread, so the row measures the pool's round trip against a plain system call.",
+    "Not published: no number here is a measurement until tools/bench publish runs it under the machine lock."
+  ]
+}

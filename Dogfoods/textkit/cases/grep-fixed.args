@@ -1,0 +1,6 @@
+grep
+--fixed
+--ignore-case
+--only
+ÜBERMASS
+$CASES/data/log.txt

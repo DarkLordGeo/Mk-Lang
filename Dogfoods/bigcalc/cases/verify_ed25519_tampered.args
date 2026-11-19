@@ -1,0 +1,5 @@
+verify
+--key
+$CASES/data/pki/ed_chain.pem
+$CASES/data/pki/msg2.txt
+$CASES/data/pki/msg.ed25519.sig

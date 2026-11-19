@@ -1,0 +1,1 @@
+tracer: $CASES/data/bad/number.scene:3: BadField(line: 3, field: 5)

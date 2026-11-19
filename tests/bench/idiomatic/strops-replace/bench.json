@@ -1,0 +1,39 @@
+{
+  "name": "strops-replace",
+  "table": "idiomatic",
+  "std": ["std.core.str.Replace"],
+  "algorithm": "Replace every non-overlapping occurrence of three patterns (\"e\" by \"EEE\", longer; \"s \" by \"S\", shorter; \" a\" by \"_A\", the same length) in each line of a 50 MB text with each language's std replace-all, one after the other; FNV-1a 64 over the output bytes plus their length, wrapping; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "5"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "15860028817417420498",
+  "quick_checksum": "10550703392967304746",
+  "sources": {
+    "mk": "mk",
+    "rust": "strops-replace.rs",
+    "zig": "strops-replace.zig",
+    "go": "testdata/strops-replace.go"
+  },
+  "skip": {
+    "c": "no std replace in C",
+    "mk-wrap": "the checksum already uses the wrapping operators; a replace has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "words",
+    "file": "wordfreq-50mb.txt",
+    "bytes": 50000000,
+    "seed": 3
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; every replace works left to right without overlap, so every column writes the same bytes, and the hash over them checks every result",
+  "notes": [
+    "Replaces named: mk str.Replace (a new copy in a scratch arena every call, the arena reset after each line, D-833); rust str::replace (a new String every call); zig std.mem.replaceOwned over std.heap.smp_allocator (an allocation every call); go strings.ReplaceAll (returns its input unallocated when nothing matches). About 55% of the calls find nothing on this text (README Match density, counted by lane L4b).",
+    "The input is wordfreq's file (the same data spec, so one generated file serves both rows).",
+    "Written by lane L4b of M9 item 11.22 (programme section 16); the Mk cell by the M9 batch 4 integration writer, on std's str.Replace (lane T0, D-833). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

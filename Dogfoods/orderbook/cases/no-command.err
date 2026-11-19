@@ -1,0 +1,2 @@
+error: unknown command $CASES/data/basic.csv
+run 'orderbook --help' for usage

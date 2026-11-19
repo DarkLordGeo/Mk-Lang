@@ -1,0 +1,4 @@
+open
+kernel32.dll
+GetTickCount
+GetCurrentProcessId

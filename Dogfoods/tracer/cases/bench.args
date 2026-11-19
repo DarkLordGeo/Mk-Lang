@@ -1,0 +1,7 @@
+render
+$CASES/data/mesh.scene
+$WORK/out.ppm
+--size
+160x120
+--samples
+8

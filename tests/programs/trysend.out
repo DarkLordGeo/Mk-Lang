@@ -1,0 +1,18 @@
+capacity 2
+try 1: sent
+try 2: sent
+try 3: full, given back 3
+recv 1
+try 4: sent
+try 5: full, given back 5
+recv 2
+recv 4
+try 6: closed, kept 6
+capacity 0
+try 7: full, given back 7
+try 8: closed, kept 8
+linear values, capacity 1
+list of 3: sent
+list of 4: full, given back 4
+recv a list of 3
+list of 5: closed, kept 5

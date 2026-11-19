@@ -1,0 +1,6 @@
+# Frames aligned over a page on x86_64 Windows, whose prologue rounds the stack pointer down past
+# its probe; the stack probe mk_chkstk_65536 touches those pages first. Windows only: Linux
+# probes the rounding inline (LLVM's probe-stack inline-asm), and the probe is Win64's.
+case ok
+target x86_64-windows
+stdout alignframe.out

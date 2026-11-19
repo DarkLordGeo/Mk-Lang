@@ -1,0 +1,32 @@
+{
+  "name": "csv-write",
+  "table": "idiomatic",
+  "algorithm": "Generate R records of 8 fields once (splitmix64 from seed 42; each field 0 to 11 bytes over letters, digits, space, comma, quote and LF, so about a third need quotes), then write them reps times as CSV through each standard library's writer into an in-memory buffer cleared per rep (Mk csv.WriteRecord into a Text through its Writer; Go encoding/csv Writer into a bytes.Buffer); then read the last output back through a file with the same library's reader and print the records, the fields, the field bytes and the sum of the field bytes.",
+  "overflow": "wraps",
+  "args": [
+    "200000",
+    "10"
+  ],
+  "quick": [
+    "20000",
+    "2"
+  ],
+  "checksum": "200000 1600000 8800887 768473644",
+  "quick_checksum": "20000 160000 880392 76865409",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/csv-write.go"
+  },
+  "skip": {
+    "mk-wrap": "the generator already uses the wrapping operators; the counts stay below 2^34",
+    "c": "no std CSV writer in C; no hand-written writer stands in (tests/bench/README.md 'No stand-ins')",
+    "rust": "Rust std has no CSV writer; the csv crate is not std (no stand-ins)",
+    "zig": "no std CSV writer in Zig"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum is over the values read back (B18), since the writers quote differently (Go also quotes a field that starts with a space, and writes LF line ends where Mk writes CR LF)",
+  "notes": [
+    "Added for review finding csv-5: WriteRecord had no row. The emitted WriteCsv of gen csv.Codec writes each field as WriteRecord does (codec.mk's field writer), so this row measures its field path too.",
+    "The generation and the read-back run once, inside the program's time; the reps measure the writer. An informal split on the owner's machine (2026-11-12, busy, min of 5 runs each, 200000 records, reps 1 against 21): Mk 58.8 ms a rep, Go 53.2 ms a rep. Not published: no number here is a measurement until tools/bench publish runs.",
+    "Written by std-csv, M8, 2026-11-12; checksums from both columns' runs, which agree."
+  ]
+}

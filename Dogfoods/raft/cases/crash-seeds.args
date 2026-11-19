@@ -1,0 +1,8 @@
+sim
+--seeds
+1..300
+--crash
+--partitions
+--loss
+5
+--faults

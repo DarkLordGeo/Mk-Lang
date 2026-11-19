@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("Bump(a00:mut i32){}\nA(s:Scope,x:mut i32){s.go Bump(x)}")

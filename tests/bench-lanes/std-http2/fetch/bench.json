@@ -1,0 +1,30 @@
+{
+  "name": "http-fetch",
+  "table": "idiomatic",
+  "algorithm": "n GET requests, targets /items/<id> with id from a splitmix64 stream (seed 1) modulo 1,000,000, sent one after another through the language's std HTTP client with keep-alive to a responder in the same program over loopback; the responder uses no HTTP library (it reads a head to its blank line and writes a fixed head and a body of 16 + id % 1024 letters), and every body is read whole; checksum: the sum over every reply of its status, body length and first and last body bytes (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000"
+  ],
+  "quick": [
+    "2000"
+  ],
+  "checksum": "93199084",
+  "quick_checksum": "1888122",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/http-fetch.go",
+    "zig": "http-fetch.zig"
+  },
+  "skip": {
+    "c": "no std HTTP client (C's std has no sockets)",
+    "rust": "no std HTTP client (std has none; reqwest and ureq are crates)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the client has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (status, length and edge bytes of every reply) checks that both clients read the same replies",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.http.Client.Fetch with DefaultClientLimits, url.Parse per request, one Arena Reset after each request; Zig std.http.Client (its connection pool, keep-alive), the reply read with Reader.allocRemaining into an arena reset per request; Go net/http.Client with a Transport of one idle connection per host and compression off (the responder sends none), url parsed by http.Get, io.ReadAll per body, the garbage collector. The responder is one task or goroutine in the same program, the same code in every column (the same byte loops: H2-14; field names matched without case, since Zig's client sends them in lower case). Requests per second = n / median.",
+    "Written by the std-http2 lane (status/std-http2.md). Checksums from the Go column, which the Mk column matched at both sizes (owner's machine, 2026-11-13).",
+    "Review fix round (H2-13, H2-14, H2-15, 2026-11-13): the Go responder now runs the Mk column's loops (no bufio.ReadSlice, bytes.Index or per-byte sum through a pointer), and the Zig column is written; all three columns give the quick checksum on the owner's machine."
+  ]
+}

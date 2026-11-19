@@ -1,0 +1,2 @@
+panic: status worker stopped by /panic at src/status/server.mk:101:5
+WARN probe: exited with code 4

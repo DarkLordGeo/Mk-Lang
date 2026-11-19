@@ -1,0 +1,7 @@
+case panic
+profile dev
+stderr contract.err
+exit 101
+
+case release-runs-past
+profile release

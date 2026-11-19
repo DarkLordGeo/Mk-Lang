@@ -1,0 +1,26 @@
+{
+  "name": "task-pingpong",
+  "table": "idiomatic",
+  "algorithm": "two tasks (Go: goroutines; Rust and C: threads, their std has no task runtime) pass a value back and forth over two rendezvous channels; each of n rounds sends i, the partner answers i*3+1; sum = 31 sum + each answer, wrapping (tests/bench-lanes/rt-io2/README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000000"
+  ],
+  "quick": [
+    "1000"
+  ],
+  "checksum": "1000000 16577521042833590112 0",
+  "quick_checksum": "1000 11906111815092829276 0",
+  "sources": {
+    "mk": "mk",
+    "c": "taskpingpong.c",
+    "rust": "taskpingpong.rs",
+    "go": "testdata/taskpingpong.go"
+  },
+  "skip": {
+    "zig": "not written in M6 session 5 of rt-io2: std.Thread with std.Thread.ResetEvent is the baseline to add (std/sys/STATUS.md)"
+  },
+  "notes": [
+    "Written by rt-io2 (std/sys/STATUS.md, M6 session 5) so std.task's park and wake path (WaitWord through Io.wait, Chan's rendezvous) has a cross-language ratio: Mk and Go switch user-level tasks, Rust and C block OS threads (WaitOnAddress on Windows, the futex on Linux)."
+  ]
+}

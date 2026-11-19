@@ -1,0 +1,11 @@
+load
+--embed
+--db
+$WORK/load.db
+--addr
+127.0.0.1:18536
+--clients
+4
+--requests
+10
+--quiet

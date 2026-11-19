@@ -1,0 +1,2 @@
+error: --depth does not take that value
+run 'orderbook --help' for usage

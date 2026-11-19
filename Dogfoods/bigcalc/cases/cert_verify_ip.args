@@ -1,0 +1,9 @@
+cert
+verify
+--roots
+$CASES/data/pki/root.pem
+--at
+2026-06-01T12:00:00Z
+--host
+127.0.0.1
+$CASES/data/pki/chain.pem

@@ -1,0 +1,4 @@
+convert
+--dump
+hex
+$CASES/data/invalid.txt

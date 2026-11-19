@@ -1,0 +1,6 @@
+--pbm
+run
+$CASES/data/wide.pgm
+-
+resize=61x5
+threshold

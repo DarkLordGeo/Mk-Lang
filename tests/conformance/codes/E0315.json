@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0315","name":"empty-range","phase":"types","root":1,"at":{"file":"E0315.mk","line":5,"col":9,"end_line":5,"end_col":17},"message":"the range is empty: '9' is not below '0'","facts":{"lo":"'9'","hi":"'0'"},"fixes":[],"alternatives":["ranges are half-open, `lo <= x < hi`: write a `hi` above `lo`"],"explain":"mk explain E0315"}],"omitted":0}

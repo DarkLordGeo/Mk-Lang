@@ -1,0 +1,33 @@
+{
+  "name": "sort",
+  "table": "idiomatic",
+  "std": ["std.core.Slice.Sort"],
+  "algorithm": "Sort n u64 keys in four patterns per round (splitmix64-mixed random keys, reversed, a sawtooth of period 1000, 16 distinct keys), each sorted ascending by the language's std unstable sort and checked; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000000",
+    "4",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "1",
+    "1"
+  ],
+  "checksum": "8480338456386742935",
+  "quick_checksum": "11489658657816517966",
+  "sources": {
+    "mk": "mk",
+    "c": "sort.c",
+    "rust": "sort.rs",
+    "zig": "sort.zig",
+    "go": "testdata/sort.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; sorting has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own sort algorithm; the checksum (the weighted sum of each sorted pattern, 0xdead if out of order) checks every result",
+  "notes": [
+    "Unstable sorts (B20): mk Slice.Sort (pdqsort, comparator a const fn argument); c qsort, an indirect comparator through a function pointer; rust sort_unstable (ipnsort); zig std.sort.pdq; go slices.Sort (pdqsort)."
+  ]
+}

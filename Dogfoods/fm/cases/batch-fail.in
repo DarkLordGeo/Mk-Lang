@@ -1,0 +1,4 @@
+mkdir d
+# the second line fails and ends the run
+view d/none.txt
+mkdir never

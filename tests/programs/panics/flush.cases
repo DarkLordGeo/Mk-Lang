@@ -1,0 +1,4 @@
+case panic
+stdout flush.out
+stderr flush.err
+exit 101

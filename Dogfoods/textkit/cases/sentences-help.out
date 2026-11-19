@@ -1,0 +1,9 @@
+usage: textkit sentences [--marks [--hex] [--buffer n]] [--from label] [--limit bytes] [file...]
+Options:
+  --marks         Print each line's boundaries in the UCD's notation instead, one line at a time
+  --hex           With --marks, read lines of code points in hex
+  --from <str>    The encoding of the input, by a label of the Encoding Standard (default utf-8)
+  --limit <int>   The most bytes to read, all inputs together (default 8388608)
+  --buffer <int>  With --marks, the read buffer, in bytes (default 16384)
+Arguments:
+  <files>...      Files to read; none, or -, is standard input

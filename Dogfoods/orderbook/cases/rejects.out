@@ -1,0 +1,47 @@
+commands                    10
+orders                       4
+fills                        0
+cancels                      0
+busts                        1
+live orders                  1
+stop queue entries           0
+rejected: duplicate id             1
+rejected: unknown id               1
+rejected: no liquidity             1
+rejected: bad quantity             2
+rejected: nothing to bust           1
+volume                       0
+vwap                         -
+vwap, buyers                 -
+vwap, sellers                -
+median fill                  -
+90th percentile              -
+99th percentile              -
+fills <= vwap                0
+last                      2.00
+traded prices                0
+
+   bid qty orders          bid | ask             ask qty orders
+        10      1         1.00 | 
+
+largest fills
+  (none)
+recent fills, newest first
+  (none)
+most traded prices
+oldest resting orders (1 live)
+  1/1       Buy  Limit          10 @       1.00
+fill sizes
+  <=10           0
+  <=50           0
+  <=100          0
+  <=500          0
+  <=1000         0
+  <=5000         0
+  >5000          0
+accounts by volume
+rank  account     bought       sold   fills
+checksum b495920a08a58bbc
+last snapshot at command 0: 0 live orders, 0 fills
+expired at close: 1 bids (10), 0 asks (0)
+engine heap: peak 2120 bytes, 0 bytes in 0 allocations left after release

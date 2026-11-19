@@ -1,0 +1,6 @@
+# A package's C source handles faults in the support pack's memcpy and memset in its own __except, with
+# every callee-saved register restored: such C code keeps working beside Mk's fault handling.
+# Windows only: __try is Win64's. cseh/app/main.mk says which cases run.
+case ok
+target x86_64-windows
+stdout cseh.out

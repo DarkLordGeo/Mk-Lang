@@ -1,0 +1,7 @@
+verify
+--key
+$CASES/data/pki/rsa_pkcs1.pem
+--hash
+sha384
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg.rsa384.sig

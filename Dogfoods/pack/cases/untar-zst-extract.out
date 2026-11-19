@@ -1,0 +1,8 @@
+x f rw-rw-rw-         14  2020-09-13T12:26:40Z  site/docs/readme.txt
+x f rw-rw-rw-      98000  2020-09-13T12:28:43Z  site/docs/long.txt
+x f rw-rw-rw-         21  2017-07-14T02:40:00Z  site/run.sh
+x f rw-rw-rw-          0  2014-05-13T16:53:20Z  site/empty
+- skipped    site/latest
+x d rwxrwxrwx          0  2021-03-04T05:06:07Z  site
+x d rwxrwxrwx          0  2021-03-04T05:00:00Z  site/docs
+pack: $CASES/data/tar/site.tar.zst (tar.zst) extracted 4 files, 2 directories, 98035 bytes, skipped 1 links and special files

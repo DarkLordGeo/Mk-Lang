@@ -1,0 +1,6 @@
+-g
+*.md,*.dat
+needle
+$CASES/data/tree
+--path-separator
+/

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0412","name":"private-in-signature","phase":"types","root":1,"at":{"file":"m/00.mk","line":5,"col":13,"end_line":5,"end_col":19},"message":"the exported `F` names the private `Hidden`","facts":{"type":"Hidden","item":"F","declared_at":"m/00.mk:1:8"},"fixes":[],"alternatives":["export Hidden"],"explain":"mk explain E0412"}],"omitted":0}

@@ -1,0 +1,1 @@
+pack: $CASES/data/sealed-bad-header.pk: wrong key, or the sealed header is damaged

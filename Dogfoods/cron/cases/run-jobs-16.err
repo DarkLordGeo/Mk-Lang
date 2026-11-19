@@ -1,0 +1,30 @@
+INFO hello: started
+INFO hello| hello from cron to nobody
+INFO hello: done
+INFO env: started
+INFO env| GREETING=hello from cron
+INFO env: done
+INFO numbers: started
+INFO numbers| line 1
+INFO numbers| line 2
+INFO numbers| line 3
+INFO numbers: done
+INFO shout: started
+INFO shout| A
+INFO shout| B
+INFO shout| C
+INFO shout: done
+INFO one-line: started
+INFO one-line| HI
+INFO one-line: done
+INFO fails: started
+WARN fails: exited with status 3
+WARN missing: not started: NotFound
+INFO long: started
+WARN long: output is not lines of text; the rest is not logged
+INFO long: done
+INFO stamp: started
+INFO stamp: done
+INFO later: started
+INFO later| stamp.txt: present
+INFO later: done

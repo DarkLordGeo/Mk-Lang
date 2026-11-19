@@ -1,0 +1,7 @@
+# Three workers over one inherited listener; one panics on request and is restarted while the
+# client's 121 asks are all answered; the cancel ends the tree, so the closed port is refused.
+# stderr is the one panicking worker's report (workers inherit stdio).
+case ok
+stdout supervise.out
+stderr supervise.err
+timeout 60

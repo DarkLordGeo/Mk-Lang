@@ -1,0 +1,2 @@
+web          ended    runs=1 restarts=0 last=exit 0
+worker       gave-up  runs=4 restarts=3 last=exit 1

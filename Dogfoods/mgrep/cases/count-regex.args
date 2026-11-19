@@ -1,0 +1,3 @@
+--count-matches
+n[a-z]+
+$CASES/data/tree/a.txt

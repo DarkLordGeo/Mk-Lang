@@ -1,0 +1,5 @@
+subject   CN=other.example,O=fetch test
+issuer    CN=fetch test root,O=fetch test
+name      other.example
+valid     2020-01-01T00:00:00Z to 2200-01-01T00:00:00Z
+der       436 bytes

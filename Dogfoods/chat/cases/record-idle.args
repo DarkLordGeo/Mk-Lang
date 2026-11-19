@@ -1,0 +1,7 @@
+--record
+--idle-ms
+300
+--bots
+0
+replay
+$CASES/data/record.chat

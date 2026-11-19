@@ -1,0 +1,105 @@
+$CASES/data/big.txt:4329
+$CASES/data/many/f00.txt:30
+$CASES/data/many/f01.txt:5
+$CASES/data/many/f02.txt:5
+$CASES/data/many/f03.txt:5
+$CASES/data/many/f04.txt:5
+$CASES/data/many/f05.txt:5
+$CASES/data/many/f06.txt:5
+$CASES/data/many/f07.txt:30
+$CASES/data/many/f08.txt:5
+$CASES/data/many/f09.txt:5
+$CASES/data/many/f10.txt:5
+$CASES/data/many/f11.txt:5
+$CASES/data/many/f12.txt:5
+$CASES/data/many/f13.txt:5
+$CASES/data/many/f14.txt:30
+$CASES/data/many/f15.txt:5
+$CASES/data/many/f16.txt:5
+$CASES/data/many/f17.txt:5
+$CASES/data/many/f18.txt:5
+$CASES/data/many/f19.txt:5
+$CASES/data/many/f20.txt:5
+$CASES/data/many/f21.txt:30
+$CASES/data/many/f22.txt:5
+$CASES/data/many/f23.txt:5
+$CASES/data/many/f24.txt:5
+$CASES/data/many/f25.txt:5
+$CASES/data/many/f26.txt:5
+$CASES/data/many/f27.txt:5
+$CASES/data/many/f28.txt:30
+$CASES/data/many/f29.txt:5
+$CASES/data/many/f30.txt:5
+$CASES/data/many/f31.txt:5
+$CASES/data/many/f32.txt:5
+$CASES/data/many/f33.txt:5
+$CASES/data/many/f34.txt:5
+$CASES/data/many/f35.txt:30
+$CASES/data/many/f36.txt:5
+$CASES/data/many/f37.txt:5
+$CASES/data/many/f38.txt:5
+$CASES/data/many/f39.txt:5
+$CASES/data/patterns-bad.txt:1
+$CASES/data/patterns.txt:0
+$CASES/data/tree/a.txt:5
+$CASES/data/tree/b.md:1
+$CASES/data/tree/crlf.txt:1
+$CASES/data/tree/empty.txt:0
+$CASES/data/tree/latin1.txt:1
+$CASES/data/tree/sub/c.txt:3
+$CASES/data/tree/sub/deep/d.txt:0
+$CASES/data/tree/wide.txt:2
+$CASES/data/tree/日本.txt:1
+file               lines  matches
+big.txt             4329     8664
+many/f00.txt          30       30
+many/f01.txt           5        5
+many/f02.txt           5        5
+many/f03.txt           5        5
+many/f04.txt           5        5
+many/f05.txt           5        5
+many/f06.txt           5        5
+many/f07.txt          30       30
+many/f08.txt           5        5
+many/f09.txt           5        5
+many/f10.txt           5        5
+many/f11.txt           5        5
+many/f12.txt           5        5
+many/f13.txt           5        5
+many/f14.txt          30       30
+many/f15.txt           5        5
+many/f16.txt           5        5
+many/f17.txt           5        5
+many/f18.txt           5        5
+many/f19.txt           5        5
+many/f20.txt           5        5
+many/f21.txt          30       30
+many/f22.txt           5        5
+many/f23.txt           5        5
+many/f24.txt           5        5
+many/f25.txt           5        5
+many/f26.txt           5        5
+many/f27.txt           5        5
+many/f28.txt          30       30
+many/f29.txt           5        5
+many/f30.txt           5        5
+many/f31.txt           5        5
+many/f32.txt           5        5
+many/f33.txt           5        5
+many/f34.txt           5        5
+many/f35.txt          30       30
+many/f36.txt           5        5
+many/f37.txt           5        5
+many/f38.txt           5        5
+many/f39.txt           5        5
+patterns-bad.txt       1        1
+tree/a.txt             5        6
+tree/b.md              1        1
+tree/crlf.txt          1        1
+tree/latin1.txt        1        1
+tree/sub/c.txt         3        3
+tree/wide.txt          2        2
+tree/日本.txt          1        1
+49 of 54 files matched, 4694 lines, 9030 matches, 7238 lines searched
+binary files skipped: 2
+lines skipped as not UTF-8: 2

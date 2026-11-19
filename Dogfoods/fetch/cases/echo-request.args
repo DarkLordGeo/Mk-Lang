@@ -1,0 +1,12 @@
+--origin
+$CASES/data/site.origin
+-i
+-H
+X-Fetch-Test: 1
+-u
+bob:secret
+--query
+q=a b&c
+--query
+lang=ü
+http://{origin}/echo?x=1

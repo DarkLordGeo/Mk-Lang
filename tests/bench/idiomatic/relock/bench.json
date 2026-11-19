@@ -1,0 +1,33 @@
+{
+  "name": "relock",
+  "table": "idiomatic",
+  "std": ["std.fs.File.Lock", "std.fs.File.Unlock"],
+  "algorithm": "rounds of one contested whole-file exclusive lock: a peer takes the lock on a handle of its own, holds it hold ms and releases it once (relock 0: the hand-off), or releases and retakes it at once every hold ms until stopped or 2 s pass (relock 1: the peer relocks); a waiter on a second handle of the same file calls the std's blocking lock, and a round counts when the waiter took the lock within 1 s. Prints the rounds and the rounds won, so a waiter that loses a round fails the checksum. Mk: File.Lock in a scope with a 1 s deadline, the peer a task; Rust: File::lock on a thread, the 1 s bound by recv_timeout, the peer a thread (README.md). MKH-47's relock measurement (status/rt8.md G-RT8-R4).",
+  "overflow": "wraps",
+  "args": ["200", "1", "0"],
+  "quick": ["10", "1", "0"],
+  "checksum": "200 200",
+  "quick_checksum": "10 10",
+  "sources": {
+    "mk": "mk",
+    "rust": "relock.rs"
+  },
+  "skip": {
+    "mk-wrap": "no arithmetic to wrap",
+    "c": "not written: C has no std file lock (flock and LockFileEx are system calls, which the Rust and Mk cells reach through their std)",
+    "zig": "not written: Zig 0.17's std.fs.File.lock is a blocking call with no deadline and no second handle form tested here",
+    "go": "not written: Go's std has no public file lock (cmd/go/internal/lockedfile is internal)"
+  },
+  "concurrency": {"mask": "0x3", "threads": 2, "models": {"mk": "tasks", "rust": "OS threads"}},
+  "variants": [
+    {"name": "handoff1", "args": ["200", "1", "0"], "quick": ["10", "1", "0"], "checksum": "200 200", "quick_checksum": "10 10"},
+    {"name": "handoff20", "args": ["50", "20", "0"], "quick": ["5", "20", "0"], "checksum": "50 50", "quick_checksum": "5 5"},
+    {"name": "relock5", "args": ["20", "5", "1"], "quick": ["3", "5", "1"], "checksum": "20 20", "quick_checksum": "3 3"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum counts the rounds the waiter won in time",
+  "notes": [
+    "The hand-off time of a variant is its time per round less the hold: Mk's Lock waits on the kernel's hand-off on Windows (an overlapped LockFileEx on the poller, D-604) and polls with Io.Sleep from 1 ms doubling to 64 ms elsewhere, so on Linux a hand-off can take up to 64 ms after the release, and a peer that relocks every 5 ms can starve the waiter (the relock5 variant's checksum then fails).",
+    "The peer is a task (Mk) or thread (Rust) of the same process on a handle of its own, not a second process as status/rt8.md planned: both stds' locks are the handle's (LockFileEx) or the open file description's (flock), so the kernel sees two holders either way.",
+    "Written by evidence10 (M10, MKH-47's relock measurement, R10-67); its figures are development figures, labelled non-idle and provisional (R10-6)."
+  ]
+}

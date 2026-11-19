@@ -1,0 +1,2 @@
+go test fuzz v1
+string("struct Buf {\n    data: [-1]u8\n}\n")

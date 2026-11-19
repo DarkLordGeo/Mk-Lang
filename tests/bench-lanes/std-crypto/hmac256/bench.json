@@ -1,0 +1,32 @@
+{
+  "name": "crypto-hmac256",
+  "table": "idiomatic",
+  "algorithm": "std HMAC-SHA256 (RFC 2104) of every 64-byte message of splitmix64 bytes under a 32-byte key, reps passes with the key's first byte updated per pass (mk/crypto-hmac256.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "16",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "2",
+    "1"
+  ],
+  "checksum": "15050060339538567420",
+  "quick_checksum": "3470856434978622588",
+  "sources": {
+    "go": "testdata/crypto-hmac256.go",
+    "mk": "mk",
+    "zig": "crypto-hmac256.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard HMAC",
+    "rust": "no std crypto: Rust std has no HMAC; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one HMAC-SHA256 of one 64-byte message under the 32-byte key, the pads absorbed per message on every side (5 SHA-256 compressions). Mk crypto.Hmac256 (one shot), Zig HmacSha256.create (one shot), Go hmac.New + Write + Sum (Go has no one-shot function; New hashes the key's pads each time, as the others). Messages per second = mib * 16384 * reps / median.",
+    "Go: crypto/sha256 uses the SHA extensions (SHA-NI) on amd64 when the CPU has them; Mk and Zig (at -mcpu=x86_64_v2) are scalar.",
+    "Checksums: every column printed the same value at the quick and the publish args in `go run ./tools/bench verify` and `verify -publish-size` (mk built from the tree, Zig 0.17.0, Go 1.27.3) on the owner's machine, 2026-11-07 (std-crypto session 1). Not published: no number here is a measurement."
+  ]
+}

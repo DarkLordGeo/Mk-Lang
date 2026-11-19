@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0314","name":"tail-call-target","phase":"types","root":1,"at":{"file":"m/00.mk","line":6,"col":9,"end_line":6,"end_col":17},"message":"`become` cannot call this: a method through an interface bound is chosen per instance","facts":{"reason":"bound"},"fixes":[],"alternatives":["`return` the call"],"explain":"mk explain E0314"}],"omitted":0}

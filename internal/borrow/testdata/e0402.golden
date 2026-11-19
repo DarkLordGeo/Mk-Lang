@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0402","name":"not-consumed","phase":"flow","root":1,"at":{"file":"t/borrow.mk","line":2,"col":1,"end_line":2,"end_col":6},"message":"f is not consumed before its scope ends","facts":{"place":"f","path":"t/borrow.mk:4:1","release":["Close"],"target":"defer f.Close()"},"fixes":[],"alternatives":[],"explain":"mk explain E0402"}],"omitted":0}

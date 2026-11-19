@@ -1,0 +1,4 @@
+sim
+$CASES/data/zones.tab
+--days
+0

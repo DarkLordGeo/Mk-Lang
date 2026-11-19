@@ -1,0 +1,1 @@
+pack: $CASES/data/tar/block.tar.zst: the compressed data is corrupt at byte 6

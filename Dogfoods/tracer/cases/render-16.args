@@ -1,0 +1,6 @@
+render
+$CASES/data/spheres.scene
+$WORK/out.ppm
+--16
+--samples
+2

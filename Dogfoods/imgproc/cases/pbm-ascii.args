@@ -1,0 +1,5 @@
+--pbm
+--ascii
+run
+$CASES/data/small.pgm
+-

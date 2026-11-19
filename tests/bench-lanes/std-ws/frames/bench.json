@@ -1,0 +1,33 @@
+{
+  "name": "ws-frames",
+  "table": "same",
+  "algorithm": "std.websocket's receive path written once per language: decode batches copies of a batch of seven masked client messages (binary 0, 125, 65,535 and 70,000 bytes; text 126 bytes, 30,000 bytes in three fragments split inside a character, 1,000 bytes ending in a byte that is not UTF-8) into one message buffer, rounds passes: each header parsed (7-, 16- and 64-bit lengths, every check RFC 6455 5.2 makes on a client's frame), each payload unmasked a byte at a time, fragments joined, each text message checked by RFC 3629's table, a branch per lead byte; the checksum adds per message its length, 7 when it is binary or valid text, and its byte at (r * 7919 + m) % length (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "4",
+    "5000"
+  ],
+  "quick": [
+    "1",
+    "10"
+  ],
+  "checksum": "3354226142",
+  "quick_checksum": "1677098",
+  "sources": {
+    "mk": "mk",
+    "c": "frames.c",
+    "rust": "frames.rs",
+    "zig": "frames.zig",
+    "go": "testdata/frames.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; the lengths and positions are bounded by the buffer, so Mk's checked int arithmetic on them is the price of the check, which the row means to include"
+  },
+  "no_counts": "B24: every pass decodes every frame of the buffer, and each message's sampled byte depends on r and on the message's index, so a skipped frame, a wrong unmask or a wrong UTF-8 verdict changes the checksum",
+  "notes": [
+    "The receive path of std.websocket's Conn.Recv (ReadHalf.NextHead, Whole, Gather, Deliver), reduced to what each language can write the same way: one input buffer, one message buffer of the longest message, a byte loop that unmasks, a branch-per-lead-byte UTF-8 check. The library itself unmasks with std.simd (the ws-mask row, SIMD table) and checks UTF-8 with std.simd.ValidUtf8 (std-simd's validutf8 row); this row measures the scalar code generation of the rest: header parsing, bounds and the copy (WS-10, M8 review).",
+    "Every column: signed or unsigned 64-bit positions and lengths, no intrinsics, no hand vectorisation, no unchecked indexing (plan/06-m6.md 4.1). Each column checks what RFC 6455 5.2 lets a server check on a client's frame (reserved bits, the mask bit, the length against the buffer and the message limit) and adds 1000003 and stops on a failure, which this input never reaches.",
+    "The UTF-8 check was compared with Go's unicode/utf8.Valid on 2,000,000 random strings of up to 7 bytes, no mismatch (std-ws session 5, 2026-11-13).",
+    "Checksums from the Go column (owner's machine, std-ws session 5, 2026-11-13). Not published: no number here is a measurement."
+  ]
+}

@@ -1,0 +1,2 @@
+{"phase":"types","diagnostics":[{"code":"E0208","name":"unused","phase":"types","root":1,"at":{"file":"main/00.mk","line":2,"col":5,"end_line":2,"end_col":6},"message":"`x` is never used","facts":{"name":"x"},"fixes":[{"class":"proven","edits":[{"file":"main/00.mk","line":2,"col":1,"end_line":3,"end_col":1,"text":""}],"why":"the statement has no effect"}],"alternatives":[],"explain":"mk explain E0208"}],"omitted":0}
+

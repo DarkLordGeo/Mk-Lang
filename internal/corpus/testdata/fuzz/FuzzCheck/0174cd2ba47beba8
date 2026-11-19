@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("struct Lexer{src:str\npos:ir.t(mut self):?str{start:=self.s\nfor self.s<se3f.c.n()&&self.c.e(self.s)!=l2{self.s=1}\nif start==self.s{return none}\nself.s=1\nreturn some(self.c[start..self.s-1])}\nW(text:str,a:&Alloc):OutOfMemory!List[str]from a,t{var lx:=Lexer(c:text,s:0)\nvar out:=List[str].w(a)\nonerr out.e(a)\nfor word:=lx.t(){ try out.h(a,word)}\nreturn outr")

@@ -1,0 +1,489 @@
+// The oracle for bigcalc's certificate, key, signature, encryption, tag and
+// digest cases: it makes the fixtures under cases/data/pki with Go's crypto
+// packages and writes each case's expected output from Go's own results
+// (and, for P-256 signing, RFC 6979 appendix A.2.5's vector). Kept as
+// .go.txt so the repository's Go build never sees it; run it from a scratch
+// directory:  go run fixtures.go <Dogfoods/bigcalc/cases>
+// It also needs openssl on PATH for the one encrypted PKCS#8 key, which
+// Go's standard library does not write.
+package main
+
+import (
+	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/elliptic"
+	"crypto/hkdf"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/pem"
+	"fmt"
+	"hash"
+	"math/big"
+	"net"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+	"unicode/utf8"
+)
+
+var cases, data string
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func write(path string, b []byte) {
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		panic(err)
+	}
+}
+
+func pemFile(name string, blocks ...*pem.Block) {
+	var buf bytes.Buffer
+	for _, b := range blocks {
+		must(0, pem.Encode(&buf, b))
+	}
+	write(filepath.Join(data, name), buf.Bytes())
+}
+
+// A case: its argument lines (with $CASES/data/pki/ for P), and expected
+// stdout, stderr and exit code.
+func caseFiles(name string, args []string, out, errText string, code int) {
+	for i, a := range args {
+		args[i] = strings.ReplaceAll(a, "P/", "$CASES/data/pki/")
+	}
+	write(filepath.Join(cases, name+".args"), []byte(strings.Join(args, "\n")+"\n"))
+	if out != "" {
+		write(filepath.Join(cases, name+".out"), []byte(out))
+	}
+	if errText != "" {
+		errText = strings.ReplaceAll(errText, "P/", "$CASES/data/pki/")
+		write(filepath.Join(cases, name+".err"), []byte(errText))
+	}
+	if code != 0 {
+		write(filepath.Join(cases, name+".code"), []byte(fmt.Sprintf("%d\n", code)))
+	}
+}
+
+func certPEM(der []byte) *pem.Block { return &pem.Block{Type: "CERTIFICATE", Bytes: der} }
+
+var start = time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+var end = time.Date(2200, 1, 1, 0, 0, 0, 0, time.UTC)
+
+func main() {
+	cases = os.Args[1]
+	data = filepath.Join(cases, "data", "pki")
+	must(0, os.MkdirAll(data, 0o755))
+
+	rootKey := must(ecdsa.GenerateKey(elliptic.P384(), rand.Reader))
+	interKey := must(rsa.GenerateKey(rand.Reader, 2048))
+	leafKey := must(ecdsa.GenerateKey(elliptic.P256(), rand.Reader))
+	edPub, edKey := must2(ed25519.GenerateKey(rand.Reader))
+	otherKey := must(ecdsa.GenerateKey(elliptic.P256(), rand.Reader))
+
+	root := &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "bigcalc Test Root", Organization: []string{"bigcalc"}},
+		NotBefore: start, NotAfter: end, IsCA: true, BasicConstraintsValid: true, MaxPathLen: 1,
+		KeyUsage: x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+	}
+	rootDER := must(x509.CreateCertificate(rand.Reader, root, root, &rootKey.PublicKey, rootKey))
+	root = must(x509.ParseCertificate(rootDER))
+	inter := &x509.Certificate{
+		SerialNumber: big.NewInt(0x1000), Subject: pkix.Name{CommonName: "bigcalc Test Intermediate", Organization: []string{"bigcalc"}},
+		NotBefore: start, NotAfter: end, IsCA: true, BasicConstraintsValid: true, MaxPathLen: 0, MaxPathLenZero: true,
+		KeyUsage: x509.KeyUsageCertSign,
+	}
+	interDER := must(x509.CreateCertificate(rand.Reader, inter, root, &interKey.PublicKey, rootKey))
+	inter = must(x509.ParseCertificate(interDER))
+	leafSerial, _ := new(big.Int).SetString("7f3a9c51e2b84d06a1c3e5f7092b4d6e", 16)
+	leafT := &x509.Certificate{
+		SerialNumber: leafSerial, Subject: pkix.Name{CommonName: "bigcalc.test"},
+		NotBefore: start, NotAfter: end, DNSNames: []string{"bigcalc.test", "www.bigcalc.test"},
+		IPAddresses: []net.IP{net.ParseIP("127.0.0.1")}, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		KeyUsage: x509.KeyUsageDigitalSignature, SignatureAlgorithm: x509.SHA256WithRSA,
+	}
+	leafDER := must(x509.CreateCertificate(rand.Reader, leafT, inter, &leafKey.PublicKey, interKey))
+	edT := &x509.Certificate{
+		SerialNumber: big.NewInt(42), Subject: pkix.Name{CommonName: "ed.bigcalc.test"},
+		NotBefore: start, NotAfter: end, DNSNames: []string{"ed.bigcalc.test"},
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, KeyUsage: x509.KeyUsageDigitalSignature,
+	}
+	edDER := must(x509.CreateCertificate(rand.Reader, edT, root, edPub, rootKey))
+	expT := *leafT
+	expT.SerialNumber = big.NewInt(7)
+	expT.NotBefore = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
+	expT.NotAfter = time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
+	expDER := must(x509.CreateCertificate(rand.Reader, &expT, inter, &leafKey.PublicKey, interKey))
+	otherT := &x509.Certificate{
+		SerialNumber: big.NewInt(99), Subject: pkix.Name{CommonName: "Other Root"},
+		NotBefore: start, NotAfter: end, IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign,
+	}
+	otherDER := must(x509.CreateCertificate(rand.Reader, otherT, otherT, &otherKey.PublicKey, otherKey))
+	tampered := bytes.Clone(leafDER)
+	tampered[len(tampered)-1] ^= 0x01
+
+	pemFile("root.pem", certPEM(rootDER))
+	pemFile("inter.pem", certPEM(interDER))
+	pemFile("leaf.pem", certPEM(leafDER))
+	write(filepath.Join(data, "leaf.der"), leafDER)
+	pemFile("chain.pem", certPEM(leafDER), certPEM(interDER))
+	pemFile("ed_chain.pem", certPEM(edDER))
+	pemFile("expired_chain.pem", certPEM(expDER), certPEM(interDER))
+	pemFile("tampered_chain.pem", certPEM(tampered), certPEM(interDER))
+	pemFile("other_root.pem", certPEM(otherDER))
+	pemFile("garbage.pem", &pem.Block{Type: "CERTIFICATE", Bytes: []byte{0x30, 0x03, 0x02, 0x01}})
+
+	// keys
+	pemFile("p256.pem", &pem.Block{Type: "PRIVATE KEY", Bytes: must(x509.MarshalPKCS8PrivateKey(leafKey))})
+	pemFile("p256_sec1.pem", &pem.Block{Type: "EC PRIVATE KEY", Bytes: must(x509.MarshalECPrivateKey(leafKey))})
+	write(filepath.Join(data, "p256.der"), must(x509.MarshalPKCS8PrivateKey(leafKey)))
+	p256Pub := must(x509.MarshalPKIXPublicKey(&leafKey.PublicKey))
+	pemFile("p256_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: p256Pub})
+	pemFile("p384_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: must(x509.MarshalPKIXPublicKey(&rootKey.PublicKey))})
+	rsaPub := must(x509.MarshalPKIXPublicKey(&interKey.PublicKey))
+	pemFile("rsa_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: rsaPub})
+	rsaPkcs1 := x509.MarshalPKCS1PublicKey(&interKey.PublicKey)
+	pemFile("rsa_pkcs1.pem", &pem.Block{Type: "RSA PUBLIC KEY", Bytes: rsaPkcs1})
+	small := must(rsa.GenerateKey(rand.Reader, 1024))
+	pemFile("rsa1024_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: must(x509.MarshalPKIXPublicKey(&small.PublicKey))})
+	e1 := must(asn1.Marshal(struct{ N, E *big.Int }{interKey.N, big.NewInt(1)}))
+	pemFile("rsa_e1.pem", &pem.Block{Type: "RSA PUBLIC KEY", Bytes: e1})
+	pemFile("ed25519.pem", &pem.Block{Type: "PRIVATE KEY", Bytes: must(x509.MarshalPKCS8PrivateKey(edKey))})
+	edPubDER := must(x509.MarshalPKIXPublicKey(edPub))
+	pemFile("ed25519_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: edPubDER})
+	enc := exec.Command("openssl", "pkcs8", "-topk8", "-v2", "aes-256-cbc", "-passout", "pass:secret",
+		"-in", filepath.Join(data, "p256.pem"), "-out", filepath.Join(data, "encrypted.pem"))
+	enc.Stderr = os.Stderr
+	must(0, enc.Run())
+
+	// The RFC 6979 A.2.5 key.
+	d, _ := new(big.Int).SetString("C9AFA9D845BA75166B5C215767B1D6934E50C3DB36E89B127B8A622B120F6721", 16)
+	rfcKey := &ecdsa.PrivateKey{D: d}
+	rfcKey.Curve = elliptic.P256()
+	rfcKey.X, rfcKey.Y = elliptic.P256().ScalarBaseMult(d.Bytes())
+	pemFile("rfc6979.pem", &pem.Block{Type: "EC PRIVATE KEY", Bytes: must(x509.MarshalECPrivateKey(rfcKey))})
+	write(filepath.Join(data, "sample.txt"), []byte("sample"))
+
+	// signatures
+	msg := []byte("The quick brown fox jumps over the lazy dog.\n")
+	write(filepath.Join(data, "msg.txt"), msg)
+	write(filepath.Join(data, "msg2.txt"), []byte("The quick brown fox jumps over the lazy cat.\n"))
+	h256 := sha256.Sum256(msg)
+	h384 := sha512.Sum384(msg)
+	write(filepath.Join(data, "msg.rsa.sig"), must(rsa.SignPKCS1v15(rand.Reader, interKey, 5, h256[:])))
+	write(filepath.Join(data, "msg.rsa384.sig"), must(rsa.SignPKCS1v15(rand.Reader, interKey, 6, h384[:])))
+	write(filepath.Join(data, "msg.pss.sig"), must(rsa.SignPSS(rand.Reader, interKey, 5, h256[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})))
+	write(filepath.Join(data, "msg.pssmax.sig"), must(rsa.SignPSS(rand.Reader, interKey, 5, h256[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthAuto})))
+	p256Sig := must(ecdsa.SignASN1(rand.Reader, leafKey, h256[:]))
+	write(filepath.Join(data, "msg.p256.hex"), []byte(hex.EncodeToString(p256Sig)+"\n"))
+	r, s := must2(ecdsa.Sign(rand.Reader, leafKey, h256[:]))
+	fixed := append(r.FillBytes(make([]byte, 32)), s.FillBytes(make([]byte, 32))...)
+	write(filepath.Join(data, "msg.p256fixed.b64"), []byte(base64.StdEncoding.EncodeToString(fixed)+"\n"))
+	write(filepath.Join(data, "msg.p384.sig"), must(ecdsa.SignASN1(rand.Reader, rootKey, h384[:])))
+	edSig := ed25519.Sign(edKey, msg)
+	write(filepath.Join(data, "msg.ed25519.sig"), edSig)
+
+	ok := "signature ok\n"
+	bad := "bigcalc: signature does not verify\n"
+	caseFiles("verify_rsa_pkcs1", []string{"verify", "--key", "P/rsa_pub.pem", "P/msg.txt", "P/msg.rsa.sig"}, ok, "", 0)
+	caseFiles("verify_rsa_sha384", []string{"verify", "--key", "P/rsa_pkcs1.pem", "--hash", "sha384", "P/msg.txt", "P/msg.rsa384.sig"}, ok, "", 0)
+	caseFiles("verify_rsa_pss", []string{"verify", "--key", "P/inter.pem", "--pss", "P/msg.txt", "P/msg.pss.sig"}, ok, "", 0)
+	caseFiles("verify_rsa_pss_max_salt", []string{"verify", "--key", "P/rsa_pub.pem", "--pss", "P/msg.txt", "P/msg.pssmax.sig"}, "", bad, 5)
+	caseFiles("verify_rsa_tampered", []string{"verify", "--key", "P/rsa_pub.pem", "P/msg2.txt", "P/msg.rsa.sig"}, "", bad, 5)
+	caseFiles("verify_p256_der", []string{"verify", "--key", "P/p256_pub.pem", "--sig-encoding", "hex", "P/msg.txt", "P/msg.p256.hex"}, ok, "", 0)
+	caseFiles("verify_p256_fixed", []string{"verify", "--key", "P/leaf.pem", "--format", "fixed", "--sig-encoding", "base64", "P/msg.txt", "P/msg.p256fixed.b64"}, ok, "", 0)
+	caseFiles("verify_p256_wrong_key", []string{"verify", "--key", "P/rfc6979.pem", "--sig-encoding", "hex", "P/msg.txt", "P/msg.p256.hex"}, "", bad, 5)
+	caseFiles("verify_p384", []string{"verify", "--key", "P/p384_pub.pem", "P/msg.txt", "P/msg.p384.sig"}, ok, "", 0)
+	caseFiles("verify_p384_tampered", []string{"verify", "--key", "P/root.pem", "P/msg2.txt", "P/msg.p384.sig"}, "", bad, 5)
+	caseFiles("verify_ed25519", []string{"verify", "--key", "P/ed25519_pub.pem", "P/msg.txt", "P/msg.ed25519.sig"}, ok, "", 0)
+	caseFiles("verify_ed25519_tampered", []string{"verify", "--key", "P/ed_chain.pem", "P/msg2.txt", "P/msg.ed25519.sig"}, "", bad, 5)
+
+	// RFC 6979 A.2.5, P-256 with SHA-256 and SHA-384, message "sample".
+	rfcR256, rfcS256 := "efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716", "f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8"
+	rfcR384, rfcS384 := "0eafea039b20e9b42309fb1d89e213057cbf973dc0cfc8f129edddc800ef7719", "4861f0491e6998b9455193e34e7b0d284ddd7149a74b95b9261f13abde940954"
+	derOf := func(rh, sh string) string {
+		r, _ := new(big.Int).SetString(rh, 16)
+		s, _ := new(big.Int).SetString(sh, 16)
+		return hex.EncodeToString(must(asn1.Marshal(struct{ R, S *big.Int }{r, s})))
+	}
+	caseFiles("sign_rfc6979_fixed", []string{"sign", "--key", "P/rfc6979.pem", "--format", "fixed", "P/sample.txt"}, rfcR256+rfcS256+"\n", "", 0)
+	caseFiles("sign_rfc6979_der", []string{"sign", "--key", "P/rfc6979.pem", "P/sample.txt"}, derOf(rfcR256, rfcS256)+"\n", "", 0)
+	caseFiles("sign_rfc6979_sha384", []string{"sign", "--key-scalar", "hex:c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721", "--hash", "sha384", "--format", "fixed", "--out", "base64", "P/sample.txt"},
+		base64.StdEncoding.EncodeToString(must(hex.DecodeString(rfcR384+rfcS384)))+"\n", "", 0)
+	caseFiles("sign_ed25519", []string{"sign", "--key", "P/ed25519.pem", "P/msg.txt"}, hex.EncodeToString(edSig)+"\n", "", 0)
+	caseFiles("sign_public_key", []string{"sign", "--key", "P/p256_pub.pem", "P/msg.txt"}, "", "bigcalc: sign: NotPrivate\n", 1)
+	caseFiles("sign_encrypted_key", []string{"sign", "--key", "P/encrypted.pem", "P/msg.txt"}, "", "bigcalc: signing key: Encrypted\n", 1)
+	caseFiles("sign_bad_scalar", []string{"sign", "--key-scalar", "hex:00", "P/msg.txt"}, "", "bigcalc: signing key: BadLength\n", 1)
+
+	// key show and key public
+	point := func(k *ecdsa.PublicKey) string {
+		return hex.EncodeToString(must(k.ECDH()).Bytes())
+	}
+	caseFiles("key_show_p256", []string{"key", "show", "P/p256.pem"}, "private key: P-256\npoint: "+point(&leafKey.PublicKey)+"\n", "", 0)
+	caseFiles("key_show_sec1", []string{"key", "show", "P/p256_sec1.pem"}, "private key: P-256\npoint: "+point(&leafKey.PublicKey)+"\n", "", 0)
+	caseFiles("key_show_der", []string{"key", "show", "P/p256.der"}, "private key: P-256\npoint: "+point(&leafKey.PublicKey)+"\n", "", 0)
+	caseFiles("key_show_p384", []string{"key", "show", "P/p384_pub.pem"}, "public key: P-384\npoint: "+point(&rootKey.PublicKey)+"\n", "", 0)
+	caseFiles("key_show_rsa", []string{"key", "show", "P/rsa_pkcs1.pem"}, "public key: RSA 2048 bits, exponent 65537\n", "", 0)
+	caseFiles("key_show_ed25519", []string{"key", "show", "P/ed25519.pem"}, "private key: Ed25519\npoint: "+hex.EncodeToString(edPub)+"\n", "", 0)
+	caseFiles("key_show_rsa1024", []string{"key", "show", "P/rsa1024_pub.pem"}, "public key: RSA 1024 bits, exponent 65537\n", "bigcalc: P/rsa1024_pub.pem: BadKey\n", 1)
+	caseFiles("key_show_rsa_e1", []string{"key", "show", "P/rsa_e1.pem"}, "public key: RSA 2048 bits, exponent 1\n", "bigcalc: P/rsa_e1.pem: BadKey\n", 1)
+	caseFiles("key_show_encrypted", []string{"key", "show", "P/encrypted.pem"}, "", "bigcalc: P/encrypted.pem: Encrypted\n", 1)
+	pubPEM := func(der []byte, label string) string {
+		return string(pem.EncodeToMemory(&pem.Block{Type: label, Bytes: der}))
+	}
+	caseFiles("key_public_p256", []string{"key", "public", "P/p256.pem"}, pubPEM(p256Pub, "PUBLIC KEY"), "", 0)
+	caseFiles("key_public_ed25519", []string{"key", "public", "P/ed25519.pem"}, pubPEM(edPubDER, "PUBLIC KEY"), "", 0)
+	caseFiles("key_public_rsa", []string{"key", "public", "P/rsa_pkcs1.pem"}, pubPEM(rsaPkcs1, "RSA PUBLIC KEY"), "", 0)
+
+	// cert show, verify and der
+	show := func(path string, n int, c *x509.Certificate, keyLine string) string {
+		var b strings.Builder
+		names := []string{}
+		names = append(names, c.DNSNames...)
+		for _, ip := range c.IPAddresses {
+			names = append(names, ip.String())
+		}
+		all := strings.Join(names, ", ")
+		if all == "" {
+			all = "(none)"
+		}
+		ca := "(no basic constraints)"
+		if c.BasicConstraintsValid {
+			ca = "no"
+			if c.IsCA {
+				ca = "yes"
+				if c.MaxPathLen > 0 || c.MaxPathLenZero {
+					ca = fmt.Sprintf("yes, path length %d", c.MaxPathLen)
+				}
+			}
+		}
+		s1 := sha1.Sum(c.Raw)
+		s256 := sha256.Sum256(c.Raw)
+		fmt.Fprintf(&b, "%s #%d\n  subject:    %s\n  issuer:     %s\n  serial:     %s\n  not before: %s\n  not after:  %s\n  names:      %s\n  key:        %s\n  ca:         %s\n  sha-1:      %x\n  sha-256:    %x\n",
+			path, n, c.Subject.String(), c.Issuer.String(), c.SerialNumber.Text(16), c.NotBefore.UTC().Format(time.RFC3339), c.NotAfter.UTC().Format(time.RFC3339),
+			all, keyLine, ca, s1, s256)
+		return b.String()
+	}
+	leaf := must(x509.ParseCertificate(leafDER))
+	ed := must(x509.ParseCertificate(edDER))
+	caseFiles("cert_show_chain", []string{"cert", "show", "P/chain.pem", "P/root.pem"},
+		show("$CASES/data/pki/chain.pem", 1, leaf, "P-256")+show("$CASES/data/pki/chain.pem", 2, inter, "RSA 2048 bits, exponent 65537")+show("$CASES/data/pki/root.pem", 1, root, "P-384"), "", 0)
+	caseFiles("cert_show_der", []string{"cert", "show", "P/leaf.der", "P/ed_chain.pem"},
+		show("$CASES/data/pki/leaf.der", 1, leaf, "P-256")+show("$CASES/data/pki/ed_chain.pem", 1, ed, "Ed25519"), "", 0)
+	at := []string{"--at", "2026-06-01T12:00:00Z"}
+	verify := func(name string, extra []string, chain, out, errText string, code int) {
+		args := append([]string{"cert", "verify", "--roots", "P/root.pem"}, at...)
+		args = append(args, extra...)
+		caseFiles(name, append(args, chain), out, errText, code)
+	}
+	verify("cert_verify_ok", []string{"--host", "www.bigcalc.test"}, "P/chain.pem", "ok: CN=bigcalc.test\n", "", 0)
+	verify("cert_verify_ip", []string{"--host", "127.0.0.1"}, "P/chain.pem", "ok: CN=bigcalc.test\n", "", 0)
+	verify("cert_verify_ed25519", []string{"--host", "ed.bigcalc.test"}, "P/ed_chain.pem", "ok: CN=ed.bigcalc.test\n", "", 0)
+	verify("cert_verify_wrong_host", []string{"--host", "evil.test"}, "P/chain.pem", "", "bigcalc: $CASES/data/pki/chain.pem: NameMismatch\n", 5)
+	verify("cert_verify_expired", nil, "P/expired_chain.pem", "", "bigcalc: $CASES/data/pki/expired_chain.pem: Expired\n", 5)
+	verify("cert_verify_tampered", nil, "P/tampered_chain.pem", "", "bigcalc: $CASES/data/pki/tampered_chain.pem: BadSignature\n", 5)
+	caseFiles("cert_verify_unknown_root", append([]string{"cert", "verify", "--roots", "P/other_root.pem", "--at", "2026-06-01T12:00:00Z"}, "P/chain.pem"), "", "bigcalc: $CASES/data/pki/chain.pem: UnknownAuthority\n", 5)
+	verify("cert_verify_too_early", []string{"--at", "2019-06-01T00:00:00Z"}, "P/chain.pem", "", "bigcalc: $CASES/data/pki/chain.pem: Expired\n", 5)
+	caseFiles("cert_der_leaf", []string{"cert", "der", "P/leaf.der"}, dump(leafDER, 0), "", 0)
+	caseFiles("cert_der_pem", []string{"cert", "der", "P/p256_pub.pem"}, "PUBLIC KEY ("+fmt.Sprint(len(p256Pub))+" bytes)\n"+dump(p256Pub, 1), "", 0)
+
+	// enc, mac, hash
+	ikm := []byte("correct horse battery staple")
+	salt := must(hex.DecodeString("000102030405060708090a0b0c"))
+	info := "bigcalc file"
+	key128 := hkdfKey(ikm, salt, info, 16)
+	key256 := hkdfKey(ikm, salt, info, 32)
+	nonce := must(hex.DecodeString("cafebabefacedbaddecaf888"))
+	plain := []byte("attack at dawn, and bring the big integers\n")
+	write(filepath.Join(data, "plain.txt"), plain)
+	seal := func(key []byte, aad string) []byte {
+		g := must(cipher.NewGCM(must(aes.NewCipher(key))))
+		return append(bytes.Clone(nonce), g.Seal(nil, nonce, plain, []byte(aad))...)
+	}
+	s128 := seal(key128, "")
+	s256 := seal(key256, "v1")
+	write(filepath.Join(data, "sealed128.bin"), s128)
+	write(filepath.Join(data, "sealed256.b64"), []byte(base64.StdEncoding.EncodeToString(s256)+"\n"))
+	tamperedSeal := bytes.Clone(s128)
+	tamperedSeal[20] ^= 0x40
+	write(filepath.Join(data, "sealed_tampered.bin"), tamperedSeal)
+	common := []string{"--key-from", "text:correct horse battery staple", "--salt", "hex:000102030405060708090a0b0c", "--info", info}
+	caseFiles("enc_seal_128", append(append([]string{"enc", "seal"}, common...), "--nonce", "cafebabefacedbaddecaf888", "--bits", "128", "--armor", "P/plain.txt", "-"),
+		base64.StdEncoding.EncodeToString(s128)+"\n", "", 0)
+	caseFiles("enc_open_128", append(append([]string{"enc", "open"}, common...), "--bits", "128", "P/sealed128.bin", "-"), string(plain), "", 0)
+	caseFiles("enc_open_256_armor", append(append([]string{"enc", "open"}, common...), "--aad", "v1", "--armor", "P/sealed256.b64", "-"), string(plain), "", 0)
+	caseFiles("enc_open_tampered", append(append([]string{"enc", "open"}, common...), "--bits", "128", "P/sealed_tampered.bin", "-"), "", "bigcalc: enc: BadTag\n", 5)
+	caseFiles("enc_open_wrong_aad", append(append([]string{"enc", "open"}, common...), "--aad", "v2", "--armor", "P/sealed256.b64", "-"), "", "bigcalc: enc: BadTag\n", 5)
+	wrong := []string{"enc", "open", "--key-from", "text:correct horse battery stapler", "--salt", "hex:000102030405060708090a0b0c", "--info", info, "--bits", "128", "P/sealed128.bin", "-"}
+	caseFiles("enc_open_wrong_key", wrong, "", "bigcalc: enc: BadTag\n", 5)
+	prk := must(hkdf.Extract(sha256.New, ikm, salt))
+	caseFiles("enc_open_prk", []string{"enc", "open", "--prk", "hex:" + hex.EncodeToString(prk), "--info", info, "--bits", "128", "P/sealed128.bin", "-"}, string(plain), "", 0)
+	// ECDH: the leaf key with the RFC 6979 key's public point.
+	shared := must(must(leafKey.ECDH()).ECDH(must(rfcKey.PublicKey.ECDH())))
+	ekey := hkdfKey(shared, nil, "ecdh", 32)
+	g := must(cipher.NewGCM(must(aes.NewCipher(ekey))))
+	ecdhSealed := append(bytes.Clone(nonce), g.Seal(nil, nonce, plain, nil)...)
+	pemFile("rfc6979_pub.pem", &pem.Block{Type: "PUBLIC KEY", Bytes: must(x509.MarshalPKIXPublicKey(&rfcKey.PublicKey))})
+	caseFiles("enc_seal_ecdh", []string{"enc", "seal", "--ecdh-key", "P/p256.pem", "--ecdh-peer", "P/rfc6979_pub.pem", "--info", "ecdh", "--nonce", "cafebabefacedbaddecaf888", "P/plain.txt", "-"},
+		string(ecdhSealed), "", 0)
+	_ = ecdh.P256
+
+	macKey := "text:key"
+	tag := func(h func() hash.Hash, b []byte) string {
+		m := hmac.New(h, []byte("key"))
+		m.Write(b)
+		return hex.EncodeToString(m.Sum(nil))
+	}
+	caseFiles("mac_sha256", []string{"mac", "--key", macKey, "P/msg.txt"}, "HMAC-SHA256 ($CASES/data/pki/msg.txt) = "+tag(sha256.New, msg)+"\n", "", 0)
+	caseFiles("mac_sha384", []string{"mac", "--key", macKey, "--hash", "sha384", "P/msg.txt"}, "HMAC-SHA384 ($CASES/data/pki/msg.txt) = "+tag(sha512.New384, msg)+"\n", "", 0)
+	caseFiles("mac_sha512_expect", []string{"mac", "--key", macKey, "--hash", "sha512", "--expect", tag(sha512.New, msg), "P/msg.txt"}, "tag ok\n", "", 0)
+	caseFiles("mac_mismatch", []string{"mac", "--key", macKey, "--expect", tag(sha256.New, msg), "P/msg2.txt"}, "", "bigcalc: tag does not match\n", 5)
+
+	line := func(alg, path string, sum []byte) string {
+		return fmt.Sprintf("%s (%s) = %x\n", alg, path, sum)
+	}
+	s1 := sha1.Sum(msg)
+	s384 := sha512.Sum384(msg)
+	caseFiles("hash_sha384", []string{"hash", "--alg", "sha384", "P/msg.txt", "P/msg2.txt"},
+		line("SHA384", "$CASES/data/pki/msg.txt", s384[:])+line("SHA384", "$CASES/data/pki/msg2.txt", sum384([]byte("The quick brown fox jumps over the lazy cat.\n"))), "", 0)
+	caseFiles("hash_all", []string{"hash", "--alg", "all", "P/msg.txt"},
+		line("SHA1", "$CASES/data/pki/msg.txt", s1[:])+line("SHA256", "$CASES/data/pki/msg.txt", h256[:])+line("SHA384", "$CASES/data/pki/msg.txt", s384[:])+line("SHA512", "$CASES/data/pki/msg.txt", sum512(msg)), "", 0)
+
+	// The large file the hash and encode cases stream, past their 64 KiB reads.
+	big := make([]byte, 200_003)
+	for i := range big {
+		big[i] = byte(i*131 + i>>9)
+	}
+	write(filepath.Join(data, "big.bin"), big)
+	b1 := sha1.Sum(big)
+	caseFiles("hash_large", []string{"hash", "--alg", "sha1", "P/big.bin", "P/msg.txt"},
+		line("SHA1", "$CASES/data/pki/big.bin", b1[:])+line("SHA1", "$CASES/data/pki/msg.txt", s1[:]), "", 0)
+	// one task per file, at one carrier and at sixteen, a missing file among them
+	var carriers strings.Builder
+	for _, f := range []string{"msg.txt", "big.bin", "msg2.txt", "sample.txt", "leaf.der"} {
+		b := must(os.ReadFile(filepath.Join(data, f)))
+		carriers.WriteString(line("SHA384", "$CASES/data/pki/"+f, sum384(b)))
+	}
+	for _, c := range []string{"1", "16"} {
+		caseFiles("hash_carriers"+c, []string{"hash", "--alg", "sha384", "P/msg.txt", "P/big.bin", "P/nope.bin", "P/msg2.txt", "P/sample.txt", "P/leaf.der"},
+			carriers.String(), "bigcalc: P/nope.bin: NotFound\n", 1)
+		write(filepath.Join(cases, "hash_carriers"+c+".env"), []byte("MK_CARRIERS="+c+"\n"))
+	}
+	write(filepath.Join(cases, "hash_stdin.in"), msg)
+	caseFiles("hash_stdin", []string{"hash", "--alg", "sha1", "--base64", "-"},
+		fmt.Sprintf("SHA1 (-) = %s\n", base64.StdEncoding.EncodeToString(s1[:])), "", 0)
+	write(filepath.Join(data, "msg.b64url"), []byte(base64.URLEncoding.EncodeToString(msg)+"\n"))
+	caseFiles("encode_base64", []string{"encode", "base64", "P/msg.txt"}, base64.StdEncoding.EncodeToString(msg)+"\n", "", 0)
+	caseFiles("encode_base64url", []string{"encode", "base64url", "P/sample.txt"}, base64.URLEncoding.EncodeToString([]byte("sample"))+"\n", "", 0)
+	caseFiles("encode_hex", []string{"encode", "hex", "P/msg.txt"}, hex.EncodeToString(msg)+"\n", "", 0)
+	caseFiles("decode_base64url", []string{"decode", "base64url", "P/msg.b64url"}, string(msg), "", 0)
+	caseFiles("encode_large", []string{"encode", "base64", "P/big.bin"}, base64.StdEncoding.EncodeToString(big)+"\n", "", 0)
+	_ = utf8.ValidString
+}
+
+func must2[A, B any](a A, b B, err error) (A, B) {
+	if err != nil {
+		panic(err)
+	}
+	return a, b
+}
+
+func hkdfKey(ikm, salt []byte, info string, n int) []byte {
+	return must(hkdf.Key(sha256.New, ikm, salt, info, n))
+}
+
+func sum384(b []byte) []byte { s := sha512.Sum384(b); return s[:] }
+func sum512(b []byte) []byte { s := sha512.Sum512(b); return s[:] }
+
+// dump mirrors src/pki/dump.mk.
+func dump(der []byte, depth int) string {
+	var b strings.Builder
+	rest := der
+	for len(rest) > 0 {
+		var v asn1.RawValue
+		next, err := asn1.Unmarshal(rest, &v)
+		if err != nil {
+			panic(err)
+		}
+		rest = next
+		b.WriteString(strings.Repeat("  ", depth))
+		name := tagName(v)
+		if v.IsCompound {
+			fmt.Fprintf(&b, "%s (%d)\n", name, len(v.Bytes))
+			b.WriteString(dump(v.Bytes, depth+1))
+			continue
+		}
+		c := v.Bytes
+		if v.Class == 0 {
+			switch v.Tag {
+			case 1:
+				fmt.Fprintf(&b, "%s %v\n", name, c[0] != 0)
+				continue
+			case 2:
+				if len(c) <= 16 {
+					x := new(big.Int).SetBytes(c)
+					if c[0]&0x80 != 0 {
+						x.Sub(x, new(big.Int).Lsh(big.NewInt(1), uint(8*len(c))))
+					}
+					fmt.Fprintf(&b, "%s %s\n", name, x.String())
+					continue
+				}
+			case 5:
+				fmt.Fprintf(&b, "%s\n", name)
+				continue
+			case 6:
+				var oid asn1.ObjectIdentifier
+				must(asn1.Unmarshal(v.FullBytes, &oid))
+				fmt.Fprintf(&b, "%s %s\n", name, oid.String())
+				continue
+			case 12, 19, 22, 23, 24:
+				if utf8.Valid(c) {
+					fmt.Fprintf(&b, "%s \"%s\"\n", name, string(c))
+					continue
+				}
+			}
+		}
+		shown := c
+		more := ""
+		if len(c) > 16 {
+			shown, more = c[:16], "..."
+		}
+		fmt.Fprintf(&b, "%s (%d) %x%s\n", name, len(c), shown, more)
+	}
+	return b.String()
+}
+
+func tagName(v asn1.RawValue) string {
+	switch v.Class {
+	case 2:
+		return fmt.Sprintf("[%d]", v.Tag)
+	case 1:
+		return fmt.Sprintf("[APPLICATION %d]", v.Tag)
+	case 3:
+		return fmt.Sprintf("[PRIVATE %d]", v.Tag)
+	}
+	names := map[int]string{1: "BOOLEAN", 2: "INTEGER", 3: "BIT STRING", 4: "OCTET STRING", 5: "NULL", 6: "OBJECT IDENTIFIER",
+		12: "UTF8String", 16: "SEQUENCE", 17: "SET", 19: "PrintableString", 22: "IA5String", 23: "UTCTime", 24: "GeneralizedTime"}
+	if n, ok := names[v.Tag]; ok {
+		return n
+	}
+	return fmt.Sprintf("UNIVERSAL %d", v.Tag)
+}

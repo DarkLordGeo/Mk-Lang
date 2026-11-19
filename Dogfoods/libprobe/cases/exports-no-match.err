@@ -1,0 +1,1 @@
+libprobe: $CASES/data/tiny.pe: no export starts with Zz

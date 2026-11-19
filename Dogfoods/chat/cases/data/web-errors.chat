@@ -1,0 +1,11 @@
+# The front end refuses or loses web clients: a full house, a binary
+# message, a client that leaves first, and a request it does not serve.
+amy: !ws /rooms/lab/ws?nick=amy
+bea: !ws /rooms/lab/ws?nick=bea
+cid: !ws /ws?nick=cid
+bea: !hex ff
+bea: !close
+amy: !read
+amy: !read
+form: !post /rooms
+amy: WHO #lab

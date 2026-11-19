@@ -1,0 +1,396 @@
+File [0,0) "every.mk"
+  Import [0,0)
+    Ident [0,0) Main
+    Path [0,0)
+      Ident [0,0) Main
+  GenItem [0,0)
+    Path [0,0)
+      Ident [0,0) Main
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) int
+    BasicLit [0,0) Int 10
+  TestItem [0,0)
+    BasicLit [0,0) Str "t"
+    Param [0,0)
+      Ident [0,0) self
+      PathType [0,0)
+        Path [0,0)
+          Ident [0,0) int
+    Block [0,0)
+  StructDecl [0,0) export linear
+    Packed [0,0)
+      BasicLit [0,0) Int 2
+    Ident [0,0) Main
+    FieldMember [0,0) export
+      Ident [0,0) Len
+      PathType [0,0)
+        Path [0,0)
+          Ident [0,0) int
+    InvariantMember [0,0)
+      Ident [0,0) self
+  EnumDecl [0,0)
+    Ident [0,0) Main
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) u8
+    Variant [0,0)
+      Ident [0,0) ok
+      BasicLit [0,0) Int 1
+  ErrorDecl [0,0)
+    Ident [0,0) Main
+  InterfaceDecl [0,0)
+    Ident [0,0) Main
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+        TypeArgs [0,0)
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) int
+        Ident [0,0) Len
+      TypeParams [0,0)
+        TypeParam [0,0)
+          Ident [0,0) Self
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) Plain
+        TypeParam [0,0) const
+          Ident [0,0) fuel
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) int
+      SelfParam [0,0) mut self
+      Param [0,0) var
+        Ident [0,0) from
+        PathType [0,0)
+          Path [0,0)
+            Ident [0,0) int
+        Ident [0,0) self
+      ErrorType [0,0)
+        UnionType [0,0)
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) ok
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) err
+        RefType [0,0)
+          MutType [0,0)
+            MutSliceType [0,0)
+              OptionalType [0,0)
+                RawPtrType [0,0)
+                  SliceType [0,0)
+                    ArrayType [0,0)
+                      BasicLit [0,0) Int 4
+                      ParenType [0,0)
+                        FnType [0,0)
+                          FnParam [0,0)
+                            Ident [0,0) into
+                            RecordType [0,0)
+                              Field [0,0)
+                                Ident [0,0) ends
+                                BadType [0,0) toks[0,0)
+                          EndsFlow [0,0)
+                            Ident [0,0) self
+      FromFlow [0,0)
+        Source [0,0)
+          Ident [0,0) self
+      StoreFlow [0,0)
+        Ident [0,0) self
+        Ident [0,0) self
+      Contract [0,0) ensures
+        Ident [0,0) self
+  ImplDecl [0,0) unsafe
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) Share
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) Main
+    FuncDecl [0,0)
+      Signature [0,0)
+        FuncName [0,0)
+          Ident [0,0) Len
+      Block [0,0)
+        BindStmt [0,0) var
+          Ident [0,0) true
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) int
+          Ident [0,0) self
+        DestructureStmt [0,0) reinterpreted
+          RecordPat [0,0) rest
+            Path [0,0)
+              Ident [0,0) Main
+            PatField [0,0)
+              Ident [0,0) false
+          Ident [0,0) self
+        DiscardStmt [0,0)
+          Ident [0,0) self
+        AssignStmt [0,0) +%=
+          Ident [0,0) self
+          Ident [0,0) self
+        IfStmt [0,0)
+          BindCond [0,0)
+            Ident [0,0) some
+            Ident [0,0) self
+          Block [0,0)
+          IfStmt [0,0)
+            IsCond [0,0)
+              Ident [0,0) Self
+              PathType [0,0)
+                Path [0,0)
+                  Ident [0,0) u8
+            Block [0,0)
+            Block [0,0)
+        ForStmt [0,0)
+          Ident [0,0) Main
+          InHead [0,0)
+            Ident [0,0) Items
+            Ident [0,0) Next
+            RangeSource [0,0)
+              Ident [0,0) self
+              Ident [0,0) self
+          Block [0,0)
+            ForStmt [0,0)
+              InHead [0,0)
+                Ident [0,0) Len
+                RefSource [0,0) mut
+                  Ident [0,0) self
+              Block [0,0)
+            ForStmt [0,0)
+              InHead [0,0)
+                Ident [0,0) Len
+                FieldsSource [0,0)
+                  Ident [0,0) self
+              Block [0,0)
+                BreakStmt [0,0)
+                  Ident [0,0) Main
+                ContinueStmt [0,0)
+            ForStmt [0,0)
+              InHead [0,0)
+                Ident [0,0) Len
+                RecordPat [0,0)
+                  PatField [0,0)
+                    Ident [0,0) false
+                RefSource [0,0) copy
+                  Ident [0,0) self
+              Block [0,0)
+            BindStmt [0,0)
+              Ident [0,0) true
+              IfStmt [0,0)
+                Ident [0,0) self
+                Block [0,0)
+                Block [0,0)
+        MatchStmt [0,0)
+          Ident [0,0) self
+          Arm [0,0)
+            AltPattern [0,0)
+              VariantPattern [0,0) fields
+                Ident [0,0) some
+                PatField [0,0)
+                  Ident [0,0) ok
+                  WildcardPattern [0,0)
+              PathPattern [0,0)
+                Path [0,0)
+                  Ident [0,0) err
+              LiteralPattern [0,0) neg
+                BasicLit [0,0) Int 1
+              SomePattern [0,0)
+                NonePattern [0,0)
+              OkPattern [0,0)
+                ErrPattern [0,0)
+                  NamePattern [0,0)
+                    Ident [0,0) _
+              BadPattern [0,0) toks[0,0)
+            Block [0,0)
+        DeferStmt [0,0) onerr
+          Ident [0,0) self
+        ScopeStmt [0,0) try
+          Ident [0,0) self
+          Ident [0,0) self
+          Block [0,0)
+            ExprStmt [0,0)
+              GoExpr [0,0)
+                Ident [0,0) self
+                CallExpr [0,0)
+                  Ident [0,0) self
+                  Arg [0,0)
+                    Ident [0,0) ok
+                    Ident [0,0) self
+        UnsafeStmt [0,0)
+          BasicLit [0,0) Str "why"
+          Block [0,0)
+            BadStmt [0,0) toks[0,0)
+        ExprStmt [0,0)
+          ElseExpr [0,0)
+            BinaryExpr [0,0) &&
+              UnaryExpr [0,0) try
+                FieldExpr [0,0)
+                  Ident [0,0) self
+                  Ident [0,0) Len
+              IndexExpr [0,0)
+                SliceExpr [0,0)
+                  Ident [0,0) self
+                  Ident [0,0) self
+                PathType [0,0)
+                  Path [0,0)
+                    Ident [0,0) int
+                Ident [0,0) self
+            Ident [0,0) err
+            Block [0,0)
+              FailStmt [0,0)
+                Ident [0,0) self
+        ExprStmt [0,0)
+          ParenExpr [0,0)
+            RecordLit [0,0)
+              RecField [0,0)
+                Ident [0,0) ok
+        ExprStmt [0,0)
+          ArrayLit [0,0)
+            RepeatLit [0,0)
+              Ident [0,0) self
+              BasicLit [0,0) Int 8
+            BadExpr [0,0) toks[0,0)
+        ExprStmt [0,0)
+          FnLit [0,0)
+            Param [0,0)
+              Ident [0,0) from
+              PathType [0,0)
+                Path [0,0)
+                  Ident [0,0) int
+            Block [0,0)
+              ReturnStmt [0,0)
+                QuoteExpr [0,0) toks[0,0)
+                  Splice [0,0)
+                    Ident [0,0) self
+  AliasDecl [0,0)
+    Ident [0,0) Main
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) int
+  ConstDecl [0,0)
+    Ident [0,0) Main
+    Ident [0,0) self
+    BasicLit [0,0) Int 1
+  GlobalDecl [0,0)
+    Ident [0,0) Main
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) int
+    Ident [0,0) self
+  ExternDecl [0,0) bodiless
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+  BadItem [0,0)
+  StructDecl [0,0)
+    Aligned [0,0)
+      BasicLit [0,0) Int 16
+    Ident [0,0) Main
+  FuncDecl [0,0) naked
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+      BasicLit [0,0) Str "avx2"
+      BasicLit [0,0) Str ".text.boot"
+    Block [0,0)
+      UnsafeStmt [0,0)
+        BasicLit [0,0) Str "asm"
+        Block [0,0)
+          AsmStmt [0,0)
+            BasicLit [0,0) Str "mov {from}, 1"
+            AsmOperand [0,0) in
+              Ident [0,0) from
+              Ident [0,0) int
+              Ident [0,0) self
+            AsmOperand [0,0) lateout _
+              BasicLit [0,0) Str "rax"
+            AsmOperand [0,0) const
+              BasicLit [0,0) Int 3
+            AsmOperand [0,0) sym
+              Path [0,0)
+                Ident [0,0) Main
+            AsmOperand [0,0) clobber_abi
+              BasicLit [0,0) Str "C"
+            AsmOperand [0,0) options
+              Ident [0,0) into
+              Ident [0,0) ends
+  ExternDecl [0,0) bodiless naked
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+  ConstDecl [0,0)
+    Ident [0,0) Main
+    Ident [0,0) self
+    BasicLit [0,0) Str ".rodata"
+  GlobalDecl [0,0) extern
+    Ident [0,0) Main
+    PathType [0,0)
+      Path [0,0)
+        Ident [0,0) int
+  ExternDecl [0,0) bodiless
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+      Param [0,0)
+        Ident [0,0) from
+        FnType [0,0)
+          FnParam [0,0)
+            Ident [0,0) into
+            PathType [0,0)
+              Path [0,0)
+                Ident [0,0) int
+          PathType [0,0)
+            Path [0,0)
+              Ident [0,0) Main
+          FromFlow [0,0)
+            FieldSrc [0,0)
+              Ident [0,0) ok
+              Source [0,0)
+                Ident [0,0) into
+      PathType [0,0)
+        Path [0,0)
+          Ident [0,0) Main
+      FromFlow [0,0)
+        FieldSrc [0,0)
+          Ident [0,0) ok
+          Source [0,0)
+            Ident [0,0) from
+          Source [0,0)
+            Ident [0,0) self
+            Ident [0,0) Len
+        FieldSrc [0,0)
+          Ident [0,0) err
+          Source [0,0)
+            Ident [0,0) self
+  FuncDecl [0,0)
+    Signature [0,0)
+      FuncName [0,0)
+        Ident [0,0) Main
+    Block [0,0)
+      MatchStmt [0,0)
+        Ident [0,0) self
+        Arm [0,0)
+          RangePattern [0,0)
+            LiteralPattern [0,0) neg
+              BasicLit [0,0) Int 8
+            LiteralPattern [0,0)
+              BasicLit [0,0) Int 8
+          Block [0,0)
+        Arm [0,0)
+          RangePattern [0,0) open-hi
+            LiteralPattern [0,0)
+              BasicLit [0,0) Char 'a'
+          Block [0,0)
+        Arm [0,0)
+          RangePattern [0,0) open-lo
+            LiteralPattern [0,0)
+              BasicLit [0,0) Int 200
+          Block [0,0)
+      BecomeStmt [0,0)
+        CallExpr [0,0)
+          Ident [0,0) self
+          Arg [0,0)
+            Ident [0,0) self

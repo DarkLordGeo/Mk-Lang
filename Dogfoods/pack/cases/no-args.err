@@ -1,0 +1,18 @@
+usage: pack <command> [options] [arguments]
+
+Commands:
+  create       pack a directory into an archive
+  list         list what an archive holds
+  verify       check an archive's signature and every digest
+  extract      unpack an archive into a directory
+  sum          print the SHA-256 or SHA-512 of each file in an archive
+  keygen       make a key pair for signing and sealing
+  fingerprint  print the fingerprint of a key file
+  untar        list or extract a tar archive (.tar, .tar.zst, .tar.gz, .tar.zz)
+  zlib         compress a file into a zlib stream
+  unzlib       decompress a zlib stream into a file
+
+Run pack <command> --help for a command's options.
+Exit status: 0 success, 1 a damaged, forged or unopenable archive,
+2 a usage error, 3 a file system error, 4 the memory budget exhausted.
+

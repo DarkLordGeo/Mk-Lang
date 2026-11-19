@@ -1,0 +1,12 @@
+usage: pack create [options]
+
+Options:
+  --out <str>        Write the archive to this file (required)
+  --sign <str>       Sign the manifest with this secret key file
+  --to <str>         Seal the archive to this public key file
+  --cipher <str>     Seal with chacha20-poly1305 (the default) or aes-256-gcm
+  --gzip             Compress with gzip framing instead of raw DEFLATE
+  --mem-limit <int>  Fail rather than hold more than this many bytes of file data
+  --stats            Print memory use on stderr
+Arguments:
+  <dirs>...          The directory to pack

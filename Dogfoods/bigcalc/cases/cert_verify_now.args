@@ -1,0 +1,7 @@
+cert
+verify
+--roots
+$CASES/data/pki/root.pem
+--host
+bigcalc.test
+$CASES/data/pki/chain.pem

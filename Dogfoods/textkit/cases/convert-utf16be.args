@@ -1,0 +1,8 @@
+convert
+--from
+utf-16be
+--to
+utf-16le
+--dump
+hex
+$CASES/data/be.bin

@@ -1,0 +1,5 @@
+# runtime.StackBounds and StackRemaining: a deep recursion that checks
+# StackRemaining ends with its own error before the guard page, on Main's task and on a spawned
+# task. Both profiles, both targets.
+case ok
+stdout stackquery.out

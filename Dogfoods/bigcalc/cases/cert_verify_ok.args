@@ -1,0 +1,9 @@
+cert
+verify
+--roots
+$CASES/data/pki/root.pem
+--at
+2026-06-01T12:00:00Z
+--host
+www.bigcalc.test
+$CASES/data/pki/chain.pem

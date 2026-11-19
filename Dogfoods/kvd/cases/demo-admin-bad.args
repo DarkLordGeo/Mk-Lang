@@ -1,0 +1,7 @@
+demo
+--clients
+1
+--data
+{tmp}/d
+--admin
+{tmp}/x/a

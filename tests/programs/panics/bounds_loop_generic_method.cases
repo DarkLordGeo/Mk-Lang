@@ -1,0 +1,3 @@
+case panic
+stderr bounds_loop_generic_method.err
+exit 101

@@ -1,0 +1,10 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+alice> PING never
+alice! write failed: Canceled
+alice> QUIT
+-- server: history=0
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=0 broken=0 canceled=3

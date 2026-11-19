@@ -1,0 +1,4 @@
+-r
+<$1>
+id=([0-9]+)
+$CASES/data/tree/a.txt

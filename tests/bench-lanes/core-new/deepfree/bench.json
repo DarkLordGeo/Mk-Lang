@@ -1,0 +1,25 @@
+{
+  "name": "deepfree",
+  "table": "idiomatic",
+  "algorithm": "Build, read and release a list of owned strings: per round a fresh list; n times the next splitmix64 value v picks k = v % 64 bytes at offset (v >> 16) % 4032 of a 4,096-byte lowercase source and a heap copy of them is appended; one pass adds each string's length, 7 times its first byte and its last byte; then the list is released with every string (README.md).",
+  "overflow": "wraps",
+  "args": ["1000000", "5", "1"],
+  "quick": ["100000", "3", "1"],
+  "checksum": "4466063722",
+  "quick_checksum": "267884541",
+  "sources": {
+    "mk": "mk",
+    "c": "deepfree.c",
+    "rust": "deepfree.rs",
+    "zig": "deepfree.zig"
+  },
+  "skip": {
+    "go": "no release walk: Go drops the slice and its collector frees the strings when it runs, so a Go column would time allocation and the collector, not a release",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum folds every stored string's length and two of its bytes, read back after the list is built",
+  "notes": [
+    "The release: Mk HeapList[HeapText].Free, the deep Free that walks the list and frees each text before the storage (reference section 18, D-423); Rust drop of Vec<String>; Zig a free loop then deinit of std.ArrayList([]u8) over std.heap.smp_allocator; C a free loop then free of the array (realloc doubling).",
+    "What the row measures: the timed region is the whole program, so each column's time is mostly the n allocations and copies of the build and the read pass, with the release on top; it compares allocators with their release walks, and does not isolate the cost of Free (no column was profiled to split it). C, Rust, Zig and Mk allocate no block for an empty string."
+  ]
+}

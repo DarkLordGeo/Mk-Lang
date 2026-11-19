@@ -1,0 +1,6 @@
+extract
+--signer
+$CASES/data/alice.pub
+--dest
+$WORK/out
+$CASES/data/plain.pk

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("import std.net\nA(e:net.Error){match 0{net.Refused.A{}}}")

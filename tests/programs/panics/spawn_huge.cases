@@ -1,0 +1,6 @@
+case default-slot
+stderr spawn_huge.err
+exit 101
+
+case large-slot
+args large

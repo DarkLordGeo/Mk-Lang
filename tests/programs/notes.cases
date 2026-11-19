@@ -1,0 +1,9 @@
+# The in-memory notes service and its client in one process: create, read, delete, miss, and the
+# error statuses 400, 404, 405 and 413, then a cancel that ends http.Serve. The ids are 1 and 2
+# because one client sends the requests in order.
+# Known flake: the port is taken from a listener on 127.0.0.1:0 that is closed before http.Serve
+# binds the same number (Serve takes an address and reports no bound port), so another process
+# may take the port in between; then the client's dials fail and the run ends "client failed".
+case ok
+stdout notes.out
+timeout 30

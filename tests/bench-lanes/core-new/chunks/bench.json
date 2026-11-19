@@ -1,0 +1,25 @@
+{
+  "name": "chunks",
+  "table": "idiomatic",
+  "algorithm": "Each standard library's chunk iterators over n splitmix64 u64 values: per round r a piece length k = (r % 16) * 4 + 1; a mut pass scales every element of piece j to x * 3 + j, then a shared pass adds, per piece, its first element xor its last and every element; the rounds' sums are added with wrapping (README.md).",
+  "overflow": "wraps",
+  "args": ["65536", "10000", "1"],
+  "quick": ["65536", "100", "1"],
+  "checksum": "1252841694378895717",
+  "quick_checksum": "14501135841921717839",
+  "sources": {
+    "mk": "mk",
+    "rust": "chunks.rs",
+    "go": "testdata/chunks.go"
+  },
+  "skip": {
+    "c": "no chunk iterator in C's standard library",
+    "zig": "no mut chunk iterator in Zig's standard library (std.mem.window hands out const pieces only); a hand-sliced mut pass would be a stand-in, which the idiomatic table refuses",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum folds every element of every piece of both passes, so every column visited the same pieces in the same order",
+  "notes": [
+    "Iterators: Mk Slice.ChunksMut (raw pointer and count) and Slice.Chunks (a position into the borrowed slice) over a HeapList[u64]; Rust slice::chunks_mut and slice::chunks; Go slices.Chunk (Go 1.23) for both, its pieces aliasing the slice; Zig has no column: its std has no mut chunk iterator.",
+    "The mut pass's inner loop is each language's element iterator over the piece (Mk for e in mut c, Rust iter_mut); Go writes c[i] in a range over the piece's indices, whose bounds checks its compiler removes; the shared pass reads c[0] and c[c.Len() - 1] and then iterates."
+  ]
+}

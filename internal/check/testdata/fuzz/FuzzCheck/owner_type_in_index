@@ -1,0 +1,2 @@
+go test fuzz v1
+string("F[T](x:T){0[[]x](0)}")

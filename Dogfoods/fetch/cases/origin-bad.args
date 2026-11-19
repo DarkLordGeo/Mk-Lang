@@ -1,0 +1,3 @@
+--origin
+$CASES/data/bad.origin
+http://{origin}/hello

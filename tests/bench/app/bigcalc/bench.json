@@ -1,0 +1,42 @@
+{
+  "name": "bigcalc",
+  "table": "app",
+  "algorithm": "Evaluate the bigcalc dogfood's bench lines of big-number RPN with larger operands: a factorial's bit length, a Fibonacci number mod a prime, a Fermat test of a Mersenne prime by modpow, an integer square root, a gcd of two Mersenne numbers and a modular inverse; print each result (README.md).",
+  "args": [
+    "calc",
+    "30000 fact bitlen p",
+    "200000 fib 1000000007 mod p",
+    "2 19937 ^ 1 - =m",
+    "3 $m 1 - $m modpow p",
+    "10 30000 ^ sqrt 7 mod p",
+    "2 19937 ^ 1 - 2 11213 ^ 1 - gcd p",
+    "$m 12345678901234567890 inv 1000 mod p"
+  ],
+  "quick": [
+    "calc",
+    "3000 fact bitlen p",
+    "20000 fib 1000000007 mod p",
+    "2 4423 ^ 1 - =m",
+    "3 $m 1 - $m modpow p",
+    "10 3000 ^ sqrt 7 mod p",
+    "2 4423 ^ 1 - 2 4253 ^ 1 - gcd p",
+    "$m 12345678901234567890 inv 1000 mod p"
+  ],
+  "checksum": "sha256:973e6d34ca1e4f2e0c1569e2fba9e0d88d0a3765a45945952257a76ff8a85916",
+  "quick_checksum": "sha256:2f896324b5f0ff3dbc41d1896c3337069f6d15ef22cf023f4b388fe3fb9c54c1",
+  "package": {
+    "path": "Dogfoods/bigcalc"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the bigcalc dogfood unchanged, compared across mk binaries; no twin, no peer, no defect line (README.md).",
+    "The lines are Dogfoods/bigcalc/cases/data/bench.rpn's, given to calc, which evaluates each argument as a line and then prints the top of the stack once more: the quick arguments keep the script's operands and print its bench.out and a last 443; the publish arguments raise them (3,000 to 30,000, 20,000 to 200,000, the Mersenne primes 2^4423 - 1 and 2^4253 - 1 to 2^19937 - 1 and 2^11213 - 1).",
+    "The size is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

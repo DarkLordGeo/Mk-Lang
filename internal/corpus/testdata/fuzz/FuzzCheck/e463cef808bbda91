@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("A()requires 0 ensures 0{}\ntest\"\"{}")

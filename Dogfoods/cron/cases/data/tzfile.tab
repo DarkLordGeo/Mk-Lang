@@ -1,0 +1,5 @@
+# A zone read from a TZif file beside the crontab, as a system without a
+# zone database would ship it
+CRON_TZFILE=ny.tzif
+0 2 * * *      two     --  jobkit print two
+30 1 1 11 *    once    --  jobkit print once

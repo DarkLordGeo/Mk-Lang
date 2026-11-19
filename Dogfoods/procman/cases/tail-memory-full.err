@@ -1,0 +1,8 @@
+INFO noisy: started (run 1)
+WARN noisy: exited with code 1
+WARN noisy: --tail-memory is full; the summary will not show its output
+WARN noisy: restarting in 1ms (restart 1 of 1)
+INFO noisy: started (run 2)
+WARN noisy: exited with code 1
+ERROR noisy: gave up after 2 runs
+INFO every process has ended

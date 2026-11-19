@@ -1,0 +1,25 @@
+# a session against a fresh database
+health
+version
+add "Shopping list" "milk, eggs and  BREAD" home errands
+add "Reading" "The Mk reference, sections 1 to 18" books
+add "shopping   LIST" "duplicate title after normalising"
+add "Bad tags" "x" "Not A Tag"
+get 1
+get 99
+list
+search "MILK,  EGGS"
+list tag=books
+edit 2 body="Sections 17 and 18" tags=books,reference
+rm 1
+rm 1
+stats
+raw DELETE /notes
+raw POST /notes "{\"title\": \"x\", "
+raw POST /notes "[1, 2]"
+raw PATCH /notes/2 "{\"colour\": \"red\"}"
+raw GET /notes?limit=0
+raw GET /notes?q=%ZZ
+list limit=1 offset=1
+raw GET /tags/books
+raw GET /tags/nothing

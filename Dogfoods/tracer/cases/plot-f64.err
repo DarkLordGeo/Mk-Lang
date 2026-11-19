@@ -1,0 +1,2 @@
+y = sin(x) * exp(-x^2 / 8) in f64 over [-5, 5]: y in [-0.8564857265972519, 0.8564857265972519], grid step 0.2, 0 samples not finite
+64x40 (8:5), 7693 bytes, fnv1a ec1518acecbc3576

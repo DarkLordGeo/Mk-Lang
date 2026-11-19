@@ -1,0 +1,3 @@
+# FizzBuzz from 1 to 15. Both profiles, both targets.
+case ok
+stdout fizz.out

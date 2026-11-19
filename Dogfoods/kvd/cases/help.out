@@ -1,0 +1,30 @@
+kvd: a key-value server with a write-ahead log
+
+usage:
+  kvd serve [--addr IP:PORT] [--data DIR] [flags]     run a server until SHUTDOWN or a signal
+  kvd client [--addr HOST:PORT] [COMMAND...]          send one command, or one per line of stdin
+  kvd admin --admin PATH COMMAND...                   send one command over the admin channel
+  kvd demo [--clients N] [--hold]                     a server and N clients in one process
+  kvd bench [--clients N] [--requests N]              load an in-process server, report the replies
+  kvd sim [--seeds A..B] [--clients N] [--steps N]    crash, fault and recover under std.sim
+  kvd record LOG [COMMAND...]                         a client session, recorded to LOG
+  kvd replay LOG [COMMAND...]                         the same session replayed from LOG
+  kvd wal dump FILE                                   print a log's records
+  kvd wal check FILE                                  verify a log and summarise it
+  kvd wal compact FILE [--out FILE] [--max-memory N]  rewrite a log as one record per key
+  kvd snap dump FILE                                  print a snapshot's header and entries
+  kvd snap get FILE KEY                               look one key up in a snapshot
+
+serve flags:
+  --max-key N --max-value N --compact-after N --max-clients N --slow-ms N
+  --log-level debug|info|warn|error  --log stderr|stdout  --log-time
+  --port-file FILE  --lock FILE  --admin PATH  --sync always|never|N
+  --idle-ms N  --request-ms N
+
+a data directory holds kvd.wal (the log), kvd.snap (the snapshot the log
+starts from) and kvd.lock (held by the one server that serves it)
+
+commands: PING GET SET DEL APPEND INCR GETSET KEYS DBSIZE HASH WAIT STATS
+          NAME CLIENTS COMPACT QUIT SHUTDOWN
+
+exit codes: 0 ok, 1 failure, 2 usage, 3 corrupt log, 4 out of memory, 5 simulation check failed

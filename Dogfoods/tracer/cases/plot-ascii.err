@@ -1,0 +1,2 @@
+y = fma(x, x, -2) / hypot(x, 1) + copysign(1, x) * mod(x, 0.5) in f64 over [-1, 1]: y in [-1.9760682442806827, -0.36499685314851366], grid step 0.2, 0 samples not finite
+12x8 (3:2), 1138 bytes, fnv1a 96881c86ce71741a

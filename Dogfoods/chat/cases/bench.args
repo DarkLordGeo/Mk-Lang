@@ -1,0 +1,15 @@
+load
+--clients
+200
+--rooms
+4
+--messages
+20
+--queue
+1024
+--burst
+0
+--bots
+0
+--max-clients
+256

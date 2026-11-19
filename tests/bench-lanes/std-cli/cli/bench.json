@@ -1,0 +1,30 @@
+{
+  "name": "cli",
+  "table": "idiomatic",
+  "algorithm": "Build one argument vector of n arguments (n/10 groups of --verbose, --count=<c>, --name n<c>, --level <3c>, --tag=t<c>, then the positionals f<j> up to n), then parse it reps times with each language's standard argument parser; per rep add count + level + len(name) + len(tag) + the positionals' count + verbose + len(files[rep mod len(files)]) (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000",
+    "200000"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "141326630",
+  "quick_checksum": "7360",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/cli.go"
+  },
+  "skip": {
+    "c": "no std argument parser: ISO C has none, and getopt_long (POSIX, GNU) is not in the MSVC CRT this target links",
+    "rust": "no std argument parser: Rust std has std::env::args only (clap is not std); no crate stands in",
+    "zig": "no std argument parser: Zig std has the process argument iterator only",
+    "mk-wrap": "the checksum already uses the wrapping operators; the parser has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum checks that both parsers read the same values",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk gen cli.Args(Opts)'s emitted Opts.Parse, whose strs and positionals are views of the vector (no allocation: the positionals are one contiguous run); Go flag.FlagSet with five flags defined once (the analogue of Mk's compile-time generation) and Parse per rep. Arguments per second = n x reps / median. Checksums from the Go column and a hand count of the pseudo-code (std-cli session 2); verify through tools/bench before timing."
+  ]
+}

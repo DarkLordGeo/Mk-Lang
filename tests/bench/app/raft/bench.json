@@ -1,0 +1,38 @@
+{
+  "name": "raft",
+  "table": "app",
+  "algorithm": "Simulate a Raft cluster under std.sim for each seed of a range, with partitions and 5 percent message loss, check every run's history for linearizability and replay it, then print the summary and the history digest: the raft dogfood's bench case over more seeds (README.md).",
+  "args": [
+    "sim",
+    "--seeds",
+    "1..1000",
+    "--partitions",
+    "--loss",
+    "5"
+  ],
+  "quick": [
+    "sim",
+    "--seeds",
+    "1..300",
+    "--partitions",
+    "--loss",
+    "5"
+  ],
+  "checksum": "sha256:a21c984e103a3ad45b923deefc74ba23dd9babcea1c84e52d26d07e4bca3642b",
+  "quick_checksum": "sha256:2d850fd01a21e48bf9fcd91123634ad2991172d1bbdb91fad467b6dee375facc",
+  "package": {
+    "path": "Dogfoods/raft"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the raft dogfood unchanged, compared across mk binaries; no twin (std.sim has no peer), no defect line (README.md).",
+    "The quick arguments are the dogfood's own bench case (Dogfoods/raft/cases/bench.args).",
+    "The size (the seed range) is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

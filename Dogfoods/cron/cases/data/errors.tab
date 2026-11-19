@@ -1,0 +1,22 @@
+# Every mistake here is reported, each with its line
+61 * * * *          minute      --  jobkit print x
+* 24 * * *          hour        --  jobkit print x
+* * 0 * *           day         --  jobkit print x
+* * * foo *         month       --  jobkit print x
+* * * * mon-sun     weekday     --  jobkit print x
+*/0 * * * *         step        --  jobkit print x
+* * * *             short
+@fortnightly        special     --  jobkit print x
+@every 10ms         fast        --  jobkit print x
+@every soon         vague       --  jobkit print x
+@daily
+@daily              bad/name    --  jobkit print x
+@daily              dup         --  jobkit print x
+@daily              dup         --  jobkit print x
+@daily              opts        retries=3  --  jobkit print x
+@daily              wait        timeout=0s --  jobkit print x
+@daily              nodashes    jobkit print x
+@daily              empty       --
+@daily              unclosed    --  jobkit print "x
+@daily              triple      --  jobkit cat | jobkit cat | jobkit cat
+@daily              unset       --  jobkit print $NOT_SET

@@ -1,0 +1,31 @@
+{
+  "name": "hash-xx",
+  "table": "idiomatic",
+  "algorithm": "std XXH3-64, seed 0 over splitmix64 bytes, reps passes with a one-byte write-back (mk/hash-xx.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "224",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "11052251871955223902",
+  "quick_checksum": "17516445495005906863",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-xx.zig"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard XXH3-64, seed 0",
+    "rust": "no std XXH3-64, seed 0: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in",
+    "go": "no std XXH3-64, seed 0: Go std has none (hash/maphash is a different, seeded hash); no module stands in"
+  },
+  "notes": [
+    "Idiomatic standard library: one call of each language's std function per pass (plan/06-m6.md 4.1). Bytes per second = mib * 1048576 * reps / median.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2) printed the same values for args and quick on the owner's machine, 2026-11-06 (std-hashmod session 1). The publish-size checksum was re-agreed by every column in `go run ./tools/bench verify -publish-size` on the owner's machine, 2026-11-07 (std-hashmod session 5, after the reps were raised). Not published: no number here is a measurement."
+  ]
+}

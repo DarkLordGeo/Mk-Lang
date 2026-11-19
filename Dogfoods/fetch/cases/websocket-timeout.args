@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+--max-time
+1
+--ws-send
+x
+ws://{origin}/stall

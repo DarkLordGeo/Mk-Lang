@@ -1,0 +1,6 @@
+--procfile
+$CASES/data/tail.Procfile
+--tail-memory
+140
+start
+--summary

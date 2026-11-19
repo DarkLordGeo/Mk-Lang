@@ -1,0 +1,8 @@
+enc
+open
+--ecdh-key
+$CASES/data/pki/p256.pem
+--info
+ecies
+$CASES/data/pki/plain.txt
+-

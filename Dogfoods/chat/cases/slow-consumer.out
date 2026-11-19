@@ -1,0 +1,2 @@
+slow consumer: flooder saw it leave=1 it read to the end=1
+-- endings: quit=1 eof=0 dropped=1 kicked=0 closing=0 broken=0 canceled=0

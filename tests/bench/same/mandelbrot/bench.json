@@ -1,0 +1,26 @@
+{
+  "name": "mandelbrot",
+  "table": "same",
+  "algorithm": "Scalar Mandelbrot over an n by n grid, at most 50 iterations per point; the checksum is the total iteration count (README.md).",
+  "overflow": "never",
+  "args": [
+    "5600"
+  ],
+  "quick": [
+    "200"
+  ],
+  "checksum": "746474893",
+  "quick_checksum": "952474",
+  "sources": {
+    "mk": "mk",
+    "c": "mandelbrot.c",
+    "rust": "mandelbrot.rs",
+    "zig": "mandelbrot.zig",
+    "go": "testdata/mandelbrot.go"
+  },
+  "skip": {
+    "mk-wrap": "the hot loop is float; its only integer arithmetic is the iteration counter"
+  },
+  "no_counts": "B24: the checksum is itself the operation count (the total iterations of the escape loop)",
+  "notes": []
+}

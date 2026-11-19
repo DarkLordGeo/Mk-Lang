@@ -1,0 +1,2 @@
+tracer: expression: UnknownName(at: 4)
+  sin(y)

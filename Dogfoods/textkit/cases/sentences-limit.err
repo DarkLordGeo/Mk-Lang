@@ -1,0 +1,2 @@
+textkit: $CASES/data/story.txt: TooLarge(limit: 40)
+textkit: $CASES/data/latin1.txt: BadUtf8(line: 1)

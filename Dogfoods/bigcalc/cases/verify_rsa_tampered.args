@@ -1,0 +1,5 @@
+verify
+--key
+$CASES/data/pki/rsa_pub.pem
+$CASES/data/pki/msg2.txt
+$CASES/data/pki/msg.rsa.sig

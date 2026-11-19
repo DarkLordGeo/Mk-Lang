@@ -1,0 +1,4 @@
+convert
+--from
+iso-8859-15
+$CASES/data/whatwg/iso-8859-15.bin

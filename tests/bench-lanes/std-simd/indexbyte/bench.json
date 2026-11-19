@@ -1,0 +1,165 @@
+{
+  "name": "indexbyte",
+  "table": "simd",
+  "algorithm": "Find the first 0xFF byte of a buffer of 7-bit bytes, the needle planted within the last 64 bytes and removed after each search; reps searches (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "../../../bench/simd/indexbyte/indexbyte.c",
+    "rust": "../../../bench/simd/indexbyte/indexbyte.rs",
+    "zig": "../../../bench/simd/indexbyte/indexbyte.zig",
+    "go": "../../../bench/simd/indexbyte/testdata/indexbyte.go"
+  },
+  "skip": {
+    "mk-wrap": "no integer arithmetic to wrap in the kernel"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "8000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "130811982439",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 131072000000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "4000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "134217598462",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "36",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "38654704504",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 38654705664,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "20000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "327029884772",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 327680000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "5000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "167771998448",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 167772160000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "36",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "38654704504",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 38654705664
+    }
+  ],
+  "notes": [
+    "On a CPU with AVX-512 (the owner's Ryzen 7 9800X3D has it) the mk column of the v3 variants runs std.simd's 64-lane `cpu \"avx512bw\"` form from 256 bytes up (D-353), while c, rust and zig are fixed at x86-64-v3: the Mk cell is then not at the same width. bench-final labels it or adds a v4 variant (status/bench.md, from std-simd).",
+    "GB/s counts size * reps bytes; each search reads all but at most 64 bytes of the buffer. The fill (one arithmetic pass) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is size * reps over the kernel time (BS-3). Every buffer starts on a 64-byte boundary (BS-4).",
+    "std-simd lane row: bench-std's row indexbyte (tests/bench/simd/indexbyte) with its C, Rust, Zig and Go sources by relative path, unchanged, and an Mk column calling std.simd. The Mk buffers are arena slices, whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md), until std's aligned allocation reaches Arena (plan/29-sys.md S-1). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

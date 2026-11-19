@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("otal := acc.ReduceSum()\n    for i < xs.Len() {\n        total += xs[i]\n        i += 1\n    }\n    return total\n}\n\nSum8(xs: []f32): f32 cpu \"x86-64-imd.Cv3\" {\n    return SumN[8](xs)\n}\n\nSum4(xs: []f32): f32 {\n    return SumN[4](xs)\n}\n\nSum(xs: []f32): f32 {\n    var f: fn([]f32): f32 = Sum4\n    unsafe \"Dispatch returns Sum\xb5\xb5\xb58 only when Cpu() has x86-64-v3, its clause\"")

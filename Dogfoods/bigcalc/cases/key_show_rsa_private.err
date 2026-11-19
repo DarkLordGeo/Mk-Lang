@@ -1,0 +1,2 @@
+bigcalc: $CASES/data/pki/rsa_pkcs1_private.pem: not a key bigcalc reads; it signs with Ed25519, P-256 and P-384 keys in PKCS#8 or SEC 1
+bigcalc: $CASES/data/pki/rsa_pkcs1_private.pem: BadEncoding

@@ -1,0 +1,1 @@
+libprobe: $CASES/data/no-search.req:3: a library needs a search after its name (system, application or path)

@@ -1,0 +1,35 @@
+usage: raft sim [options]       simulate a cluster for each seed and check its history
+       raft check FILE          check a history file for linearizability
+       raft replay FILE         replay a recording that sim --record wrote
+
+exit status: 0 linearizable, 1 not linearizable, 2 usage, 3 bad input,
+4 out of memory, 5 replay differs, 6 network error
+
+options:
+
+Options:
+  --help             Print this help and exit
+  --seed <int>       The one seed to run (default 1)
+  --seeds <str>      The seeds to run, A..B inclusive
+  --nodes <int>      Nodes in the cluster, 1 to 5 (default 5)
+  --clients <int>    Clients, 1 to 8 (default 3)
+  --ops <int>        Operations each client invokes (default 12)
+  --keys <int>       Registers the clients use, 1 to 8 (default 4)
+  --loss <int>       Percent of datagrams lost (default 0)
+  --delay <int>      Percent of datagrams held back one step (default 0)
+  --duplicate <int>  Percent of datagrams sent twice (default 0)
+  --corrupt <int>    Percent of datagrams with one byte changed (default 0)
+  --inbox <int>      Messages an endpoint keeps per step, 1 to 256 (default 256)
+  --partitions       Partition the network every 300 ms of simulated time
+  --faults           Fail a share of socket operations in the simulator
+  --crash            Keep node state on the simulated disk; crash and restart the cluster once
+  --duration <int>   Simulated milliseconds the clients run for (default 3000)
+  --tasks            Run every node in a task of its own
+  --peers <str>      The nodes' addresses, host:port separated by commas
+  --history <str>    Write the last seed's client history to this file
+  --record <str>     Write the last seed's recording to this file
+  --memory <int>     Heap budget in bytes for the network's queues and sockets
+  --verbose          Print every seed's history
+  --stale            Build the nodes with a bug: reads answered from local state
+Arguments:
+  <args>...          The command: sim, check FILE or replay FILE

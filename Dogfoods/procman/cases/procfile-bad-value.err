@@ -1,0 +1,3 @@
+procman: $CASES/data/bad-value.Procfile:1:14: bad value for this option
+    web [restart=sometimes]: ./server
+                 ^

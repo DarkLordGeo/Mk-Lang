@@ -1,0 +1,14 @@
+--origin
+$CASES/data/site.origin
+--tls-chain
+$CASES/data/tls/server.pem
+--tls-key
+$CASES/data/tls/server.key
+--cacert
+$CASES/data/tls/root.pem
+--alpn
+h2,http/1.1
+--handshake
+https://{tls}/hello
+https://{tls2}/missing
+http://{origin}/hello

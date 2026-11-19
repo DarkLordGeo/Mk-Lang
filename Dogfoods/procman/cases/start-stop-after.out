@@ -1,0 +1,3 @@
+NAME         STATE    RUNS RESTARTS  LAST
+sleeper      stopped     1        0  killed
+stubborn     stopped     1        0  killed

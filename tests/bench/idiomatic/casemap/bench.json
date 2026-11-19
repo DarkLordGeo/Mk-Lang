@@ -1,0 +1,35 @@
+{
+  "name": "casemap",
+  "table": "idiomatic",
+  "std": ["std.core.str.ToLower"],
+  "algorithm": "Lower-case each line of a generated 4 MiB mixed-script text (ASCII, Latin-1, Greek without the sigmas, Cyrillic; splitmix64) with each language's std Unicode case mapping; FNV-1a 64 over the lowered bytes plus their length, wrapping; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "4096",
+    "40",
+    "1"
+  ],
+  "quick": [
+    "4096",
+    "1",
+    "1"
+  ],
+  "checksum": "10873340641585928800",
+  "quick_checksum": "11801048562108117980",
+  "sources": {
+    "mk": "mk",
+    "rust": "casemap.rs",
+    "go": "testdata/casemap.go"
+  },
+  "skip": {
+    "c": "no std Unicode case mapping in C (tolower maps one byte of the current locale)",
+    "zig": "no std Unicode case mapping in Zig 0.17 (std.ascii.lowerString maps ASCII only)",
+    "mk-wrap": "the checksum already uses the wrapping operators; case mapping has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the alphabet leaves out every scalar whose simple and full lower case differ, so every column writes the same bytes, and the hash over them checks every result",
+  "notes": [
+    "Mappings named: mk str.ToLower (simple, one scalar to one), results in an arena reset per round; rust str::to_lowercase (full, context-sensitive; on this alphabet the same as simple), a String per line; go strings.ToLower (simple), a string per line, garbage collected. The text is built in the program, once, before the rounds.",
+    "Case folding (text.FoldCase) has no cell: no other std here has full case folding (Go's EqualFold is simple folding as a comparison); README.md.",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

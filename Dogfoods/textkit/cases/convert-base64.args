@@ -1,0 +1,6 @@
+convert
+--dump
+base64
+--buffer
+5
+$CASES/data/story.txt

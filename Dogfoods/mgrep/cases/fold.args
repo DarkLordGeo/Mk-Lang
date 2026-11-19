@@ -1,0 +1,7 @@
+-i
+--path-separator
+/
+-N
+NEEDLE
+$CASES/data/tree/a.txt
+$CASES/data/tree/b.md

@@ -1,0 +1,15 @@
+// The bench case: calls, arithmetic, strings and lists under the collector.
+fun fib(n) {
+  if (n < 2) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+print fib(24);
+var xs = [];
+for (var i = 0; i < 20000; i = i + 1) {
+  push(xs, str(i));
+  if (len(xs) > 100) xs = [];
+}
+print len(xs);
+var sum = 0;
+for (var i = 0; i < 200000; i = i + 1) sum = sum + i % 7;
+print sum;

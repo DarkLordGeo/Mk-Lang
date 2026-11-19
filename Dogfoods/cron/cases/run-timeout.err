@@ -1,0 +1,6 @@
+INFO hang: started
+INFO hang| hang: started a child, now waiting for ever
+WARN hang: timed out after 1s; its process group was killed
+INFO check: started
+INFO check| marker.txt: absent
+INFO check: done

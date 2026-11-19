@@ -1,0 +1,4 @@
+web     | serving one request
+NAME         STATE    RUNS RESTARTS  LAST
+web          ended       1        0  exit 0
+sleeper      stopped     1        0  killed

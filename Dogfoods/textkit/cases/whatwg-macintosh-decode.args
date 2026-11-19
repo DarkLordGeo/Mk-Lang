@@ -1,0 +1,4 @@
+convert
+--from
+macintosh
+$CASES/data/whatwg/macintosh.bin

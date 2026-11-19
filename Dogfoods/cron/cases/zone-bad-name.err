@@ -1,0 +1,1 @@
+cron: zone ../etc/passwd: BadName (not a zone name such as Europe/Berlin)

@@ -1,0 +1,15 @@
+demo
+--clients
+1
+--data
+{tmp}/d
+--idle-ms
+200
+--request-ms
+100
+--log
+stdout
+--sync
+never
+--rounds
+2

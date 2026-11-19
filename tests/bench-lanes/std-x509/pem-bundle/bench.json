@@ -1,0 +1,27 @@
+{
+  "name": "x509-pem-bundle",
+  "table": "idiomatic",
+  "algorithm": "std.x509 ParsePem of one PEM bundle (the 21 certificates of std/x509/testdata's 15 files in name order, 19,416 bytes, embedded as a constant), <reps> passes, the checksum the sum of every certificate's DER length (mk/x509-pem-bundle.mk). Measures the PEM scan, the base64 decode and Parse together, as a program reading a root bundle does.",
+  "overflow": "wraps",
+  "args": [
+    "10000"
+  ],
+  "quick": [
+    "3"
+  ],
+  "checksum": "134710000",
+  "quick_checksum": "40413",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/x509-pem-bundle.go"
+  },
+  "skip": {
+    "c": "no std X.509 or PEM: C has no standard certificate library (OpenSSL is third-party)",
+    "rust": "no std X.509 or PEM: Rust std has none; rustls-pemfile and x509-parser are third-party, and no crate stands in (plan/06-m6.md 4.1)",
+    "zig": "no std PEM reader over memory: Zig 0.17.0's std.crypto.Certificate.Bundle reads PEM only through an Io.File.Reader (addCertsFromFile) into its own map, dropping expired certificates and keeping one per subject, with no list of parsed certificates to return, and no third-party package stands in (plan/06-m6.md 4.1); x509-parse-chain compares the parse"
+  },
+  "notes": [
+    "Work per pass: Mk x509.ParsePem (a block scan, std.encoding's PEM and base64 decode of each block into a sub-arena freed per block, the DER copied into the arena, x509.Parse of each, a List of the certificates; the arena reset per pass); Go encoding/pem Decode of each block and crypto/x509 ParseCertificate of each CERTIFICATE block (allocating, every extension and the public key parsed).",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-13). Written by the std-x509 lane. Not published: no number here is a measurement; publish is the bench lane's (it writes tests/bench)."
+  ]
+}

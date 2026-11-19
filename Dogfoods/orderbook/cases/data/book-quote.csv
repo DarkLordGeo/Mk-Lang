@@ -1,0 +1,2 @@
+id,side,kind,qty,price,stop,ts,tag
+21/1,S,limit,30,101.00,,900,"desk 4" hedge

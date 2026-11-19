@@ -1,0 +1,8 @@
+# The operator shuts the server down under a WebSocket client and an event stream.
+web: !ws /rooms/ops/ws?nick=wendy
+watch: !events /rooms/ops/events
+web: MSG #ops going down
+web: OPER sesame
+web: SHUTDOWN sesame
+web: !eof
+watch: !eof

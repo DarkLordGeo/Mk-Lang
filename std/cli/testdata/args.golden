@@ -1,0 +1,131 @@
+Opts.Parse(a: &Arena, args: []str): cli.Error!Opts from a, args {
+    var verbose_g0_16 := false
+    var count_g0_17: ?int = none
+    var name_g0_19: ?str = none
+    var dry_run_g0_20 := false
+    var limit_g0_21: ?int = none
+    var label_g0_23: ?str = none
+    var p0_g0_8 := 0
+    var pn_g0_9 := 0
+    var pl_g0_10 := List[str].New(a)
+    var spilled_g0_11 := false
+    var rest_g0_7 := false
+    var i_g0_1 := 0
+    for i_g0_1 < args.Len() {
+        arg_g0_2 := args[i_g0_1]
+        if rest_g0_7 || arg_g0_2.Len() < 2 || arg_g0_2.Byte(0) != 0x2D {
+            if spilled_g0_11 {
+                try pl_g0_10.Push(try a.Dup(arg_g0_2))
+            } else if pn_g0_9 == 0 {
+                p0_g0_8 = i_g0_1
+                pn_g0_9 = 1
+            } else if p0_g0_8 + pn_g0_9 == i_g0_1 {
+                pn_g0_9 += 1
+            } else {
+                for k_g0_13 in p0_g0_8..p0_g0_8 + pn_g0_9 {
+                    try pl_g0_10.Push(try a.Dup(args[k_g0_13]))
+                }
+                try pl_g0_10.Push(try a.Dup(arg_g0_2))
+                spilled_g0_11 = true
+            }
+            i_g0_1 += 1
+            continue
+        }
+        if arg_g0_2.Byte(1) != 0x2D {
+            fail cli.Unknown(arg: i_g0_1)
+        }
+        if arg_g0_2.Len() == 2 {
+            rest_g0_7 = true
+            i_g0_1 += 1
+            continue
+        }
+        var key_g0_3 := arg_g0_2[2..]
+        var val_g0_4 := ""
+        var has_g0_5 := false
+        if eq_g0_6 := key_g0_3.Find("=") {
+            val_g0_4 = key_g0_3[eq_g0_6 + 1..]
+            key_g0_3 = key_g0_3[0..eq_g0_6]
+            has_g0_5 = true
+        }
+        match key_g0_3 {
+            "verbose" {
+                verbose_g0_16 = if !has_g0_5 || val_g0_4 == "true" {
+                    true
+                } else if val_g0_4 == "false" {
+                    false
+                } else {
+                    fail cli.Invalid(arg: i_g0_1)
+                }
+            }
+            "count" {
+                if !has_g0_5 {
+                    if i_g0_1 + 1 == args.Len() {
+                        fail cli.Invalid(arg: i_g0_1)
+                    }
+                    i_g0_1 += 1
+                    val_g0_4 = args[i_g0_1]
+                }
+                v_g0_18 := val_g0_4.ParseInt() else {
+                    fail cli.Invalid(arg: i_g0_1)
+                }
+                count_g0_17 = some(Cast[int](v_g0_18))
+            }
+            "name" {
+                if !has_g0_5 {
+                    if i_g0_1 + 1 == args.Len() {
+                        fail cli.Invalid(arg: i_g0_1)
+                    }
+                    i_g0_1 += 1
+                    val_g0_4 = args[i_g0_1]
+                }
+                name_g0_19 = some(val_g0_4)
+            }
+            "dry-run" {
+                dry_run_g0_20 = if !has_g0_5 || val_g0_4 == "true" {
+                    true
+                } else if val_g0_4 == "false" {
+                    false
+                } else {
+                    fail cli.Invalid(arg: i_g0_1)
+                }
+            }
+            "limit" {
+                if !has_g0_5 {
+                    if i_g0_1 + 1 == args.Len() {
+                        fail cli.Invalid(arg: i_g0_1)
+                    }
+                    i_g0_1 += 1
+                    val_g0_4 = args[i_g0_1]
+                }
+                v_g0_22 := val_g0_4.ParseInt() else {
+                    fail cli.Invalid(arg: i_g0_1)
+                }
+                limit_g0_21 = some(Cast[int](v_g0_22))
+            }
+            "label" {
+                if !has_g0_5 {
+                    if i_g0_1 + 1 == args.Len() {
+                        fail cli.Invalid(arg: i_g0_1)
+                    }
+                    i_g0_1 += 1
+                    val_g0_4 = args[i_g0_1]
+                }
+                label_g0_23 = some(val_g0_4)
+            }
+            _ {
+                fail cli.Unknown(arg: i_g0_1)
+            }
+        }
+        i_g0_1 += 1
+    }
+    var pos_g0_12: []str = args[p0_g0_8..p0_g0_8 + pn_g0_9]
+    if spilled_g0_11 {
+        done_g0_14 := pl_g0_10.Done()
+        pos_g0_12 = done_g0_14[..]
+    }
+    return Opts(verbose: verbose_g0_16, count: count_g0_17 else { fail cli.Missing(field: 1) }, name: name_g0_19, dry_run: dry_run_g0_20, limit: limit_g0_21, label: label_g0_23 else { fail cli.Missing(field: 5) }, files: pos_g0_12)
+}
+
+Opts.Usage(w: mut Writer): WriteError!void {
+    try w.Str("Options:\n  --verbose      Print each file as it is read.\n  --count <int>  How many times to run.\n                 At least one. (required)\n  --name <str>\n  --dry-run      Show what would change, and change nothing.\n  --limit <int>  Stop after this many.\n  --label <str>  (required)\nArguments:\n  <files>...     The files to read.\n")
+}

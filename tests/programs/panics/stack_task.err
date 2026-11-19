@@ -1,0 +1,1 @@
+panic: stack limit in task 2 at stack_task.mk:4:1

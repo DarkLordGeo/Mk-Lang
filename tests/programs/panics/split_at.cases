@@ -1,0 +1,4 @@
+case past-end
+stdout split_at.out
+stderr split_at.err
+exit 101

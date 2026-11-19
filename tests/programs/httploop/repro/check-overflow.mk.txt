@@ -1,0 +1,6 @@
+import std.http
+
+Use(h: &Heap, c: &http.Client) {
+    _ = h
+    _ = c
+}

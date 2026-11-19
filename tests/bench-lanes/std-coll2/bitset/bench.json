@@ -1,0 +1,13 @@
+{
+  "name": "bitset",
+  "table": "idiomatic",
+  "algorithm": "std fixed bitset of n bits: every 3rd set and every 7th cleared, rounds times at shifting offsets, Count per round, then a Has scan (README.md).",
+  "overflow": "wraps",
+  "args": ["100000000", "40"],
+  "quick": ["1000000", "4"],
+  "checksum": "2795238092 3571428616666663",
+  "quick_checksum": "2238094 357143309523",
+  "sources": {"mk": "mk", "zig": "bitset.zig"},
+  "skip": {"c": "no std bitset", "rust": "no std bitset (fixedbitset is a crate)", "go": "no std bitset (math/big.Int is not one)"},
+  "notes": ["Written by std-coll2 (status/std-coll2.md)."]
+}

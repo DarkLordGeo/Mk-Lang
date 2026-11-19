@@ -1,0 +1,9 @@
+--origin
+$CASES/data/site.origin
+-L
+-u
+bob:secret
+-H
+Cookie: pref=dark
+http://{origin}/redirect/away
+http://{origin}/redirect/same

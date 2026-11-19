@@ -1,0 +1,1 @@
+raft: $CASES/data/badheader.rec: not a raft recording: BadHeader(word: 3)

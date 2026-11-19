@@ -1,0 +1,6 @@
+# Value arms, for over iterators, an error's own Format, mut methods through an index,
+# the release protocol and the systems primitives.
+# forms.out was written by a run, then each line checked by hand against the reference;
+# every target and profile prints the same bytes.
+case ok
+stdout forms.out

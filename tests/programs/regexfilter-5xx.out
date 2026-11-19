@@ -1,0 +1,7 @@
+2: 2026-11-07 10:01:03 svc=db status=500 took=1200ms
+  [27, 37) status=500
+    1: 500
+6: 2026-11-07 10:01:05 req=7f3a status=503 took=88ms
+  [29, 39) status=503
+    1: 503
+2 lines

@@ -1,0 +1,36 @@
+{
+  "name": "regexfindall",
+  "table": "idiomatic",
+  "algorithm": "FindAll of [a-z]+=5[0-9][0-9] (no literal prefix) over a whole 50 MB log, rounds times, summing a million plus each match's length (README.md).",
+  "overflow": "never",
+  "args": [
+    "{data}",
+    "11"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "2411837298937",
+  "quick_checksum": "219257936267",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/regexfindall.go"
+  },
+  "skip": {
+    "c": "no std regex in C (POSIX regex.h is not ISO C, and the MSVC CRT has none)",
+    "rust": "no std regex in Rust (the regex crate is not std; no crate stands in)",
+    "zig": "no std regex in Zig",
+    "mk-wrap": "the only arithmetic is the checksum, far below 2^62"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own engine; the checksum (a million per match plus its length) checks that both engines found the same matches",
+  "notes": [
+    "Mk Regex.FindAll into an arena Reset per round (forward DFA to each match's end, reverse DFA to its start); Go regexp FindAllStringIndex (no prefix to skip to, so its NFA or one-pass engine)."
+  ]
+}

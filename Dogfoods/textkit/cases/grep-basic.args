@@ -1,0 +1,3 @@
+grep
+ERROR [0-9]+
+$CASES/data/log.txt

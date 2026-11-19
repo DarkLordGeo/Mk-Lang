@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1221","name":"foreign-name","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":5,"end_line":2,"end_col":13},"message":"Mk has no macros: `println!` is Print(mut out, …)","facts":{"habits":["E1221"],"mk_name":"Print(mut out, …)"},"fixes":[],"alternatives":["Print(mut out, …)"],"explain":"mk explain E1221"}],"omitted":0}
+

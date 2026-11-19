@@ -1,0 +1,33 @@
+{
+  "name": "url-parse",
+  "table": "idiomatic",
+  "algorithm": "Parse n generated URLs (splitmix64, seed 1; README.md states the generator), rounds times, with each language's standard URL parser; about one URL in eight has an upper-case scheme and first host label and one in eight an IPv4 host, the rest are already in the form every parser here keeps (lower case, no dot segment, nothing to encode, no default port), and the parsers agree on every component's length; the checksum adds per URL the lengths of the scheme, host, path, query and fragment, and the port.",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "20"
+  ],
+  "quick": [
+    "1000",
+    "10"
+  ],
+  "checksum": "9878832700",
+  "quick_checksum": "48960600",
+  "sources": {
+    "mk": "mk",
+    "zig": "parse.zig",
+    "go": "testdata/parse.go"
+  },
+  "skip": {
+    "c": "no URL parser in C's standard library",
+    "rust": "no URL parser in Rust's std (url is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the parser is tested by the lane's Go tests (TestStdUrl_UrlTestData, TestStdUrl_Setters, TestStdUrl_Adversarial)",
+  "notes": [
+    "Mk: url.Parse, the WHATWG URL Standard's parser, into a fresh arena each round, freed at its end (no warm memory, as std-encoding's finding F5 asks); it serializes every URL (the href) as it parses. Go: net/url.Parse (RFC 3986, no serialization). Zig: std.Uri.parse (RFC 3986, views of the input, no allocation). The standards differ, so the row compares each language's own parser on input where they agree; Mk does more work per URL (it builds the href).",
+    "Most inputs are already their own serialization, so Mk's url.Parse takes its one-step runs on them (Parser.PathRun for the path, IsPlainDomain for the host, SerializeSame's single copy for the href; std-url session 3). About one in eight has an upper-case scheme and first host label (SchemeOf copies the scheme, IsPlainDomain refuses capitals, SerializeSame fails, Serialize writes the href) and one in eight an IPv4 host (the IPv4 parser and serializer, Serialize), so the general path is measured too (review finding url-02). Go and Zig do the same work on either form: Go lower-cases only the scheme, Zig copies nothing.",
+    "Checksums agree among Go, Mk and Zig at the quick and publish sizes on the owner's machine (std-url review fixes, 2026-11-13: Go 1.27, Zig 0.17, mk from the tree).",
+    "Not published: no number here is a measurement."
+  ]
+}

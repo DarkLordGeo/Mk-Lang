@@ -1,0 +1,1 @@
+error: cannot read $CASES/data/no-such-book.csv: NotFound

@@ -1,0 +1,30 @@
+{
+  "name": "sortints",
+  "table": "same",
+  "algorithm": "Go 1.27's pdqsortOrdered written out for int64 in every language, over four patterns of n keys per round (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000",
+    "16",
+    "1"
+  ],
+  "quick": [
+    "20000",
+    "2",
+    "1"
+  ],
+  "checksum": "8192754217017821",
+  "quick_checksum": "10828604656955",
+  "sources": {
+    "mk": "mk",
+    "c": "sortints.c",
+    "rust": "sortints.rs",
+    "zig": "sortints.zig",
+    "go": "testdata/sortints.go"
+  },
+  "skip": {
+    "mk-wrap": "the sort does only index arithmetic; a wrapping column is not needed for the budgets"
+  },
+  "counts": ["pdq", "ins", "shift", "heap", "rev", "part", "parteq", "pis", "brk"],
+  "notes": []
+}

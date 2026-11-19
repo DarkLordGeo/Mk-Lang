@@ -1,0 +1,13 @@
+dan! connected
+dan< MOTD Welcome to chat.
+dan< OK welcome
+dan> NICK dan
+dan< OK nick dan
+dan> JOIN #log
+dan< OK join #log members=1 topic=
+dan> MSG #log this line is long enough that the record shows its first one hundred and twenty bytes and counts the rest, as a log should do
+dan< OK msg 0
+dan! shuts down its side
+dan! closed by the server
+-- server: history=1
+-- endings: quit=0 eof=1 dropped=0 kicked=0 closing=0 broken=0 canceled=0

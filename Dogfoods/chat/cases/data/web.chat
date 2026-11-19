@@ -1,0 +1,21 @@
+# A WebSocket client and a TCP client meet in #general; an event stream
+# watches the room for two messages, and the room list is fetched over HTTP.
+web: !ws /rooms/general/ws?nick=wendy
+tcp: NICK tom
+tcp: JOIN #general
+web: MSG #general hello from the browser
+tcp: MSG #general hello from the terminal
+web: !read
+watch: !events /rooms/general/events?count=2&nick=watcher
+web: MSG #general first event
+tcp: MSG #general second event
+watch: !eof
+web: !read
+web: !read
+list: !get /rooms
+list: !get /rooms
+list: !get /rooms/general/nope
+list: !get /rooms/general/events?count=x
+list: !get /ws?nick=bad*nick
+web: WHO #general
+tcp: !shutdown

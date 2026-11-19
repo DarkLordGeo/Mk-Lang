@@ -1,0 +1,39 @@
+fm: a two-pane terminal file manager and pager
+
+usage:
+  fm [--zone Z] [--transcript FILE] [LEFT [RIGHT]]
+  fm [--zone Z] COMMAND [options] ARGS...
+
+With no command, fm runs on the terminal with LEFT and RIGHT (default:
+the current directory) in its two panes. Keys:
+  up/down j/k pgup/pgdn home/end   move        enter/right  open
+  backspace/left h                 parent       tab          other pane
+  c F5 copy, m F6 move, d F8 delete (each asks y/n), n F7 new directory
+  l link in the other pane, ! run a shell command, g go to, t temp dir
+  = the same directory in both panes, s sizes of both trees, r reload,
+  q F10 quit, ctrl-c quit (exit 130)
+A paste goes to the pasted directory; a click selects a row and the
+wheel moves. In the pager: up/down j/k, pgup/pgdn b/space, home/end
+g/G, q or esc closes.
+
+commands:
+  ls [--times] [--depth N] [--skip NAME] DIR   list the tree under DIR
+  view [--width N] [--mem BYTES] FILE          wrap FILE to N columns (80)
+  cp [--yes] SRC DST                           copy a file, link or tree
+  mv SRC DST                                   move or rename
+  rm [--yes] PATH                              remove a file or a tree
+  mkdir PATH                                   make PATH and its parents
+  link TARGET LINK                             make a symbolic link
+  stat PATH                                    what PATH is, links unfollowed
+  touch [--bytes] TIME PATH                    set PATH's time (RFC 3339)
+  du [--timeout MS] DIR...                     tree sizes, one task each
+  pwd                                          the current directory
+  batch [FILE]                                 run commands, one a line
+  selftest --seed N                            a scripted session, simulated
+
+rm and cp ask on standard input before they remove or overwrite.
+--zone is local (default), utc, or +HH:MM; it sets how times show.
+--transcript FILE records one line per terminal event.
+
+exit codes: 0 done, 1 failed, 2 bad usage, 3 over the --mem budget,
+124 past --timeout, 130 interrupted.

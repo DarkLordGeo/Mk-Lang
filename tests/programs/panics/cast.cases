@@ -1,0 +1,3 @@
+case panic
+stderr cast.err
+exit 101

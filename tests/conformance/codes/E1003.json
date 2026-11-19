@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E1003","name":"scope-escape","phase":"types","root":1,"at":{"file":"E1003.mk","line":8,"col":13,"end_line":8,"end_col":24},"message":"`s.go` in a cleanup of the scope's own block would start a task the scope cannot join","facts":{},"fixes":[],"alternatives":[],"explain":"mk explain E1003"}],"omitted":0}

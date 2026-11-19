@@ -1,0 +1,2 @@
+go test fuzz v1
+string("interface Device {\n\tSend(mut self): Nope\n}\n")

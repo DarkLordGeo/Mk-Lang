@@ -1,0 +1,8 @@
+demo
+--clients
+32
+--hold
+--compact-after
+1000
+--data
+$WORK/d

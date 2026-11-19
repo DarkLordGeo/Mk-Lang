@@ -1,0 +1,4 @@
+convert
+--from
+ibm866
+$CASES/data/whatwg/ibm866.bin

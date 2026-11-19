@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0402","name":"not-consumed","phase":"flow","root":1,"at":{"file":"E0402.mk","line":4,"col":5,"end_line":4,"end_col":6},"message":"r is not consumed before its scope ends","facts":{"place":"r","path":"E0402.mk:6:1","release":["Close"],"target":"defer r.Close()"},"fixes":[],"alternatives":[],"explain":"mk explain E0402"}],"omitted":0}

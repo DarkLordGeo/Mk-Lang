@@ -1,0 +1,79 @@
+web> !ws /rooms/general/ws?nick=wendy
+web! connected
+web! speaks chat.v1
+web< MOTD Welcome to chat.
+web< OK welcome
+web< OK nick wendy
+web< OK join #general members=1 topic=
+tcp! connected
+tcp< MOTD Welcome to chat.
+tcp< OK welcome
+tcp> NICK tom
+tcp< OK nick tom
+tcp> JOIN #general
+tcp< OK join #general members=2 topic=
+web> MSG #general hello from the browser
+web< * tom joined #general
+web< OK msg 1
+tcp> MSG #general hello from the terminal
+tcp< <#general> wendy: hello from the browser
+tcp< OK msg 1
+web< <#general> tom: hello from the terminal
+watch> !events /rooms/general/events?count=2&nick=watcher
+watch! connected
+watch< HTTP/1.1 200 OK
+watch< Content-Type: text/event-stream
+watch< Cache-Control: no-cache
+watch< Transfer-Encoding: chunked
+watch< Connection: close
+watch< 
+web> MSG #general first event
+web< * watcher joined #general
+web< OK msg 2
+tcp> MSG #general second event
+tcp< * watcher joined #general
+tcp< <#general> wendy: first event
+tcp< OK msg 2
+watch< 1b
+watch< : watcher joined #general
+watch< 
+watch< 
+watch< 25
+watch< data: <#general> wendy: first event
+watch< 
+watch< 
+watch< 24
+watch< data: <#general> tom: second event
+watch< 
+watch< 
+watch< 0
+watch< 
+watch! closed by the server
+web< <#general> tom: second event
+web< * watcher left #general (connection closed)
+list> GET /rooms
+list< 200
+list< #general members=2 topic=
+list> GET /rooms
+list< 200
+list< #general members=2 topic=
+list> GET /rooms/general/nope
+list< 404
+list< no such page
+list> GET /rooms/general/events?count=x
+list< 400
+list< count must be from 0 to 1000
+list> GET /ws?nick=bad*nick
+list< 400
+list< nick must be 1 to 24 letters, digits, - or _
+web> WHO #general
+web< MEMBERS #general wendy tom
+web< OK who
+tcp! shuts down its side
+tcp< * watcher left #general (connection closed)
+tcp! closed by the server
+web> QUIT
+web< * tom left #general (connection closed)
+web< OK bye
+-- server: history=4
+-- endings: quit=1 eof=2 dropped=0 kicked=0 closing=0 broken=0 canceled=0

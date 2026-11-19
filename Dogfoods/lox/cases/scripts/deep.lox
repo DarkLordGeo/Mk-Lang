@@ -1,0 +1,6 @@
+// Unbounded recursion stops at the frame limit with "Stack overflow.".
+fun down(n) {
+  return down(n + 1);
+}
+print "start";
+down(0);

@@ -1,0 +1,3 @@
+mgrep: pattern 2 does not parse at byte 0:
+    (unclosed
+    ^

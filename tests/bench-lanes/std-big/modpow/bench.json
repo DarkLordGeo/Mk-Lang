@@ -1,0 +1,32 @@
+{
+  "name": "big-modpow",
+  "table": "idiomatic",
+  "algorithm": "std.big ModPow in an accumulation loop: m, e and x0 are 32 splitmix64 words of the seed each (m odd, top bit set, 2048 bits); n times x = x^e mod m, the result copied out through Words into a HeapList[u64] and the work arena reset each step (mk/big-modpow.mk); prints x's low word xor its word count.",
+  "overflow": "wraps",
+  "args": [
+    "400",
+    "1"
+  ],
+  "quick": [
+    "3",
+    "1"
+  ],
+  "checksum": "3647611179438305223",
+  "quick_checksum": "15099421325252834719",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/big-modpow.go"
+  },
+  "skip": {
+    "c": "no std big integers: C has none, and GMP is a library, not installed on this machine (tests/bench README: no stand-ins)",
+    "rust": "no std big integers: Rust std has none; num-bigint is a crate (no stand-ins) and is not in the offline cargo cache",
+    "zig": "no modular exponentiation in Zig's std.math.big.int (pow takes a u32 exponent and no modulus); a square-and-multiply loop over its mul and divTrunc would be a program of ours, not the library's"
+  },
+  "notes": [
+    "Work per step: one 2048-bit modular exponentiation with a 2048-bit exponent. Mk: sliding window of 6 bits over Montgomery products with their two passes fused (FIOS, std/big/modpow.mk); Go 1.27 math/big Exp: fixed 4-bit window over Montgomery products with amd64 assembly kernels (addMulVVWW).",
+    "Mk copies each result out of its arena and resets the arena, as a long-lived std.big value must (D8-6); Go keeps x in its heap.",
+    "Checksums: from the Go and Mk programs run by hand on 2026-11-12, and `go run ./tools/bench verify std-big/big-modpow std-big/big-factorial` agreed at the quick size the same day (status/std-big.md). Not published: no number here is a measurement.",
+    "Copy-out (CopyOut in the Mk source, 2026-11-12): the HeapList's held slots are overwritten through ItemsMut in one CopyFrom and only the words past them pushed, since HeapList has no bulk append (status/std-big.md, Request 6).",
+    "Go cell and x86-64-v2 (review finding stdbig-r2): Go 1.27's math/big picks its amd64 assembly at run time, and on a CPU with ADX and BMI2, as this machine's, its multiply-add kernel addMulVVWW runs MULX/ADCX/ADOX (src/math/big/arith_amd64.go, hasADX), outside the contract's single target x86-64-v2, although the cell is built with GOAMD64=v2. That kernel is the inner loop of Go's basicMul (under karatsuba and divRecursive) and of its Montgomery product. GODEBUG=cpu.adx=off cannot hold the cell to v2 on Windows: Go's runtime reads GODEBUG's cpu options only on Unix systems (runtime/proc.go, getGodebugEarly). Measured by the std-big lane under WSL on the publish machine (lane-internal, 2026-11-12, not a tools/bench number): with cpu.adx=off Go's Mul took 1.6 to 1.8 times as long at 64 to 4,096 words and Exp at 2048 bits 1.84 times. Read this row's Go cell as Go with ADX/BMI2 assembly (status/std-big.md, Request 7)."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "simsched",
+  "table": "idiomatic",
+  "algorithm": "a seeded deterministic scheduler with a simulated clock: n tasks each sleep 1 ms of simulated time and send their index to one channel, r times, and a collector receives all n * r values; Mk under one std.sim Sim, Go in one testing/synctest bubble (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "20000"
+  ],
+  "quick": [
+    "64",
+    "1000"
+  ],
+  "checksum": "sum 40320000 simulated 20000 ms",
+  "quick_checksum": "sum 2016000 simulated 1000 ms",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/simsched.go"
+  },
+  "skip": {
+    "c": "no std scheduler with a simulated clock",
+    "rust": "no std scheduler with a simulated clock",
+    "zig": "no std scheduler with a simulated clock"
+  },
+  "notes": [
+    "Written by std-sim for SIM-R21 and SIM-R20 (status/std-sim.md). Go's testing/synctest (GA in Go 1.25) runs goroutines in a bubble whose fake clock jumps when every goroutine is durably blocked: the same job as std.sim's discrete-event clock. synctest.Test needs a *testing.T, so the Go program runs one test through testing.Main with the testing package's own output sent to the null device.",
+    "Go's bubble runs goroutines in parallel between clock jumps; std.sim runs one task at a time in a seeded order, which is the point of it, so the Mk column also pays a park and a grant per sleep and per blocking channel operation."
+  ]
+}

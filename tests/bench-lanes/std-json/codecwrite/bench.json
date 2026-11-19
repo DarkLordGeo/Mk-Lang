@@ -1,0 +1,36 @@
+{
+  "name": "json-codec-write",
+  "table": "idiomatic",
+  "algorithm": "Decode a 1 MB JSON document (tools/bench gen kind json, seed 2), an array of records, into each language's structs once, then write the structs back as compact JSON into an in-memory buffer reps times through the std's typed encoder (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "300"
+  ],
+  "quick": [
+    "{data}",
+    "2"
+  ],
+  "checksum": "93471900",
+  "quick_checksum": "623146",
+  "sources": {
+    "mk": "mk",
+    "zig": "json-codec-write.zig",
+    "go": "testdata/json-codec-write.go"
+  },
+  "skip": {
+    "c": "no std JSON: C has no standard JSON encoder; no library stands in",
+    "rust": "no std JSON: Rust std has none (serde_json is a crate); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the writer has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "json",
+    "file": "std-json-1mb.json",
+    "bytes": 1000000,
+    "seed": 2
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (reps times the count of the structural bytes { } [ ] : , and \" in the last output) checks that every encoder wrote the same records, keys and strings, whatever digits its float formatting chooses",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk the FormatJson that gen json.Codec emits per record, between \"[\", \",\" and \"]\" written by the program, into a Text through its Writer, cleared per rep; Go encoding/json Encoder with SetEscapeHTML(false) of []R0 into a bytes.Buffer reset per rep; Zig std.json.Stringify.valueAlloc of []R0 into an ArenaAllocator reset per rep. The decode runs once and is outside what the reps measure, but inside the program's time (../codec times it). Bytes per second = output length x reps / median."
+  ]
+}

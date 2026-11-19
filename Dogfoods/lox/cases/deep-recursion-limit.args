@@ -1,0 +1,3 @@
+--max-frames
+5
+$CASES/scripts/deep.lox

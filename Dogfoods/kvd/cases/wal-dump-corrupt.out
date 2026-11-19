@@ -1,0 +1,3 @@
+$CASES/data/corrupt.wal: generation 3, not shut down cleanly
+      24 SET    alpha one
+end: corrupt record at 43

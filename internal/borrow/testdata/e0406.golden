@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0406","name":"reserved-by-defer","phase":"flow","root":1,"at":{"file":"t/borrow.mk","line":6,"col":1,"end_line":6,"end_col":6},"message":"f is moved here, but a defer registered earlier still uses it","facts":{"place":"f","defer_at":"t/borrow.mk:4:1"},"fixes":[],"alternatives":[],"explain":"mk explain E0406"}],"omitted":0}

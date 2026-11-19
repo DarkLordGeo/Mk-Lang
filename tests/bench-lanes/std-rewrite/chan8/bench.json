@@ -1,0 +1,35 @@
+{
+  "name": "chan8",
+  "table": "idiomatic",
+  "algorithm": "8 senders each send 0..n-1 on one channel of capacity 64, and 8 receivers sum what they receive until the senders are done and it is closed; prints the total, 8 * n * (n - 1) / 2. Peers: Go chan; Zig std.Io.Queue (putOne, getOne, close; OS threads, as Zig's std has no tasks). The contended channel of status/std-sync.md (8 senders x 8 receivers, 2M values) as a tools/bench row (std-rewrite, plan/06-m6.md: within 1.25 of Go at 8 carriers).",
+  "overflow": "never",
+  "args": ["250000", "64"],
+  "quick": ["2000", "64"],
+  "checksum": "249999000000",
+  "quick_checksum": "15992000",
+  "sources": {
+    "mk": "mk",
+    "zig": "chan8.zig",
+    "go": "testdata/chan8.go"
+  },
+  "skip": {
+    "c": "no std channel in C",
+    "rust": "Rust's std mpsc channel has one receiver; this row needs 8 (std::sync::mpmc is unstable)",
+    "mk-wrap": "the only arithmetic is the sums, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), Chan",
+      "go": "goroutines (GOMAXPROCS 8), chan",
+      "zig": "OS threads (8 senders, 8 receivers, std.Thread), std.Io.Queue under std.Io.Threaded"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the sum of every value sent, shows each value was received exactly once",
+  "notes": [
+    "Concurrency row (B19): logical CPUs 0, 2, ..., 14 (mask 0x5555, eight physical cores), 8 threads, as std-missing/rwlock.",
+    "Written by std-rewrite, M6 session 2, 2026-11-08; checksums from the arithmetic.",
+    "SRW-RV-2 (2026-11-08, std-rewrite rerun 2 fix round): the Zig cell is added. The row skipped Zig as having no std channel, which is false for Zig 0.17.0: std.Io.Queue(Elem) is a closable many-producer, many-consumer bounded queue with blocking putOne and getOne, and a zero-length buffer is a rendezvous (a getter copies from a parked putter). chan8.zig printed 15992000 at the quick args with capacity 64 and 0, and 249999000000 at 250000 64 and 250000 0 (ReleaseFast, owner's machine, by hand)."
+  ]
+}

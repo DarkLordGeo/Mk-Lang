@@ -1,0 +1,1 @@
+mgrep: $CASES/data/none.txt: NotFound

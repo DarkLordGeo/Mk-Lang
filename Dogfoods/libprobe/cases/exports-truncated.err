@@ -1,0 +1,1 @@
+libprobe: $CASES/data/truncated.pe: not a PE image (a section lies outside the file)

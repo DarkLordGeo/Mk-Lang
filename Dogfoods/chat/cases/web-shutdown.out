@@ -1,0 +1,41 @@
+web> !ws /rooms/ops/ws?nick=wendy
+web! connected
+web! speaks chat.v1
+web< MOTD Welcome to chat.
+web< OK welcome
+web< OK nick wendy
+web< OK join #ops members=1 topic=
+watch> !events /rooms/ops/events
+watch! connected
+watch< HTTP/1.1 200 OK
+watch< Content-Type: text/event-stream
+watch< Cache-Control: no-cache
+watch< Transfer-Encoding: chunked
+watch< Connection: close
+watch< 
+web> MSG #ops going down
+web< * events-1 joined #ops
+web< OK msg 1
+web> OPER sesame
+web< OK oper
+web> SHUTDOWN sesame
+web< OK shutdown
+web< NOTICE server shutting down
+web! closed by the server
+watch< 18
+watch< : events-1 joined #ops
+watch< 
+watch< 
+watch< 20
+watch< data: <#ops> wendy: going down
+watch< 
+watch< 
+watch< 23
+watch< data: NOTICE server shutting down
+watch< 
+watch< 
+watch< 0
+watch< 
+watch! closed by the server
+-- server: history=1
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=2 broken=0 canceled=0

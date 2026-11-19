@@ -1,0 +1,2 @@
+pack create: a required option is missing
+run pack create --help for its options

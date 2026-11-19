@@ -1,0 +1,221 @@
+{
+  "name": "math",
+  "table": "idiomatic",
+  "algorithm": "One std.math function (the variant's name) over 4,096 inputs built from splitmix64 bits in a fixed exponent range, reps passes, each language's standard library; the checksum adds bits >> 32 of each f64 result (bits >> 16 of each f32 result) with wrapping adds, so libraries that differ by an ulp still agree (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "exp",
+    "160000",
+    "1"
+  ],
+  "quick": [
+    "exp",
+    "100",
+    "1"
+  ],
+  "checksum": "",
+  "quick_checksum": "",
+  "sources": {
+    "mk": "mk",
+    "c": "math.c",
+    "rust": "math.rs",
+    "zig": "math.zig",
+    "go": "testdata/math.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other integer arithmetic"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; each function's accuracy is the lane's Go tests' (TestSTDMATH_TrueError, TestSTDMATH_Exhaustive)",
+  "variants": [
+    {
+      "name": "exp",
+      "args": [
+        "exp",
+        "160000",
+        "1"
+      ],
+      "quick": [
+        "exp",
+        "100",
+        "1"
+      ],
+      "checksum": "702829191746720000",
+      "quick_checksum": "439268244841700"
+    },
+    {
+      "name": "log",
+      "args": [
+        "log",
+        "100000",
+        "1"
+      ],
+      "quick": [
+        "log",
+        "100",
+        "1"
+      ],
+      "checksum": "879018222819600000",
+      "quick_checksum": "879018222819600"
+    },
+    {
+      "name": "sin",
+      "args": [
+        "sin",
+        "190000",
+        "1"
+      ],
+      "quick": [
+        "sin",
+        "100",
+        "1"
+      ],
+      "checksum": "1659486055664250000",
+      "quick_checksum": "873413713507500"
+    },
+    {
+      "name": "sinlarge",
+      "args": [
+        "sinlarge",
+        "50000",
+        "1"
+      ],
+      "quick": [
+        "sinlarge",
+        "100",
+        "1"
+      ],
+      "checksum": "438606521171850000",
+      "quick_checksum": "877213042343700"
+    },
+    {
+      "name": "pow",
+      "args": [
+        "pow",
+        "48000",
+        "1"
+      ],
+      "quick": [
+        "pow",
+        "100",
+        "1"
+      ],
+      "checksum": "210865617483696000",
+      "quick_checksum": "439303369757700"
+    },
+    {
+      "name": "atan2",
+      "args": [
+        "atan2",
+        "52000",
+        "1"
+      ],
+      "quick": [
+        "atan2",
+        "100",
+        "1"
+      ],
+      "checksum": "457375979826688000",
+      "quick_checksum": "879569191974400"
+    },
+    {
+      "name": "sinh",
+      "args": [
+        "sinh",
+        "75000",
+        "1"
+      ],
+      "quick": [
+        "sinh",
+        "100",
+        "1"
+      ],
+      "checksum": "660705677467050000",
+      "quick_checksum": "880940903289400"
+    },
+    {
+      "name": "cbrt",
+      "args": [
+        "cbrt",
+        "82000",
+        "1"
+      ],
+      "quick": [
+        "cbrt",
+        "100",
+        "1"
+      ],
+      "checksum": "721925934129228000",
+      "quick_checksum": "880397480645400"
+    },
+    {
+      "name": "fma",
+      "args": [
+        "fma",
+        "650000",
+        "1"
+      ],
+      "quick": [
+        "fma",
+        "100",
+        "1"
+      ],
+      "checksum": "5662413499707900000",
+      "quick_checksum": "871140538416600",
+      "notes": [
+        "Publish reps 650000 so Go's cell runs over 1 s; its checksum is the per-pass sum times reps, the rule every other variant's publish checksum met in verify -publish-size. Go's math.FMA uses the FMA instruction chosen at run time, and on Windows nothing turns that off (GODEBUG=cpu.fma=off is read only on Unix-like systems, README.md), so Go's cell is not x86-64-v2 code; the C and Rust cells run the UCRT's software fma (FMA3 paths off, SM2-R1, SM2-R2)."
+      ]
+    },
+    {
+      "name": "expf",
+      "args": [
+        "expf",
+        "240000",
+        "1"
+      ],
+      "quick": [
+        "expf",
+        "100",
+        "1"
+      ],
+      "checksum": "15953703360000",
+      "quick_checksum": "6647376400"
+    },
+    {
+      "name": "logf",
+      "args": [
+        "logf",
+        "150000",
+        "1"
+      ],
+      "quick": [
+        "logf",
+        "100",
+        "1"
+      ],
+      "checksum": "20367878100000",
+      "quick_checksum": "13578585400"
+    },
+    {
+      "name": "sinf",
+      "args": [
+        "sinf",
+        "220000",
+        "1"
+      ],
+      "quick": [
+        "sinf",
+        "100",
+        "1"
+      ],
+      "checksum": "28953040160000",
+      "quick_checksum": "13160472800"
+    }
+  ],
+  "notes": [
+    "C is the platform C library (the static UCRT on Windows, glibc on Linux); Rust's f64 and f32 methods call the same library on Windows; both turn the UCRT's run-time FMA3 choice off first (_set_FMA3_enable(0), checked), so the Windows C and Rust cells are x86-64-v2 code (README.md). Zig's @exp, @log, @sin and std.math are Zig's own code; Go's math has no f32 functions, so its f32 rows convert through f64.",
+    "Mk's std.math is pure Mk with no cpu dispatch (D8-5), so its fma is a software routine on every target; Sinh and Atan2 run on double-double kernels (std/math/dd.mk) to stay faithfully rounded.",
+    "All seven columns (mk, c, rust, rust-ovf, zig-fast, zig-safe, go) agree on the checksum of every variant at the quick size and at the publish size on the owner's machine (go run ./tools/bench verify and verify -publish-size, std-math2 session 2, 2026-11-12); the publish checksums are the per-pass sum times reps, since every pass adds the same sum.",
+    "Publish reps are set so the fastest column of each variant ran about 1.2 s or more in the provisional verify -publish-size run (tests/bench/README.md's 1 s floor).",
+    "Not published: no number here is a measurement."
+  ]
+}

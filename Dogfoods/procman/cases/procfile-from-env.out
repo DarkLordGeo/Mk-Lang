@@ -1,0 +1,8 @@
+web          process  restart=never retries=3 backoff=100ms limit=65536 main
+    [./bin/server, --port, 9090, --name, my app]
+worker       process  restart=on-failure retries=5 backoff=250ms limit=1048576
+    [./bin/worker, --queue, jobs high]
+clock        process  restart=always retries=3 backoff=2000ms limit=1048576
+    [./bin/clock, 1s, $HOME]
+migrate      task     restart=never retries=3 backoff=100ms limit=1048576
+    [./bin/migrate, up]

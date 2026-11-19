@@ -1,0 +1,38 @@
+{
+  "name": "until",
+  "table": "idiomatic",
+  "algorithm": "Split one log file (the generated input, 50 MB of variable-length lines) into records through each standard library's buffered file reader with a 64 KiB buffer and its take-until-delimiter call, once on newline and once on space, r times; prints the records and the bytes taken, each record with its delimiter (Mk fs.File.Reader and Reader.Until, D-331 and D-349; Go bufio.Reader.ReadSlice over os.File; Rust BufReader::read_until over File; Zig std.Io.File.Reader with takeDelimiterInclusive; C has no cell: the Windows UCRT has no getdelim). std-rewrite review RW-9.",
+  "overflow": "never",
+  "args": [
+    "{data}",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "14913616 400000304",
+  "quick_checksum": "3728404 100000076",
+  "sources": {
+    "mk": "mk",
+    "rust": "until.rs",
+    "zig": "until.zig",
+    "go": "testdata/until.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is the counts, which stay below 2^33",
+    "c": "no take-until-delimiter call in the Windows UCRT (no getdelim), the C library of this table's machine; a per-byte getc loop would be a different algorithm from the other cells' library calls (plan/06-m6.md 4.1; std-rewrite review SRW-RR-5). until.c is the getdelim cell for a C library that has it, not built here"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the record count and the byte total check that every reader split the file the same way",
+  "notes": [
+    "The input is std-regex's (same kind, size and seed), so tools/bench generates it once.",
+    "Written by std-rewrite, M6 fix round, 2026-11-08 (review RW-9); checksums from the Go column's run.",
+    "SRW-RR-5 (2026-11-08): the C cell is withdrawn. On Windows it ran a hand-written _getc_nolock loop, not a library delimiter call, so it was not the task the other cells measure; section 4.1 gives such a language a cell that says so. Ratios of this row against the fastest peer no longer include C."
+  ]
+}

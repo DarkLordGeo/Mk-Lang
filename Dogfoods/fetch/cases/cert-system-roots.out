@@ -1,0 +1,6 @@
+subject   CN=localhost,O=fetch test
+issuer    CN=fetch test root,O=fetch test
+name      localhost
+name      127.0.0.1
+valid     2020-01-01T00:00:00Z to 2200-01-01T00:00:00Z
+der       433 bytes

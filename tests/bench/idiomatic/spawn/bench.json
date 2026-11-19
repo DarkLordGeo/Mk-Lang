@@ -1,0 +1,39 @@
+{
+  "name": "spawn",
+  "table": "idiomatic",
+  "std": ["std.core.Io.Scope"],
+  "algorithm": "Start n lightweight tasks in one scope, each adding its index to one atomic counter, and join them all; rounds times (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000",
+    "8"
+  ],
+  "quick": [
+    "10000",
+    "1"
+  ],
+  "checksum": "3999996000000",
+  "quick_checksum": "49995000",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/spawn.go"
+  },
+  "skip": {
+    "c": "no std tasks in C (threads only; 1 M OS threads cannot be created on Windows, B19)",
+    "rust": "no std tasks in Rust (std::thread is OS threads; 1 M cannot be created on Windows, B19)",
+    "zig": "no std tasks in Zig (std.Thread is OS threads; 1 M cannot be created on Windows, B19)",
+    "mk-wrap": "the only arithmetic is the atomic sum, which stays below 2^62"
+  },
+  "concurrency": {
+    "mask": "0xff",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers)",
+      "go": "goroutines (M:N, GOMAXPROCS 8)"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the sum of every task's index, shows that every task ran once",
+  "notes": [
+    "Concurrency row (B19): both columns run on logical CPUs 0 to 7 (mask 0xff) with 8 threads (MK_CARRIERS=8, GOMAXPROCS=8)."
+  ]
+}

@@ -1,0 +1,6 @@
+unzlib
+--max
+-5
+--out
+$WORK/o
+$CASES/data/tar/noise.zz

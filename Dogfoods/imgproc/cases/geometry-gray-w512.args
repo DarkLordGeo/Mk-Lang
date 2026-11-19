@@ -1,0 +1,13 @@
+--ascii
+--path
+w512
+--tile-rows
+2
+run
+$CASES/data/wide.pgm
+-
+double
+mirror
+gain=0.75
+half
+flip

@@ -1,0 +1,30 @@
+usage: tracer <command> [options] [arguments]
+
+commands:
+  render SCENE OUT    trace the scene file SCENE into the PPM image OUT
+  plot EXPR OUT       plot y = EXPR over x into the PPM image OUT
+  table [NAME...]     print each math function over its edge inputs
+  bits                print the integer bit operations over edge inputs
+  help                print this text
+
+OUT may be - for standard output.
+
+options:
+  --ascii             write P3 (text) instead of P6
+  --16                write 16-bit samples
+  --size WxH          image size (plot: 256x160; render: the scene's)
+  --samples N         samples per pixel, overriding the scene's
+  --band N            rows per render task (default 4)
+  --max-time MS       stop a render after MS milliseconds
+  --mem-limit BYTES   cap the memory for the scene and its grid
+  --from X, --to X    the plotted range of x (default -5 to 5)
+  --ymin Y, --ymax Y  the plotted range of y (default: fitted)
+  --f32               plot or tabulate in f32 (table: f32 only)
+  --f64               tabulate in f64 only
+  --seed N            write through a simulated disk with seed N
+  --fault F           with --seed, fail the first write with F
+                      (nospace or denied)
+  --help              print this text
+
+exit status: 0 done, 1 bad input or failed write, 2 bad command line,
+3 out of memory, 4 stopped by --max-time.

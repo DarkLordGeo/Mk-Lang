@@ -1,0 +1,43 @@
+{
+  "name": "textprops",
+  "table": "idiomatic",
+  "algorithm": "Test 65,536 scalars from six ranges stable since Unicode 5.0 for a Unicode property, reps passes: Alphabetic (variant alphabetic) or General_Category Lu (variant upper); the checksum counts each hit plus the pass's index (README.md).",
+  "overflow": "wraps",
+  "std": ["std.text.Has", "std.text.CategoryOf"],
+  "args": ["alphabetic", "10000", "1"],
+  "quick": ["alphabetic", "100", "1"],
+  "checksum": "3020051975000",
+  "quick_checksum": "304994750",
+  "sources": {
+    "mk": "mk",
+    "rust": "textprops.rs",
+    "go": "testdata/textprops.go"
+  },
+  "skip": {
+    "c": "no Unicode property in C's std: iswalpha and iswupper follow the locale, not the UCD",
+    "zig": "no Unicode property in Zig's std: std.unicode has UTF-8 and UTF-16 only",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other integer arithmetic"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the properties' correctness is std/std-text_propstables_test.go's (every scalar against the UCD files)",
+  "variants": [
+    {
+      "name": "alphabetic",
+      "args": ["alphabetic", "10000", "1"],
+      "quick": ["alphabetic", "100", "1"],
+      "checksum": "3020051975000",
+      "quick_checksum": "304994750",
+      "baseline": ["alphabetic", "0", "1"]
+    },
+    {
+      "name": "upper",
+      "args": ["upper", "10000", "1"],
+      "quick": ["upper", "100", "1"],
+      "checksum": "940844075000",
+      "quick_checksum": "95015750",
+      "baseline": ["upper", "0", "1"],
+      "skip": {
+        "rust": "no General_Category in Rust's std: char::is_uppercase is the Uppercase property (Lu plus Other_Uppercase), another task"
+      }
+    }
+  ]
+}

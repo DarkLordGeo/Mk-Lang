@@ -1,0 +1,3 @@
+case panic
+stderr wrong_alloc_free.err
+exit 101

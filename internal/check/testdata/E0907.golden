@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0907","name":"layout-cycle","phase":"types","root":1,"at":{"file":"m/00.mk","line":1,"col":8,"end_line":1,"end_col":9},"message":"this type contains itself by value, so it has no finite size","facts":{"cycle":["A","B","A"]},"fixes":[],"alternatives":[],"explain":"mk explain E0907"}],"omitted":0}

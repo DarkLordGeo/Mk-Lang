@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0203","name":"unknown-member","phase":"types","root":1,"at":{"file":"m/00.mk","line":6,"col":11,"end_line":6,"end_col":15},"message":"`P` has no member `nope`","facts":{"type":"P","members":["x"]},"fixes":[],"alternatives":[],"explain":"mk explain E0203"}],"omitted":0}

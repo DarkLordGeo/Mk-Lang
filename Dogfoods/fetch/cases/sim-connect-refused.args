@@ -1,0 +1,10 @@
+--origin
+$CASES/data/site.origin
+--fault
+connect-refused
+--retry
+1
+--retry-delay
+1s
+http://{origin}/hello
+http://{origin}/echo

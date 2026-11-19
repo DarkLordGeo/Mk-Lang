@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--deny
+ipv6,private,link-local
+http://{origin}/hello

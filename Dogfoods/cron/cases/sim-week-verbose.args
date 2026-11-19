@@ -1,0 +1,7 @@
+sim
+$CASES/data/zones.tab
+--days
+2
+--verbose
+--max-memory
+4096

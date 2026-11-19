@@ -1,0 +1,2 @@
+bigcalc: $CASES/data/keep_going.rpn:2: DivisionByZero(column: 5)
+bigcalc: $CASES/data/keep_going.rpn:4: UnknownWord(column: 1)

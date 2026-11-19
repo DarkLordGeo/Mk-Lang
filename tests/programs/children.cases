@@ -1,0 +1,6 @@
+# std.proc: the program spawns itself; pipes, environment, directory, a lent pipe, a process group
+# killed after a Wait cut by a deadline, its grandchild ended with it (C8-4: the group's pipe ends
+# before any Wait), a kill that failed left detached (C8-3), proc.Run, and a missing program.
+case ok
+stdout children.out
+timeout 30

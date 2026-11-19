@@ -1,0 +1,3 @@
+--origin
+$CASES/data/site.origin
+http://{origin}/gzip

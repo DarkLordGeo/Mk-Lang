@@ -1,0 +1,4 @@
+convert
+--to
+windows-1253
+$CASES/data/whatwg/windows-1253.txt

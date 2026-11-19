@@ -1,0 +1,9 @@
+--origin
+$CASES/data/site.origin
+-L
+-o
+big.bin
+--max-time
+30
+http://{origin}/big
+http://{origin}/redirect/same

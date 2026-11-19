@@ -1,0 +1,4 @@
+verify
+--key
+$CASES/data/alice.key
+$CASES/data/sealed.pk

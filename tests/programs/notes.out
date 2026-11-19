@@ -1,0 +1,15 @@
+POST /notes 201 {"id":1,"title":"first","body":"héllo \"world\"\n"}
+POST /notes 201 {"id":2,"title":"second","body":""}
+GET /notes/1 200 {"id":1,"title":"first","body":"héllo \"world\"\n"}
+GET /notes/2 200 {"id":2,"title":"second","body":""}
+DELETE /notes/1 204 
+GET /notes/1 404 
+DELETE /notes/1 404 
+POST /notes 400 
+GET /notes/x 400 
+GET /nothing 404 
+PUT /notes/2 405 
+POST /notes 413 
+GET /hello 200 hello, world
+
+ok

@@ -1,0 +1,32 @@
+{
+  "name": "url-query",
+  "table": "idiomatic",
+  "algorithm": "Parse n generated application/x-www-form-urlencoded queries (splitmix64, seed 1; README.md states the generator), rounds times, with each language's standard query parser; about three pairs in four have nothing to decode, the rest hold '+' and escapes of whole UTF-8 sequences; no query holds ';' or a malformed escape, so the parsers give the same pairs; the checksum adds the length of every decoded name and value.",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "20"
+  ],
+  "quick": [
+    "1000",
+    "10"
+  ],
+  "checksum": "90669740",
+  "quick_checksum": "457110",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/query.go"
+  },
+  "skip": {
+    "c": "no form-urlencoded parser in C's standard library",
+    "rust": "no form-urlencoded parser in Rust's std (form_urlencoded is a crate; no crate stands in)",
+    "zig": "no form-urlencoded parser in Zig's std (std.Uri splits a URL but does not parse a query's pairs)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the parser is tested by the lane's Go tests (TestStdUrl_QueryModel, TestStdUrl_ParseQueryAgainstGo, FuzzStdUrl_ParseQuery)",
+  "notes": [
+    "Mk: url.ParseQuery, the URL Standard's section 5.1, into a fresh arena each round, freed at its end (no warm memory, as std-encoding's finding F5 asks); a pair with nothing to decode is one copy of its bytes, any other is decoded into a buffer of its length and checked as UTF-8, and the pairs are a List in the arena. Go: net/url.ParseQuery, a map from name to values, with a string returned as it is when it has nothing to decode.",
+    "Added for the std-url review's finding url-03 (2026-11-13). Checksums agree between Go and Mk at the quick and publish sizes on the owner's machine (Go 1.27, mk from the tree).",
+    "Not published: no number here is a measurement."
+  ]
+}

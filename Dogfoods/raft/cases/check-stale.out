@@ -1,0 +1,1 @@
+$CASES/data/stale.txt: not linearizable: register k1 has no order for its 12 operations (6 states searched)

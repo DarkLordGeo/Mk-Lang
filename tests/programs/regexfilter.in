@@ -1,0 +1,6 @@
+2026-11-07 10:01:02 svc=api status=200 took=12ms
+2026-11-07 10:01:03 svc=db status=500 took=1200ms
+2026-11-07 10:01:04 svc=api status=404 took=3ms
+naïve café: Größe=7 ÉLAN=9
+no fields here
+2026-11-07 10:01:05 req=7f3a status=503 took=88ms

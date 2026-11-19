@@ -1,0 +1,2 @@
+libm.so.6 system cos hypot
+libc.so.6 system getpid

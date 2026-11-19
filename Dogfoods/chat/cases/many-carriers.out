@@ -1,0 +1,54 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+bob! connected
+bob< MOTD Welcome to chat.
+bob< OK welcome
+bob> NICK bob
+bob< OK nick bob
+alice> JOIN #general
+alice< OK join #general members=1 topic=
+bob> JOIN #general
+bob< OK join #general members=2 topic=
+alice> MSG #general hello bob
+alice< * bob joined #general
+alice< OK msg 1
+bob> MSG #general hi alice
+bob< <#general> alice: hello bob
+bob< OK msg 1
+alice> WHO #general
+alice< <#general> bob: hi alice
+alice< MEMBERS #general alice bob
+alice< OK who
+bob> JOIN #bots
+bob< OK join #bots members=3 topic=
+bob> MSG #bots !echo is anyone there
+bob< OK msg 2
+bob< <#bots> echo-bot: is anyone there
+bob> MSG #bots !stats
+bob< OK msg 2
+bob< <#bots> stats-bot: online=4 messages=5
+alice> ROOMS
+alice< ROOM #bots 3 
+alice< ROOM #general 2 
+alice< OK rooms 2
+alice> HISTORY #general 5
+alice< HIST #general <alice> hello bob
+alice< HIST #general <bob> hi alice
+alice< OK history 2
+bob> PART #general
+bob< OK part #general
+alice> WHOAMI
+alice< * bob left #general
+alice< YOU nick=alice op=false rooms=1 memory=2 peak=136
+alice< OK whoami
+alice> PING done
+alice< OK pong done
+alice> QUIT
+alice< OK bye
+bob> QUIT
+bob< OK bye
+-- server: history=6
+-- endings: quit=2 eof=0 dropped=0 kicked=0 closing=2 broken=0 canceled=0

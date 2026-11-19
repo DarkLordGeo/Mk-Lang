@@ -1,0 +1,21 @@
+// Allocation pressure: a long-lived structure survives many collections while
+// garbage is made around it; every reachable object is kept, the rest freed.
+var keep = [];
+for (var i = 0; i < 20; i = i + 1) push(keep, "kept " + str(i));
+var tree = [[1, [2, [3, "leaf"]]], "root"];
+var churn = 0;
+for (var round = 0; round < 200; round = round + 1) {
+  var garbage = [];
+  for (var j = 0; j < 10; j = j + 1) push(garbage, str(round) + ":" + str(j));
+  churn = churn + len(garbage);
+  var s = "constant literal";
+  if (s != "constant literal") print "lost a constant";
+}
+gc();
+print churn;
+print keep;
+print tree;
+print objects();
+keep = nil;
+gc();
+print objects();

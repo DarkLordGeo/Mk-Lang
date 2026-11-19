@@ -1,0 +1,6 @@
+convert
+--dump
+hex
+--buffer
+3
+$CASES/data/prose.txt

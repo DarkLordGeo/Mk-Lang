@@ -1,0 +1,33 @@
+{
+  "name": "log-sink",
+  "table": "idiomatic",
+  "algorithm": "Write R access-log records of about 80 bytes (five integer fields) through each standard library's task-safe file logger into a new file, one task, one write per record under the logger's lock (Mk log.ToFile's Sink.Info; Go log.Logger.Printf over an *os.File), then print the records and the file's size.",
+  "overflow": "never",
+  "args": [
+    "log-sink",
+    "200000"
+  ],
+  "quick": [
+    "log-sink",
+    "20000"
+  ],
+  "checksum": "200000 16022120",
+  "quick_checksum": "20000 1581203",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/log-sink.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is i * 7 below 2^21 and the counts",
+    "c": "C's std has no logger; fprintf to a FILE is buffered and writes no whole record per call, so it is not the same work, and no hand-written logger stands in (tests/bench/README.md 'No stand-ins')",
+    "rust": "Rust std has no logger (the log crate is a facade with no sink); writeln! on an unbuffered File makes one write per argument piece, not per record",
+    "zig": "Zig's std.log writes to stderr only, under std.debug's stderr lock; no file sink"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the size checks that every logger wrote the same bytes",
+  "notes": [
+    "The cost is one write system call per record on both sides, by design: a record is out of the process when the call returns, and records of different tasks never interleave (D8-22). Mk formats on a 4 KiB stack buffer through core.Capped; Go's log.Logger formats into a pooled growing buffer.",
+    "Written by std-log, M8, 2026-11-12; checksums from both columns' runs on the owner's machine, which agree.",
+    "An informal split on the owner's machine (2026-11-12, busy, min of 5 runs, 200000 records): Mk 785 ms, Go 481 ms; a hand-written Mk loop of Mutex.Lock(NoCancel), File.WriteAll of a fixed 80-byte record and Unlock took 725 ms against the sink's 669 ms in the same series, so the gap is std.fs's per-write path (rt8, std-fs2), not the sink's formatting. Not published: no number here is a measurement until tools/bench publish runs.",
+    "Not published: no number here is a measurement."
+  ]
+}

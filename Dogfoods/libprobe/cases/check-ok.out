@@ -1,0 +1,4 @@
+line 2: kernel32.dll: ok (2 found)
+line 3: version.dll: ok (2 found)
+line 5: user32.dll: ok (1 found)
+3 of 3 libraries ready

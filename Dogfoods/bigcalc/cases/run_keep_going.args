@@ -1,0 +1,3 @@
+run
+--keep-going
+$CASES/data/keep_going.rpn

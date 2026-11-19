@@ -1,0 +1,5 @@
+render
+$CASES/data/mesh.scene
+$WORK/out.ppm
+--mem-limit
+300

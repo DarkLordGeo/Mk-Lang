@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0409","name":"move-out-of-reference","phase":"flow","root":1,"at":{"file":"t/borrow.mk","line":3,"col":1,"end_line":3,"end_col":6},"message":"p.a is not plain and cannot be moved or copied out of a place","facts":{"place":"p.a","kind":"linear"},"fixes":[],"alternatives":[],"explain":"mk explain E0409"}],"omitted":0}

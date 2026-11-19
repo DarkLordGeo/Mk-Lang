@@ -1,0 +1,25 @@
+probe   | health: 200
+probe   | ok
+probe   | panic: no reply
+probe   | health: 200
+probe   | ok
+probe   | health: 200
+probe   | ok
+probe   | status: 200
+probe   | probe        running  runs=1 restarts=0 last=-
+probe   | sleeper      running  runs=1 restarts=0 last=-
+NAME         STATE    RUNS RESTARTS  LAST
+sleeper      stopped     1        0  killed
+probe        ended       1        0  exit 4
+
+last output of probe:
+  health: 200
+  ok
+  panic: no reply
+  health: 200
+  ok
+  health: 200
+  ok
+  status: 200
+  probe        running  runs=1 restarts=0 last=-
+  sleeper      running  runs=1 restarts=0 last=-

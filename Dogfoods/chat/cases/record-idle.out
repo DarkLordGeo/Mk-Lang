@@ -1,0 +1,12 @@
+ann! connected
+ann< MOTD Welcome to chat.
+ann< OK welcome
+ann> NICK ann
+ann< OK nick ann
+ann> JOIN #quiet
+ann< OK join #quiet members=1 topic=
+ann< NOTICE idle for 300 ms, closing
+ann! closed by the server
+-- server: history=0
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=0 broken=0 canceled=0
+-- idle: 1

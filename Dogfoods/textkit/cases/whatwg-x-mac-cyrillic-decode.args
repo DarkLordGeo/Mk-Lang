@@ -1,0 +1,4 @@
+convert
+--from
+x-mac-cyrillic
+$CASES/data/whatwg/x-mac-cyrillic.bin

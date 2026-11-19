@@ -1,0 +1,13 @@
+load
+--clients
+1000
+--rooms
+25
+--messages
+2
+--queue
+512
+--bots
+0
+--max-clients
+1024

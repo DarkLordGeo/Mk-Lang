@@ -1,0 +1,6 @@
+[
+{"id":1,"title":"Shopping list","body":"milk, eggs and bread","tags":["errands","home"],"rev":1},
+{"id":2,"title":"Reading","body":"The Mk reference, sections 1 to 18","tags":["books"],"rev":1},
+{"id":3,"title":"Ideas","body":"","tags":[],"rev":1},
+{"id":4,"title":"Café menu","body":"crème brûlée — \"best\" in town\n","tags":["food"],"rev":1}
+]

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("A{match{A(0/\x96=]\xab\x03\xfe\xfa")

@@ -1,0 +1,169 @@
+// Native spawners into a run's scope, visible throughout. Rare runs still
+// differ (native tasks beside the run, a documented limit of std.sim).
+// twogate with both native spawners visible to the run throughout: each NS
+// first spawns a quick task into outer (so it is pending from its first
+// act), then sets a flag; main spins on both flags with no leaf (still
+// pending from its own spawns) before it joins the native scope n. Each
+// NS then dials, sleeps 1 us under the run (so it owes a note at the
+// gate), spawns 4 tasks into g (limit 1 or 2) and sends 5 bytes to its
+// own server task of the run. Modes as twogate 0 to 3.
+import std.atomic
+import std.fs
+import std.net
+import std.sim
+import std.time
+
+Srv(io: Io, l: &net.Listener, got: mut int, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        return
+    }
+    c := s.Conn()
+    var b: [64]u8 = [0; 64]
+    for {
+        k := c.Read(io, mut b[..]) else e {
+            *code = match e {
+                Canceled { 5 }
+                net.Reset { 6 }
+                _ { 9 }
+            }
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            break
+        }
+        *got += k
+    }
+    *code = 0
+    c.Abandon()
+}
+
+Quick(io: Io) {}
+
+Nap(io: Io) {
+    io.Sleep(time.Millis(1)) else {}
+}
+
+Addr(b: mut [32]u8, port: int): str from b {
+    pre := "127.0.0.1:".AsBytes()
+    (mut b[0..pre.Len()]).CopyFrom(pre)
+    var d: [8]u8 = [0; 8]
+    var n := 0
+    var x := port
+    for {
+        d[n] = Trunc[u8](48 + x % 10)
+        n += 1
+        x = x / 10
+        if x == 0 {
+            break
+        }
+    }
+    for i in 0..n {
+        b[pre.Len() + i] = d[n - 1 - i]
+    }
+    return str.From(b[0..pre.Len() + n]).Must()
+}
+
+// NS, a native task: k spawns into g, then 5 bytes to addr and close.
+NS(io: Io, outer: &Scope, f: &atomic.AtomicBool, g: &Scope, addr: str, k: int, nap: bool, owe: bool) {
+    outer.go Quick(io)
+    f.Store(true)
+    st := net.Dial(io, addr) else {
+        return
+    }
+    c := st.Conn()
+    if owe {
+        // a wait of the run: NS owes it a note at its next leaf (the gate)
+        io.Sleep(time.Micros(1)) else {}
+    }
+    for _ in 0..k {
+        if nap {
+            g.go Nap(io)
+        } else {
+            g.go Quick(io)
+        }
+    }
+    hello: [5]u8 = [104, 101, 108, 108, 111]
+    c.WriteAll(io, hello[..]) else {}
+    c.Close(io) else {
+        c.Abandon()
+    }
+}
+
+Run(io: Io, nat: Io, mode: int): net.Error!int {
+    l1 := try net.Listen(io, "127.0.0.1:0")
+    defer l1.Close()
+    l2 := try net.Listen(io, "127.0.0.1:0")
+    defer l2.Close()
+    var ab1: [32]u8 = [0; 32]
+    a1 := Addr(mut ab1, l1.Port())
+    var ab2: [32]u8 = [0; 32]
+    a2 := Addr(mut ab2, l2.Port())
+    var g1 := 0
+    var k1 := -1
+    var g2 := 0
+    var k2 := -1
+    m := mode % 4
+    owe := true
+    f1 := atomic.AtomicBool.New(false)
+    f2 := atomic.AtomicBool.New(false)
+    lim := if m >= 2 { 2 } else { 1 }
+    nap := m == 1 || m == 3
+    scope outer := io.Scope() {
+        outer.go Srv(io, &l1, mut g1, mut k1)
+        outer.go Srv(io, &l2, mut g2, mut k2)
+        scope g := io.ScopeWith(Limits(tasks: lim, stack: StackSize.Default)) {
+            scope n := nat.Scope() {
+                n.go NS(io, &outer, &f1, &g, a1, 4, nap, owe)
+                n.go NS(io, &outer, &f2, &g, a2, 4, nap, owe)
+                for !f1.Load() || !f2.Load() {}
+            }
+        }
+    }
+    return (g1 * 16 + k1) * 1000 + g2 * 16 + k2
+}
+
+One(a: &Arena, seed: u64, nat: Io, mode: int): int {
+    var sm := sim.Sim.New(a, seed) else {
+        return -100
+    }
+    r := Run(sm.Io(), nat, mode) else {
+        sm.Free()
+        return -101
+    }
+    sm.Free()
+    return r
+}
+
+// Mark writes the leg (1 native, 2 the first sim run, 3 the second), the
+// mode and the seed to marker.bin, so a timed-out run says where it was.
+Mark(io: Io, leg: int, mode: int, seed: int) {
+    var d: [3]u8 = [Trunc[u8](leg), Trunc[u8](mode), Trunc[u8](seed)]
+    fs.WriteAll(io, "marker.bin", d[..]) else {}
+}
+
+test "twogate" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    defer ar.Free()
+    for mode in 0..4 {
+        Mark(sys.io, 1, mode, 0)
+        nv := Run(sys.io, sys.io, mode) else {
+            -101
+        }
+        var good := 0
+        var differ := 0
+        var last := 0
+        for seed in 1..51 {
+            Mark(sys.io, 2, mode, seed)
+            a := One(&ar, Trunc[u64](seed), sys.io, mode)
+            Mark(sys.io, 3, mode, seed)
+            b := One(&ar, Trunc[u64](seed), sys.io, mode)
+            if a == 80080 { good += 1 } else { last = a }
+            if b == 80080 { good += 1 } else { last = b }
+            if a != b { differ += 1 }
+        }
+        sys.Print("mode={m}: native={n} good={g}/100 differ={d} lastbad={l}\n", (m: mode, n: nv, g: good, d: differ, l: last)) else {}
+    }
+    Assert(false)
+}

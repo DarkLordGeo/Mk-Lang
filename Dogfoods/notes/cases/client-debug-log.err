@@ -1,0 +1,13 @@
+DEBUG body {"title":"Debug me","body":"body"}
+INFO POST /notes 201 59
+DEBUG body {"title":"Debugged"}
+INFO PATCH /notes/1 200 59
+DEBUG body [1]
+WARN PATCH /notes/1 422 52
+DEBUG body {"tags":3}
+WARN PATCH /notes/1 422 58
+DEBUG body {"title":"","body":"x"}
+WARN PUT /notes/1 422 42
+DEBUG body {"title":"t","body":"x"}
+WARN PUT /notes/9 404 40
+WARN GET /notes/abc 400 49

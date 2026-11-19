@@ -1,0 +1,7 @@
+-d
+0
+-l
+needle
+$CASES/data/tree
+--path-separator
+/

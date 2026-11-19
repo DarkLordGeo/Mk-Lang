@@ -1,0 +1,16 @@
+var a = 1;
+fun twice(x) { return x * 2; }
+print twice(a);
+print twice(nil);
+print "after the error " + str(twice(4));
+print 1 +;
+var b = twice(a) + 1;
+:globals a c
+:globals
+:forget b
+:forget b
+:forget
+print b;
+:help
+:what
+print "bye";

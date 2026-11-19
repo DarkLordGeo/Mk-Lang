@@ -1,0 +1,12 @@
+href      http://[::1]/
+shown     http://[::1]/
+scheme    http
+username  
+password  
+host      ipv6 00000000000000000000000000000001
+hostname  [::1]
+port      default
+path      /
+query     
+fragment  
+origin    http://[::1]

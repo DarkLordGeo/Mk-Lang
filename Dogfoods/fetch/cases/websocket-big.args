@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+--ws-send
+big
+--ws-send
+after
+ws://{origin}/ws

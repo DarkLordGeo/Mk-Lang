@@ -1,0 +1,1 @@
+pack: $CASES/data/bad-data.pk: the data does not match the manifest's digest

@@ -1,0 +1,6 @@
+cert
+$CASES/data/tls/expired.pem
+--cacert
+$CASES/data/tls/root.pem
+--host
+localhost

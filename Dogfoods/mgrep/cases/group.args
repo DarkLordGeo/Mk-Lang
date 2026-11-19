@@ -1,0 +1,7 @@
+-o
+--group
+1
+id=([0-9]+)
+$CASES/data/tree
+--path-separator
+/

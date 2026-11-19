@@ -1,0 +1,3 @@
+exports
+--filter=Zz
+$CASES/data/tiny.pe

@@ -1,0 +1,27 @@
+make an existing dir: Exists
+open a missing file: NotFound
+create-new over a file: Exists
+options: size 14, seek to 8, tail three, at 4 two, truncated to 4
+lock: second handle while held false, after unlock true
+map: whole 32640, from 200 12740, empty 0
+copy: 256 bytes
+stat link of a file: file, 5 bytes, modified 2023-11-14T22:13:20Z
+stat work/a/b: dir
+stat work/a/b/c/blob.copy: file, 256 bytes
+create temp: in its directory true
+walk work: 9 entries
+  0 dir work
+  1 dir a
+  1 file blob.bin
+  1 file log.txt
+  2 dir b
+  2 file temp.txt
+  3 dir c
+  3 file note.txt
+  4 file blob.copy
+absolute: under the working directory true, ends in the name true
+walk work: 3 entries
+  0 dir work
+  1 file blob.bin
+  1 file log.txt
+stat work: NotFound

@@ -1,0 +1,31 @@
+usage: chat [options] serve | replay SCRIPT | load | drill
+
+serve    serve clients until Ctrl-C or SHUTDOWN
+replay   run SCRIPT's clients against an in-process server and print the transcript
+load     connect many clients at once and print what they saw
+drill    cancel the server at each of its waits and report how each ended
+
+Options:
+  --help                 Show this help
+  --addr <str>           Address to listen on (serve: 127.0.0.1:7070; others: a free loopback port)
+  --motd <str>           File whose first line is the message of the day
+  --history <str>        File to write every room message to
+  --max-clients <int>    Connections served at once (default 64, at most 1024)
+  --queue <int>          Room messages queued per client before it is dropped as too slow (default 64)
+  --burst <int>          Messages a client may send between refills, 0 for no limit (default 20)
+  --refill-ms <int>      Milliseconds between rate refills (default 1000)
+  --client-memory <int>  Bytes each connection may use for its own state (default 4096)
+  --token <str>          Operator token for OPER and SHUTDOWN (default: none)
+  --bots <int>           Bots to start, 0 to 2 (default 2)
+  --clients <int>        load: clients to connect (default 100)
+  --rooms <int>          load: rooms to spread them over (default 10)
+  --messages <int>       load: messages each client sends (default 5)
+  --shutdown             load: end by shutting the server down under every client
+  --slow                 load: one client that never reads, and one that floods its room
+  --deadline <int>       replay and load: seconds before giving up and reporting what was seen, 0 for never (default 20)
+  --idle-ms <int>        Milliseconds a connection may sit with nothing read or sent before it is dropped, 0 for never (default 0)
+  --record               Log every byte each TCP connection reads and writes (implies --log info)
+  --log <str>            Log level on stderr: debug, info, warn or error (default warn)
+  --web <str>            Also serve the web front end (WebSocket and event streams) on this address
+Arguments:
+  <args>...              The command and its file

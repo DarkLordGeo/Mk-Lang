@@ -1,0 +1,168 @@
+{
+  "name": "indexany",
+  "table": "simd",
+  "algorithm": "Find the first byte of an 8-byte ASCII set (tab, LF, CR, space, quote, comma, colon, equals) in a buffer of bytes 0x40 to 0x7F, one member planted within the last 64 bytes and removed after each search; reps searches (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "indexany.c",
+    "rust": "indexany.rs",
+    "zig": "indexany.zig",
+    "go": "testdata/indexany.go"
+  },
+  "skip": {
+    "mk-wrap": "no integer arithmetic to wrap in the kernel"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "2000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "32702986931",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 32768000000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "1000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "33554399430",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 33554432000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "24",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "25769803029",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "3000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "49054456488",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 49152000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "1500",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "50331599476",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 50331648000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "24",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "25769803029",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776
+    }
+  ],
+  "no_counts": "B24 does not apply as a count of operations: each search reads all but at most 64 bytes of the buffer, and the checksum sums every position",
+  "notes": [
+    "On a CPU with AVX-512 (the owner's Ryzen 7 9800X3D has it) the mk column of the v3 variants runs std.simd's 64-lane `cpu \"avx512bw\"` form from 256 bytes up (D-353), while c, rust and zig are fixed at x86-64-v3: the Mk cell is then not at the same width. bench-final labels it or adds a v4 variant (status/bench.md, from std-simd).",
+    "GB/s counts size * reps bytes; each search reads all but at most 64 bytes of the buffer. The fill and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted (BS-3). The c, rust, zig and go buffers start on a 64-byte boundary (BS-4); the mk column reads an arena slice whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md).",
+    "c and rust: Hyperscan's Truffle with _mm*_shuffle_epi8 (std.simd.IndexAny's method for sets of four or more bytes; the low table zeroed by the shuffle's top-bit rule, the high one on the byte XOR 0x80), one vector a step, chosen by __AVX2__ or cfg(target_feature = \"avx2\"); rust loads from checked slices (BS-2). zig: @Vector has no run-time byte shuffle, so one compare per set byte, ORed, labelled. go: bytes.IndexAny, a 256-bit ASCII set scanned byte by byte (no assembly), labelled; the haystack is 7-bit and the set ASCII, so its rune contract agrees with the byte kernel. mk: std.simd.IndexAny.",
+    "Checksums from the go column (go run testdata/indexany.go at each size, 2026-11-07). The repetitions were estimated from the indexbyte row's single-run rates and Truffle's instruction count for about 1 s of the c cell (std-simd session 2, 2026-11-07).",
+    "Written by the std-simd lane (status/std-simd.md, session 2). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

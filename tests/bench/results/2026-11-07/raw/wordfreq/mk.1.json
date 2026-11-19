@@ -1,0 +1,247 @@
+{
+  "schema_version": 2,
+  "metadata": {
+    "hyperfine_version": "2.0.0",
+    "start_time": "2026-11-07T03:54:34Z",
+    "platform": {
+      "os": "Windows_NT",
+      "architecture": "x86_64"
+    }
+  },
+  "primary_metric": "time_wall_clock",
+  "results": [
+    {
+      "command": "\"C:\\\\work\\\\bench\\\\bin\\\\publish\\\\wordfreq\\\\mk.exe\" \"V:\\\\Mk\\\\tests\\\\bench\\\\data\\\\wordfreq-50mb.txt\" 10",
+      "measurements": [
+        {
+          "time_wall_clock": {
+            "value": 4.4097245,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.234375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.1875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.8818948,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.078125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.046875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.03125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.1836216999999998,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.640625,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.609375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.03125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.1174049,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.921875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.84375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.078125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 4.4856425,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.03125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.015625,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 2.944851,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.71875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.703125,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.51607,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.75,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.734375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 2.4599658,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.4375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.390625,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 2.4603092,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.453125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.390625,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 2.4842698,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.4375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.40625,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.03125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        }
+      ],
+      "summary": {
+        "time_cpu": {
+          "unit": "second",
+          "count": 10,
+          "mean": 2.7703125,
+          "stddev": 0.28736126634575043,
+          "median": 2.734375,
+          "min": 2.4375,
+          "max": 3.234375
+        },
+        "time_system": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.0375,
+          "stddev": 0.021092142428454776,
+          "median": 0.03125,
+          "min": 0.015625,
+          "max": 0.078125
+        },
+        "time_user": {
+          "unit": "second",
+          "count": 10,
+          "mean": 2.7328125,
+          "stddev": 0.2895617872679911,
+          "median": 2.71875,
+          "min": 2.390625,
+          "max": 3.1875
+        },
+        "time_wall_clock": {
+          "unit": "second",
+          "count": 10,
+          "mean": 3.29437542,
+          "stddev": 0.7653160273372909,
+          "median": 3.1505133,
+          "min": 2.4599658,
+          "max": 4.4856425
+        }
+      }
+    }
+  ]
+}

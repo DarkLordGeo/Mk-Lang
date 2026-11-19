@@ -1,0 +1,52 @@
+usage: orderbook replay [options] FEED
+       orderbook replay [options] --synth N [--seed S]
+       orderbook synth --synth N [--seed S]
+       orderbook --help
+
+Replays a market-data feed through a price-time priority matching
+engine and reports the book, the trades and statistics over them.
+
+commands:
+  replay            run the engine over FEED, or over N synthetic commands
+  synth             write N synthetic commands as a feed to standard output
+
+options:
+  --synth N         generate N commands instead of reading a feed
+  --seed S          the generator's seed (default 1)
+  --depth N         price levels per side in the depth table (default 5)
+  --bars N          trades per bar (default 1000)
+  --band LO:HI      show the book and the traded volume from LO to HI
+  --account A       show where account A ranks by volume
+  --snapshot N      snapshot the top of the book every N commands
+                    (default 10000; 0 never)
+  --memory-limit B  give the engine at most B bytes of heap
+  --json PATH       also write the report as JSON to PATH (- for stdout)
+  --book PATH       start from the resting orders of the book file PATH
+  --book-out PATH   write the book before the close as a book file to
+                    PATH (- for stdout)
+  --fills PATH      write every fill as CSV to PATH (- for stdout)
+  --trace           print every fill as it happens
+  --quiet           print only the checksum line
+  --help            print this help
+
+feed format, CSV (RFC 4180), one command a record; a record whose first
+field starts with `#` is a comment, so it holds no `"` unless quoted:
+  N,ts,acct/serial,B|S,qty,price          limit order
+  M,ts,acct/serial,B|S,qty                market order
+  S,ts,acct/serial,B|S,qty,stop           stop order
+  T,ts,acct/serial,B|S,qty,stop,limit     stop-limit order
+  C,ts,acct/serial                        cancel
+  A,ts,acct/serial,qty,price              amend size and price
+  H,ts,acct                               halt an account
+  R,ts,acct                               resume an account
+  X,ts                                    bust the last trade
+
+book file, CSV with this header, one resting order a row (kind is
+limit, stop or stop-limit; tag is free text, quoted when it holds a
+comma, a quote or a line break):
+  id,side,kind,qty,price,stop,ts,tag
+the fills file has the header
+  ts,taker,maker,side,price,qty,taker_tag,maker_tag
+
+exit status: 0 done, 1 the --account did not trade, 2 bad command line,
+3 bad feed or book file, 4 file error, 5 out of memory

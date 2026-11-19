@@ -1,0 +1,4 @@
+error: main.Child
+    at trace.mk:37:20
+    at trace.mk:37:5
+    at trace.mk:54:9

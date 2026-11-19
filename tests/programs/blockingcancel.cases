@@ -1,0 +1,6 @@
+# runtime.Blocking cancelled while its job is queued: 64 jobs hold the pool's 64 threads,
+# the 65th caller's scope is cancelled, it gets Canceled with its linear state kept and the job
+# never runs; after the release the 64 finish and a new call consumes its state. Both profiles,
+# both targets; the output is the same at MK_CARRIERS=1 and 16 (linux.sh runs both on Linux).
+case ok
+stdout blockingcancel.out

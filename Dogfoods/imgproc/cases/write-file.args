@@ -1,0 +1,4 @@
+run
+$CASES/data/small.pgm
+$WORK/out.pgm
+invert

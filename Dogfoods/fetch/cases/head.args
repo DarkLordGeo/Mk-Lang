@@ -1,0 +1,4 @@
+--origin
+$CASES/data/site.origin
+-I
+http://{origin}/hello

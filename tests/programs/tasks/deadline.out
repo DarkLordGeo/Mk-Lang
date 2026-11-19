@@ -1,0 +1,15 @@
+zero: canceled true, expired true
+negative: canceled true, expired true
+earliest, long then short: canceled true, expired true
+earliest, short then long: canceled true, expired true
+cancel first: expired false
+ancestor cancelled first: expired false
+fired: expired true, after a later cancel true
+remaining: none without a deadline true, own true, from an ancestor true
+remaining: a later own deadline true, an earlier one true, the ancestor's unchanged true
+cancelled by a deadline: body true, tasks 3
+typed: TimedOut
+observed after a join: expired true, tasks 2
+sim 1: canceled true, expired true, on the simulated clock true
+sim 2: canceled true, expired true, on the simulated clock true
+sim 3: canceled true, expired true, on the simulated clock true

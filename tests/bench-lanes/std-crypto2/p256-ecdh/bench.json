@@ -1,0 +1,32 @@
+{
+  "name": "crypto-p256-ecdh",
+  "table": "idiomatic",
+  "algorithm": "std P-256 ECDH: <keys> secrets of splitmix64 bytes and their public points made at start, <reps> passes compute the shared secret of each secret and the next key's point (mk/crypto-p256-ecdh.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "64",
+    "1"
+  ],
+  "quick": [
+    "4",
+    "1",
+    "1"
+  ],
+  "checksum": "16457351248173008384",
+  "quick_checksum": "13068774377110410107",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-p256-ecdh.zig",
+    "go": "testdata/crypto-p256-ecdh.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard elliptic-curve or RSA library",
+    "rust": "no std crypto: Rust std has no ECDSA, ECDH or RSA; the p256 and rsa crates are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Zig: std.crypto.ecc.P256, fromSec1 of the peer (on-curve check) then mul (constant time) and the affine x, per pass; the public points made once at start (session 3, 2026-11-13).",
+    "Work per step: one P-256 ECDH from secret bytes: Mk EcSecret.FromBytes and crypto.EcdhShared (peer point checked on the curve, constant-time window multiplication, one inversion), Go PrivateKey.ECDH with each key made once at start (amd64 assembly; NewPrivateKey computes the public point, a second multiplication, so it is kept out of the passes since 2026-11-13; Mk's FromBytes is a range check and stays in), Zig as its note says (fromSec1 of the peer, mul, the affine x, per pass).",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27, owner's machine, 2026-11-12); the Mk column (mk build --release, mk from the tree) printed the same at both arg sets. Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

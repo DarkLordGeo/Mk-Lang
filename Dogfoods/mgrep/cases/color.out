@@ -1,0 +1,4 @@
+[35m$CASES/data/tree/a.txt[0m:[32m1[0m:alpha [1;31mneedle[0m
+[35m$CASES/data/tree/a.txt[0m:[32m3[0m:this line is longer than sixteen bytes and ends with [1;31mneedle[0m
+[35m$CASES/data/tree/a.txt[0m:[32m6[0m:[1;31mneedle[0ms are not a word [1;31mneedle[0m
+[35m$CASES/data/tree/a.txt[0m:[32m8[0m:last line without newline [1;31mneedle[0m

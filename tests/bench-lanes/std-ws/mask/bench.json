@@ -1,0 +1,84 @@
+{
+  "name": "ws-mask",
+  "table": "simd",
+  "algorithm": "RFC 6455 5.3's masking of n splitmix64 bytes (seed 1) in place, in a buffer on a 64-byte boundary, rounds times, round r with the key of the four low bytes of (r + 1) * 0x9E3779B97F4A7C15 from phase r % 4: a scalar head to phase 0, the key splat over a 16-byte vector XORed 16 bytes a step (Go: a uint64 8 bytes a step, scalar), a scalar tail; the checksum adds per round the byte at (r * 7919) % n and the phase returned (README.md).",
+  "overflow": "wraps",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "mask.c",
+    "rust": "mask.rs",
+    "zig": "mask.zig",
+    "go": "testdata/mask.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; masking has no other arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "2000000"
+      ],
+      "quick": [
+        "65537",
+        "1000"
+      ],
+      "checksum": "258138996",
+      "quick_checksum": "130636",
+      "baseline": [
+        "16384",
+        "0"
+      ],
+      "bytes": 32768000000
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "1000"
+      ],
+      "quick": [
+        "65537",
+        "1000"
+      ],
+      "checksum": "129433",
+      "quick_checksum": "130636",
+      "baseline": [
+        "33554432",
+        "0"
+      ],
+      "bytes": 33554432000
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "32"
+      ],
+      "quick": [
+        "65537",
+        "1000"
+      ],
+      "checksum": "4293",
+      "quick_checksum": "130636",
+      "baseline": [
+        "1073741824",
+        "0"
+      ],
+      "bytes": 34359738368
+    }
+  ],
+  "no_counts": "B24: each round masks every byte with a new key from a new phase, and the next round's sample reads the result, so a skipped byte or a wrong phase changes the checksum",
+  "notes": [
+    "SIMD table (moved from the same-algorithm table by the M8 review, WS-4): each column is the kernel in its language's own SIMD layer at x86-64-v2, one fixed target, no run-time dispatch. Mk: std/websocket/frame.mk's Mask, copied byte for byte (no section 18 name; TestStdWs_BenchMaskIsTheLibrarys checks the copy), std.simd's Vec[u8, 16] XOR (FromSlice, CopyTo). C: <emmintrin.h> SSE2 (_mm_set1_epi32, _mm_loadu_si128, _mm_xor_si128, _mm_storeu_si128). Rust: std::arch::x86_64's same SSE2 intrinsics, each pointer taken from a checked 16-byte slice. Zig: @Vector(16, u8). Go: scalar, labelled as such: gorilla/websocket's maskBytes shape, a uint64 XOR 8 bytes a step (SWAR); Go has no vector operation without assembly and no WebSocket in its standard library.",
+    "Sizes (B16): L1 16 KiB (std.websocket's write chunk, the size a client masks per write), L3 32 MiB, DRAM 1 GiB (Recv unmasks a whole one-frame message in one call, up to frame_bytes). GB/s counts n * rounds bytes. The fill (one splitmix64 pass) and its first-touch page faults are timed by each variant's baseline (rounds 0) and subtracted (BS-3).",
+    "Aligned buffers (BS-4): the c, rust, zig and go columns start their buffer on a 64-byte boundary and exit 3 if not. The mk column masks an arena slice (sys.arena.Slice[u8]) whose alignment Mk code cannot set or read without std.raw, which the SIMD table bans (an unsafe module); this is BS-4's labelled exception of tests/bench/README.md, as validutf8's mk column, until std's aligned allocation reaches Arena (plan/29-sys.md S-1). Its slice is not probed for this row: the probe behind the tree's indexbyte, dot and validutf8 notes (std.raw, outside the tree, 2026-11-09) found every arena slice at 16 mod 64 at 16 KiB, 32 MiB and 1 GiB, this row's three sizes. That costs nothing here: 16 is a multiple of the 16-byte step, and Mask's scalar head starts the vector loop at byte 0, 3, 2 or 1 by the round's phase, so in every column one 16-byte load in four crosses a cache line in the three rounds of four with a non-zero phase, and none in the fourth.",
+    "Checksums from the Go column (owner's machine, std-ws session 5, 2026-11-13); the l1v2 and quick checksums are session 2's, which every column matched. Not published: no number here is a measurement."
+  ]
+}

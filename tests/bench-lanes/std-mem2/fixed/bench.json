@@ -1,0 +1,17 @@
+{
+  "name": "fixed",
+  "table": "idiomatic",
+  "algorithm": "Per round, splitmix64 gives r; a list of (r & 511) + 1 u64 values r + i is built in a fixed-buffer allocator over a 64 KiB stack buffer with the standard growable list, summed, released, and the allocator reset; the checksum is the wrapping sum over rounds (../README.md).",
+  "overflow": "wraps",
+  "args": ["5000000", "1"],
+  "quick": ["10000", "1"],
+  "checksum": "17096034406434096043",
+  "quick_checksum": "5821099610450434430",
+  "sources": {"mk": "mk", "zig": "fixed.zig"},
+  "skip": {
+    "c": "no fixed-buffer allocator in the C standard library",
+    "rust": "no fixed-buffer allocator in Rust's standard library (the Allocator API is unstable)",
+    "go": "no fixed-buffer allocator in Go's standard library"
+  },
+  "notes": ["Mk: std.mem.Fixed and HeapList[u64]; Zig: std.heap.FixedBufferAllocator and std.ArrayList(u64). The lists grow differently (Mk max(4, 2 cap), Zig cap + cap/2 + 8), both in place in the buffer."]
+}

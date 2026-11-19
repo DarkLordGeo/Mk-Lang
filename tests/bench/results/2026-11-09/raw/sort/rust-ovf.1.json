@@ -1,0 +1,247 @@
+{
+  "schema_version": 2,
+  "metadata": {
+    "hyperfine_version": "2.0.0",
+    "start_time": "2026-11-09T01:38:02Z",
+    "platform": {
+      "os": "Windows_NT",
+      "architecture": "x86_64"
+    }
+  },
+  "primary_metric": "time_wall_clock",
+  "results": [
+    {
+      "command": "\"C:\\\\work\\\\bench\\\\bin\\\\publish\\\\sort\\\\rust-ovf.exe\" 10000000 4 1",
+      "measurements": [
+        {
+          "time_wall_clock": {
+            "value": 0.8734561000000001,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8760213,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8744089,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8760522000000001,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.84375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.03125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.873001,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8717055,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.84375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8741871000000001,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.872955,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.859375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.84375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.015625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8776513,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 0.8827722,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 0.875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        }
+      ],
+      "summary": {
+        "time_cpu": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.8703125,
+          "stddev": 0.007547592055306998,
+          "median": 0.875,
+          "min": 0.859375,
+          "max": 0.875
+        },
+        "time_system": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.009375,
+          "stddev": 0.01092509216843908,
+          "median": 0.0078125,
+          "min": 0.0,
+          "max": 0.03125
+        },
+        "time_user": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.8609375,
+          "stddev": 0.013681172433920516,
+          "median": 0.859375,
+          "min": 0.84375,
+          "max": 0.875
+        },
+        "time_wall_clock": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.8752210600000001,
+          "stddev": 0.0031889318466638,
+          "median": 0.874298,
+          "min": 0.8717055,
+          "max": 0.8827722
+        }
+      }
+    }
+  ]
+}

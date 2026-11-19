@@ -1,0 +1,6 @@
+--origin
+$CASES/data/site.origin
+-f
+-o
+out.bin
+http://{origin}/missing

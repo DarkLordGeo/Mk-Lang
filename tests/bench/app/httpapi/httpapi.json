@@ -1,0 +1,51 @@
+{
+  "name": "httpapi",
+  "task": "A JSON API over HTTP/1.1 keep-alive with each language's std HTTP server: create, read, replace and delete items (`POST /items`, `GET`, `PUT` and `DELETE /items/{id}`) and list a tag's items by id (`GET /items?tag=&limit=`), the store in memory behind a reader-writer lock, every body JSON, gzip-compressed from 256 bytes when the client accepts gzip (README.md).",
+  "args": ["{port}"],
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/httpapi.go",
+    "zig": "httpapi.zig"
+  },
+  "kinds": {
+    "mk": "std",
+    "go": "std",
+    "zig": "std"
+  },
+  "skip": {
+    "c": "no std HTTP (C's std has no sockets)",
+    "rust": "no std HTTP (std::net is TCP only; an HTTP server is a crate, hyper or axum over tokio, and none is in the local cargo registry, which holds serde_json and flate2: an eco cell is a fetch request to the owner, ruling Q8)"
+  },
+  "models": {
+    "mk": "tasks (std.http.Serve, one task per connection and one arena per request, MK_CARRIERS=8)",
+    "go": "goroutines (net/http, GOMAXPROCS=8)",
+    "zig": "OS threads (std.http.Server, one Io.Group.concurrent thread per connection)"
+  },
+  "connections": 256,
+  "check_requests": 300,
+  "warmup_s": 5,
+  "measure_s": 30,
+  "server_mask": "0xff",
+  "client_mask": "0xff00",
+  "threads": 8,
+  "sweeps": 3,
+  "seed": 3838,
+  "api": {
+    "live": 12,
+    "post": 25,
+    "get": 30,
+    "list": 20,
+    "put": 13,
+    "delete": 10,
+    "bad": 2,
+    "name_min": 4,
+    "name_max": 48,
+    "limit_max": 10,
+    "gzip": 50
+  },
+  "notes": [
+    "The Mk side is a new program (`mk/httpapi.mk`, D-845), written from the documents only, as an outside user, and frozen before its first publish.",
+    "The load is tools/bench's route mix (apibench.go): each connection keeps at most 12 items under its own two tags and draws from splitmix(seed + i) POST 25%, GET 30%, list 20%, PUT 13%, DELETE 10% and a POST with an out-of-range qty 2% (422); a GET, PUT or DELETE names a deleted id one time in (live items + 1), for a 404; half the requests accept gzip. Every response's status, Content-Type, Location, Content-Encoding and body are checked, the body byte for byte after gunzip.",
+    "Connections close with a reset (linger 0), as the http row's; 256 connections hold 512 sockets at once, below the owner's 10,000 cap."
+  ]
+}

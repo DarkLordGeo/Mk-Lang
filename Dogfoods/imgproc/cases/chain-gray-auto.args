@@ -1,0 +1,14 @@
+--ascii
+--path
+auto
+--tile-rows
+5
+run
+$CASES/data/gradient.pgm
+-
+sharpen
+brighten=-20
+levels
+invert
+box=3
+threshold

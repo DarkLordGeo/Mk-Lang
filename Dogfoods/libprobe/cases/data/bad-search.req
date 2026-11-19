@@ -1,0 +1,3 @@
+# a search that does not exist
+kernel32.dll system GetTickCount
+version.dll everywhere GetFileVersionInfoSizeW

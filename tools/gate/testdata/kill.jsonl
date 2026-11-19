@@ -1,0 +1,5 @@
+{"Time":"2026-11-15T00:24:05.1978268+04:00","Action":"start","Package":"mk/kill"}
+{"Time":"2026-11-15T00:25:07.1986622+04:00","Action":"output","Package":"mk/kill","Output":"*** Test killed: ran too long (1m2s).\n"}
+{"Time":"2026-11-15T00:25:07.1986622+04:00","Action":"output","Package":"mk/kill","Output":"exit status 1\n"}
+{"Time":"2026-11-15T00:25:07.1986622+04:00","Action":"output","Package":"mk/kill","Output":"FAIL\tmk/kill\t62.002s\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:25:07.1986622+04:00","Action":"fail","Package":"mk/kill","Elapsed":62.002}

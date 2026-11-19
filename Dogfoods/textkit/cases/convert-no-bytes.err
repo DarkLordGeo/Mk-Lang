@@ -1,0 +1,2 @@
+textkit: $CASES/data/cjk-mixed.txt: U+4E00, scalar 23, has no bytes in windows-1252
+textkit: $CASES/data/latin1.txt: U+FFFD, scalar 4, has no bytes in windows-1252

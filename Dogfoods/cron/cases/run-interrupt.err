@@ -1,0 +1,4 @@
+INFO trap: started
+INFO trap| trap: waiting for an interrupt
+INFO trap| trap: interrupted, cleaning up
+INFO trap: interrupted at shutdown

@@ -1,0 +1,14 @@
+domain    xn--bcher-kva.example -> xn--bcher-kva.example -> bücher.example
+domain    a..b: BadHost
+href      http://xn--bcher-kva.example/
+shown     http://xn--bcher-kva.example/
+scheme    http
+username  
+password  
+host      domain xn--bcher-kva.example
+hostname  xn--bcher-kva.example
+port      default
+path      /
+query     
+fragment  
+origin    http://xn--bcher-kva.example

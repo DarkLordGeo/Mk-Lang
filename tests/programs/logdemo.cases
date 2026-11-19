@@ -1,0 +1,14 @@
+# std.log's levels and gen cli.Args flags (from std's TestSTDCLI_ExamplePrograms).
+case ok
+stdout logdemo.out
+
+case quiet
+args --quiet --events=4
+stdout logdemo-quiet.out
+
+# Main returns cli.Invalid: release prints the error as {e} prints it, dev adds the trace.
+case bad-flag
+profile release
+args --events x
+stderr logdemo-badflag.err
+exit 1

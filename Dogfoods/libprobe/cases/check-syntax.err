@@ -1,0 +1,1 @@
+libprobe: $CASES/data/bad-search.req:3: the search is not system, application or path

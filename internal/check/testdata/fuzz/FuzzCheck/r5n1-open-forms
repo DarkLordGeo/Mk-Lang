@@ -1,0 +1,2 @@
+go test fuzz v1
+string("struct P {\n    x: int\n}\n\nLane(const i: int): int {\n    return i\n}\n\nLaneP(const p: P): int {\n    return p.x\n}\n\nG[const N: int, const N8: u8, T](): int {\n    return Lane(-N) + Lane(N / 2) + Lane(int(N8)) + Lane(SizeOf[T]() + 1) + LaneP(P(x: int(N8))) + Lane(N + (2 * 3))\n}\n")

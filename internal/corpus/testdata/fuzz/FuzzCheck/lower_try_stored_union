@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("error Bad\n\nGet(n: int): Bad!int {\n    if n < 0 {\n        fail Bad\n    }\n    return n\n}\n\nUse(n: int): Bad!int {\n    var r: Bad!int = Get(n)\n    v := try r\n    return v + 1\n}\n\nKeep(w: mut Writer): WriteError!void {\n    var r: WriteError!void = Print(w, \"x\\n\")\n    try r\n}\n")

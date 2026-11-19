@@ -1,0 +1,4 @@
+replay
+$CASES/data/stops.csv
+--trace
+--quiet

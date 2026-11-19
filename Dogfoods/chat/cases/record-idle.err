@@ -1,0 +1,10 @@
+INFO conn 1 accepted from 127.0.0.1 on 127.0.0.1
+INFO client 0 connected from 127.0.0.1
+INFO conn 1 > MOTD Welcome to chat.\nOK welcome\n
+INFO conn 1 < NICK ann\n
+INFO conn 1 > OK nick ann\n
+INFO conn 1 < JOIN #quiet\n
+INFO conn 1 > OK join #quiet members=1 topic=\n
+INFO conn 1 > NOTICE idle for 300 ms, closing\n
+INFO conn 1 closed
+INFO client 0 left: idle

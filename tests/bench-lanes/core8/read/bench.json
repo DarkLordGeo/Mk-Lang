@@ -1,0 +1,37 @@
+{
+  "name": "read",
+  "table": "idiomatic",
+  "algorithm": "Read one log file (the generated input, 50 MB) through each standard library's buffered file reader with a 64 KiB buffer, by read calls of want bytes each, r times; prints the bytes read and the wrapping sum of each call's first byte. want 64 is the buffered path (a copy out of the buffer, one file read per 1,024 calls); want 131072 is the direct path, a request at least the buffer's size read straight into the caller's bytes (Mk fs.File.Reader and Reader.Read, core_rw.mk; Go bufio.Reader.Read over os.File; Rust BufReader::read over File; Zig std.Io.File.Reader with readSliceShort; C fread on a FILE with setvbuf). README.md.",
+  "overflow": "wraps",
+  "args": ["{data}", "64", "40"],
+  "quick": ["{data}", "64", "1"],
+  "checksum": "2000001520 2299216560",
+  "quick_checksum": "50000038 57480414",
+  "sources": {
+    "mk": "mk",
+    "c": "read.c",
+    "rust": "read.rs",
+    "zig": "read.zig",
+    "go": "testdata/read.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; the byte count stays below 2^33"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "variants": [
+    {"name": "small", "args": ["{data}", "64", "40"], "quick": ["{data}", "64", "1"], "checksum": "2000001520 2299216560", "quick_checksum": "50000038 57480414", "baseline": ["{data}", "64", "0"], "bytes": 2000001520},
+    {"name": "direct", "args": ["{data}", "131072", "120"], "quick": ["{data}", "131072", "1"], "checksum": "6000004560 3416880", "quick_checksum": "50000038 28474", "baseline": ["{data}", "131072", "0"], "bytes": 6000004560}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the byte count and the first-byte sum check that every reader returned the same bytes in the same calls",
+  "notes": [
+    "The input is std-regex's (same kind, size and seed), so tools/bench generates it once; it is 50,000,038 bytes long (the generator ends on a whole line), so the last call of a pass is short.",
+    "The first-byte sum depends on where each call starts. Every cell's calls on a regular file give want bytes until the last one (Mk, Go and Rust serve min(buffered, want) and refill 64 KiB at a time, and 64 divides 65,536; C's fread and Zig's readSliceShort fill the request), so the starts are the multiples of want in every cell.",
+    "Zig: std.Io.File.Reader of Zig 0.17 reads only a vector's first slice on Windows, so readSliceShort of 64 bytes from an empty buffer made one file read per call (1.243 s for the quick size against 33 to 83 ms for the other cells, tools/bench verify, 2026-11-12, loaded machine). The cell fills the buffer with fillMore first when want is below the buffer's size, as Go bufio's Read does inside; at 131072 it reads straight into the caller's bytes.",
+    "Written by core8 (status/core8.md, review finding G-core8-8): the tools/bench row of the public prelude line Reader.Read, which core8 audits. Reader.Until's row is std-rewrite/until. Checksums from a Go model over the data file (the sum of the bytes at offsets 0, want, 2 want and so on, times r; the byte count is the file's length times r) and each column's verify run."
+  ]
+}

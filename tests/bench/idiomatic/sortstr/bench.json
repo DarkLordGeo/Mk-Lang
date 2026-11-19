@@ -1,0 +1,33 @@
+{
+  "name": "sortstr",
+  "table": "idiomatic",
+  "std": ["std.core.Slice.Sort"],
+  "algorithm": "Sort n strings of 1 to 16 random lowercase letters, views into one buffer, bytewise ascending with the language's std unstable sort, and check; rounds times from the same unsorted order (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "2000000",
+    "3",
+    "1"
+  ],
+  "quick": [
+    "50000",
+    "1",
+    "1"
+  ],
+  "checksum": "18100645570225286736",
+  "quick_checksum": "16049159253221044792",
+  "sources": {
+    "mk": "mk",
+    "c": "sortstr.c",
+    "rust": "sortstr.rs",
+    "zig": "sortstr.zig",
+    "go": "testdata/sortstr.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; sorting has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own sort algorithm; the checksum (FNV-1a of each key in sorted order, weighted by position, 0xdead if out of order) checks every result",
+  "notes": [
+    "Views into one buffer compared bytewise (B20): mk Slice[str].Sort with str's <; c qsort over {pointer, length} with memcmp then length, an indirect comparator; rust sort_unstable over &str; zig std.sort.pdq with std.mem.lessThan; go slices.Sort over substrings."
+  ]
+}

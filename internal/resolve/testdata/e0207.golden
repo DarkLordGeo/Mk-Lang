@@ -1,0 +1,2 @@
+{"phase":"names","diagnostics":[{"code":"E0207","name":"naming","phase":"names","root":1,"at":{"file":"main/00.mk","line":1,"col":20,"end_line":1,"end_col":24},"message":"`None` is written `none`","facts":{"declared":"none","habits":["E0207"],"target":"F(): ?int { return none }"},"fixes":[{"class":"proven","edits":[{"file":"main/00.mk","line":1,"col":20,"end_line":1,"end_col":24,"text":"none"}],"why":"names are exact; this is the declared spelling"}],"alternatives":[],"explain":"mk explain E0207"}],"omitted":0}
+

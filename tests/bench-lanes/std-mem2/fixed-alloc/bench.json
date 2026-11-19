@@ -1,0 +1,17 @@
+{
+  "name": "fixed-alloc",
+  "table": "idiomatic",
+  "algorithm": "Per iteration, two 8-byte objects are allocated from a fixed-buffer allocator over a 64 KiB stack buffer through the standard allocator interface, read, and freed in LIFO order, so each request reaches the allocator's alloc and free; the checksum folds the values (../README.md).",
+  "overflow": "wraps",
+  "args": ["400000000", "1"],
+  "quick": ["1000000", "1"],
+  "checksum": "3187613895620006355",
+  "quick_checksum": "15540701751661815555",
+  "sources": {"mk": "mk", "zig": "fixedalloc.zig"},
+  "skip": {
+    "c": "no fixed-buffer allocator in the C standard library",
+    "rust": "no fixed-buffer allocator in Rust's standard library (the Allocator API is unstable)",
+    "go": "no fixed-buffer allocator in Go's standard library"
+  },
+  "notes": ["Mk: std.mem.Fixed with Box[u64].New and Take; Zig: std.heap.FixedBufferAllocator with Allocator.create and destroy."]
+}

@@ -1,0 +1,145 @@
+# FLD-3's mutants: shallow loans in the writable walk.
+# The format is
+# mutants.txt's, read with it by readMutantTable (every
+# tests/soundness/mutants*.txt, IDs unique across the files).
+#
+# Rows of class R name witnesses the tree rejects, and each mutant must flip
+# every one to an acceptance with nothing emitted (TestFlowsMutants,
+# MK_SOUND=1). Rows of class P are precision rows: they name
+# witnesses the tree accepts, and each mutant must reject every one.
+#
+# The witnesses are tests/soundness/witness/fld3/*.mk. The 34 shallowB
+# probes and 9 twins keep their measured verdicts (TestWitnesses), but
+# every probe and twin that stores into a List puts its storage in an arena,
+# and the allocator store rule stores a later hop's loans into that arena: the rejection
+# then does not depend on FLD-3's marks, so none of them can be a row's
+# witness (no such probe or twin flips under these
+# mutants that the w-* witnesses do not). The w-* witnesses hold their
+# references in a struct with no arena, so each depends on its row alone; the
+# p-* witnesses are the precision pairs, with the allocator store rule's own clause written.
+#
+# No row cuts the readers of held sets: liveness, conflicts, results and B
+# read held, and the marks are a separate set beside it (entry.sh,
+# marks.go), which none of those readers looks at, so no such mutant can
+# be written; the witnesses e02, e03, c09, c03 and twin-behind stay as
+# witnesses.
+#
+#
+#
+# Parts of the shallow predicate with no row (pinned by
+# internal/borrow/shallow_test.go; no program was found where one alone
+# decides a verdict, so each is conservative given the others as far as
+# the search could tell, which is not a proof):
+# - the exclusive-step test (mut U): a mut reference to a carrier is
+#   excluded by the carrier test, and through a mut reference to a
+#   non-carrier the walk adds nothing (writable adds carriers only);
+# - the ANY test: refSteps marks every ANY step exclusive, so the exclusive
+#   test already excludes it;
+# - writable by type as a referent: a referent writable by type that is no
+#   carrier holds no loan, so the walk never adds it; and inline (a
+#   Cell, Mutex or atomic by value), where the value's own loans target only
+#   referents the other tests already judged;
+# - the allocator test: std's Arena, Alloc and Heap are carriers, so the
+#   carrier test excludes them in std;
+# - the opaque tests (fn, type parameter, Self, inline or as a referent): a
+#   witness would need a closure that stores a later argument into what it
+#   captured, which no fn type can declare.
+
+mutant M-F3-mark-from-middle
+rule R11
+class R
+file internal/borrow/call.go
+anchor argH[x], argSh[x], endsRoots
+replace argH[x], c.argShallow(args[x], argH[x]), endsRoots
+note "the mark from the middle's type": the call rule's `x into p` store re-judges S := argH[x] by x's own type, so with c: &Cell[str] into a, a: str into k the cell loan lands in k shallow, G's y into k skips it, and the arena string outlives ar2 in cell
+witness fld3/w-mid.mk
+end
+
+mutant M-F3-star-chain
+rule R11
+class R
+file internal/borrow/call.go
+anchor readSh[i] = c.sets.minus(c.sets.minus(c.sets.meet(reads[i], c.behind(st, own[q])), c.behind(st, added)), added)
+replace readSh[i] = reads[i]\n\t\t\t\t\t_ = added
+note the call rule's `*q into p` store: it judges q's referent only for what q's referents held at the call; with c: &Cell[str] into q and q: &Nm, the loan chained into q this call would otherwise land shallow in k
+witness fld3/w-starchain.mk
+end
+
+mutant M-F3-deep-add-keeps-shallow
+rule R11
+class R
+file internal/borrow/marks.go
+anchor sh := c.sets.minus(oldSh, c.sets.minus(s, c.shIn))
+replace sh := oldSh
+note a deep store of a loan the root holds shallow keeps the shallow mark; one loan reaches k shallow (Name(c): str) and then deep (AddCell), and Poke skips it
+witness fld3/w-deepadd.mk
+end
+
+mutant M-F3-shallow-add-lowers
+rule R11
+class R
+file internal/borrow/marks.go
+pending the patch (marks.go markStore: `sh = c.sets.unite(sh, c.sets.minus(c.sets.meet(s, c.shIn), old))` becomes `sh = c.sets.unite(sh, c.sets.meet(s, c.shIn))`) makes a mark go from deep back to shallow, so the solve is not monotone, and TestFlowsMutants's child did not finish in 15 minutes; built as mk with that overlay it accepts w-shallowadd
+note deep wins in the other order: a shallow store of a loan the root holds deep marks it shallow
+witness fld3/w-shallowadd.mk
+end
+
+mutant M-F3-join-keeps-shallow
+rule R11
+class R
+file internal/borrow/state.go
+anchor return ss.minus(ss.unite(a.sh, b.sh), deep)
+replace _ = deep\n\treturn ss.unite(a.sh, b.sh)
+note at a join, a loan shallow on one predecessor and deep on another stays shallow
+witness fld3/w-join.mk
+end
+
+mutant M-F3-nonshallow-referent
+rule R11
+class R
+file internal/borrow/shallow.go
+anchor if w.opaqueKind(r) || w.carrier(r) || w.writableByType(r) || w.factsOf(r).Allocator {
+replace if w.opaqueKind(r) {
+note "a non-shallow type judged shallow": the referent tests dropped, so &Cell[str] is shallow and its loan is skipped
+witness fld3/w-direct.mk
+end
+
+mutant M-F3-carrier-referent
+rule R11
+class R
+file internal/borrow/shallow.go
+anchor if w.opaqueKind(r) || w.carrier(r) || w.writableByType(r) || w.factsOf(r).Allocator {
+replace if w.opaqueKind(r) || w.writableByType(r) || w.factsOf(r).Allocator {
+note the carrier test alone: &H with H { name: str, slot: &Cell[str] } is not writable by type, so only the carrier test keeps its loan deep
+witness fld3/w-carrier.mk
+end
+
+mutant M-F3-star-q-by-q
+rule R11
+class P
+file internal/borrow/marks.go
+anchor \t\treturn c.w.shallow(ty.Elem)\n
+replace \t\treturn c.w.shallow(c.body.PlaceType(a.Operand.Place))\n
+note a precision row: the `*q into p` store's mark judges q's own type (&str, whose referent str is a carrier) instead of q's referent (str, shallow), so Push2's stores are deep and CopyAll owes `*xs into xs`
+witness fld3/p-star-q.mk
+end
+
+mutant M-F3-skip-off
+rule R11
+class P
+file internal/borrow/store.go
+anchor if c.skipHop(skip, t, m) || c.shallowHop(st, t, m) {
+replace if c.skipHop(skip, t, m) {
+note the skip itself is needed: with the walk passing every loan, the copies of p-clause owe `*xs into xs` beside the allocator store rule's `*xs into a`
+witness fld3/p-clause.mk
+end
+
+mutant M-F3-csr-marks
+rule R11
+class R
+file internal/borrow/marks.go
+anchor \tif c.csrConst {\n\t\treturn false\n\t}\n
+replace \n
+note the self-reach check's walk (and spawnStores', both under csrConst) reads FLD-3's marks: a shallow loan of u held by t is not followed, so Keep's S(a: mut t, b: &n) never reaches u, which holds a Cell inline; csr-sh1 is accepted; expected none (no generated program draws it, the witness flip is the record)
+witness fld3/csr-sh1.mk
+end

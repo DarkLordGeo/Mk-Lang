@@ -1,0 +1,5 @@
+# A job that runs until it is interrupted: at shutdown the daemon forwards
+# the interrupt to its group (Linux), or kills it where a group cannot be
+# interrupted (Windows)
+CRON_TZ=UTC
+@reboot   trap   --  $CRON_DIR/jobkit trap

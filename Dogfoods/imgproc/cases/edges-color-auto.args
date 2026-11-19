@@ -1,0 +1,9 @@
+--ascii
+--path
+auto
+--tile-rows
+6
+run
+$CASES/data/photo.ppm
+-
+sobel

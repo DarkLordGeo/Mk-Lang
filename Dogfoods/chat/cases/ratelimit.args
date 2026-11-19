@@ -1,0 +1,6 @@
+--burst
+2
+--refill-ms
+3600000
+replay
+$CASES/data/ratelimit.chat

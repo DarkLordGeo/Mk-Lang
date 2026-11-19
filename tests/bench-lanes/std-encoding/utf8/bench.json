@@ -1,0 +1,33 @@
+{
+  "name": "encoding-utf8",
+  "table": "idiomatic",
+  "algorithm": "Lossy UTF-8 decode of mostly valid text: a mixed-script line (ASCII, Latin-1, Cyrillic, CJK, one astral scalar) repeated n times with one lone 0xFF about every 997 bytes, rounds times, each language's standard decoder writing U+FFFD for each 0xFF; the checksum adds per round the output length and one output byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "1142315565",
+  "quick_checksum": "585974",
+  "sources": {
+    "mk": "mk",
+    "rust": "utf8.rs",
+    "zig": "utf8.zig",
+    "go": "testdata/utf8.go"
+  },
+  "skip": {
+    "c": "no lossy UTF-8 decoder in C's standard library",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the decoder is tested by the lane's Go tests (TestStdEncoding_WptCases, TestStdEncoding_DecodeAdversarial)",
+  "notes": [
+    "Every column allocates its output afresh each round and frees it (std-encoding fix round, 2026-11-12: before it Mk reset one arena and Zig reused one buffer, so their output landed on warm pages while Rust and Go allocated). Mk: encoding.Utf8.Decode into a new Arena each round, freed at its end (sized in one pass, written in a second: Mk's API). Rust: String::from_utf8_lossy, an owned String each round. Zig: std.unicode.fmtUtf8 printed into a fixed Writer over a buffer allocated and freed each round. Go: strings.ToValidUTF8 with U+FFFD, a new string each round.",
+    "Each 0xFF replaces an ASCII byte, so it stands alone among valid scalars and every decoder writes one U+FFFD for it: the WHATWG decoder (maximal subparts: Mk, Rust, Zig) and Go's ToValidUTF8 (one U+FFFD per run of invalid bytes) agree.",
+    "Checksums: Go's at both sizes on the owner's machine (std-encoding session 2, 2026-11-12); tools/bench verify checks the other columns.",
+    "Not published: no number here is a measurement."
+  ]
+}

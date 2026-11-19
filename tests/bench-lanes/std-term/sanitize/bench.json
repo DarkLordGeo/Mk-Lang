@@ -1,0 +1,33 @@
+{
+  "name": "term-sanitize",
+  "table": "same",
+  "algorithm": "Generate n items of terminal text (splitmix64: printable ASCII, line feeds, e-acute, escapes, C0 controls, C1 controls as C2 80..9F, the euro sign), then rounds times write it with every C0 control but line feed and tab, DEL and every C1 control replaced by U+FFFD, copying each safe run whole, into a buffer; the checksum adds per round the output length and one output byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000000",
+    "50"
+  ],
+  "quick": [
+    "100000",
+    "3"
+  ],
+  "checksum": "65423398",
+  "quick_checksum": "392884",
+  "sources": {
+    "mk": "mk",
+    "c": "sanitize.c",
+    "rust": "sanitize.rs",
+    "zig": "sanitize.zig",
+    "go": "testdata/sanitize.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; the loop's other arithmetic is indices bounded by the input"
+  },
+  "no_counts": "B24: the output length counts every replacement (each adds two bytes net for a C0 control or DEL and one for a C1 pair), and the sampled byte changes with what was copied, so a sanitizer that keeps or replaces a different set changes the checksum",
+  "notes": [
+    "Every column generates the text and writes the output with indexed stores into two fixed buffers allocated once and zeroed (calloc, vec![0u8; n], page_allocator then @memset, make, Arena.Slice); until std-term session 8 (review finding STERM-R2-10) the Rust and Go columns appended to growable containers and the C and Zig buffers were not zeroed.",
+    "Every column, Mk included, runs the same scalar scan into one buffer allocated once (sanitize.c's loop; std-term session 6, TERM-13 and TERM-14). Until session 6 the Mk column ran std's term.Sanitize, whose 16-byte vector scan and validating Text sink broke this table's contract (same loop, same data structures, no hand vectorisation); its numbers are superseded. std's term.Sanitize has no fair row yet: a SIMD-table row needs SIMD peers and a non-validating byte Writer for Mk (std-term request 6).",
+    "Checksums agree in all five columns at both sizes on the owner's machine (std-term session 1, 2026-11-13; the scalar Mk column gave 65423398 and 392884 again in session 6).",
+    "Not published: no number here is a measurement."
+  ]
+}

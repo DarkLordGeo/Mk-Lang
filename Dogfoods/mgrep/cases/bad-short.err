@@ -1,0 +1,2 @@
+mgrep: unknown option -Z in -iZ
+try mgrep --help

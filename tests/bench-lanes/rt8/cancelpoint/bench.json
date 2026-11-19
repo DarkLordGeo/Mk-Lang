@@ -1,0 +1,27 @@
+{
+  "name": "cancelpoint",
+  "table": "idiomatic",
+  "algorithm": "n uncontended lock and unlock pairs of each standard library's mutex, each with that library's cancellation check for the loop (Mk: Mutex.Lock, a cancellation point, std/core/sync_mutex.mk CancelPoint; Go: sync.Mutex and ctx.Err(); Rust: std::sync::Mutex and an AtomicBool; Zig: std.Io.Mutex, whose lock(io) is a cancellation point; C: SRWLOCK or pthread_mutex_t and an atomic int), the guarded value updated as x = x * 31 + i, wrapping; prints n, x and the failed calls. Variant none: nothing is cancelled anywhere. Variant expired: an unrelated scope (Mk: a sibling task's scope cancelled by Scope.CancelAfter of 0, its task parked on a NoCancel Io for the whole loop; Go: another context expired; the others: another flag set) is expired during the loop. D8-3 (6): Mk's expired cell stays within 1.25 of its none cell (README.md).",
+  "overflow": "wraps",
+  "args": ["150000000", "0"],
+  "quick": ["1000000", "0"],
+  "checksum": "150000000 12940807836958910656 0",
+  "quick_checksum": "1000000 9446225037035921696 0",
+  "sources": {
+    "mk": "mk",
+    "c": "cancelpoint.c",
+    "rust": "cancelpoint.rs",
+    "zig": "cancelpoint.zig",
+    "go": "testdata/cancelpoint.go"
+  },
+  "variants": [
+    {"name": "none", "args": ["150000000", "0"], "quick": ["1000000", "0"], "checksum": "150000000 12940807836958910656 0", "quick_checksum": "1000000 9446225037035921696 0"},
+    {"name": "expired", "args": ["150000000", "1"], "quick": ["1000000", "1"], "checksum": "150000000 12940807836958910656 0", "quick_checksum": "1000000 9446225037035921696 0"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; x checks that every loop ran all n iterations in order",
+  "notes": [
+    "D8-3 (6)'s row: the cost of an expired scope to a cancellation point that is not under it. Before the chain check (std/core/io_internal.mk ChainState, called from IoSleep's zero-sleep path), any set cancel flag in the process sent every cancellation point through the IoTable's sleep entry and std.task's Current; with it, the point reads its own task's inner scope's flag with no call into std.task.",
+    "Checksums from a Go model (x = x * 31 + i over 0..n, wrapping) and each column's verify run. The publish size is a guess until tools/bench publish times the row on a quiet machine.",
+    "Written by rt8 (plan/08-m8.md 3.3 and section 2's D8-3 (6)); status/rt8.md records what was measured and on what."
+  ]
+}

@@ -1,0 +1,10 @@
+run
+$CASES/data/wide.pgm
+-
+double
+double
+double
+double
+double
+double
+double

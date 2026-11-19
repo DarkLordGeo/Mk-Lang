@@ -1,0 +1,10 @@
+case clear
+stdout release_linear.out
+stderr release_linear.err
+exit 101
+
+case shared
+args shared
+stdout release_linear_shared.out
+stderr release_linear_shared.err
+exit 101

@@ -1,0 +1,4 @@
+-c
+needle
+$CASES/data/tree/latin1.txt
+-v

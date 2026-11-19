@@ -1,0 +1,8 @@
+--ascii
+run
+$CASES/data/flat.pgm
+-
+equalize
+levels
+threshold
+edge

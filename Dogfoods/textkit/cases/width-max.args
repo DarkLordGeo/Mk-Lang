@@ -1,0 +1,4 @@
+width
+--max
+$CASES/data/wide.txt
+$CASES/data/people.tsv

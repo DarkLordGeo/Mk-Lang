@@ -1,0 +1,6 @@
+--procfile
+$CASES/data/bench.Procfile
+--log-level
+error
+start
+--summary

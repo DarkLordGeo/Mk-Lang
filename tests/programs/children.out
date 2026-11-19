@@ -1,0 +1,5 @@
+pipes: stdout PIPED THROUGH A CHILD, stderr read 22 bytes, ended with code 3
+environment, directory and a lent pipe: greeting hello, in work true, ended with code 0
+process group: the grandchild said ready; wait under a deadline wait: Canceled, expired true; after a kill, the group's pipe ended true, the nest ended not on its own
+a kill that failed: kill: Unsupported
+a missing program: spawn: NotFound; run: code 3, stdout RUN ONCE, stderr read 9 bytes

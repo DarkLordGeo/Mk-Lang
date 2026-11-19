@@ -1,0 +1,6 @@
+uniq
+--count
+--fold
+--key
+1
+$CASES/data/words.txt

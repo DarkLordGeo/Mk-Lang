@@ -1,0 +1,19 @@
+{
+  "name": "rng",
+  "table": "idiomatic",
+  "algorithm": "n rounds of the standard seeded generator from the seed in the arguments: total +%= one 64-bit draw, then total +%= one uniform draw below 1000 (README.md).",
+  "overflow": "wraps",
+  "args": ["200000000", "1"],
+  "quick": ["1000000", "1"],
+  "checksum": "16518143616209512756",
+  "quick_checksum": "7029848329744152922",
+  "sources": {"mk": "mk"},
+  "skip": {
+    "c": "no seeded generator in the C standard library beyond rand(), whose algorithm is unspecified",
+    "rust": "no generator in Rust's standard library (rand is a crate)",
+    "zig": "std.Random.Xoshiro256 is xoshiro256++, not xoshiro256**, so no checksum can agree (request R-6: per-column checksums)",
+    "go": "math/rand/v2 has PCG and ChaCha8, not xoshiro256**, so no checksum can agree (request R-6)",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "notes": ["Checksums from a Go model of xoshiro256** seeded through SplitMix64 and Lemire's method (std/std-missing_rng_test.go's model); the Mk build printed both on the owner's machine, 2026-11-07."]
+}

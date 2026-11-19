@@ -1,0 +1,25 @@
+{
+  "name": "textset",
+  "table": "idiomatic",
+  "algorithm": "Overwrite of a reusable heap string: per round a fresh string, then n times the next splitmix64 value v picks k = v % 300 bytes at offset (v >> 16) % 3796 of a 4,096-byte lowercase source, the string is set to them (capacity kept), and the checksum adds its length, 7 times its first byte and its last byte (README.md).",
+  "overflow": "wraps",
+  "args": ["10000000", "3", "1"],
+  "quick": ["100000", "3", "1"],
+  "checksum": "30664548606",
+  "quick_checksum": "306659969",
+  "sources": {
+    "mk": "mk",
+    "rust": "textset.rs",
+    "zig": "textset.zig",
+    "go": "testdata/textset.go"
+  },
+  "skip": {
+    "c": "no growable string in C's standard library",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum folds every set string's length and two of its bytes",
+  "notes": [
+    "The overwrite: Mk HeapText.Set over the process heap; Rust String::clear then push_str; Zig std.ArrayList(u8) clearRetainingCapacity then appendSlice over std.heap.smp_allocator; Go append(b[:0], s...) on a []byte (strings.Builder.Reset drops its buffer). Each keeps its capacity, so after the first few sets no column allocates.",
+    "Mk and Rust check that both ends of src[off..off + k] are character boundaries; Go and Zig slice bytes."
+  ]
+}

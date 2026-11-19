@@ -1,0 +1,4 @@
+good line
+still good
+bad ÿ byte
+never read

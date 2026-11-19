@@ -1,0 +1,7 @@
+--ascii
+run
+$CASES/data/dim.pgm
+-
+brighten=50
+sharpen
+threshold

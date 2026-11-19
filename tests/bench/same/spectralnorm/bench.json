@@ -1,0 +1,26 @@
+{
+  "name": "spectralnorm",
+  "table": "same",
+  "algorithm": "Spectral norm of the infinite matrix A(i,j) = 1/((i+j)(i+j+1)/2+i+1) by 10 power iterations of AtA (the Benchmarks Game's spectral-norm, scalar) (README.md).",
+  "overflow": "never",
+  "args": [
+    "6000"
+  ],
+  "quick": [
+    "100"
+  ],
+  "checksum": "1274224152",
+  "quick_checksum": "1274219991",
+  "sources": {
+    "mk": "mk",
+    "c": "spectralnorm.c",
+    "rust": "spectralnorm.rs",
+    "zig": "spectralnorm.zig",
+    "go": "testdata/spectralnorm.go"
+  },
+  "skip": {
+    "mk-wrap": "not needed for the budgets; A(i, j)'s integer arithmetic is checked in mk"
+  },
+  "no_counts": "B24: no data-dependent control flow; 10 power iterations of fixed n by n products, and the float checksum is sensitive to operation order",
+  "notes": []
+}

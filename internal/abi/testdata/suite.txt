@@ -1,0 +1,498 @@
+# The calling-convention classification suite. Every fn line is one
+# row; testdata/<target>.golden holds its lowered declaration per target and
+# testdata/clang/<target>.txt clang's lowering of the equivalent C.
+#
+# Declarations. Structs are laid out in declaration order with natural
+# alignment; packed caps alignment at 1,
+# packed(n) at n.
+struct S1 { a: u8 }
+struct S2 { a: u16 }
+struct S2b { a: u8, b: u8 }
+struct S3 { a: u8, b: u8, c: u8 }
+struct S4 { a: u32 }
+struct S4f { a: f32 }
+struct S4b { a: u8, b: u8, c: u16 }
+struct S5 { a: u32, b: u8 }
+struct S6 { a: u16, b: u16, c: u16 }
+struct S7 { a: [7]u8 }
+struct S8 { a: u64 }
+struct S8p { p: *u8 }
+struct S8r { r: &i32 }
+struct S8ff { a: f32, b: f32 }
+struct S8d { a: f64 }
+struct S8if { a: i32, b: f32 }
+struct S8fi { a: f32, b: i32 }
+struct S8bf { a: bool, b: f32 }
+struct S9 { a: [9]u8 }
+struct S10 { a: u64, b: u16 }
+struct S12 { a: i32, b: i32, c: i32 }
+struct S12f { a: f32, b: f32, c: f32 }
+struct S12fi { a: f32, b: f32, c: i32 }
+struct S12if { a: i32, b: f32, c: f32 }
+struct S16 { a: i64, b: i64 }
+struct S16d { a: f64, b: f64 }
+struct S16id { a: i64, b: f64 }
+struct S16di { a: f64, b: i64 }
+struct S16pp { a: *u8, b: *u8 }
+struct S16pi { a: *u8, b: i64 }
+struct S16ip { a: i64, b: *u8 }
+struct S16f4 { a: f32, b: f32, c: f32, d: f32 }
+struct S16i8 { a: i64, b: u8 }
+struct S16i32 { a: i64, b: i32 }
+struct S16i8x { a: i64, b: u8, c: u16 }
+struct S16mix { a: u8, b: f32, c: f64 }
+struct S16ffd { a: f32, b: f32, c: f64 }
+struct S16dff { a: f64, b: f32, c: f32 }
+struct S16df { a: f64, b: f32 }
+struct S16fd { a: f32, b: f64 }
+struct S20 { a: [5]i32 }
+struct S20f { a: f32, b: f32, c: f32, d: f32, e: f32 }
+struct S24 { a: i64, b: i64, c: i64 }
+struct S24d { a: f64, b: f64, c: f64 }
+struct S32d { a: f64, b: f64, c: f64, d: f64 }
+struct S40 { a: [5]i64 }
+struct S40d { a: f64, b: f64, c: f64, d: f64, e: f64 }
+struct H1 { a: f32 }
+struct H1d { a: f64 }
+struct H2f { a: f32, b: f32 }
+struct H3 { a: f32, b: f32, c: f32 }
+struct H3d { a: f64, b: f64, c: f64 }
+struct HArr { a: [4]f32 }
+struct HArr2d { a: [2]f64 }
+struct HNest { a: H2f, b: H2f }
+struct HNest3 { a: H2f, b: f32 }
+struct HMix { a: f32, b: f64 }
+struct Pk1 packed { a: u8, b: u32 }
+struct Pk2 packed { a: u8, b: u64 }
+struct Pk3 packed { a: u32, b: u32 }
+struct Pk4 packed(2) { a: u8, b: u32 }
+struct Pk5 packed { a: u8, b: f64, c: u8 }
+struct Pk6 packed { a: u16, b: u8 }
+struct Pk7 packed { a: f32, b: f32 }
+struct Pk8 packed(4) { a: u32, b: u64 }
+# ABI-1: a packed struct nested at an odd offset is aligned relative to
+# itself but not absolutely (SysV MEMORY); at an aligned offset it is not.
+struct InP packed { x: u32 }
+struct OutP { c: u8, i: InP }
+struct OutA { c: u8, a: [1]InP }
+struct OutP4 { c: u32, i: InP }
+struct OutPP packed { c: u8, i: InP }
+struct Nest { a: S8if, b: S4f }
+struct Nest2 { a: S3, b: u8 }
+struct Nest3 { a: S16, b: u8 }
+struct Empty {}
+struct WithEmpty { a: i32, e: Empty, b: i32 }
+struct Bools { a: bool, b: bool }
+struct Ch { c: char }
+struct ChCh { a: char, b: char, c: char }
+struct HasStr { s: str }
+struct HasSlice { s: []u8, n: i32 }
+struct Arr3 { a: [3]u16 }
+struct HasOpt { o: ?&i32 }
+struct HasFn { f: fn(i32): i32 }
+struct IntPair { a: int, b: uint }
+enum E1 { A, B, C }
+enum E2: u16 { A, B }
+enum E4: u32 { A, B }
+enum E8: u64 { A, B }
+enum Ei8: i8 { A, B }
+enum Ei16: i16 { A, B }
+enum Ei32: i32 { A, B }
+enum E300 { A, B = 300 }
+enum E70k { A, B = 70000 }
+enum EP1 { A(i32), B(f32) }
+enum EP2 { A(f64), B }
+enum EP3 { A(u8, u8), B(u16) }
+enum EP4 { A(f32, f32), B }
+enum EP5 { A(i64, i64), B }
+enum EP6 { A(u8), B }
+enum EP7 { A(f32), B(f64) }
+enum EP8 { A(*u8), B(i64) }
+error Er1
+error Er2 { code: i32 }
+error Er3 { x: f64 }
+error Er4 { a: i64, b: i64 }
+error Er5 { a: u8 }
+
+# Rows. p_T passes one T and r_T returns one; then parameter lists that
+# exhaust the SysV and AAPCS64 registers, the extension rows,
+# zero-sized values, and variadic calls (fixed parameters, then ..., then
+# the variadic arguments of one call).
+fn p_bool(bool) void
+fn r_bool() bool
+fn p_char(char) void
+fn r_char() char
+fn p_i8(i8) void
+fn r_i8() i8
+fn p_i16(i16) void
+fn r_i16() i16
+fn p_i32(i32) void
+fn r_i32() i32
+fn p_i64(i64) void
+fn r_i64() i64
+fn p_u8(u8) void
+fn r_u8() u8
+fn p_u16(u16) void
+fn r_u16() u16
+fn p_u32(u32) void
+fn r_u32() u32
+fn p_u64(u64) void
+fn r_u64() u64
+fn p_int(int) void
+fn r_int() int
+fn p_uint(uint) void
+fn r_uint() uint
+fn p_f32(f32) void
+fn r_f32() f32
+fn p_f64(f64) void
+fn r_f64() f64
+fn p_pu8(*u8) void
+fn r_pu8() *u8
+fn p_ri32(&i32) void
+fn r_ri32() &i32
+fn p_mut_i64(mut i64) void
+fn r_mut_i64() mut i64
+fn p_rS24(&S24) void
+fn r_rS24() &S24
+fn p_fn_i32_c_i32(fn(i32): i32) void
+fn r_fn_i32_c_i32() fn(i32): i32
+fn p_qri32(?&i32) void
+fn r_qri32() ?&i32
+fn p_qmut_u8(?mut u8) void
+fn r_qmut_u8() ?mut u8
+fn p_qfn_c_void(?fn(): void) void
+fn r_qfn_c_void() ?fn(): void
+fn p_S1(S1) void
+fn r_S1() S1
+fn p_S2(S2) void
+fn r_S2() S2
+fn p_S2b(S2b) void
+fn r_S2b() S2b
+fn p_S3(S3) void
+fn r_S3() S3
+fn p_S4(S4) void
+fn r_S4() S4
+fn p_S4f(S4f) void
+fn r_S4f() S4f
+fn p_S4b(S4b) void
+fn r_S4b() S4b
+fn p_S5(S5) void
+fn r_S5() S5
+fn p_S6(S6) void
+fn r_S6() S6
+fn p_S7(S7) void
+fn r_S7() S7
+fn p_S8(S8) void
+fn r_S8() S8
+fn p_S8p(S8p) void
+fn r_S8p() S8p
+fn p_S8r(S8r) void
+fn r_S8r() S8r
+fn p_S8ff(S8ff) void
+fn r_S8ff() S8ff
+fn p_S8d(S8d) void
+fn r_S8d() S8d
+fn p_S8if(S8if) void
+fn r_S8if() S8if
+fn p_S8fi(S8fi) void
+fn r_S8fi() S8fi
+fn p_S8bf(S8bf) void
+fn r_S8bf() S8bf
+fn p_S9(S9) void
+fn r_S9() S9
+fn p_S10(S10) void
+fn r_S10() S10
+fn p_S12(S12) void
+fn r_S12() S12
+fn p_S12f(S12f) void
+fn r_S12f() S12f
+fn p_S12fi(S12fi) void
+fn r_S12fi() S12fi
+fn p_S12if(S12if) void
+fn r_S12if() S12if
+fn p_S16(S16) void
+fn r_S16() S16
+fn p_S16d(S16d) void
+fn r_S16d() S16d
+fn p_S16id(S16id) void
+fn r_S16id() S16id
+fn p_S16di(S16di) void
+fn r_S16di() S16di
+fn p_S16pp(S16pp) void
+fn r_S16pp() S16pp
+fn p_S16pi(S16pi) void
+fn r_S16pi() S16pi
+fn p_S16ip(S16ip) void
+fn r_S16ip() S16ip
+fn p_S16f4(S16f4) void
+fn r_S16f4() S16f4
+fn p_S16i8(S16i8) void
+fn r_S16i8() S16i8
+fn p_S16i32(S16i32) void
+fn r_S16i32() S16i32
+fn p_S16i8x(S16i8x) void
+fn r_S16i8x() S16i8x
+fn p_S16mix(S16mix) void
+fn r_S16mix() S16mix
+fn p_S16ffd(S16ffd) void
+fn r_S16ffd() S16ffd
+fn p_S16dff(S16dff) void
+fn r_S16dff() S16dff
+fn p_S16df(S16df) void
+fn r_S16df() S16df
+fn p_S16fd(S16fd) void
+fn r_S16fd() S16fd
+fn p_S20(S20) void
+fn r_S20() S20
+fn p_S20f(S20f) void
+fn r_S20f() S20f
+fn p_S24(S24) void
+fn r_S24() S24
+fn p_S24d(S24d) void
+fn r_S24d() S24d
+fn p_S32d(S32d) void
+fn r_S32d() S32d
+fn p_S40(S40) void
+fn r_S40() S40
+fn p_S40d(S40d) void
+fn r_S40d() S40d
+fn p_H1(H1) void
+fn r_H1() H1
+fn p_H1d(H1d) void
+fn r_H1d() H1d
+fn p_H2f(H2f) void
+fn r_H2f() H2f
+fn p_H3(H3) void
+fn r_H3() H3
+fn p_H3d(H3d) void
+fn r_H3d() H3d
+fn p_HArr(HArr) void
+fn r_HArr() HArr
+fn p_HArr2d(HArr2d) void
+fn r_HArr2d() HArr2d
+fn p_HNest(HNest) void
+fn r_HNest() HNest
+fn p_HNest3(HNest3) void
+fn r_HNest3() HNest3
+fn p_HMix(HMix) void
+fn r_HMix() HMix
+fn p_Pk1(Pk1) void
+fn r_Pk1() Pk1
+fn p_Pk2(Pk2) void
+fn r_Pk2() Pk2
+fn p_Pk3(Pk3) void
+fn r_Pk3() Pk3
+fn p_Pk4(Pk4) void
+fn r_Pk4() Pk4
+fn p_Pk5(Pk5) void
+fn r_Pk5() Pk5
+fn p_Pk6(Pk6) void
+fn r_Pk6() Pk6
+fn p_Pk7(Pk7) void
+fn r_Pk7() Pk7
+fn p_Pk8(Pk8) void
+fn r_Pk8() Pk8
+fn p_OutP(OutP) void
+fn r_OutP() OutP
+fn p_OutA(OutA) void
+fn r_OutA() OutA
+fn p_OutP4(OutP4) void
+fn r_OutP4() OutP4
+fn p_OutPP(OutPP) void
+fn r_OutPP() OutPP
+fn p_OptInP(?InP) void
+fn r_OptInP() ?InP
+fn exh_OptInP(i64, i64, i64, i64, i64, ?InP) void
+fn p_Nest(Nest) void
+fn r_Nest() Nest
+fn p_Nest2(Nest2) void
+fn r_Nest2() Nest2
+fn p_Nest3(Nest3) void
+fn r_Nest3() Nest3
+fn p_WithEmpty(WithEmpty) void
+fn r_WithEmpty() WithEmpty
+fn p_Bools(Bools) void
+fn r_Bools() Bools
+fn p_Ch(Ch) void
+fn r_Ch() Ch
+fn p_ChCh(ChCh) void
+fn r_ChCh() ChCh
+fn p_HasStr(HasStr) void
+fn r_HasStr() HasStr
+fn p_HasSlice(HasSlice) void
+fn r_HasSlice() HasSlice
+fn p_Arr3(Arr3) void
+fn r_Arr3() Arr3
+fn p_HasOpt(HasOpt) void
+fn r_HasOpt() HasOpt
+fn p_HasFn(HasFn) void
+fn r_HasFn() HasFn
+fn p_IntPair(IntPair) void
+fn r_IntPair() IntPair
+fn p_E1(E1) void
+fn r_E1() E1
+fn p_E2(E2) void
+fn r_E2() E2
+fn p_E4(E4) void
+fn r_E4() E4
+fn p_E8(E8) void
+fn r_E8() E8
+fn p_Ei8(Ei8) void
+fn r_Ei8() Ei8
+fn p_Ei16(Ei16) void
+fn r_Ei16() Ei16
+fn p_Ei32(Ei32) void
+fn r_Ei32() Ei32
+fn p_E300(E300) void
+fn r_E300() E300
+fn p_E70k(E70k) void
+fn r_E70k() E70k
+fn p_EP1(EP1) void
+fn r_EP1() EP1
+fn p_EP2(EP2) void
+fn r_EP2() EP2
+fn p_EP3(EP3) void
+fn r_EP3() EP3
+fn p_EP4(EP4) void
+fn r_EP4() EP4
+fn p_EP5(EP5) void
+fn r_EP5() EP5
+fn p_EP6(EP6) void
+fn r_EP6() EP6
+fn p_EP7(EP7) void
+fn r_EP7() EP7
+fn p_EP8(EP8) void
+fn r_EP8() EP8
+fn p_str(str) void
+fn r_str() str
+fn p_a_u8([]u8) void
+fn r_a_u8() []u8
+fn p_mut_a_i32(mut []i32) void
+fn r_mut_a_i32() mut []i32
+fn p_a2_f32([2]f32) void
+fn r_a2_f32() [2]f32
+fn p_a3_u8([3]u8) void
+fn r_a3_u8() [3]u8
+fn p_a4_f32([4]f32) void
+fn r_a4_f32() [4]f32
+fn p_a5_f32([5]f32) void
+fn r_a5_f32() [5]f32
+fn p_a2_f64([2]f64) void
+fn r_a2_f64() [2]f64
+fn p_a3_f64([3]f64) void
+fn r_a3_f64() [3]f64
+fn p_a16_u8([16]u8) void
+fn r_a16_u8() [16]u8
+fn p_a17_u8([17]u8) void
+fn r_a17_u8() [17]u8
+fn p_a1_i64([1]i64) void
+fn r_a1_i64() [1]i64
+fn p_ac_i32_bc_f32((a: i32, b: f32)) void
+fn r_ac_i32_bc_f32() (a: i32, b: f32)
+fn p_bc_u8_ac_f64((b: u8, a: f64)) void
+fn r_bc_u8_ac_f64() (b: u8, a: f64)
+fn p_xc_f32_yc_f32_zc_f32((x: f32, y: f32, z: f32)) void
+fn r_xc_f32_yc_f32_zc_f32() (x: f32, y: f32, z: f32)
+fn p_qu8(?u8) void
+fn r_qu8() ?u8
+fn p_qi32(?i32) void
+fn r_qi32() ?i32
+fn p_qf64(?f64) void
+fn r_qf64() ?f64
+fn p_qf32(?f32) void
+fn r_qf32() ?f32
+fn p_qpu8(?*u8) void
+fn r_qpu8() ?*u8
+fn p_qstr(?str) void
+fn r_qstr() ?str
+fn p_qa_u8(?[]u8) void
+fn r_qa_u8() ?[]u8
+fn p_qS8(?S8) void
+fn r_qS8() ?S8
+fn p_qS16(?S16) void
+fn r_qS16() ?S16
+fn p_qH2f(?H2f) void
+fn r_qH2f() ?H2f
+fn p_qbool(?bool) void
+fn r_qbool() ?bool
+fn p_Er1xvoid(Er1!void) void
+fn r_Er1xvoid() Er1!void
+fn p_Er1xi32(Er1!i32) void
+fn r_Er1xi32() Er1!i32
+fn p_Er2xi32(Er2!i32) void
+fn r_Er2xi32() Er2!i32
+fn p_Er1xf64(Er1!f64) void
+fn r_Er1xf64() Er1!f64
+fn p_Er3xi32(Er3!i32) void
+fn r_Er3xi32() Er3!i32
+fn p_Er4xi64(Er4!i64) void
+fn r_Er4xi64() Er4!i64
+fn p_Er5xu8(Er5!u8) void
+fn r_Er5xu8() Er5!u8
+fn p_Er1oEr2xu8(Er1|Er2!u8) void
+fn r_Er1oEr2xu8() Er1|Er2!u8
+fn p_Er1xS16(Er1!S16) void
+fn r_Er1xS16() Er1!S16
+fn p_Er1xstr(Er1!str) void
+fn r_Er1xstr() Er1!str
+fn p_Er1(Er1) void
+fn r_Er1() Er1
+fn p_Er2(Er2) void
+fn r_Er2() Er2
+fn p_Er3(Er3) void
+fn r_Er3() Er3
+fn p_Er1oEr3(Er1|Er3) void
+fn r_Er1oEr3() Er1|Er3
+fn p_Er4(Er4) void
+fn r_Er4() Er4
+fn f(i8, u16) void
+fn g(bool) void
+fn h() u8
+fn ext_all(bool, i8, u8, i16, u16, i32, u32) i16
+fn ext_ret_i8() i8
+fn ext_ret_bool() bool
+fn ext_enum(Ei8, E1, Ei16, E2) Ei8
+fn two(i32, f64) f32
+fn mixed(S16id, f32, S8if, i64) S16d
+fn ints6(i64, i64, i64, i64, i64, i64) void
+fn ints7(i64, i64, i64, i64, i64, i64, i64) void
+fn exh_s16(i64, i64, i64, i64, i64, S16) void
+fn exh_s16b(i64, i64, i64, i64, i64, S16, i64) void
+fn exh_s8(i64, i64, i64, i64, i64, i64, S8) void
+fn exh_s3(i64, i64, i64, i64, i64, i64, S3) void
+fn exh_s12(i64, i64, i64, i64, i64, i64, S12) void
+fn exh_str(i64, i64, i64, i64, i64, str, str) void
+fn exh_mix(i64, i64, i64, i64, i64, S16id, f64) void
+fn exh_sse(f64, f64, f64, f64, f64, f64, f64, S16d, f64) void
+fn exh_sse2(f64, f64, f64, f64, f64, f64, f64, f64, S8d, S8ff, f32) void
+fn exh_sse3(f64, f64, f64, f64, f64, f64, f64, S16id, i64) void
+fn exh_pk(i64, i64, i64, i64, i64, i64, Pk1, Pk2) void
+fn exh_big(i64, i64, i64, i64, i64, i64, S24, S8) void
+fn sret_exh(i64, i64, i64, i64, i64, S16) S24
+fn sret_exh2(i64, i64, i64, i64, i64, i64) S24
+fn sret_s8(i64, i64, i64, i64, i64, S8) S40
+fn hfa_many(H3d, H3d, S32d, H1) void
+fn hfa_exh(S32d, S32d, H1, f32) void
+fn hfa_exh2(f64, f64, f64, f64, f64, f64, f64, H2f, H2f) void
+fn aarch_ints(i64, i64, i64, i64, i64, i64, i64, S16, S16) void
+fn aarch_mix(S16, S16, S16, S16, S8, i64) void
+fn many(i8, S3, f32, S16, H3, Pk1, str, bool) S12f
+fn receiver(&S24, i32) &i32
+fn mutrecv(mut S24, mut []u8) mut i32
+fn fnval(fn(i32): i32, fn(S24): S24) void
+fn spawn_thunk(*u8, *u8, *u8) bool
+fn zero(Empty, i32, void) void
+fn zero2(Empty, Empty) Empty
+fn zero3([0]i64, (a: Empty), i32) [0]u8
+fn r_never() never
+fn v_int(*u8, ..., i64) i32
+fn v_mix(*u8, ..., i64, f64, *u8) i32
+fn v_none(*u8, ...) i32
+fn v_i32(i32, ..., i32, u32) void
+fn v_s16(*u8, ..., S16, S16d) void
+fn v_big(*u8, ..., S24) void
+fn v_hfa(*u8, ..., H3, H2f) void
+fn v_str(*u8, ..., str) void
+fn v_regs(i64, i64, i64, i64, i64, ..., S16, i64) void
+fn v_f64s(f64, ..., f64, f64, f64, f64, f64, f64, f64, f64, f64) void
+fn v_sret(*u8, ..., i64) S24

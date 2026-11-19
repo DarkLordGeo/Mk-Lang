@@ -1,0 +1,709 @@
+// Why: fault filters run inside a hardware fault; every target's path must
+// be tested for real.
+// What: test blocks of runtime.AddFaultFilter, run by
+// `mk test --std=std.runtime -run "Filter "`.
+// How: each block runs in a child process of its own, so its filters see
+// only its own faults. The blocks fault on protected pages, guard pages,
+// code regions and illegal instructions, and check Pass, Resume and Mk's
+// report. TestRt_FilterInGuarantee (std/std-rt_fault_test.go) checks a
+// filter running inside a task's stack overflow.
+
+import std.raw
+import std.rt
+import std.sys
+import std.vm
+
+// The page the tests below fault on: its address and its Region's base.
+var FaultPage: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+var FaultSeen: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+var FaultKindSeen: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+// Unprotect is a filter that, on an access to FaultPage, makes the page
+// read-write again and resumes the thread at the same instruction, which
+// then succeeds: a guard page a program manages.
+Unprotect(c: &FaultContext): FaultAction {
+    unsafe "the globals are this test process's; the filter runs on the faulting thread" {
+        page := FaultPage.Load()
+        if c.Addr() < Trunc[uint](page) || c.Addr() >= Trunc[uint](page) + 4096 {
+            return FaultAction.Pass
+        }
+        FaultSeen.Store(FaultSeen.Load() + 1)
+        k: u64 = match c.Kind() {
+            .Stack { 1 }
+            .Access { 2 }
+            .Illegal { 3 }
+        }
+        FaultKindSeen.Store(k)
+        _ = sys.VmProtect(raw.FromAddr[u8](Trunc[uint](page)), 4096, 2)
+    }
+    return FaultAction.Resume(ctx: *c)
+}
+
+test "Filter a read of a Protect(None) page faults, the filter sees it, and Resume retries the read" {
+    ps := PageSizeOf()
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        r := vm.Reserve(2 * ps, ps) else {
+            Assert(false)
+            return
+        }
+        r.Commit(0, 2 * ps) else {
+            Assert(false)
+        }
+        raw.Write(raw.FromAddr[u64](r.Base() + Trunc[uint](ps)), 77)
+        r.Protect(ps, ps, vm.Prot.None) else {
+            Assert(false)
+        }
+        FaultPage.Store(u64(r.Base()) + Cast[u64](ps))
+        _ = AddFaultFilter(Unprotect)
+        v := raw.Read(raw.FromAddr[u64](r.Base() + Trunc[uint](ps)))
+        Assert(v == 77)
+        Assert(FaultSeen.Load() == 1)
+        Assert(FaultKindSeen.Load() == 2)
+        r.Release()
+    }
+}
+
+test "Filter a write to a guard page resumes after the filter commits it" {
+    ps := PageSizeOf()
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        r := vm.Reserve(ps, ps) else {
+            Assert(false)
+            return
+        }
+        r.Commit(0, ps) else {
+            Assert(false)
+        }
+        r.Protect(0, ps, vm.Prot.None) else {
+            Assert(false)
+        }
+        FaultPage.Store(u64(r.Base()))
+        _ = AddFaultFilter(Unprotect)
+        p := raw.FromAddr[u64](r.Base() + 64)
+        raw.Write(p, 5)
+        raw.Write(p, raw.Read(p) + 1)
+        Assert(raw.Read(p) == 6)
+        Assert(FaultSeen.Load() == 1)
+        r.Release()
+    }
+}
+
+// PassAll is a filter that passes every fault on.
+PassAll(c: &FaultContext): FaultAction {
+    unsafe "the counter is this test process's" {
+        FaultSeen.Store(FaultSeen.Load() + 1)
+    }
+    return FaultAction.Pass
+}
+
+test "Filter one that passes leaves Mk's report unchanged [exit 101: panic: invalid memory access at]" {
+    ps := PageSizeOf()
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        _ = AddFaultFilter(PassAll)
+        r := vm.Reserve(ps, ps) else {
+            return
+        }
+        r.Commit(0, ps) else {}
+        r.Protect(0, ps, vm.Prot.None) else {}
+        FaultKindSeen.Store(ProtectedRead(r.Base()))
+        r.Release()
+    }
+}
+
+// The x86_64 code `mov rax, [0x10]` (8 bytes, an access fault at a code
+// region's pc), then `mov eax, 42; ret`.
+const LoadNull: [14]u8 = [0x48, 0x8B, 0x04, 0x25, 0x10, 0x00, 0x00, 0x00, 0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3]
+
+var CodeLo: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+// SkipLoad is a filter that, on a fault at the code region's first
+// instruction, resumes 8 bytes later, past the load.
+SkipLoad(c: &FaultContext): FaultAction {
+    unsafe "the global is this test process's" {
+        lo := Trunc[uint](CodeLo.Load())
+        if c.Pc() != lo {
+            return FaultAction.Pass
+        }
+    }
+    var d := *c
+    d.SetPc(c.Pc() + 8)
+    return FaultAction.Resume(ctx: d)
+}
+
+// CallCode calls the code at addr, which returns a u32 in eax.
+CallCode(addr: uint): u32 {
+    var r: u32 = 0
+    unsafe "addr is a code region's entry holding LoadNull, which touches no Mk memory" {
+        asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+    }
+    return r
+}
+
+test "Filter a fault in a code region goes to the filters, and Resume at an edited pc continues there" {
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        c := vm.CodeRegion.New(64) else {
+            Assert(false)
+            return
+        }
+        var w := c.Writable()
+        for i in 0..14 {
+            w[i] = LoadNull[i]
+        }
+        c.Flush(0, 14)
+        CodeLo.Store(u64(c.Entry(0)))
+        _ = AddFaultFilter(SkipLoad)
+        Assert(CallCode(c.Entry(0)) == 42)
+        c.Release()
+    }
+}
+
+test "Filter FaultContext's setters edit the copy a filter returns" {
+    var c := FaultContext(k: FaultKind.Access, at: 16, regs: [0; 16], ip: 100)
+    c.SetPc(200)
+    c.SetSp(4096)
+    c.SetReg(0, 9)
+    Assert(c.Pc() == 200 && c.Sp() == 4096 && c.Reg(0) == 9 && c.Reg(4) == 4096 && c.Addr() == 16)
+}
+
+PageSizeOf(): int {
+    unsafe "vm.PageSize is unsafe only" {
+        return vm.PageSize()
+    }
+}
+
+// Code regions made and released by many
+// tasks at once, each faulting once on a load a filter skips. On bd81ffa2 a
+// slot could pair one adder's lo with another's hi, so a region's fault was
+// not routed and the process died (0xC0000005).
+var RaceBad: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+// SkipAnyLoad resumes 8 bytes past a fault at LoadNull's `mov rax, [0x10]`,
+// in whichever code region it is.
+SkipAnyLoad(c: &FaultContext): FaultAction {
+    unsafe "pc is in a code region's executable view, which is readable" {
+        if raw.Read(raw.FromAddr[u8](c.Pc())) != 0x48 || raw.Read(raw.FromAddr[u8](c.Pc() + 1)) != 0x8B {
+            return FaultAction.Pass
+        }
+    }
+    var d := *c
+    d.SetPc(c.Pc() + 8)
+    return FaultAction.Resume(ctx: d)
+}
+
+RaceWorker(j: int, n: int) {
+    size := (j % 4 + 1) * 16 * 4096
+    for _ in 0..n {
+        unsafe "vm's functions are unsafe only; the code is LoadNull" {
+            c := vm.CodeRegion.New(size) else {
+                _ = RaceBad.Add(1000000)
+                return
+            }
+            off := c.Size() - 4096
+            var w := c.Writable()
+            for k in 0..14 {
+                w[off + k] = LoadNull[k]
+            }
+            c.Flush(off, 14)
+            if CallCode(c.Entry(off)) != 42 {
+                _ = RaceBad.Add(1)
+            }
+            c.Release()
+        }
+    }
+}
+
+test "Filter code regions made and released by 16 tasks at once each route their fault [env MK_CARRIERS=16]" (sys: &System) {
+    unsafe "AddFaultFilter is unsafe only" {
+        _ = AddFaultFilter(SkipAnyLoad)
+    }
+    scope s := sys.io.Scope() {
+        for j in 0..16 {
+            s.go RaceWorker(j, 1000)
+        }
+    }
+    Assert(RaceBad.Load() == 0)
+}
+
+// A fault in a code region that
+// no filter resumes is reported as such, exit 101, on every target. On
+// bd81ffa2, Windows died with 0xC0000005 and no text, Linux exited 139.
+CodeFault(filter: bool) {
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        if filter {
+            _ = AddFaultFilter(PassAll)
+        }
+        c := vm.CodeRegion.New(64) else {
+            return
+        }
+        var w := c.Writable()
+        for i in 0..14 {
+            w[i] = LoadNull[i]
+        }
+        c.Flush(0, 14)
+        FaultKindSeen.Store(u64(CallCode(c.Entry(0))))
+        c.Release()
+    }
+}
+
+test "Filter an unresumed fault in a code region is reported as one [exit 101: fault in a code region]" {
+    CodeFault(false)
+}
+
+test "Filter a fault in a code region that every filter passes is reported as one [exit 101: fault in a code region]" {
+    CodeFault(true)
+}
+
+// The x86_64 code `call` itself (e8 fb ff ff ff): a recursion with no end.
+const CallSelf: [5]u8 = [0xE8, 0xFB, 0xFF, 0xFF, 0xFF]
+
+OverflowInRegion() {
+    unsafe "vm's functions are unsafe only; the code is CallSelf" {
+        c := vm.CodeRegion.New(4096) else {
+            return
+        }
+        var w := c.Writable()
+        for i in 0..5 {
+            w[i] = CallSelf[i]
+        }
+        c.Flush(0, 5)
+        FaultKindSeen.Store(u64(CallCode(c.Entry(0))))
+        c.Release()
+    }
+}
+
+// A task's stack overflow whose pc is
+// in a code region is a stack overflow, whatever its pc. On bd81ffa2 Linux
+// reported a fault in a code region and exited 139.
+test "Filter a task's stack overflow in a code region is reported as a stack overflow [exit 101: panic: stack limit in task]" (sys: &System) {
+    unsafe "AddFaultFilter is unsafe only" {
+        _ = AddFaultFilter(PassAll)
+    }
+    scope s := sys.io.Scope() {
+        s.go OverflowInRegion()
+    }
+}
+
+// A filter that faults (it reads
+// FaultPage, a second Protect(None) page). Its own fault skips the filters
+// and is reported as a fault in a fault filter, exit 101. On bd81ffa2
+// Windows died with 0xC0000005 and no text; Linux re-entered the handler
+// under SA_NODEFER (dev hung, release dumped core).
+FaultingFilter(c: &FaultContext): FaultAction {
+    unsafe "a read of FaultPage, which is Protect(None): it faults, the test's point" {
+        if raw.Read(raw.FromAddr[u64](Trunc[uint](FaultPage.Load()))) == 5 {
+            return FaultAction.Resume(ctx: *c)
+        }
+    }
+    return FaultAction.Pass
+}
+
+test "Filter a fault inside a filter is reported as one, not filtered again [exit 101: fault in a fault filter]" {
+    ps := PageSizeOf()
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        r := vm.Reserve(2 * ps, ps) else {
+            return
+        }
+        r.Commit(0, 2 * ps) else {}
+        r.Protect(0, 2 * ps, vm.Prot.None) else {}
+        FaultPage.Store(u64(r.Base()) + Cast[u64](ps))
+        _ = AddFaultFilter(FaultingFilter)
+        FaultKindSeen.Store(ProtectedRead(r.Base()))
+        r.Release()
+    }
+}
+
+// ProtectedRead reads the word at addr with an atomic load, which the
+// optimizer keeps. A plain raw.Read whose value went only into a global no
+// code of a one-block release build reads was deleted as dead (the block
+// exited 0: no fault); the same read whose value is tested faults (the
+// fix round).
+ProtectedRead(addr: uint): u64 {
+    unsafe "addr is a committed page of the caller's region, 8-aligned" {
+        return (*raw.FromAddr[raw.Atomic[u64]](addr)).Load()
+    }
+}
+
+// CodeRegion.New refuses a
+// region the fault path's table cannot hold, rather than make one whose
+// fault would never reach the filters. HoldThen keeps n regions live down
+// a recursion, then makes one more and runs LoadNull in it: 42 when the
+// filter skipped its fault, 5 when New refused it with Unsupported. On
+// bd81ffa2 the 65th region was made unrecorded and its fault killed the
+// process (0xC0000005 on Windows).
+HoldThen(n: int): int {
+    unsafe "vm's functions are unsafe only; the code is LoadNull" {
+        if n == 0 {
+            c := vm.CodeRegion.New(4096) else {
+                return 5
+            }
+            var w := c.Writable()
+            for i in 0..14 {
+                w[i] = LoadNull[i]
+            }
+            c.Flush(0, 14)
+            r := CallCode(c.Entry(0))
+            c.Release()
+            return int(r)
+        }
+        h := vm.CodeRegion.New(4096) else {
+            return 3
+        }
+        r := HoldThen(n - 1)
+        h.Release()
+        return r
+    }
+}
+
+test "Filter a 64th live code region routes its fault, and a 65th is refused" {
+    unsafe "AddFaultFilter is unsafe only" {
+        _ = AddFaultFilter(SkipAnyLoad)
+    }
+    Assert(HoldThen(63) == 42)
+    Assert(HoldThen(64) == 5)
+    Assert(HoldThen(63) == 42)
+}
+
+// AddFaultFilter returns only once its filter can
+// run, though another caller won the hook's installation. Eight tasks add
+// a filter at once and each faults at once on its own Protect(None) page
+// of one region, which the filter (any of the eight) makes readable again.
+var RacePages: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+UnprotectRace(c: &FaultContext): FaultAction {
+    unsafe "the region is this test's, 8 pages from RacePages" {
+        lo := Trunc[uint](RacePages.Load())
+        ps := Cast[uint](PageSizeOf())
+        if c.Addr() < lo || c.Addr() >= lo + 8 * ps {
+            return FaultAction.Pass
+        }
+        _ = sys.VmProtect(raw.FromAddr[u8](c.Addr() & ~(ps - 1)), Cast[int](ps), 2)
+    }
+    return FaultAction.Resume(ctx: *c)
+}
+
+AddThenFault(k: int, got: &raw.Atomic[u64]) {
+    unsafe "AddFaultFilter is unsafe only; the page is the test's" {
+        _ = AddFaultFilter(UnprotectRace)
+        _ = got.Add(ProtectedRead(Trunc[uint](RacePages.Load()) + Cast[uint](k * PageSizeOf())) + 1)
+    }
+}
+
+test "Filter eight tasks that add a filter at once each see their fault filtered" (sys: &System) {
+    ps := PageSizeOf()
+    got := raw.Atomic[u64].New(0)
+    unsafe "vm's functions are unsafe only" {
+        r := vm.Reserve(8 * ps, ps) else {
+            Assert(false)
+            return
+        }
+        r.Commit(0, 8 * ps) else {
+            Assert(false)
+        }
+        r.Protect(0, 8 * ps, vm.Prot.None) else {
+            Assert(false)
+        }
+        RacePages.Store(u64(r.Base()))
+        scope s := sys.io.Scope() {
+            for k in 0..8 {
+                s.go AddThenFault(k, &got)
+            }
+        }
+        r.Release()
+    }
+    Assert(got.Load() == 8)
+}
+
+// A fault's kind comes from std.rt's guard pages
+// (rt.IsGuardPage, which OnFault's report uses too): a task slot's lowest
+// page is Stack, any other address Access; std.sys's kinds 1 and 3 are
+// Stack and Illegal. (A carrier's guard page is Linux's, linux.sh.)
+KindTask(ok: &raw.Atomic[u64]) {
+    var mark: u64 = 0
+    a := raw.Addr(raw.Of(&mark))
+    base := rt.SlotBase(rt.SlotTop(a))
+    if base != 0 && KindOf(2, base + 16) == FaultKind.Stack && KindOf(2, base + 8192) == FaultKind.Access && KindOf(2, base + 4095) == FaultKind.Stack {
+        ok.Store(1)
+    }
+}
+
+test "Filter KindOf: a task slot's guard page is Stack, other addresses Access" (sys: &System) {
+    ok := raw.Atomic[u64].New(0)
+    scope s := sys.io.Scope() {
+        s.go KindTask(&ok)
+    }
+    Assert(ok.Load() == 1)
+    Assert(KindOf(1, 0) == FaultKind.Stack && KindOf(3, 0) == FaultKind.Illegal && KindOf(2, 16) == FaultKind.Access)
+}
+
+// FaultContext numbers the registers as x86_64
+// encodes them, on the OS context of each target. RegCode saves the
+// callee-saved registers, sets register n to 0x1000 + n (all but rsp),
+// faults at RegLoadAt on `mov rax, [0x10]`, then restores them and
+// returns eax. RegCheck checks every register, the pc and the stack
+// pointer, and resumes past the load with rax = 2000 + a mask of the
+// mismatches.
+const RegCode: [138]u8 = [0x53, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0xC7, 0xC0, 0x00,
+    0x10, 0x00, 0x00, 0x48, 0xC7, 0xC1, 0x01, 0x10, 0x00, 0x00, 0x48, 0xC7, 0xC2, 0x02, 0x10, 0x00,
+    0x00, 0x48, 0xC7, 0xC3, 0x03, 0x10, 0x00, 0x00, 0x48, 0xC7, 0xC5, 0x05, 0x10, 0x00, 0x00, 0x48,
+    0xC7, 0xC6, 0x06, 0x10, 0x00, 0x00, 0x48, 0xC7, 0xC7, 0x07, 0x10, 0x00, 0x00, 0x49, 0xC7, 0xC0,
+    0x08, 0x10, 0x00, 0x00, 0x49, 0xC7, 0xC1, 0x09, 0x10, 0x00, 0x00, 0x49, 0xC7, 0xC2, 0x0A, 0x10,
+    0x00, 0x00, 0x49, 0xC7, 0xC3, 0x0B, 0x10, 0x00, 0x00, 0x49, 0xC7, 0xC4, 0x0C, 0x10, 0x00, 0x00,
+    0x49, 0xC7, 0xC5, 0x0D, 0x10, 0x00, 0x00, 0x49, 0xC7, 0xC6, 0x0E, 0x10, 0x00, 0x00, 0x49, 0xC7,
+    0xC7, 0x0F, 0x10, 0x00, 0x00, 0x48, 0x8B, 0x04, 0x25, 0x10, 0x00, 0x00, 0x00, 0x41, 0x5F, 0x41,
+    0x5E, 0x41, 0x5D, 0x41, 0x5C, 0x5F, 0x5E, 0x5D, 0x5B, 0xC3]
+const RegLoadAt: int = 117
+
+var RegLo: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+RegCheck(c: &FaultContext): FaultAction {
+    var bad: u64 = 0
+    unsafe "the global is this test process's" {
+        if c.Pc() != Trunc[uint](RegLo.Load()) + Cast[uint](RegLoadAt) {
+            return FaultAction.Pass
+        }
+    }
+    for n in 0..16 {
+        if n != 4 && c.Reg(n) != 0x1000 + Cast[u64](n) {
+            bad |= 1 << Cast[u64](n)
+        }
+    }
+    if c.Sp() == 0 || c.Sp() % 8 != 0 || c.Reg(4) != u64(c.Sp()) {
+        bad |= 1 << 4
+    }
+    if c.Kind() != FaultKind.Access {
+        bad |= 1 << 16
+    }
+    var d := *c
+    d.SetReg(0, 2000 + bad)
+    d.SetPc(c.Pc() + 8)
+    return FaultAction.Resume(ctx: d)
+}
+
+test "Filter FaultContext reads every register in x86_64's encoding order, and SetReg and SetPc take effect" {
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        c := vm.CodeRegion.New(4096) else {
+            Assert(false)
+            return
+        }
+        var w := c.Writable()
+        for i in 0..138 {
+            w[i] = RegCode[i]
+        }
+        c.Flush(0, 138)
+        RegLo.Store(u64(c.Entry(0)))
+        _ = AddFaultFilter(RegCheck)
+        Assert(CallCode(c.Entry(0)) == 2000)
+        c.Release()
+    }
+}
+
+// The stack queries agree with the guard page's address. On a task, a
+// write to the byte just below StackBounds' lo less the guarantee (the
+// guard page's top byte) faults as FaultKind.Stack at that address; a
+// filter resumes past the 3-byte `mov byte ptr [rax], 1`.
+var GuardAt: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+var GuardSeen: raw.Atomic[u64] = raw.Atomic[u64].New(0)
+
+GuardFilter(c: &FaultContext): FaultAction {
+    unsafe "the globals are this test process's" {
+        if c.Addr() != Trunc[uint](GuardAt.Load()) {
+            return FaultAction.Pass
+        }
+        GuardSeen.Store(if c.Kind() == FaultKind.Stack { 1 } else { 2 })
+    }
+    var d := *c
+    d.SetPc(c.Pc() + 3)
+    return FaultAction.Resume(ctx: d)
+}
+
+GuardTask(ok: &raw.Atomic[u64]) {
+    b := StackBounds()
+    var g := b.lo - 1
+    if Target.os == Os.Windows {
+        g = b.lo - Trunc[uint](16 << 10) - 1
+    }
+    if !rt.IsGuardPage(g) || rt.IsGuardPage(g + 1) {
+        return
+    }
+    GuardAt.Store(u64(g))
+    unsafe "g is the top byte of this task's guard page: the write faults and the filter skips it" {
+        asm("mov byte ptr [rax], 1", in("rax") g)
+    }
+    ok.Store(GuardSeen.Load())
+}
+
+test "Filter StackBounds agrees with the guard page: a write just below it faults as Stack" (sys: &System) {
+    unsafe "AddFaultFilter is unsafe only" {
+        _ = AddFaultFilter(GuardFilter)
+    }
+    ok := raw.Atomic[u64].New(0)
+    scope s := sys.io.Scope() {
+        s.go GuardTask(&ok)
+    }
+    Assert(ok.Load() == 1)
+}
+
+// An illegal instruction, `ud2` (0f 0b), then
+// `mov eax, 42; ret`. Linux takes SIGILL with SIGSEGV's routing, so it
+// reaches the filters as FaultKind.Illegal on both targets.
+const Ud2: [8]u8 = [0x0F, 0x0B, 0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3]
+
+// SkipUd2 resumes 2 bytes past an Illegal fault at a code region's ud2,
+// and records the kind it saw.
+SkipUd2(c: &FaultContext): FaultAction {
+    unsafe "the global is this test process's" {
+        if c.Pc() != Trunc[uint](CodeLo.Load()) {
+            return FaultAction.Pass
+        }
+    }
+    k: u64 = match c.Kind() {
+        .Stack { 1 }
+        .Access { 2 }
+        .Illegal { 3 }
+    }
+    FaultKindSeen.Store(k)
+    var d := *c
+    d.SetPc(c.Pc() + 2)
+    return FaultAction.Resume(ctx: d)
+}
+
+// Ud2Region writes Ud2 into a new code region and calls it.
+Ud2Region(filter: bool): u32 {
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        c := vm.CodeRegion.New(64) else {
+            Assert(false)
+            return 0
+        }
+        var w := c.Writable()
+        for i in 0..8 {
+            w[i] = Ud2[i]
+        }
+        c.Flush(0, 8)
+        CodeLo.Store(u64(c.Entry(0)))
+        if filter {
+            _ = AddFaultFilter(SkipUd2)
+        }
+        r := CallCode(c.Entry(0))
+        c.Release()
+        return r
+    }
+}
+
+test "Filter an illegal instruction in a code region reaches the filters as Illegal, and Resume past it continues" {
+    Assert(Ud2Region(true) == 42)
+    Assert(FaultKindSeen.Load() == 3)
+}
+
+test "Filter an unresumed illegal instruction in a code region is reported as a fault in one [exit 101: fault in a code region]" {
+    unsafe "AddFaultFilter is unsafe only" {
+        _ = AddFaultFilter(PassAll)
+    }
+    _ = Ud2Region(false)
+}
+
+// Linux routes only the faults Mk owns,
+// as Windows' frame walk does (sys.FaultOwned): a pc in the image, a thread
+// std.sys started, or a stack pointer on a task slot or a carrier's system
+// stack. C code outside the image on a thread std did not make is not
+// Mk's: the handler gives it the default action. Windows' answer is true
+// for every fault its handler routes.
+test "Filter Linux takes a fault as Mk's by its pc, its thread or its stack, and C code on a foreign thread as not" {
+    var x: u64 = 0
+    unsafe "addresses only, never read" {
+        slot := raw.Addr(raw.Of(&x))
+        image := raw.Addr(raw.Of(&FaultSeen))
+        if Target.os != Os.Linux {
+            Assert(sys.FaultOwnedBy(4096, 8192, false))
+            return
+        }
+        Assert(!sys.FaultOwnedBy(4096, 8192, false))
+        Assert(sys.FaultOwnedBy(4096, 8192, true))
+        Assert(sys.FaultOwnedBy(4096, slot, false))
+        Assert(sys.FaultOwnedBy(image, 8192, false))
+        Assert(sys.FaultOwned(image, slot))
+    }
+}
+
+// The x86_64 code `mov eax, v; ret` written at offset o of w.
+WriteRetAt(w: mut []u8, o: int, v: u8) {
+    w[o] = 0xB8
+    w[o + 1] = v
+    w[o + 2] = 0
+    w[o + 3] = 0
+    w[o + 4] = 0
+    w[o + 5] = 0xC3
+}
+
+// A write through a sealed region's writable view faults at that
+// write's address (the filter sees it there, as an access fault, and
+// unprotects the page to let it through), while Entry's code runs before
+// and after.
+test "Filter a write through a sealed code region's writable view faults there" {
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        c := vm.CodeRegion.New(4096) else {
+            Assert(false)
+            return
+        }
+        var w := c.Writable()
+        WriteRetAt(w, 0, 42)
+        c.Flush(0, 6)
+        c.Seal() else {
+            Assert(false)
+        }
+        Assert(CallCode(c.Entry(0)) == 42)
+        FaultPage.Store(u64(raw.Addr(raw.DataMut(w))))
+        _ = AddFaultFilter(Unprotect)
+        w[1] = 7
+        Assert(FaultSeen.Load() == 1)
+        Assert(FaultKindSeen.Load() == 2)
+        c.Flush(0, 6)
+        Assert(CallCode(c.Entry(0)) == 7)
+        c.Unseal() else {
+            Assert(false)
+        }
+        w[1] = 9
+        c.Flush(0, 6)
+        Assert(CallCode(c.Entry(0)) == 9)
+        Assert(FaultSeen.Load() == 1)
+        c.Release()
+    }
+}
+
+// Commit while sealed never makes a writable page.
+test "Filter a page a sealed reserved code region commits is read-only through its writable view" {
+    ps := PageSizeOf()
+    unsafe "AddFaultFilter is unsafe only; vm's functions too" {
+        c := vm.CodeRegion.Reserve(4 * ps) else {
+            Assert(false)
+            return
+        }
+        c.Seal() else {
+            Assert(false)
+        }
+        c.Commit(2 * ps, ps) else {
+            Assert(false)
+        }
+        var w := c.Writable()
+        Assert(w[2 * ps] == 0)
+        FaultPage.Store(u64(raw.Addr(raw.DataMut(w))) + Cast[u64](2 * ps))
+        _ = AddFaultFilter(Unprotect)
+        WriteRetAt(w, 2 * ps, 11)
+        Assert(FaultSeen.Load() == 1)
+        c.Flush(2 * ps, 6)
+        Assert(CallCode(c.Entry(2 * ps)) == 11)
+        c.Release()
+    }
+}
+
+// A call into a page a reserved code region has not committed is a
+// fault in a code region, as the fault path's table routes it.
+test "Filter a call into an uncommitted page of a reserved code region is a fault in one [exit 101: fault in a code region]" {
+    ps := PageSizeOf()
+    unsafe "vm's functions are unsafe only" {
+        c := vm.CodeRegion.Reserve(2 * ps) else {
+            return
+        }
+        c.Commit(0, ps) else {}
+        FaultKindSeen.Store(u64(CallCode(c.Entry(ps))))
+        c.Release()
+    }
+}

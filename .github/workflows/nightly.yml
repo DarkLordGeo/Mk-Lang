@@ -1,0 +1,46 @@
+# Why: the standard library's own test suite takes hours, too long for every
+# push, but a regression in it must still be caught within a day.
+#
+# What: the project's test gate (build, vet, gofmt, every Go test including
+# std's, the documentation tests) on the Windows and Linux runners.
+#
+# How: runs once a night on main and by hand, through tools/gate's quick
+# tier. The Linux-through-WSL, dogfood, timing and fuzz steps are skipped:
+# the Linux runner covers Linux natively, and timing needs an idle machine.
+name: Nightly
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }})
+    if: github.repository == 'zerodayokay/Mk-Lang'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows
+            shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
+          - os: linux
+            shell: bash
+    runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
+    timeout-minutes: 360
+    defaults:
+      run:
+        # Git Bash by its short path: a plain `bash` on a Windows runner can
+        # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
+        # run the step's script, and CI must never start wsl.exe here.
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Gate
+        run: go run ./tools/gate -tier quick -skip linux,dogfood,timing,fuzz -work "${{ github.workspace }}/../.gate" -json "${{ runner.temp }}/gate.json"

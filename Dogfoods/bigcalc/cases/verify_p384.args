@@ -1,0 +1,5 @@
+verify
+--key
+$CASES/data/pki/p384_pub.pem
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg.p384.sig

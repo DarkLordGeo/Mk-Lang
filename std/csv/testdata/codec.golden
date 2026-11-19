@@ -1,0 +1,259 @@
+// Generated from the gen lines of main for x86_64-windows. Not read by the compiler.
+
+// gen csv.Codec#1 for Row
+CsvFieldG0N1(w: mut Writer, s: str, o: &csv.Options, alone: bool): WriteError!void {
+    b := s.AsBytes()
+    var stops: [3]u8 = [o.delimiter, o.quote_byte, 0x0A]
+    var q: [1]u8 = [o.quote_byte]
+    if !(alone && b.Len() == 0) && simd.IndexAny(b, stops[..]).IsNone() && simd.IndexByte(b, 0x0D).IsNone() {
+        try w.Bytes(b)
+        return
+    }
+    try w.Bytes(q[..])
+    var at := 0
+    for at < b.Len() {
+        k := simd.IndexByte(b[at..], o.quote_byte) else {
+            try w.Bytes(b[at..])
+            break
+        }
+        try w.Bytes(b[at..at + k + 1])
+        try w.Bytes(q[..])
+        at += k + 1
+    }
+    try w.Bytes(q[..])
+}
+
+// gen csv.Codec#2 for Row
+CsvOptionsG0N2(o: &csv.Options) {
+    if o.delimiter == 0x0A || o.delimiter == 0x0D || o.quote_byte == 0x0A || o.quote_byte == 0x0D {
+        Panic("csv: the delimiter and the quote cannot be CR or LF")
+    }
+    if o.delimiter == o.quote_byte {
+        Panic("csv: the delimiter and the quote must differ")
+    }
+    if o.field_bytes < 0 || o.record_fields < 1 {
+        Panic("csv: field_bytes must be at least 0 and record_fields at least 1")
+    }
+    digits := "0123456789+-.eEnaif".AsBytes()
+    var both: [2]u8 = [o.delimiter, o.quote_byte]
+    if simd.IndexAny(digits, both[..]).IsSome() {
+        Panic("csv.Codec: WriteCsv writes numbers bare, so the delimiter and the quote cannot be a byte of a number")
+    }
+}
+
+// gen csv.Codec#3 for Row
+Row.FromCsv(a: &Arena, r: &csv.Record): ParseError | Utf8Error | OutOfMemory!Row from a {
+    var i := 0
+    s_g0_4 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    x_g0_5 := try a.Dup(s_g0_4)
+    name_g0_3 := x_g0_5
+    i += 1
+    s_g0_7 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    x_g0_8 := match s_g0_7 {
+        "true" { true }
+        "false" { false }
+        _ { fail ParseError }
+    }
+    ok_g0_6 := x_g0_8
+    i += 1
+    s_g0_10 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    b_g0_13 := s_g0_10.AsBytes()
+    if b_g0_13.Len() == 0 {
+        fail ParseError
+    }
+    var n_g0_12: u64 = 0
+    for k_g0_14 in 0..b_g0_13.Len() {
+        if b_g0_13[k_g0_14] < 0x30 || b_g0_13[k_g0_14] > 0x39 {
+            fail ParseError
+        }
+        d_g0_15 := u64(b_g0_13[k_g0_14] - 0x30)
+        if n_g0_12 > 1844674407370955161 || (n_g0_12 == 1844674407370955161 && d_g0_15 > 5) {
+            fail ParseError
+        }
+        n_g0_12 = n_g0_12 * 10 + d_g0_15
+    }
+    if n_g0_12 > 255 {
+        fail ParseError
+    }
+    x_g0_11 := Cast[u8](n_g0_12)
+    small_g0_9 := x_g0_11
+    i += 1
+    s_g0_17 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    b_g0_20 := s_g0_17.AsBytes()
+    if b_g0_20.Len() == 0 {
+        fail ParseError
+    }
+    var n_g0_19: u64 = 0
+    for k_g0_21 in 0..b_g0_20.Len() {
+        if b_g0_20[k_g0_21] < 0x30 || b_g0_20[k_g0_21] > 0x39 {
+            fail ParseError
+        }
+        d_g0_22 := u64(b_g0_20[k_g0_21] - 0x30)
+        if n_g0_19 > 1844674407370955161 || (n_g0_19 == 1844674407370955161 && d_g0_22 > 5) {
+            fail ParseError
+        }
+        n_g0_19 = n_g0_19 * 10 + d_g0_22
+    }
+    if false {
+        fail ParseError
+    }
+    x_g0_18 := Cast[u64](n_g0_19)
+    big_g0_16 := x_g0_18
+    i += 1
+    s_g0_24 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    n_g0_26 := try s_g0_24.ParseInt()
+    if n_g0_26 < -32768 || n_g0_26 > 32767 {
+        fail ParseError
+    }
+    x_g0_25 := Cast[i16](n_g0_26)
+    neg_g0_23 := x_g0_25
+    i += 1
+    s_g0_28 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    n_g0_30 := try s_g0_28.ParseInt()
+    if false {
+        fail ParseError
+    }
+    x_g0_29 := Cast[int](n_g0_30)
+    n_g0_27 := x_g0_29
+    i += 1
+    s_g0_32 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    x_g0_33 := try s_g0_32.ParseFloat()
+    price_g0_31 := x_g0_33
+    i += 1
+    s_g0_36 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    x_g0_37: ?str = if s_g0_36.Len() == 0 {
+        none
+    } else {
+        x_g0_38 := try a.Dup(s_g0_36)
+        some(x_g0_38)
+    }
+    note_g0_35 := x_g0_37
+    i += 1
+    s_g0_41 := r.Field(i) else {
+        if i < r.Len() {
+            fail Utf8Error
+        }
+        fail ParseError
+    }
+    x_g0_42: ?i32 = if s_g0_41.Len() == 0 {
+        none
+    } else {
+        n_g0_44 := try s_g0_41.ParseInt()
+        if n_g0_44 < -2147483648 || n_g0_44 > 2147483647 {
+            fail ParseError
+        }
+        x_g0_43 := Cast[i32](n_g0_44)
+        some(x_g0_43)
+    }
+    qty_g0_40 := x_g0_42
+    i += 1
+    if i != r.Len() {
+        fail ParseError
+    }
+    return Row(name: name_g0_3, ok: ok_g0_6, small: small_g0_9, big: big_g0_16, neg: neg_g0_23, n: n_g0_27, price: price_g0_31, note: note_g0_35, qty: qty_g0_40)
+}
+
+// gen csv.Codec#3 for Row
+Row.WriteCsv(&self, w: mut Writer, o: &csv.Options): WriteError!void {
+    CsvOptionsG0N2(o)
+    var d: [1]u8 = [o.delimiter]
+    try CsvFieldG0N1(w, *(&self.name), o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, if *(&self.ok) { "true" } else { "false" }, o, false)
+    try w.Bytes(d[..])
+    try (&self.small).Format(w)
+    try w.Bytes(d[..])
+    try (&self.big).Format(w)
+    try w.Bytes(d[..])
+    try (&self.neg).Format(w)
+    try w.Bytes(d[..])
+    try (&self.n).Format(w)
+    try w.Bytes(d[..])
+    try (&self.price).Format(w)
+    try w.Bytes(d[..])
+    match (&self.note) {
+        some(x_g0_34) {
+            try CsvFieldG0N1(w, *x_g0_34, o, false)
+        }
+        none {
+            try CsvFieldG0N1(w, "", o, false)
+        }
+    }
+    try w.Bytes(d[..])
+    match (&self.qty) {
+        some(x_g0_39) {
+            try x_g0_39.Format(w)
+        }
+        none {
+            try CsvFieldG0N1(w, "", o, false)
+        }
+    }
+    var crlf: [2]u8 = [0x0D, 0x0A]
+    try w.Bytes(crlf[..])
+}
+
+// gen csv.Codec#3 for Row
+Row.WriteCsvHeader(w: mut Writer, o: &csv.Options): WriteError!void {
+    CsvOptionsG0N2(o)
+    var d: [1]u8 = [o.delimiter]
+    try CsvFieldG0N1(w, "name", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "ok", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "small", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "big", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "neg", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "n", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "price", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "note", o, false)
+    try w.Bytes(d[..])
+    try CsvFieldG0N1(w, "qty", o, false)
+    var crlf: [2]u8 = [0x0D, 0x0A]
+    try w.Bytes(crlf[..])
+}
+

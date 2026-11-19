@@ -1,0 +1,1324 @@
+source_filename = "mk.support"
+target triple = "arm64-apple-macosx11.0.0"
+
+module asm "\09.text"
+module asm "\09.globl _mk_switch"
+module asm "\09.p2align 2"
+module asm "_mk_switch:"
+module asm "\09sub sp, sp, #176"
+module asm "\09stp x19, x20, [sp, #0]"
+module asm "\09stp x21, x22, [sp, #16]"
+module asm "\09stp x23, x24, [sp, #32]"
+module asm "\09stp x25, x26, [sp, #48]"
+module asm "\09stp x27, x28, [sp, #64]"
+module asm "\09stp x29, x30, [sp, #80]"
+module asm "\09stp d8, d9, [sp, #96]"
+module asm "\09stp d10, d11, [sp, #112]"
+module asm "\09stp d12, d13, [sp, #128]"
+module asm "\09stp d14, d15, [sp, #144]"
+module asm "\09mrs x9, fpcr"
+module asm "\09str x9, [sp, #160]"
+module asm "\09mov x9, sp"
+module asm "\09str x9, [x0]"
+module asm "\09ldr x9, [x1]"
+module asm "\09mov sp, x9"
+module asm "\09ldr x9, [sp, #160]"
+module asm "\09msr fpcr, x9"
+module asm "\09ldp d14, d15, [sp, #144]"
+module asm "\09ldp d12, d13, [sp, #128]"
+module asm "\09ldp d10, d11, [sp, #112]"
+module asm "\09ldp d8, d9, [sp, #96]"
+module asm "\09ldp x29, x30, [sp, #80]"
+module asm "\09ldp x27, x28, [sp, #64]"
+module asm "\09ldp x25, x26, [sp, #48]"
+module asm "\09ldp x23, x24, [sp, #32]"
+module asm "\09ldp x21, x22, [sp, #16]"
+module asm "\09ldp x19, x20, [sp, #0]"
+module asm "\09add sp, sp, #176"
+module asm "\09ret"
+module asm "\09.text"
+module asm "\09.globl _mk_task_start"
+module asm "\09.p2align 2"
+module asm "_mk_task_start:"
+module asm "\09mov x0, x20"
+module asm "\09blr x19"
+module asm "\09brk #1"
+module asm "\09.text"
+module asm "\09.globl _mk_call_system"
+module asm "\09.p2align 2"
+module asm "_mk_call_system:"
+module asm "\09stp x19, x30, [sp, #-16]!"
+module asm "\09mov x19, sp"
+module asm "\09mov x9, x0"
+module asm "\09mov x0, x1"
+module asm "\09ldr x10, [x2]"
+module asm "\09mov sp, x10"
+module asm "\09blr x9"
+module asm "\09mov sp, x19"
+module asm "\09ldp x19, x30, [sp], #16"
+module asm "\09ret"
+
+@mk.fr.__udivti3 = private constant { ptr, ptr, i32 } { ptr @__udivti3, ptr null, i32 2 }, section "__DATA,__mk_funcs", align 8
+@mk.fr.__umodti3 = private constant { ptr, ptr, i32 } { ptr @__umodti3, ptr null, i32 2 }, section "__DATA,__mk_funcs", align 8
+@mk.fr.__divti3 = private constant { ptr, ptr, i32 } { ptr @__divti3, ptr null, i32 2 }, section "__DATA,__mk_funcs", align 8
+@mk.fr.__modti3 = private constant { ptr, ptr, i32 } { ptr @__modti3, ptr null, i32 2 }, section "__DATA,__mk_funcs", align 8
+@llvm.used = appending global [5 x ptr] [ptr @memcpy, ptr @memmove, ptr @memset, ptr @memcmp, ptr @bcmp], section "llvm.metadata"
+@llvm.compiler.used = appending global [4 x ptr] [ptr @mk.fr.__udivti3, ptr @mk.fr.__umodti3, ptr @mk.fr.__divti3, ptr @mk.fr.__modti3], section "llvm.metadata"
+
+define dso_local ptr @memcpy(ptr noundef %p0, ptr noundef %p1, i64 noundef %p2) nounwind uwtable "no-builtins" {
+entry:
+  %v0 = icmp ule i64 %p2, 16
+  br i1 %v0, label %le16, label %gt16
+
+ret:
+  ret ptr %p0
+
+big:
+  %v72 = icmp ule i64 %p2, 128
+  br i1 %v72, label %le128, label %gt128
+
+le16:
+  %v3 = icmp uge i64 %p2, 8
+  br i1 %v3, label %w8, label %lt8
+
+le32:
+  %v28 = load i64, ptr %p1, align 1
+  %v29 = getelementptr i8, ptr %p1, i64 8
+  %v30 = load i64, ptr %v29, align 1
+  %v31 = sub i64 %p2, 16
+  %v32 = getelementptr i8, ptr %p1, i64 %v31
+  %v33 = load i64, ptr %v32, align 1
+  %v34 = sub i64 %p2, 8
+  %v35 = getelementptr i8, ptr %p1, i64 %v34
+  %v36 = load i64, ptr %v35, align 1
+  store i64 %v28, ptr %p0, align 1
+  %v37 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v30, ptr %v37, align 1
+  %v38 = sub i64 %p2, 16
+  %v39 = getelementptr i8, ptr %p0, i64 %v38
+  store i64 %v33, ptr %v39, align 1
+  %v40 = sub i64 %p2, 8
+  %v41 = getelementptr i8, ptr %p0, i64 %v40
+  store i64 %v36, ptr %v41, align 1
+  br label %ret
+
+le64:
+  %v42 = load i64, ptr %p1, align 1
+  %v43 = getelementptr i8, ptr %p1, i64 8
+  %v44 = load i64, ptr %v43, align 1
+  %v45 = getelementptr i8, ptr %p1, i64 16
+  %v46 = load i64, ptr %v45, align 1
+  %v47 = getelementptr i8, ptr %p1, i64 24
+  %v48 = load i64, ptr %v47, align 1
+  %v49 = sub i64 %p2, 32
+  %v50 = getelementptr i8, ptr %p1, i64 %v49
+  %v51 = load i64, ptr %v50, align 1
+  %v52 = sub i64 %p2, 24
+  %v53 = getelementptr i8, ptr %p1, i64 %v52
+  %v54 = load i64, ptr %v53, align 1
+  %v55 = sub i64 %p2, 16
+  %v56 = getelementptr i8, ptr %p1, i64 %v55
+  %v57 = load i64, ptr %v56, align 1
+  %v58 = sub i64 %p2, 8
+  %v59 = getelementptr i8, ptr %p1, i64 %v58
+  %v60 = load i64, ptr %v59, align 1
+  store i64 %v42, ptr %p0, align 1
+  %v61 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v44, ptr %v61, align 1
+  %v62 = getelementptr i8, ptr %p0, i64 16
+  store i64 %v46, ptr %v62, align 1
+  %v63 = getelementptr i8, ptr %p0, i64 24
+  store i64 %v48, ptr %v63, align 1
+  %v64 = sub i64 %p2, 32
+  %v65 = getelementptr i8, ptr %p0, i64 %v64
+  store i64 %v51, ptr %v65, align 1
+  %v66 = sub i64 %p2, 24
+  %v67 = getelementptr i8, ptr %p0, i64 %v66
+  store i64 %v54, ptr %v67, align 1
+  %v68 = sub i64 %p2, 16
+  %v69 = getelementptr i8, ptr %p0, i64 %v68
+  store i64 %v57, ptr %v69, align 1
+  %v70 = sub i64 %p2, 8
+  %v71 = getelementptr i8, ptr %p0, i64 %v70
+  store i64 %v60, ptr %v71, align 1
+  br label %ret
+
+gt16:
+  %v1 = icmp ule i64 %p2, 32
+  br i1 %v1, label %le32, label %gt32
+
+gt32:
+  %v2 = icmp ule i64 %p2, 64
+  br i1 %v2, label %le64, label %big
+
+w8:
+  %v4 = load i64, ptr %p1, align 1
+  %v5 = sub i64 %p2, 8
+  %v6 = getelementptr i8, ptr %p1, i64 %v5
+  %v7 = load i64, ptr %v6, align 1
+  store i64 %v4, ptr %p0, align 1
+  %v8 = sub i64 %p2, 8
+  %v9 = getelementptr i8, ptr %p0, i64 %v8
+  store i64 %v7, ptr %v9, align 1
+  br label %ret
+
+lt8:
+  %v10 = icmp uge i64 %p2, 4
+  br i1 %v10, label %w4, label %lt4
+
+w4:
+  %v11 = load i32, ptr %p1, align 1
+  %v12 = sub i64 %p2, 4
+  %v13 = getelementptr i8, ptr %p1, i64 %v12
+  %v14 = load i32, ptr %v13, align 1
+  store i32 %v11, ptr %p0, align 1
+  %v15 = sub i64 %p2, 4
+  %v16 = getelementptr i8, ptr %p0, i64 %v15
+  store i32 %v14, ptr %v16, align 1
+  br label %ret
+
+lt4:
+  %v17 = icmp eq i64 %p2, 0
+  br i1 %v17, label %ret, label %w1
+
+w1:
+  %v18 = lshr i64 %p2, 1
+  %v19 = load i8, ptr %p1, align 1
+  %v20 = getelementptr i8, ptr %p1, i64 %v18
+  %v21 = load i8, ptr %v20, align 1
+  %v22 = sub i64 %p2, 1
+  %v23 = getelementptr i8, ptr %p1, i64 %v22
+  %v24 = load i8, ptr %v23, align 1
+  store i8 %v19, ptr %p0, align 1
+  %v25 = getelementptr i8, ptr %p0, i64 %v18
+  store i8 %v21, ptr %v25, align 1
+  %v26 = sub i64 %p2, 1
+  %v27 = getelementptr i8, ptr %p0, i64 %v26
+  store i8 %v24, ptr %v27, align 1
+  br label %ret
+
+le128:
+  %v73 = load i64, ptr %p1, align 1
+  %v74 = getelementptr i8, ptr %p1, i64 8
+  %v75 = load i64, ptr %v74, align 1
+  %v76 = getelementptr i8, ptr %p1, i64 16
+  %v77 = load i64, ptr %v76, align 1
+  %v78 = getelementptr i8, ptr %p1, i64 24
+  %v79 = load i64, ptr %v78, align 1
+  %v80 = getelementptr i8, ptr %p1, i64 32
+  %v81 = load i64, ptr %v80, align 1
+  %v82 = getelementptr i8, ptr %p1, i64 40
+  %v83 = load i64, ptr %v82, align 1
+  %v84 = getelementptr i8, ptr %p1, i64 48
+  %v85 = load i64, ptr %v84, align 1
+  %v86 = getelementptr i8, ptr %p1, i64 56
+  %v87 = load i64, ptr %v86, align 1
+  store i64 %v73, ptr %p0, align 1
+  %v88 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v75, ptr %v88, align 1
+  %v89 = getelementptr i8, ptr %p0, i64 16
+  store i64 %v77, ptr %v89, align 1
+  %v90 = getelementptr i8, ptr %p0, i64 24
+  store i64 %v79, ptr %v90, align 1
+  %v91 = getelementptr i8, ptr %p0, i64 32
+  store i64 %v81, ptr %v91, align 1
+  %v92 = getelementptr i8, ptr %p0, i64 40
+  store i64 %v83, ptr %v92, align 1
+  %v93 = getelementptr i8, ptr %p0, i64 48
+  store i64 %v85, ptr %v93, align 1
+  %v94 = getelementptr i8, ptr %p0, i64 56
+  store i64 %v87, ptr %v94, align 1
+  %v95 = sub i64 %p2, 64
+  %v96 = getelementptr i8, ptr %p1, i64 %v95
+  %v97 = load i64, ptr %v96, align 1
+  %v98 = sub i64 %p2, 56
+  %v99 = getelementptr i8, ptr %p1, i64 %v98
+  %v100 = load i64, ptr %v99, align 1
+  %v101 = sub i64 %p2, 48
+  %v102 = getelementptr i8, ptr %p1, i64 %v101
+  %v103 = load i64, ptr %v102, align 1
+  %v104 = sub i64 %p2, 40
+  %v105 = getelementptr i8, ptr %p1, i64 %v104
+  %v106 = load i64, ptr %v105, align 1
+  %v107 = sub i64 %p2, 32
+  %v108 = getelementptr i8, ptr %p1, i64 %v107
+  %v109 = load i64, ptr %v108, align 1
+  %v110 = sub i64 %p2, 24
+  %v111 = getelementptr i8, ptr %p1, i64 %v110
+  %v112 = load i64, ptr %v111, align 1
+  %v113 = sub i64 %p2, 16
+  %v114 = getelementptr i8, ptr %p1, i64 %v113
+  %v115 = load i64, ptr %v114, align 1
+  %v116 = sub i64 %p2, 8
+  %v117 = getelementptr i8, ptr %p1, i64 %v116
+  %v118 = load i64, ptr %v117, align 1
+  %v119 = sub i64 %p2, 64
+  %v120 = getelementptr i8, ptr %p0, i64 %v119
+  store i64 %v97, ptr %v120, align 1
+  %v121 = sub i64 %p2, 56
+  %v122 = getelementptr i8, ptr %p0, i64 %v121
+  store i64 %v100, ptr %v122, align 1
+  %v123 = sub i64 %p2, 48
+  %v124 = getelementptr i8, ptr %p0, i64 %v123
+  store i64 %v103, ptr %v124, align 1
+  %v125 = sub i64 %p2, 40
+  %v126 = getelementptr i8, ptr %p0, i64 %v125
+  store i64 %v106, ptr %v126, align 1
+  %v127 = sub i64 %p2, 32
+  %v128 = getelementptr i8, ptr %p0, i64 %v127
+  store i64 %v109, ptr %v128, align 1
+  %v129 = sub i64 %p2, 24
+  %v130 = getelementptr i8, ptr %p0, i64 %v129
+  store i64 %v112, ptr %v130, align 1
+  %v131 = sub i64 %p2, 16
+  %v132 = getelementptr i8, ptr %p0, i64 %v131
+  store i64 %v115, ptr %v132, align 1
+  %v133 = sub i64 %p2, 8
+  %v134 = getelementptr i8, ptr %p0, i64 %v133
+  store i64 %v118, ptr %v134, align 1
+  br label %ret
+
+gt128:
+  %v135 = icmp ule i64 %p2, 256
+  br i1 %v135, label %le256, label %gt256
+
+le256:
+  %v136 = load i64, ptr %p1, align 1
+  %v137 = getelementptr i8, ptr %p1, i64 8
+  %v138 = load i64, ptr %v137, align 1
+  %v139 = getelementptr i8, ptr %p1, i64 16
+  %v140 = load i64, ptr %v139, align 1
+  %v141 = getelementptr i8, ptr %p1, i64 24
+  %v142 = load i64, ptr %v141, align 1
+  %v143 = getelementptr i8, ptr %p1, i64 32
+  %v144 = load i64, ptr %v143, align 1
+  %v145 = getelementptr i8, ptr %p1, i64 40
+  %v146 = load i64, ptr %v145, align 1
+  %v147 = getelementptr i8, ptr %p1, i64 48
+  %v148 = load i64, ptr %v147, align 1
+  %v149 = getelementptr i8, ptr %p1, i64 56
+  %v150 = load i64, ptr %v149, align 1
+  store i64 %v136, ptr %p0, align 1
+  %v151 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v138, ptr %v151, align 1
+  %v152 = getelementptr i8, ptr %p0, i64 16
+  store i64 %v140, ptr %v152, align 1
+  %v153 = getelementptr i8, ptr %p0, i64 24
+  store i64 %v142, ptr %v153, align 1
+  %v154 = getelementptr i8, ptr %p0, i64 32
+  store i64 %v144, ptr %v154, align 1
+  %v155 = getelementptr i8, ptr %p0, i64 40
+  store i64 %v146, ptr %v155, align 1
+  %v156 = getelementptr i8, ptr %p0, i64 48
+  store i64 %v148, ptr %v156, align 1
+  %v157 = getelementptr i8, ptr %p0, i64 56
+  store i64 %v150, ptr %v157, align 1
+  %v158 = getelementptr i8, ptr %p1, i64 64
+  %v159 = load i64, ptr %v158, align 1
+  %v160 = getelementptr i8, ptr %p1, i64 72
+  %v161 = load i64, ptr %v160, align 1
+  %v162 = getelementptr i8, ptr %p1, i64 80
+  %v163 = load i64, ptr %v162, align 1
+  %v164 = getelementptr i8, ptr %p1, i64 88
+  %v165 = load i64, ptr %v164, align 1
+  %v166 = getelementptr i8, ptr %p1, i64 96
+  %v167 = load i64, ptr %v166, align 1
+  %v168 = getelementptr i8, ptr %p1, i64 104
+  %v169 = load i64, ptr %v168, align 1
+  %v170 = getelementptr i8, ptr %p1, i64 112
+  %v171 = load i64, ptr %v170, align 1
+  %v172 = getelementptr i8, ptr %p1, i64 120
+  %v173 = load i64, ptr %v172, align 1
+  %v174 = getelementptr i8, ptr %p0, i64 64
+  store i64 %v159, ptr %v174, align 1
+  %v175 = getelementptr i8, ptr %p0, i64 72
+  store i64 %v161, ptr %v175, align 1
+  %v176 = getelementptr i8, ptr %p0, i64 80
+  store i64 %v163, ptr %v176, align 1
+  %v177 = getelementptr i8, ptr %p0, i64 88
+  store i64 %v165, ptr %v177, align 1
+  %v178 = getelementptr i8, ptr %p0, i64 96
+  store i64 %v167, ptr %v178, align 1
+  %v179 = getelementptr i8, ptr %p0, i64 104
+  store i64 %v169, ptr %v179, align 1
+  %v180 = getelementptr i8, ptr %p0, i64 112
+  store i64 %v171, ptr %v180, align 1
+  %v181 = getelementptr i8, ptr %p0, i64 120
+  store i64 %v173, ptr %v181, align 1
+  %v182 = sub i64 %p2, 128
+  %v183 = getelementptr i8, ptr %p1, i64 %v182
+  %v184 = load i64, ptr %v183, align 1
+  %v185 = sub i64 %p2, 120
+  %v186 = getelementptr i8, ptr %p1, i64 %v185
+  %v187 = load i64, ptr %v186, align 1
+  %v188 = sub i64 %p2, 112
+  %v189 = getelementptr i8, ptr %p1, i64 %v188
+  %v190 = load i64, ptr %v189, align 1
+  %v191 = sub i64 %p2, 104
+  %v192 = getelementptr i8, ptr %p1, i64 %v191
+  %v193 = load i64, ptr %v192, align 1
+  %v194 = sub i64 %p2, 96
+  %v195 = getelementptr i8, ptr %p1, i64 %v194
+  %v196 = load i64, ptr %v195, align 1
+  %v197 = sub i64 %p2, 88
+  %v198 = getelementptr i8, ptr %p1, i64 %v197
+  %v199 = load i64, ptr %v198, align 1
+  %v200 = sub i64 %p2, 80
+  %v201 = getelementptr i8, ptr %p1, i64 %v200
+  %v202 = load i64, ptr %v201, align 1
+  %v203 = sub i64 %p2, 72
+  %v204 = getelementptr i8, ptr %p1, i64 %v203
+  %v205 = load i64, ptr %v204, align 1
+  %v206 = sub i64 %p2, 128
+  %v207 = getelementptr i8, ptr %p0, i64 %v206
+  store i64 %v184, ptr %v207, align 1
+  %v208 = sub i64 %p2, 120
+  %v209 = getelementptr i8, ptr %p0, i64 %v208
+  store i64 %v187, ptr %v209, align 1
+  %v210 = sub i64 %p2, 112
+  %v211 = getelementptr i8, ptr %p0, i64 %v210
+  store i64 %v190, ptr %v211, align 1
+  %v212 = sub i64 %p2, 104
+  %v213 = getelementptr i8, ptr %p0, i64 %v212
+  store i64 %v193, ptr %v213, align 1
+  %v214 = sub i64 %p2, 96
+  %v215 = getelementptr i8, ptr %p0, i64 %v214
+  store i64 %v196, ptr %v215, align 1
+  %v216 = sub i64 %p2, 88
+  %v217 = getelementptr i8, ptr %p0, i64 %v216
+  store i64 %v199, ptr %v217, align 1
+  %v218 = sub i64 %p2, 80
+  %v219 = getelementptr i8, ptr %p0, i64 %v218
+  store i64 %v202, ptr %v219, align 1
+  %v220 = sub i64 %p2, 72
+  %v221 = getelementptr i8, ptr %p0, i64 %v220
+  store i64 %v205, ptr %v221, align 1
+  %v222 = sub i64 %p2, 64
+  %v223 = getelementptr i8, ptr %p1, i64 %v222
+  %v224 = load i64, ptr %v223, align 1
+  %v225 = sub i64 %p2, 56
+  %v226 = getelementptr i8, ptr %p1, i64 %v225
+  %v227 = load i64, ptr %v226, align 1
+  %v228 = sub i64 %p2, 48
+  %v229 = getelementptr i8, ptr %p1, i64 %v228
+  %v230 = load i64, ptr %v229, align 1
+  %v231 = sub i64 %p2, 40
+  %v232 = getelementptr i8, ptr %p1, i64 %v231
+  %v233 = load i64, ptr %v232, align 1
+  %v234 = sub i64 %p2, 32
+  %v235 = getelementptr i8, ptr %p1, i64 %v234
+  %v236 = load i64, ptr %v235, align 1
+  %v237 = sub i64 %p2, 24
+  %v238 = getelementptr i8, ptr %p1, i64 %v237
+  %v239 = load i64, ptr %v238, align 1
+  %v240 = sub i64 %p2, 16
+  %v241 = getelementptr i8, ptr %p1, i64 %v240
+  %v242 = load i64, ptr %v241, align 1
+  %v243 = sub i64 %p2, 8
+  %v244 = getelementptr i8, ptr %p1, i64 %v243
+  %v245 = load i64, ptr %v244, align 1
+  %v246 = sub i64 %p2, 64
+  %v247 = getelementptr i8, ptr %p0, i64 %v246
+  store i64 %v224, ptr %v247, align 1
+  %v248 = sub i64 %p2, 56
+  %v249 = getelementptr i8, ptr %p0, i64 %v248
+  store i64 %v227, ptr %v249, align 1
+  %v250 = sub i64 %p2, 48
+  %v251 = getelementptr i8, ptr %p0, i64 %v250
+  store i64 %v230, ptr %v251, align 1
+  %v252 = sub i64 %p2, 40
+  %v253 = getelementptr i8, ptr %p0, i64 %v252
+  store i64 %v233, ptr %v253, align 1
+  %v254 = sub i64 %p2, 32
+  %v255 = getelementptr i8, ptr %p0, i64 %v254
+  store i64 %v236, ptr %v255, align 1
+  %v256 = sub i64 %p2, 24
+  %v257 = getelementptr i8, ptr %p0, i64 %v256
+  store i64 %v239, ptr %v257, align 1
+  %v258 = sub i64 %p2, 16
+  %v259 = getelementptr i8, ptr %p0, i64 %v258
+  store i64 %v242, ptr %v259, align 1
+  %v260 = sub i64 %p2, 8
+  %v261 = getelementptr i8, ptr %p0, i64 %v260
+  store i64 %v245, ptr %v261, align 1
+  br label %ret
+
+gt256:
+  %v262 = sub i64 %p2, 32
+  %v263 = getelementptr i8, ptr %p1, i64 %v262
+  %v264 = load i64, ptr %v263, align 1
+  %v265 = sub i64 %p2, 24
+  %v266 = getelementptr i8, ptr %p1, i64 %v265
+  %v267 = load i64, ptr %v266, align 1
+  %v268 = sub i64 %p2, 16
+  %v269 = getelementptr i8, ptr %p1, i64 %v268
+  %v270 = load i64, ptr %v269, align 1
+  %v271 = sub i64 %p2, 8
+  %v272 = getelementptr i8, ptr %p1, i64 %v271
+  %v273 = load i64, ptr %v272, align 1
+  %v274 = alloca i64, align 8
+  store i64 0, ptr %v274, align 8
+  br label %w
+
+w:
+  %v275 = load i64, ptr %v274, align 8
+  %v276 = sub i64 %p2, %v275
+  %v277 = icmp ugt i64 %v276, 32
+  br i1 %v277, label %wb, label %t
+
+wb:
+  %v278 = load i64, ptr %v274, align 8
+  %v279 = getelementptr i8, ptr %p1, i64 %v278
+  %v280 = getelementptr i8, ptr %p0, i64 %v278
+  %v281 = load i64, ptr %v279, align 1
+  %v282 = getelementptr i8, ptr %v279, i64 8
+  %v283 = load i64, ptr %v282, align 1
+  %v284 = getelementptr i8, ptr %v279, i64 16
+  %v285 = load i64, ptr %v284, align 1
+  %v286 = getelementptr i8, ptr %v279, i64 24
+  %v287 = load i64, ptr %v286, align 1
+  store i64 %v281, ptr %v280, align 1
+  %v288 = getelementptr i8, ptr %v280, i64 8
+  store i64 %v283, ptr %v288, align 1
+  %v289 = getelementptr i8, ptr %v280, i64 16
+  store i64 %v285, ptr %v289, align 1
+  %v290 = getelementptr i8, ptr %v280, i64 24
+  store i64 %v287, ptr %v290, align 1
+  %v291 = add i64 %v278, 32
+  store i64 %v291, ptr %v274, align 8
+  br label %w
+
+t:
+  %v292 = sub i64 %p2, 32
+  %v293 = getelementptr i8, ptr %p0, i64 %v292
+  store i64 %v264, ptr %v293, align 1
+  %v294 = sub i64 %p2, 24
+  %v295 = getelementptr i8, ptr %p0, i64 %v294
+  store i64 %v267, ptr %v295, align 1
+  %v296 = sub i64 %p2, 16
+  %v297 = getelementptr i8, ptr %p0, i64 %v296
+  store i64 %v270, ptr %v297, align 1
+  %v298 = sub i64 %p2, 8
+  %v299 = getelementptr i8, ptr %p0, i64 %v298
+  store i64 %v273, ptr %v299, align 1
+  br label %ret
+}
+
+define dso_local ptr @memmove(ptr noundef %p0, ptr noundef %p1, i64 noundef %p2) nounwind uwtable "no-builtins" {
+entry:
+  %v0 = icmp ule i64 %p2, 16
+  br i1 %v0, label %sle16, label %sgt16
+
+big:
+  %v72 = ptrtoint ptr %p0 to i64
+  %v73 = ptrtoint ptr %p1 to i64
+  %v74 = icmp ule i64 %v72, %v73
+  %v75 = add i64 %v73, %p2
+  %v76 = icmp uge i64 %v72, %v75
+  %v77 = or i1 %v74, %v76
+  br i1 %v77, label %fwd, label %bwd
+
+fwd:
+  %v78 = sub i64 %p2, 32
+  %v79 = getelementptr i8, ptr %p1, i64 %v78
+  %v80 = load i64, ptr %v79, align 1
+  %v81 = sub i64 %p2, 24
+  %v82 = getelementptr i8, ptr %p1, i64 %v81
+  %v83 = load i64, ptr %v82, align 1
+  %v84 = sub i64 %p2, 16
+  %v85 = getelementptr i8, ptr %p1, i64 %v84
+  %v86 = load i64, ptr %v85, align 1
+  %v87 = sub i64 %p2, 8
+  %v88 = getelementptr i8, ptr %p1, i64 %v87
+  %v89 = load i64, ptr %v88, align 1
+  %v90 = alloca i64, align 8
+  store i64 0, ptr %v90, align 8
+  br label %fw
+
+bwd:
+  %v116 = load i64, ptr %p1, align 1
+  %v117 = getelementptr i8, ptr %p1, i64 8
+  %v118 = load i64, ptr %v117, align 1
+  %v119 = getelementptr i8, ptr %p1, i64 16
+  %v120 = load i64, ptr %v119, align 1
+  %v121 = getelementptr i8, ptr %p1, i64 24
+  %v122 = load i64, ptr %v121, align 1
+  %v123 = alloca i64, align 8
+  store i64 %p2, ptr %v123, align 8
+  br label %bw
+
+ret:
+  ret ptr %p0
+
+sle16:
+  %v3 = icmp uge i64 %p2, 8
+  br i1 %v3, label %sw8, label %slt8
+
+sle32:
+  %v28 = load i64, ptr %p1, align 1
+  %v29 = getelementptr i8, ptr %p1, i64 8
+  %v30 = load i64, ptr %v29, align 1
+  %v31 = sub i64 %p2, 16
+  %v32 = getelementptr i8, ptr %p1, i64 %v31
+  %v33 = load i64, ptr %v32, align 1
+  %v34 = sub i64 %p2, 8
+  %v35 = getelementptr i8, ptr %p1, i64 %v34
+  %v36 = load i64, ptr %v35, align 1
+  store i64 %v28, ptr %p0, align 1
+  %v37 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v30, ptr %v37, align 1
+  %v38 = sub i64 %p2, 16
+  %v39 = getelementptr i8, ptr %p0, i64 %v38
+  store i64 %v33, ptr %v39, align 1
+  %v40 = sub i64 %p2, 8
+  %v41 = getelementptr i8, ptr %p0, i64 %v40
+  store i64 %v36, ptr %v41, align 1
+  br label %ret
+
+sle64:
+  %v42 = load i64, ptr %p1, align 1
+  %v43 = getelementptr i8, ptr %p1, i64 8
+  %v44 = load i64, ptr %v43, align 1
+  %v45 = getelementptr i8, ptr %p1, i64 16
+  %v46 = load i64, ptr %v45, align 1
+  %v47 = getelementptr i8, ptr %p1, i64 24
+  %v48 = load i64, ptr %v47, align 1
+  %v49 = sub i64 %p2, 32
+  %v50 = getelementptr i8, ptr %p1, i64 %v49
+  %v51 = load i64, ptr %v50, align 1
+  %v52 = sub i64 %p2, 24
+  %v53 = getelementptr i8, ptr %p1, i64 %v52
+  %v54 = load i64, ptr %v53, align 1
+  %v55 = sub i64 %p2, 16
+  %v56 = getelementptr i8, ptr %p1, i64 %v55
+  %v57 = load i64, ptr %v56, align 1
+  %v58 = sub i64 %p2, 8
+  %v59 = getelementptr i8, ptr %p1, i64 %v58
+  %v60 = load i64, ptr %v59, align 1
+  store i64 %v42, ptr %p0, align 1
+  %v61 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v44, ptr %v61, align 1
+  %v62 = getelementptr i8, ptr %p0, i64 16
+  store i64 %v46, ptr %v62, align 1
+  %v63 = getelementptr i8, ptr %p0, i64 24
+  store i64 %v48, ptr %v63, align 1
+  %v64 = sub i64 %p2, 32
+  %v65 = getelementptr i8, ptr %p0, i64 %v64
+  store i64 %v51, ptr %v65, align 1
+  %v66 = sub i64 %p2, 24
+  %v67 = getelementptr i8, ptr %p0, i64 %v66
+  store i64 %v54, ptr %v67, align 1
+  %v68 = sub i64 %p2, 16
+  %v69 = getelementptr i8, ptr %p0, i64 %v68
+  store i64 %v57, ptr %v69, align 1
+  %v70 = sub i64 %p2, 8
+  %v71 = getelementptr i8, ptr %p0, i64 %v70
+  store i64 %v60, ptr %v71, align 1
+  br label %ret
+
+sgt16:
+  %v1 = icmp ule i64 %p2, 32
+  br i1 %v1, label %sle32, label %sgt32
+
+sgt32:
+  %v2 = icmp ule i64 %p2, 64
+  br i1 %v2, label %sle64, label %big
+
+sw8:
+  %v4 = load i64, ptr %p1, align 1
+  %v5 = sub i64 %p2, 8
+  %v6 = getelementptr i8, ptr %p1, i64 %v5
+  %v7 = load i64, ptr %v6, align 1
+  store i64 %v4, ptr %p0, align 1
+  %v8 = sub i64 %p2, 8
+  %v9 = getelementptr i8, ptr %p0, i64 %v8
+  store i64 %v7, ptr %v9, align 1
+  br label %ret
+
+slt8:
+  %v10 = icmp uge i64 %p2, 4
+  br i1 %v10, label %sw4, label %slt4
+
+sw4:
+  %v11 = load i32, ptr %p1, align 1
+  %v12 = sub i64 %p2, 4
+  %v13 = getelementptr i8, ptr %p1, i64 %v12
+  %v14 = load i32, ptr %v13, align 1
+  store i32 %v11, ptr %p0, align 1
+  %v15 = sub i64 %p2, 4
+  %v16 = getelementptr i8, ptr %p0, i64 %v15
+  store i32 %v14, ptr %v16, align 1
+  br label %ret
+
+slt4:
+  %v17 = icmp eq i64 %p2, 0
+  br i1 %v17, label %ret, label %sw1
+
+sw1:
+  %v18 = lshr i64 %p2, 1
+  %v19 = load i8, ptr %p1, align 1
+  %v20 = getelementptr i8, ptr %p1, i64 %v18
+  %v21 = load i8, ptr %v20, align 1
+  %v22 = sub i64 %p2, 1
+  %v23 = getelementptr i8, ptr %p1, i64 %v22
+  %v24 = load i8, ptr %v23, align 1
+  store i8 %v19, ptr %p0, align 1
+  %v25 = getelementptr i8, ptr %p0, i64 %v18
+  store i8 %v21, ptr %v25, align 1
+  %v26 = sub i64 %p2, 1
+  %v27 = getelementptr i8, ptr %p0, i64 %v26
+  store i8 %v24, ptr %v27, align 1
+  br label %ret
+
+fw:
+  %v91 = load i64, ptr %v90, align 8
+  %v92 = sub i64 %p2, %v91
+  %v93 = icmp ugt i64 %v92, 32
+  br i1 %v93, label %fwb, label %ft
+
+fwb:
+  %v94 = load i64, ptr %v90, align 8
+  %v95 = getelementptr i8, ptr %p1, i64 %v94
+  %v96 = getelementptr i8, ptr %p0, i64 %v94
+  %v97 = load i64, ptr %v95, align 1
+  %v98 = getelementptr i8, ptr %v95, i64 8
+  %v99 = load i64, ptr %v98, align 1
+  %v100 = getelementptr i8, ptr %v95, i64 16
+  %v101 = load i64, ptr %v100, align 1
+  %v102 = getelementptr i8, ptr %v95, i64 24
+  %v103 = load i64, ptr %v102, align 1
+  store i64 %v97, ptr %v96, align 1
+  %v104 = getelementptr i8, ptr %v96, i64 8
+  store i64 %v99, ptr %v104, align 1
+  %v105 = getelementptr i8, ptr %v96, i64 16
+  store i64 %v101, ptr %v105, align 1
+  %v106 = getelementptr i8, ptr %v96, i64 24
+  store i64 %v103, ptr %v106, align 1
+  %v107 = add i64 %v94, 32
+  store i64 %v107, ptr %v90, align 8
+  br label %fw
+
+ft:
+  %v108 = sub i64 %p2, 32
+  %v109 = getelementptr i8, ptr %p0, i64 %v108
+  store i64 %v80, ptr %v109, align 1
+  %v110 = sub i64 %p2, 24
+  %v111 = getelementptr i8, ptr %p0, i64 %v110
+  store i64 %v83, ptr %v111, align 1
+  %v112 = sub i64 %p2, 16
+  %v113 = getelementptr i8, ptr %p0, i64 %v112
+  store i64 %v86, ptr %v113, align 1
+  %v114 = sub i64 %p2, 8
+  %v115 = getelementptr i8, ptr %p0, i64 %v114
+  store i64 %v89, ptr %v115, align 1
+  br label %ret
+
+bw:
+  %v124 = load i64, ptr %v123, align 8
+  %v125 = icmp ugt i64 %v124, 32
+  br i1 %v125, label %bwb, label %bt
+
+bwb:
+  %v126 = load i64, ptr %v123, align 8
+  %v127 = sub i64 %v126, 32
+  %v128 = getelementptr i8, ptr %p1, i64 %v127
+  %v129 = getelementptr i8, ptr %p0, i64 %v127
+  %v130 = load i64, ptr %v128, align 1
+  %v131 = getelementptr i8, ptr %v128, i64 8
+  %v132 = load i64, ptr %v131, align 1
+  %v133 = getelementptr i8, ptr %v128, i64 16
+  %v134 = load i64, ptr %v133, align 1
+  %v135 = getelementptr i8, ptr %v128, i64 24
+  %v136 = load i64, ptr %v135, align 1
+  store i64 %v130, ptr %v129, align 1
+  %v137 = getelementptr i8, ptr %v129, i64 8
+  store i64 %v132, ptr %v137, align 1
+  %v138 = getelementptr i8, ptr %v129, i64 16
+  store i64 %v134, ptr %v138, align 1
+  %v139 = getelementptr i8, ptr %v129, i64 24
+  store i64 %v136, ptr %v139, align 1
+  store i64 %v127, ptr %v123, align 8
+  br label %bw
+
+bt:
+  store i64 %v116, ptr %p0, align 1
+  %v140 = getelementptr i8, ptr %p0, i64 8
+  store i64 %v118, ptr %v140, align 1
+  %v141 = getelementptr i8, ptr %p0, i64 16
+  store i64 %v120, ptr %v141, align 1
+  %v142 = getelementptr i8, ptr %p0, i64 24
+  store i64 %v122, ptr %v142, align 1
+  br label %ret
+}
+
+define dso_local ptr @memset(ptr noundef %p0, i32 noundef %p1, i64 noundef %p2) nounwind uwtable "no-builtins" {
+entry:
+  %v0 = trunc i32 %p1 to i8
+  %v1 = zext i8 %v0 to i64
+  %v2 = mul i64 %v1, 72340172838076673
+  %v3 = alloca i64, align 8
+  store i64 0, ptr %v3, align 8
+  br label %w
+
+ret:
+  ret ptr %p0
+
+w:
+  %v4 = load i64, ptr %v3, align 8
+  %v5 = sub i64 %p2, %v4
+  %v6 = icmp uge i64 %v5, 8
+  br i1 %v6, label %wb, label %t
+
+wb:
+  %v7 = load i64, ptr %v3, align 8
+  %v8 = getelementptr i8, ptr %p0, i64 %v7
+  store i64 %v2, ptr %v8, align 1
+  %v9 = add i64 %v7, 8
+  store i64 %v9, ptr %v3, align 8
+  br label %w
+
+t:
+  %v10 = load i64, ptr %v3, align 8
+  %v11 = icmp ult i64 %v10, %p2
+  br i1 %v11, label %tb, label %ret
+
+tb:
+  %v12 = load i64, ptr %v3, align 8
+  %v13 = getelementptr i8, ptr %p0, i64 %v12
+  store i8 %v0, ptr %v13, align 1
+  %v14 = add i64 %v12, 1
+  store i64 %v14, ptr %v3, align 8
+  br label %t
+}
+
+define dso_local i32 @memcmp(ptr noundef %p0, ptr noundef %p1, i64 noundef %p2) nounwind uwtable "no-builtins" {
+entry:
+  %v0 = alloca i64, align 8
+  store i64 0, ptr %v0, align 8
+  %v1 = icmp eq i64 %p2, 0
+  br i1 %v1, label %same, label %b0
+
+w:
+  %v8 = load i64, ptr %v0, align 8
+  %v9 = sub i64 %p2, %v8
+  %v10 = icmp uge i64 %v9, 8
+  br i1 %v10, label %wb, label %t
+
+wb:
+  %v11 = load i64, ptr %v0, align 8
+  %v12 = getelementptr i8, ptr %p0, i64 %v11
+  %v13 = load i64, ptr %v12, align 1
+  %v14 = getelementptr i8, ptr %p1, i64 %v11
+  %v15 = load i64, ptr %v14, align 1
+  %v16 = icmp ne i64 %v13, %v15
+  br i1 %v16, label %wd, label %wn
+
+wn:
+  %v27 = load i64, ptr %v0, align 8
+  %v28 = add i64 %v27, 8
+  store i64 %v28, ptr %v0, align 8
+  br label %w
+
+wd:
+  %v17 = xor i64 %v13, %v15
+  %v18 = call i64 @llvm.cttz.i64(i64 %v17, i1 true)
+  %v19 = and i64 %v18, -8
+  %v20 = lshr i64 %v13, %v19
+  %v21 = trunc i64 %v20 to i8
+  %v22 = zext i8 %v21 to i32
+  %v23 = lshr i64 %v15, %v19
+  %v24 = trunc i64 %v23 to i8
+  %v25 = zext i8 %v24 to i32
+  %v26 = sub i32 %v22, %v25
+  ret i32 %v26
+
+t:
+  %v29 = load i64, ptr %v0, align 8
+  %v30 = icmp ult i64 %v29, %p2
+  br i1 %v30, label %tb, label %same
+
+tb:
+  %v31 = load i64, ptr %v0, align 8
+  %v32 = getelementptr i8, ptr %p0, i64 %v31
+  %v33 = load i8, ptr %v32, align 1
+  %v34 = zext i8 %v33 to i32
+  %v35 = getelementptr i8, ptr %p1, i64 %v31
+  %v36 = load i8, ptr %v35, align 1
+  %v37 = zext i8 %v36 to i32
+  %v38 = icmp ne i32 %v34, %v37
+  br i1 %v38, label %td, label %tn
+
+tn:
+  %v40 = load i64, ptr %v0, align 8
+  %v41 = add i64 %v40, 1
+  store i64 %v41, ptr %v0, align 8
+  br label %t
+
+td:
+  %v39 = sub i32 %v34, %v37
+  ret i32 %v39
+
+same:
+  ret i32 0
+
+b0:
+  %v2 = load i8, ptr %p0, align 1
+  %v3 = zext i8 %v2 to i32
+  %v4 = load i8, ptr %p1, align 1
+  %v5 = zext i8 %v4 to i32
+  %v6 = icmp ne i32 %v3, %v5
+  br i1 %v6, label %d0, label %w
+
+d0:
+  %v7 = sub i32 %v3, %v5
+  ret i32 %v7
+}
+
+declare i64 @llvm.cttz.i64(i64, i1 immarg)
+
+define dso_local i32 @bcmp(ptr noundef %p0, ptr noundef %p1, i64 noundef %p2) nounwind uwtable "no-builtins" {
+entry:
+  %v0 = alloca i64, align 8
+  store i64 0, ptr %v0, align 8
+  %v1 = icmp eq i64 %p2, 0
+  br i1 %v1, label %same, label %b0
+
+w:
+  %v7 = load i64, ptr %v0, align 8
+  %v8 = sub i64 %p2, %v7
+  %v9 = icmp uge i64 %v8, 8
+  br i1 %v9, label %wb, label %t
+
+wb:
+  %v10 = load i64, ptr %v0, align 8
+  %v11 = getelementptr i8, ptr %p0, i64 %v10
+  %v12 = load i64, ptr %v11, align 1
+  %v13 = getelementptr i8, ptr %p1, i64 %v10
+  %v14 = load i64, ptr %v13, align 1
+  %v15 = icmp ne i64 %v12, %v14
+  br i1 %v15, label %wd, label %wn
+
+wn:
+  %v16 = load i64, ptr %v0, align 8
+  %v17 = add i64 %v16, 8
+  store i64 %v17, ptr %v0, align 8
+  br label %w
+
+wd:
+  ret i32 1
+
+t:
+  %v18 = load i64, ptr %v0, align 8
+  %v19 = icmp ult i64 %v18, %p2
+  br i1 %v19, label %tb, label %same
+
+tb:
+  %v20 = load i64, ptr %v0, align 8
+  %v21 = getelementptr i8, ptr %p0, i64 %v20
+  %v22 = load i8, ptr %v21, align 1
+  %v23 = zext i8 %v22 to i32
+  %v24 = getelementptr i8, ptr %p1, i64 %v20
+  %v25 = load i8, ptr %v24, align 1
+  %v26 = zext i8 %v25 to i32
+  %v27 = icmp ne i32 %v23, %v26
+  br i1 %v27, label %td, label %tn
+
+tn:
+  %v28 = load i64, ptr %v0, align 8
+  %v29 = add i64 %v28, 1
+  store i64 %v29, ptr %v0, align 8
+  br label %t
+
+td:
+  ret i32 1
+
+same:
+  ret i32 0
+
+b0:
+  %v2 = load i8, ptr %p0, align 1
+  %v3 = zext i8 %v2 to i32
+  %v4 = load i8, ptr %p1, align 1
+  %v5 = zext i8 %v4 to i32
+  %v6 = icmp ne i32 %v3, %v5
+  br i1 %v6, label %d0, label %w
+
+d0:
+  ret i32 1
+}
+
+define weak dso_local i128 @__udivti3(i128 noundef %p0, i128 noundef %p1) nounwind uwtable {
+entry:
+  %v0 = alloca i128, align 16
+  %v1 = alloca i128, align 16
+  %v2 = alloca i128, align 16
+  %v3 = alloca i64, align 8
+  %v4 = icmp eq i128 %p1, 0
+  br i1 %v4, label %zero, label %ok
+
+zero:
+  call void @llvm.trap()
+  unreachable
+
+ok:
+  %v5 = or i128 %p0, %p1
+  %v6 = lshr i128 %v5, 64
+  %v7 = icmp eq i128 %v6, 0
+  br i1 %v7, label %fast, label %slow
+
+fast:
+  %v8 = trunc i128 %p0 to i64
+  %v9 = trunc i128 %p1 to i64
+  %v10 = udiv i64 %v8, %v9
+  %v11 = zext i64 %v10 to i128
+  store i128 %v11, ptr %v0, align 16
+  %v12 = urem i64 %v8, %v9
+  %v13 = zext i64 %v12 to i128
+  store i128 %v13, ptr %v1, align 16
+  br label %done
+
+slow:
+  store i128 0, ptr %v0, align 16
+  store i128 %p0, ptr %v1, align 16
+  %v14 = icmp ugt i128 %p1, %p0
+  br i1 %v14, label %done, label %long
+
+long:
+  %v15 = call i128 @llvm.ctlz.i128(i128 %p1, i1 false)
+  %v16 = call i128 @llvm.ctlz.i128(i128 %p0, i1 false)
+  %v17 = sub i128 %v15, %v16
+  %v18 = shl i128 %p1, %v17
+  store i128 %v18, ptr %v2, align 16
+  %v19 = trunc i128 %v17 to i64
+  store i64 %v19, ptr %v3, align 8
+  br label %loop
+
+loop:
+  %v20 = load i128, ptr %v1, align 16
+  %v21 = load i128, ptr %v2, align 16
+  %v22 = load i128, ptr %v0, align 16
+  %v23 = icmp uge i128 %v20, %v21
+  %v24 = sub i128 %v20, %v21
+  %v25 = select i1 %v23, i128 %v24, i128 %v20
+  store i128 %v25, ptr %v1, align 16
+  %v26 = shl i128 %v22, 1
+  %v27 = zext i1 %v23 to i128
+  %v28 = or i128 %v26, %v27
+  store i128 %v28, ptr %v0, align 16
+  %v29 = lshr i128 %v21, 1
+  store i128 %v29, ptr %v2, align 16
+  %v30 = load i64, ptr %v3, align 8
+  %v31 = sub i64 %v30, 1
+  store i64 %v31, ptr %v3, align 8
+  %v32 = icmp eq i64 %v30, 0
+  br i1 %v32, label %done, label %loop
+
+done:
+  %v33 = load i128, ptr %v0, align 16
+  ret i128 %v33
+}
+
+declare void @llvm.trap()
+
+declare i128 @llvm.ctlz.i128(i128, i1 immarg)
+
+define weak dso_local i128 @__umodti3(i128 noundef %p0, i128 noundef %p1) nounwind uwtable {
+entry:
+  %v0 = alloca i128, align 16
+  %v1 = alloca i128, align 16
+  %v2 = alloca i128, align 16
+  %v3 = alloca i64, align 8
+  %v4 = icmp eq i128 %p1, 0
+  br i1 %v4, label %zero, label %ok
+
+zero:
+  call void @llvm.trap()
+  unreachable
+
+ok:
+  %v5 = or i128 %p0, %p1
+  %v6 = lshr i128 %v5, 64
+  %v7 = icmp eq i128 %v6, 0
+  br i1 %v7, label %fast, label %slow
+
+fast:
+  %v8 = trunc i128 %p0 to i64
+  %v9 = trunc i128 %p1 to i64
+  %v10 = udiv i64 %v8, %v9
+  %v11 = zext i64 %v10 to i128
+  store i128 %v11, ptr %v0, align 16
+  %v12 = urem i64 %v8, %v9
+  %v13 = zext i64 %v12 to i128
+  store i128 %v13, ptr %v1, align 16
+  br label %done
+
+slow:
+  store i128 0, ptr %v0, align 16
+  store i128 %p0, ptr %v1, align 16
+  %v14 = icmp ugt i128 %p1, %p0
+  br i1 %v14, label %done, label %long
+
+long:
+  %v15 = call i128 @llvm.ctlz.i128(i128 %p1, i1 false)
+  %v16 = call i128 @llvm.ctlz.i128(i128 %p0, i1 false)
+  %v17 = sub i128 %v15, %v16
+  %v18 = shl i128 %p1, %v17
+  store i128 %v18, ptr %v2, align 16
+  %v19 = trunc i128 %v17 to i64
+  store i64 %v19, ptr %v3, align 8
+  br label %loop
+
+loop:
+  %v20 = load i128, ptr %v1, align 16
+  %v21 = load i128, ptr %v2, align 16
+  %v22 = load i128, ptr %v0, align 16
+  %v23 = icmp uge i128 %v20, %v21
+  %v24 = sub i128 %v20, %v21
+  %v25 = select i1 %v23, i128 %v24, i128 %v20
+  store i128 %v25, ptr %v1, align 16
+  %v26 = shl i128 %v22, 1
+  %v27 = zext i1 %v23 to i128
+  %v28 = or i128 %v26, %v27
+  store i128 %v28, ptr %v0, align 16
+  %v29 = lshr i128 %v21, 1
+  store i128 %v29, ptr %v2, align 16
+  %v30 = load i64, ptr %v3, align 8
+  %v31 = sub i64 %v30, 1
+  store i64 %v31, ptr %v3, align 8
+  %v32 = icmp eq i64 %v30, 0
+  br i1 %v32, label %done, label %loop
+
+done:
+  %v33 = load i128, ptr %v0, align 16
+  %v34 = load i128, ptr %v1, align 16
+  ret i128 %v34
+}
+
+define weak dso_local i128 @__divti3(i128 noundef %p0, i128 noundef %p1) nounwind uwtable {
+entry:
+  %v0 = alloca i128, align 16
+  %v1 = alloca i128, align 16
+  %v2 = alloca i128, align 16
+  %v3 = alloca i64, align 8
+  %v4 = ashr i128 %p0, 127
+  %v5 = ashr i128 %p1, 127
+  %v6 = xor i128 %p0, %v4
+  %v7 = sub i128 %v6, %v4
+  %v8 = xor i128 %p1, %v5
+  %v9 = sub i128 %v8, %v5
+  %v10 = icmp eq i128 %v9, 0
+  br i1 %v10, label %zero, label %ok
+
+zero:
+  call void @llvm.trap()
+  unreachable
+
+ok:
+  %v11 = or i128 %v7, %v9
+  %v12 = lshr i128 %v11, 64
+  %v13 = icmp eq i128 %v12, 0
+  br i1 %v13, label %fast, label %slow
+
+fast:
+  %v14 = trunc i128 %v7 to i64
+  %v15 = trunc i128 %v9 to i64
+  %v16 = udiv i64 %v14, %v15
+  %v17 = zext i64 %v16 to i128
+  store i128 %v17, ptr %v0, align 16
+  %v18 = urem i64 %v14, %v15
+  %v19 = zext i64 %v18 to i128
+  store i128 %v19, ptr %v1, align 16
+  br label %done
+
+slow:
+  store i128 0, ptr %v0, align 16
+  store i128 %v7, ptr %v1, align 16
+  %v20 = icmp ugt i128 %v9, %v7
+  br i1 %v20, label %done, label %long
+
+long:
+  %v21 = call i128 @llvm.ctlz.i128(i128 %v9, i1 false)
+  %v22 = call i128 @llvm.ctlz.i128(i128 %v7, i1 false)
+  %v23 = sub i128 %v21, %v22
+  %v24 = shl i128 %v9, %v23
+  store i128 %v24, ptr %v2, align 16
+  %v25 = trunc i128 %v23 to i64
+  store i64 %v25, ptr %v3, align 8
+  br label %loop
+
+loop:
+  %v26 = load i128, ptr %v1, align 16
+  %v27 = load i128, ptr %v2, align 16
+  %v28 = load i128, ptr %v0, align 16
+  %v29 = icmp uge i128 %v26, %v27
+  %v30 = sub i128 %v26, %v27
+  %v31 = select i1 %v29, i128 %v30, i128 %v26
+  store i128 %v31, ptr %v1, align 16
+  %v32 = shl i128 %v28, 1
+  %v33 = zext i1 %v29 to i128
+  %v34 = or i128 %v32, %v33
+  store i128 %v34, ptr %v0, align 16
+  %v35 = lshr i128 %v27, 1
+  store i128 %v35, ptr %v2, align 16
+  %v36 = load i64, ptr %v3, align 8
+  %v37 = sub i64 %v36, 1
+  store i64 %v37, ptr %v3, align 8
+  %v38 = icmp eq i64 %v36, 0
+  br i1 %v38, label %done, label %loop
+
+done:
+  %v39 = load i128, ptr %v0, align 16
+  %v40 = xor i128 %v4, %v5
+  %v41 = xor i128 %v39, %v40
+  %v42 = sub i128 %v41, %v40
+  ret i128 %v42
+}
+
+define weak dso_local i128 @__modti3(i128 noundef %p0, i128 noundef %p1) nounwind uwtable {
+entry:
+  %v0 = alloca i128, align 16
+  %v1 = alloca i128, align 16
+  %v2 = alloca i128, align 16
+  %v3 = alloca i64, align 8
+  %v4 = ashr i128 %p0, 127
+  %v5 = ashr i128 %p1, 127
+  %v6 = xor i128 %p0, %v4
+  %v7 = sub i128 %v6, %v4
+  %v8 = xor i128 %p1, %v5
+  %v9 = sub i128 %v8, %v5
+  %v10 = icmp eq i128 %v9, 0
+  br i1 %v10, label %zero, label %ok
+
+zero:
+  call void @llvm.trap()
+  unreachable
+
+ok:
+  %v11 = or i128 %v7, %v9
+  %v12 = lshr i128 %v11, 64
+  %v13 = icmp eq i128 %v12, 0
+  br i1 %v13, label %fast, label %slow
+
+fast:
+  %v14 = trunc i128 %v7 to i64
+  %v15 = trunc i128 %v9 to i64
+  %v16 = udiv i64 %v14, %v15
+  %v17 = zext i64 %v16 to i128
+  store i128 %v17, ptr %v0, align 16
+  %v18 = urem i64 %v14, %v15
+  %v19 = zext i64 %v18 to i128
+  store i128 %v19, ptr %v1, align 16
+  br label %done
+
+slow:
+  store i128 0, ptr %v0, align 16
+  store i128 %v7, ptr %v1, align 16
+  %v20 = icmp ugt i128 %v9, %v7
+  br i1 %v20, label %done, label %long
+
+long:
+  %v21 = call i128 @llvm.ctlz.i128(i128 %v9, i1 false)
+  %v22 = call i128 @llvm.ctlz.i128(i128 %v7, i1 false)
+  %v23 = sub i128 %v21, %v22
+  %v24 = shl i128 %v9, %v23
+  store i128 %v24, ptr %v2, align 16
+  %v25 = trunc i128 %v23 to i64
+  store i64 %v25, ptr %v3, align 8
+  br label %loop
+
+loop:
+  %v26 = load i128, ptr %v1, align 16
+  %v27 = load i128, ptr %v2, align 16
+  %v28 = load i128, ptr %v0, align 16
+  %v29 = icmp uge i128 %v26, %v27
+  %v30 = sub i128 %v26, %v27
+  %v31 = select i1 %v29, i128 %v30, i128 %v26
+  store i128 %v31, ptr %v1, align 16
+  %v32 = shl i128 %v28, 1
+  %v33 = zext i1 %v29 to i128
+  %v34 = or i128 %v32, %v33
+  store i128 %v34, ptr %v0, align 16
+  %v35 = lshr i128 %v27, 1
+  store i128 %v35, ptr %v2, align 16
+  %v36 = load i64, ptr %v3, align 8
+  %v37 = sub i64 %v36, 1
+  store i64 %v37, ptr %v3, align 8
+  %v38 = icmp eq i64 %v36, 0
+  br i1 %v38, label %done, label %loop
+
+done:
+  %v39 = load i128, ptr %v0, align 16
+  %v40 = load i128, ptr %v1, align 16
+  %v41 = xor i128 %v40, %v4
+  %v42 = sub i128 %v41, %v4
+  ret i128 %v42
+}
+
+define dso_local void @mk.support.InitContext(ptr noundef %p0, ptr noundef %p1, ptr noundef %p2, ptr noundef %p3) nounwind uwtable {
+entry:
+  %v0 = ptrtoint ptr %p1 to i64
+  %v1 = and i64 %v0, 15
+  %v2 = add i64 %v1, 176
+  %v3 = sub i64 0, %v2
+  %v4 = getelementptr i8, ptr %p1, i64 %v3
+  %v5 = getelementptr inbounds i8, ptr %v4, i64 0
+  store i64 0, ptr %v5, align 8
+  %v6 = getelementptr inbounds i8, ptr %v4, i64 8
+  store i64 0, ptr %v6, align 8
+  %v7 = getelementptr inbounds i8, ptr %v4, i64 16
+  store i64 0, ptr %v7, align 8
+  %v8 = getelementptr inbounds i8, ptr %v4, i64 24
+  store i64 0, ptr %v8, align 8
+  %v9 = getelementptr inbounds i8, ptr %v4, i64 32
+  store i64 0, ptr %v9, align 8
+  %v10 = getelementptr inbounds i8, ptr %v4, i64 40
+  store i64 0, ptr %v10, align 8
+  %v11 = getelementptr inbounds i8, ptr %v4, i64 48
+  store i64 0, ptr %v11, align 8
+  %v12 = getelementptr inbounds i8, ptr %v4, i64 56
+  store i64 0, ptr %v12, align 8
+  %v13 = getelementptr inbounds i8, ptr %v4, i64 64
+  store i64 0, ptr %v13, align 8
+  %v14 = getelementptr inbounds i8, ptr %v4, i64 72
+  store i64 0, ptr %v14, align 8
+  %v15 = getelementptr inbounds i8, ptr %v4, i64 80
+  store i64 0, ptr %v15, align 8
+  %v16 = getelementptr inbounds i8, ptr %v4, i64 88
+  store i64 0, ptr %v16, align 8
+  %v17 = getelementptr inbounds i8, ptr %v4, i64 96
+  store i64 0, ptr %v17, align 8
+  %v18 = getelementptr inbounds i8, ptr %v4, i64 104
+  store i64 0, ptr %v18, align 8
+  %v19 = getelementptr inbounds i8, ptr %v4, i64 112
+  store i64 0, ptr %v19, align 8
+  %v20 = getelementptr inbounds i8, ptr %v4, i64 120
+  store i64 0, ptr %v20, align 8
+  %v21 = getelementptr inbounds i8, ptr %v4, i64 128
+  store i64 0, ptr %v21, align 8
+  %v22 = getelementptr inbounds i8, ptr %v4, i64 136
+  store i64 0, ptr %v22, align 8
+  %v23 = getelementptr inbounds i8, ptr %v4, i64 144
+  store i64 0, ptr %v23, align 8
+  %v24 = getelementptr inbounds i8, ptr %v4, i64 152
+  store i64 0, ptr %v24, align 8
+  %v25 = getelementptr inbounds i8, ptr %v4, i64 160
+  store i64 0, ptr %v25, align 8
+  %v26 = getelementptr inbounds i8, ptr %v4, i64 168
+  store i64 0, ptr %v26, align 8
+  %v27 = getelementptr inbounds i8, ptr %v4, i64 0
+  store ptr %p2, ptr %v27, align 8
+  %v28 = getelementptr inbounds i8, ptr %v4, i64 8
+  store ptr %p3, ptr %v28, align 8
+  %v29 = getelementptr inbounds i8, ptr %v4, i64 88
+  store ptr @mk_task_start, ptr %v29, align 8
+  store ptr %v4, ptr %p0, align 8
+  ret void
+}
+
+declare void @mk_task_start()
+
+define weak dso_local void @MkThreadYield() nounwind uwtable {
+entry:
+  call void asm sideeffect "yield", "~{memory}"()
+  ret void
+}

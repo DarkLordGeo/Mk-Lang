@@ -1,0 +1,34 @@
+{
+  "name": "listpush",
+  "table": "idiomatic",
+  "std": ["std.core.HeapList.Push", "std.core.HeapList.Extend"],
+  "algorithm": "Per round grow a list of u64 from empty by n single pushes of splitmix64 values and one extend by a slice of n/4, read every element back, free it; the wrapping sum of the elements plus the length (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000000",
+    "20",
+    "1"
+  ],
+  "quick": [
+    "1000000",
+    "2",
+    "1"
+  ],
+  "checksum": "3192282784177372427",
+  "quick_checksum": "16594816629698440029",
+  "sources": {
+    "mk": "mk",
+    "rust": "listpush.rs",
+    "zig": "listpush.zig",
+    "go": "testdata/listpush.go"
+  },
+  "skip": {
+    "c": "no std growable array in C (a realloc loop written by hand would be a stand-in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; growing a list has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own growth policy; the checksum (every element and the final length) checks every result",
+  "notes": [
+    "Allocators named (B20's rule, applied to allocators): mk HeapList over sys.heap.Alloc(), std's general heap; rust Vec over System (HeapAlloc); zig std.ArrayList over std.heap.smp_allocator; go append over the garbage-collected runtime allocator (GOGC=100, labelled).",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

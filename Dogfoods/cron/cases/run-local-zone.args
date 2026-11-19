@@ -1,0 +1,5 @@
+run
+$CASES/data/local.tab
+--stop-after
+2s
+--echo

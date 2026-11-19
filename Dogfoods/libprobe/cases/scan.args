@@ -1,0 +1,4 @@
+scan
+kernel32.dll
+version.dll
+no-such-library.dll

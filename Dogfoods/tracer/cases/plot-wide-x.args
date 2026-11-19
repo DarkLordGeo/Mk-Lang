@@ -1,0 +1,7 @@
+plot
+x
+$WORK/plot.ppm
+--from
+-1e308
+--to
+1e308

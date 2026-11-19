@@ -1,0 +1,8 @@
+echo WORD...           print the words on one line
+exit CODE [MESSAGE]    print MESSAGE to stderr and exit with CODE
+flood BYTES            write BYTES bytes of text to stdout, or forever when 0
+sleep MS               wait MS milliseconds, then exit 0
+ignore-signals MS      ignore Ctrl-C and termination for MS milliseconds
+count FILE GOAL        add one to the count in FILE; exit 1 until it reaches GOAL
+binary                 write bytes that are not UTF-8
+panic                  panic

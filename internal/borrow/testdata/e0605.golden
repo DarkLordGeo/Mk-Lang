@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0605","name":"loan-into-global","phase":"flow","root":1,"at":{"file":"t/borrow.mk","line":9,"col":1,"end_line":9,"end_col":6},"message":"a value stored into global memory may hold only static loans","facts":{"loan":{"place":"n","kind":"shared","at":"t/borrow.mk:7:1"}},"fixes":[],"alternatives":[],"explain":"mk explain E0605"}],"omitted":0}

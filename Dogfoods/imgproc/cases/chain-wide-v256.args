@@ -1,0 +1,11 @@
+--ascii
+--path
+v256
+--tile-rows
+1
+run
+$CASES/data/wide.pgm
+-
+box=15
+equalize
+invert

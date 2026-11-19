@@ -1,0 +1,18 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> heap 0
+heap: 0 values, sum 0, 0 pages at the peak
+> heap 1000
+heap: 1000 values, sum 499500, 2 pages at the peak
+> heap 10000000
+error: heap: OutOfMemory after 4194304 values
+> pages
+pages: 28640 managed, 0 in use, 28640 free
+heap hooks: 30 runs taken, 30 given back
+> exit
+bye: 1 commands failed, status 17

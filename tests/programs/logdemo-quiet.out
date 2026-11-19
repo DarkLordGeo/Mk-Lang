@@ -1,0 +1,3 @@
+WARN event 1 is odd
+WARN event 3 is odd
+ERROR 4 events, {done}

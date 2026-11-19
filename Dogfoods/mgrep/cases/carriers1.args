@@ -1,0 +1,11 @@
+-j
+16
+--max-open
+3
+-C
+1
+needle
+$CASES/data/many
+$CASES/data/tree
+--path-separator
+/

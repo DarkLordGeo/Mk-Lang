@@ -1,0 +1,2 @@
+INFO GET /health 200 15
+WARN - - 400 38

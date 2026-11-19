@@ -1,0 +1,30 @@
+# TestEchoServer drives the real runs. These cases need no client.
+# With a count of 0 the server binds, prints the line and exits at once. The port is
+# fixed, not 0, because the line names the bound port and stdout is compared
+# byte for byte; both ports are below the Windows and Linux ephemeral ranges and the
+# ports std's TestStdIo_EchoServer picks under WSL (20000 to 49999). The cases of one
+# program run one after the other, so the dev and release runs of one target do not
+# share the port at once.
+#
+# Each target has its own port, and no Linux run may ever bind the Windows port. With
+# .wslconfig networkingMode=mirrored, a port a Linux process bound stays unbindable on
+# the Windows host after the process exits cleanly, so one port for
+# both targets fails the Windows runs with
+# std.net.AddrInUse after any Linux run. The Windows case uses 18220, which no Linux
+# case binds.
+# The Linux case uses 18218: a port held on the host still binds inside WSL.
+case no-connections-windows
+target x86_64-windows
+args 18220 0
+stdout echo0-windows.out
+
+case no-connections-linux
+target x86_64-linux
+args 18218 0
+stdout echo0-linux.out
+
+case bad-port
+profile release
+args x 1
+stderr parse.err
+exit 1

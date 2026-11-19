@@ -1,0 +1,4 @@
+INFO trap: started
+INFO trap| trap: waiting for an interrupt
+WARN trap: cannot interrupt: Unsupported; killing it
+INFO trap: interrupted at shutdown

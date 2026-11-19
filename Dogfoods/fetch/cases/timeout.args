@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--max-time
+1
+http://{origin}/stall

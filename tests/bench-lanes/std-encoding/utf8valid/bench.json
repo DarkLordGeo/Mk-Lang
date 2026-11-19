@@ -1,0 +1,33 @@
+{
+  "name": "encoding-utf8valid",
+  "table": "idiomatic",
+  "algorithm": "UTF-8 decode of valid text to an owned copy: a mixed-script line (ASCII, Latin-1, Cyrillic, CJK, one astral scalar) repeated n times, rounds times, each language's standard decoder; the checksum adds per round the output length and one output byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "1140028911",
+  "quick_checksum": "584216",
+  "sources": {
+    "mk": "mk",
+    "rust": "utf8valid.rs",
+    "zig": "utf8valid.zig",
+    "go": "testdata/utf8valid.go"
+  },
+  "skip": {
+    "c": "no UTF-8 decoder or validator in C's standard library",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the decoder is tested by the lane's Go tests (TestStdEncoding_WptCases, TestStdEncoding_DecodeAdversarial, TestStdEncoding_LongInputs)",
+  "notes": [
+    "Every column allocates its output afresh each round and frees it (std-encoding fix round, 2026-11-12: before it Mk reset one arena and Zig reused one buffer, so their output landed on warm pages while Rust and Go allocated). Mk: encoding.Utf8.Decode into a new Arena each round, freed at its end (one simd.ValidUtf8 pass, then a copy into an exact allocation). Rust: String::from_utf8_lossy(..).into_owned(), an owned String each round. Zig: std.unicode.utf8ValidateSlice and a copy into a buffer allocated and freed each round, fmtUtf8 only on a failed check. Go: bytes.ToValidUTF8, a new slice each round.",
+    "Every column returns an owned copy of the text, as Mk's Decode does; Rust's from_utf8_lossy alone and Go's strings.ToValidUTF8 return their valid input without copying, so the row asks each for the copy.",
+    "Checksums: Go's at both sizes on the owner's machine (std-encoding session 3, 2026-11-12); tools/bench verify checks the other columns.",
+    "Not published: no number here is a measurement."
+  ]
+}

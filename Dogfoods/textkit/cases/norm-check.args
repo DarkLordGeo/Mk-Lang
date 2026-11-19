@@ -1,0 +1,4 @@
+norm
+--check
+$CASES/data/forms.txt
+$CASES/data/mixed.txt

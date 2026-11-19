@@ -1,0 +1,22 @@
+{
+  "name": "xoshiro",
+  "table": "same",
+  "algorithm": "xoshiro256** seeded with four SplitMix64 outputs of the seed in the arguments, then n rounds of total +%= one draw and total +%= one Lemire bounded draw below 1000 (README.md). The Mk column is std.math.Rng, which is this algorithm (D-280).",
+  "overflow": "wraps",
+  "args": ["200000000", "1"],
+  "quick": ["1000000", "1"],
+  "checksum": "16518143616209512756",
+  "quick_checksum": "7029848329744152922",
+  "sources": {
+    "mk": "mk",
+    "c": "xoshiro.c",
+    "rust": "xoshiro.rs",
+    "zig": "xoshiro.zig",
+    "go": "testdata/xoshiro.go"
+  },
+  "skip": {
+    "mk-wrap": "the algorithm wraps by definition and every column uses wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24: the checksum folds every draw of both kinds, so a skipped or repeated draw changes it",
+  "notes": ["G-MISS-R5: the same-algorithm row for Rng.U64 and Rng.Below that the idiomatic rng row cannot have (no other std has xoshiro256**). Checksums as the rng row's (the Go model of std/std-missing_rng_test.go); written by std-missing, M6 fix round, 2026-11-07."]
+}

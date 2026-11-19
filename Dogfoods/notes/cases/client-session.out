@@ -1,0 +1,28 @@
+up
+sqlite 3.54.1, normalizer normtext
+created #1 Shopping list [errands home] (rev 1)
+  milk, eggs and  BREAD
+created #2 Reading [books] (rev 1)
+  The Mk reference, sections 1 to 18
+#1 Shopping list [errands home] (rev 1)
+  milk, eggs and  BREAD
+#1 Shopping list [errands home] (rev 1)
+#2 Reading [books] (rev 1)
+2 of 2 notes
+#1 Shopping list [errands home] (rev 1)
+1 of 1 notes
+#2 Reading [books] (rev 1)
+1 of 1 notes
+updated #2 Reading [books reference] (rev 2)
+  Sections 17 and 18
+deleted #1
+1 notes, 2 tags, 4 words, 4.0 words a note
+405 
+400 {"message":"the body is not JSON","offset":15}
+422 {"message":"a note needs a string title and body, and tags as strings","offset":null}
+422 {"message":"a patch member is not title, body or tags","offset":0}
+400 {"message":"limit is 1 to 100 and offset at least 0","offset":null}
+400 
+0 of 1 notes
+200 {"notes":[{"id":2,"title":"Reading","body":"Sections 17 and 18","tags":["books","reference"],"rev":2}],"total":1}
+200 {"notes":[],"total":0}

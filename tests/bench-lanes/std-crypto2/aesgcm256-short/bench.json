@@ -1,0 +1,32 @@
+{
+  "name": "crypto-aesgcm256-short",
+  "table": "idiomatic",
+  "algorithm": "std AES-256-GCM (NIST SP 800-38D, 96-bit nonce) seal then open of every 64-byte record of splitmix64 bytes, one key object for the run, a fresh nonce per record, a 13-byte aad, reps passes (mk/crypto-aesgcm256-short.mk): the cost per call.",
+  "overflow": "wraps",
+  "args": [
+    "4",
+    "8",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "1",
+    "1"
+  ],
+  "checksum": "3312428877226427067",
+  "quick_checksum": "13740109124472129618",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-aesgcm256-short.zig",
+    "go": "testdata/crypto-aesgcm256-short.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard AEAD",
+    "rust": "no std crypto: Rust std has no AEAD; the aes-gcm crate is third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Work per step: one seal and one open of one 64-byte record with a 13-byte aad (four blocks of text, one of aad, the length block and the tag's block per call), so the row measures what a call costs beside its blocks: the counter setup, the GHASH key's use and the tag. Mk AesGcm.New once; Go cipher.NewGCM once; Zig aead.aes_gcm.Aes256Gcm.encrypt and decrypt, which expand the key on every call (Zig's std has no key object), a cost that dominates at this size and is labelled here. Records per second = mib * 16384 * reps / median.",
+    "Instruction paths as in crypto-aesgcm128's notes.",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27, owner's machine, 2026-11-12); the Mk column (mk build --release, mk from the tree) printed the same at both arg sets. Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

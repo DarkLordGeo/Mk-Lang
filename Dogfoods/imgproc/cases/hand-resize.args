@@ -1,0 +1,5 @@
+--ascii
+run
+$CASES/data/two.pgm
+-
+resize=4x1

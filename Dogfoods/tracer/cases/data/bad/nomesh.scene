@@ -1,0 +1,3 @@
+size 8 8
+material red diffuse 0.8 0.2 0.2
+mesh missing.obj red 1 0 0 0 3

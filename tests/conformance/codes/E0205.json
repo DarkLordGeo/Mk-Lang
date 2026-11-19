@@ -1,0 +1,1 @@
+{"phase":"imports","diagnostics":[{"code":"E0205","name":"import-cycle","phase":"imports","root":1,"at":{"file":"a/a.mk","line":1,"col":1,"end_line":1,"end_col":9},"message":"import cycle: a -> b -> a","facts":{"cycle":["a","b","a"]},"fixes":[],"alternatives":[],"explain":"mk explain E0205"}],"omitted":0}

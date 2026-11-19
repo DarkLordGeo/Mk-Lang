@@ -1,0 +1,2 @@
+raft: --clients times --ops must be at most 64, the checker's limit per register
+run raft --help for usage

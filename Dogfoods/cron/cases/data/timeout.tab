@@ -1,0 +1,5 @@
+# A job that hangs, leaving a child that would write a marker after 2.5 s;
+# its timeout kills the whole group, so the check at 4 s finds no marker
+CRON_TZ=UTC
+@reboot      hang    timeout=1s   --  $CRON_DIR/jobkit hang marker.txt 2500
+@every 4s    check                --  $CRON_DIR/jobkit exists marker.txt

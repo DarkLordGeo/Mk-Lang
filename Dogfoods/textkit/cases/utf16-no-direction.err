@@ -1,0 +1,8 @@
+textkit utf16: say encode or decode
+Options:
+  --big          Write or read big-endian code units (default little-endian)
+  --bom          Begin the encoded output with a byte order mark
+  --hex          Write or read code units as hex numbers, one line of text per line
+  --limit <int>  The most bytes to read, all inputs together (default 8388608)
+Arguments:
+  <args>...      encode or decode, then the files to read; none, or -, is standard input

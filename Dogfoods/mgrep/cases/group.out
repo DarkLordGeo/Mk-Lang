@@ -1,0 +1,3 @@
+$CASES/data/tree/a.txt:5:42
+$CASES/data/tree/a.txt:5:7
+$CASES/data/tree/sub/deep/d.txt:1:100

@@ -1,0 +1,4 @@
+untar
+--dest
+$WORK/out
+$CASES/data/tar/escape.tar

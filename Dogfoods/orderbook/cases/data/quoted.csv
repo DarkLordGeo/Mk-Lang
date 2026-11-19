@@ -1,0 +1,6 @@
+# A feed with quoted fields: the comment below spans two lines.
+"# a quoted comment, with a comma
+and a line break"
+"N",1000,"1/1",S,100,101.00
+N,1001,2/1,B,50,"101.00"
+N,1002,3/1,B,20,100.50

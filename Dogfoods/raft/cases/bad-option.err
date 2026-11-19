@@ -1,0 +1,2 @@
+raft: unknown option --bogus
+run raft --help for usage

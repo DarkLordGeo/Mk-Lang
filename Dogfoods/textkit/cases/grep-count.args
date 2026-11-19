@@ -1,0 +1,6 @@
+grep
+--count
+--invert
+ERROR
+$CASES/data/log.txt
+$CASES/data/runs.txt

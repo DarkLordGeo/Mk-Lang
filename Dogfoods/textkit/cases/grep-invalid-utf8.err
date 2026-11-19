@@ -1,0 +1,1 @@
+textkit: $CASES/data/invalid.txt: Unreadable(line: 3, limit: 16384)

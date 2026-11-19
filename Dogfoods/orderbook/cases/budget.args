@@ -1,0 +1,7 @@
+replay
+--synth
+200000
+--seed
+9
+--memory-limit
+65536

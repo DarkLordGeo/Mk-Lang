@@ -1,0 +1,29 @@
+{
+  "name": "intsum",
+  "table": "same",
+  "algorithm": "Sum of n int64 values in 0..1023, repeated rounds times with a write-back between passes (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000",
+    "12000",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "50",
+    "1"
+  ],
+  "checksum": "6136887200936",
+  "quick_checksum": "2562590043",
+  "sources": {
+    "mk": "mk",
+    "mk-wrap": "mkwrap",
+    "c": "intsum.c",
+    "rust": "intsum.rs",
+    "zig": "intsum.zig",
+    "go": "testdata/intsum.go"
+  },
+  "skip": {},
+  "no_counts": "B24: no data-dependent control flow; every trip count is fixed by n and rounds, and the checksum is exact integer arithmetic over that fixed loop nest",
+  "notes": []
+}

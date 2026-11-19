@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("import std.simd\nconst A00000=simd.Vec[i8,10].WidenLo[0,0]")

@@ -1,0 +1,6 @@
+create
+--cipher
+aes-256-gcm
+--out
+$WORK/a.pk
+$CASES/data/tree

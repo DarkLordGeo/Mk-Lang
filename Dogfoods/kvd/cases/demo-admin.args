@@ -1,0 +1,10 @@
+demo
+--clients
+2
+--data
+{tmp}/d
+--admin
+{tmp}/a
+--contend
+--sync
+3

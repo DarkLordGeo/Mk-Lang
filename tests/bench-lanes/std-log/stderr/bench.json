@@ -1,0 +1,31 @@
+{
+  "name": "log-stderr",
+  "table": "idiomatic",
+  "algorithm": "Write R access-log records of about 80 bytes (five integer fields) through each standard library's task-safe standard-error logger, one task, one write per record under the logger's or the stream's lock (Mk log.Stderr's Sink.Info; Go's standard logger, log.Printf, with flags 0 and the prefix \"INFO \", so both write the same bytes), then print the records and the sum of the bytes fields.",
+  "overflow": "never",
+  "args": [
+    "200000"
+  ],
+  "quick": [
+    "20000"
+  ],
+  "checksum": "200000 9999900000",
+  "quick_checksum": "20000 828530000",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/log-stderr.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is i * 7 below 2^21 and the counts",
+    "c": "C's std has no logger, and no hand-written logger stands in (tests/bench/README.md 'No stand-ins')",
+    "rust": "Rust std has no logger (the log crate is a facade with no sink); eprintln! on the unbuffered Stderr makes one write per formatted piece, not per record",
+    "zig": "Zig 0.17's std.log.defaultLog formats through a 64-byte buffer under std.debug's stderr lock, so an 80-byte record takes two or more writes: not one write per record"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the sum checks that both loops formatted the same records",
+  "notes": [
+    "The cost is one write system call per record on both sides, by design: a record is out of the process when the call returns, and records of different tasks never interleave (D8-22). Mk formats on a 4 KiB stack buffer through core.Capped and writes through rt8's stdio IoTable entry (StreamPut: the stream's lock, a copy into its 8 KiB buffer, the drain); Go's log.Logger formats into a pooled buffer and calls os.Stderr.Write.",
+    "Where standard error goes is the runner's choice (hyperfine's default sends it to the null device), the same for both columns.",
+    "Written by std-log, M8, 2026-11-13, after review finding std-log-3 (the stream path had no row); the checksums are arithmetic over the loop's fields, the same in both columns.",
+    "Not published: no number here is a measurement."
+  ]
+}

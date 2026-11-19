@@ -1,0 +1,9 @@
+--origin
+$CASES/data/site.origin
+--tls-chain
+$CASES/data/tls/untrusted.pem
+--tls-key
+$CASES/data/tls/untrusted.key
+--cacert
+$CASES/data/tls/root.pem
+https://{tls}/hello

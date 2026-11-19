@@ -1,0 +1,8 @@
+render
+$CASES/data/mesh.scene
+-
+--ascii
+--size
+8x6
+--samples
+1

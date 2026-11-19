@@ -1,0 +1,5 @@
+# Atomic[T].Wait and Wake and runtime.Waker: a ping-pong on one word, Wake(true)
+# releasing 8 waiters, a cancelled Wait, a Wake kept before its Wait, an i32 word. Both profiles,
+# both targets; the output is the same at MK_CARRIERS=1 and 16 (linux.sh runs both on Linux).
+case ok
+stdout wakeword.out

@@ -1,0 +1,4 @@
+GetFileVersionInfoSizeA
+GetFileVersionInfoSizeExA
+GetFileVersionInfoSizeExW
+GetFileVersionInfoSizeW

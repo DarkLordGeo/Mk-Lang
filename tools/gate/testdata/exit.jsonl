@@ -1,0 +1,10 @@
+{"Time":"2026-11-15T00:14:35.1694734+04:00","Action":"start","Package":"mk/exit"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"run","Package":"mk/exit","Test":"TestPar"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"output","Package":"mk/exit","Test":"TestPar","Output":"=== RUN   TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"output","Package":"mk/exit","Test":"TestPar","Output":"=== PAUSE TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"pause","Package":"mk/exit","Test":"TestPar"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"run","Package":"mk/exit","Test":"TestExit"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"output","Package":"mk/exit","Test":"TestExit","Output":"=== RUN   TestExit\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:14:35.1797896+04:00","Action":"output","Package":"mk/exit","Test":"TestExit","Output":"the reason it exits: lost the child\n"}
+{"Time":"2026-11-15T00:14:35.1803115+04:00","Action":"output","Package":"mk/exit","Output":"FAIL\tmk/exit\t0.011s\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:14:35.1803115+04:00","Action":"fail","Package":"mk/exit","Elapsed":0.011}

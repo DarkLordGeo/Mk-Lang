@@ -1,0 +1,8 @@
+mac
+--key
+text:key
+--hash
+sha512
+--expect
+74fe2c50e714e576b510007b3ef3e3d7355d8d5537c5055e6efc56c22e260117a4e97d075426dcc589fa8f6d13301971c0107a16fcbdbda234e716f3a2575925
+$CASES/data/pki/msg.txt

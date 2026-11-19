@@ -1,0 +1,5 @@
+sentences
+--limit
+40
+$CASES/data/story.txt
+$CASES/data/latin1.txt

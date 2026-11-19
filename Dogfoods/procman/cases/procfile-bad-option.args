@@ -1,0 +1,3 @@
+--procfile
+$CASES/data/bad-option.Procfile
+check

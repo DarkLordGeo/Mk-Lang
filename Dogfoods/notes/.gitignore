@@ -1,0 +1,6 @@
+# Built executables and databases a manual run leaves behind.
+*.exe
+/notes
+*.db
+*.db-journal
+!cases/data/sample.db

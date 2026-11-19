@@ -1,0 +1,26 @@
+{
+  "name": "libc-search",
+  "table": "idiomatic",
+  "algorithm": "One C kernel (mk/kernel.c) over n bytes from splitmix64 (seed 1), each 1 to 254; pass r writes a NUL at n - 1 - r % 64 and a 255 at n - 2 - r % 64, adds strlen of the buffer and the offset memchr finds for 255 in n bytes, and restores the two bytes; the checksum is the sum over reps passes (README.md).",
+  "overflow": "never",
+  "args": ["1048576", "10000"],
+  "quick": ["1048576", "200"],
+  "checksum": "20970860768",
+  "quick_checksum": "419417648",
+  "sources": {
+    "mk": "mk",
+    "c": "libc-search.c"
+  },
+  "skip": {
+    "rust": "the row compares C libraries under one C kernel: std.libc against the C runtime; Rust's std has no strlen or memchr of its own a C caller links (memchr is a crate)",
+    "zig": "the row compares C libraries under one C kernel; Zig's std.mem.indexOfScalar is not what a C source links",
+    "go": "the row compares C libraries under one C kernel; Go's bytes.IndexByte is not callable from C without cgo",
+    "mk-wrap": "the kernel is C in both columns; there is no Mk arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: the work per pass is fixed by n, and the checksum is each pass's two offsets, which a function that stops early or late changes",
+  "notes": [
+    "What it measures: std.libc's strlen and memchr (Mk, word at a time, as musl's: SQL-11) against the static C runtime's (MSVC ucrt on Windows), called by the same C kernel. The Mk column compiles the kernel as its CSource (-ffreestanding -fno-builtin from the driver, -O3 at --release, -march=x86-64-v2 from pkg.mk) and links std.libc; the C column includes the same file in libc-search.c at -O3 -march=x86-64-v2 and links the C runtime. The kernel writes the buffer on every pass, so no compiler may hoist a call.",
+    "std.libc's plan past the word loop is std.simd's 16-byte search when that module has one (status/std-sqlite.md).",
+    "Written by the std-sqlite lane (status/std-sqlite.md)."
+  ]
+}

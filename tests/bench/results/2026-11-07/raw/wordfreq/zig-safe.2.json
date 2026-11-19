@@ -1,0 +1,247 @@
+{
+  "schema_version": 2,
+  "metadata": {
+    "hyperfine_version": "2.0.0",
+    "start_time": "2026-11-07T04:14:44Z",
+    "platform": {
+      "os": "Windows_NT",
+      "architecture": "x86_64"
+    }
+  },
+  "primary_metric": "time_wall_clock",
+  "results": [
+    {
+      "command": "\"C:\\\\work\\\\bench\\\\bin\\\\publish\\\\wordfreq\\\\zig-safe.exe\" \"V:\\\\Mk\\\\tests\\\\bench\\\\data\\\\wordfreq-50mb.txt\" 10",
+      "measurements": [
+        {
+          "time_wall_clock": {
+            "value": 2.4777809,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.15625,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.109375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 6.5007637,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.6875000000000004,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.6250000000000004,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 11.9921426,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 4.28125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 4.25,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.03125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 7.9522245,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 4.078125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 4.03125,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.0955237,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.609375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.546875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0625,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 8.4061073,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.8437500000000004,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.7968750000000004,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 12.1006221,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.640625,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.546875,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.09375,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 5.0824766,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 3.15625,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 3.109375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.046875,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.6933316,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.609375,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.609375,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.0,
+            "unit": "second"
+          },
+          "exit_code": 0
+        },
+        {
+          "time_wall_clock": {
+            "value": 3.3177451,
+            "unit": "second"
+          },
+          "time_cpu": {
+            "value": 2.578125,
+            "unit": "second"
+          },
+          "time_user": {
+            "value": 2.5,
+            "unit": "second"
+          },
+          "time_system": {
+            "value": 0.078125,
+            "unit": "second"
+          },
+          "exit_code": 0
+        }
+      ],
+      "summary": {
+        "time_cpu": {
+          "unit": "second",
+          "count": 10,
+          "mean": 3.2640625,
+          "stddev": 0.7394531135359804,
+          "median": 3.3984375,
+          "min": 2.15625,
+          "max": 4.28125
+        },
+        "time_system": {
+          "unit": "second",
+          "count": 10,
+          "mean": 0.0515625,
+          "stddev": 0.025568620226319953,
+          "median": 0.046875,
+          "min": 0.0,
+          "max": 0.09375
+        },
+        "time_user": {
+          "unit": "second",
+          "count": 10,
+          "mean": 3.2125,
+          "stddev": 0.7387833114317081,
+          "median": 3.328125,
+          "min": 2.109375,
+          "max": 4.25
+        },
+        "time_wall_clock": {
+          "unit": "second",
+          "count": 10,
+          "mean": 6.461871810000001,
+          "stddev": 3.5752307460749106,
+          "median": 5.79162015,
+          "min": 2.4777809,
+          "max": 12.1006221
+        }
+      }
+    }
+  ]
+}

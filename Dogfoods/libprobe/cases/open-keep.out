@@ -1,0 +1,3 @@
+kernel32.dll: loaded (system)
+  GetTickCount: found
+kernel32.dll: kept loaded

@@ -1,0 +1,1 @@
+pack: $CASES/data/tar/site.tar.zst: a zstd frame needs a window over 100 bytes; raise --window-limit to read it

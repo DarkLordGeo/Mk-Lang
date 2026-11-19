@@ -1,0 +1,7 @@
+# Two chat clients and the server's waiting accept fill --max-clients 3, so a
+# WebSocket client is let in but waits for a place; the deadline ends the run
+# and the waiting client is turned away.
+tom: NICK tom
+tim: NICK tim
+web: !ws /ws?nick=wendy
+web: WHO

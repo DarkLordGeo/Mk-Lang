@@ -1,0 +1,6 @@
+--procfile
+$CASES/data/tasks.Procfile
+run
+hello
+and
+goodbye

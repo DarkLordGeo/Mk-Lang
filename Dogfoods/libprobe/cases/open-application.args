@@ -1,0 +1,5 @@
+open
+--search
+application
+version.dll
+GetFileVersionInfoSizeW

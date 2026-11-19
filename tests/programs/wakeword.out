@@ -1,0 +1,5 @@
+ping-pong: 2000 turns, word ends at 0
+Wake(true): 8 of 8 waiters released
+cancel: 2 of 2 waits ended with Canceled, word still 0
+Waker: a Wake before the Wait is kept; the Wait returned at once
+i32 word: 2 of 2 waiters on -1 released after a store of 5

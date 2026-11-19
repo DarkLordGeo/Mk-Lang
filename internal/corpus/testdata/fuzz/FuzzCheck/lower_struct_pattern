@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("struct P {\n\tx: int\n}\n\nA(p: P) {\n\tmatch p {\n\t\tP(x) {\n\t\t\t_ = x\n\t\t}\n\t}\n}\n")

@@ -1,0 +1,13 @@
+--ascii
+--path
+w512
+--tile-rows
+3
+run
+$CASES/data/photo.ppm
+-
+mirror
+half
+double
+gain=1.25
+flip

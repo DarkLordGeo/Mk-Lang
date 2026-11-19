@@ -1,0 +1,1 @@
+pack: $CASES/data/unsafe.pk: manifest line 5 names a path outside the destination

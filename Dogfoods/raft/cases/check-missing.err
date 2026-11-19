@@ -1,0 +1,1 @@
+raft: $CASES/data/nothere.txt: NotFound

@@ -1,0 +1,4 @@
+clients joined=1000 failed=0
+messages sent=1000 delivered=39000 refused=0
+shutdown notices=1000 closed=1000
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=1000 broken=0 canceled=0

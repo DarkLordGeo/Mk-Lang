@@ -1,0 +1,5 @@
+needle
+$CASES/data/nope/missing.txt
+$CASES/data/tree/b.md
+--path-separator
+/

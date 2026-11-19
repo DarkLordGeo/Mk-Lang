@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0403","name":"use-before-assign","phase":"flow","root":1,"at":{"file":"t/borrow.mk","line":8,"col":1,"end_line":8,"end_col":6},"message":"x is used before it is assigned on every path","facts":{"place":"x","declared_at":"t/borrow.mk:3:1"},"fixes":[],"alternatives":[],"explain":"mk explain E0403"}],"omitted":0}

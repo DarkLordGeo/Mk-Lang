@@ -1,0 +1,6 @@
+# std.linux's raw system call: write, getpid, a bad close (EBADF), an unknown call
+# (ENOSYS), and a raw call run through runtime.Blocking. x86_64-linux only: std.linux is E0202 on
+# any other target, so the program has no Windows leaf.
+case ok
+target x86_64-linux
+stdout linuxsyscall.out

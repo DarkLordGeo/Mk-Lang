@@ -1,0 +1,1 @@
+pack zlib: --sync-every must be 0 or more

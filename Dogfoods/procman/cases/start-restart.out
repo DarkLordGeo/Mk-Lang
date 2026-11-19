@@ -1,0 +1,5 @@
+worker | attempt 1 of 3
+worker | attempt 2 of 3
+worker | attempt 3 of 3
+NAME         STATE    RUNS RESTARTS  LAST
+worker       ended       3        2  exit 0

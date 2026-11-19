@@ -1,0 +1,39 @@
+{
+  "name": "compress-gzip",
+  "table": "idiomatic",
+  "algorithm": "Gzip a 50 MB log text with the std's compressor at its default level, rounds times; the checksum adds every input byte and the input length per round, so it is the same for every compressor (compressed sizes go to stderr).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "14910045248",
+  "quick_checksum": "3727511312",
+  "sources": {
+    "mk": "mk",
+    "zig": "compress-gzip.zig",
+    "go": "testdata/compress-gzip.go"
+  },
+  "skip": {
+    "c": "no std gzip in C (zlib is not std)",
+    "rust": "no std gzip in Rust (flate2 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the round trip is tested by the lane's Go tests (TestSTDCOMPRESS_GoReadsMkOutput), and the compressed sizes are printed for the ratio column",
+  "notes": [
+    "The input is the regex row's log text (tools/bench gen kind log, seed 5; 50,000,038 bytes). Bytes per second = 50,000,038 * rounds / median.",
+    "Each side runs its std's default level, which is a different algorithm in each: Mk's std.compress.Gzip has one level, the matcher of Go 1.27's level 6 (fastEncL6: a 4-byte and a 7-byte hash table, no chains) with Mk's block writer; Go's compress/gzip at gzip.DefaultCompression runs fastEncL6; Zig's std.compress.flate.Compress at Options.default runs zlib's level 6 (lazy matching over hash chains, chain 128). The compressed sizes on stderr are the ratio column: on the owner's machine (std-compress session 2, not a published number) Mk 11,901,522 bytes, Go 11,914,127, Zig 11,768,138.",
+    "Allocation per round, made alike (SC-2): every column makes its output buffer and compressor state once, before the loop, where its API allows. Go: one bytes.Buffer grown once to the Zig buffer's size and one gzip.Writer, Reset onto it each round. Zig: one output buffer under a fixed std.Io.Writer, a Compress (a stack value) per round over one window buffer. Mk: one arena made before the loop and Reset each round; Gzip takes its output (the stored-form bound, zero filled by Arena.Slice) from it, and Reset returns a chunk of over 512 KiB to the heap, so that output is a fresh heap allocation each round, and its 448 KiB of scratch is a sub-arena it makes and frees: those costs are Mk's API and are counted against Mk.",
+    "Not published: no number here is a measurement."
+  ]
+}

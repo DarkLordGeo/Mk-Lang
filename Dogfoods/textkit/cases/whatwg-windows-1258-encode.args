@@ -1,0 +1,4 @@
+convert
+--to
+windows-1258
+$CASES/data/whatwg/windows-1258.txt

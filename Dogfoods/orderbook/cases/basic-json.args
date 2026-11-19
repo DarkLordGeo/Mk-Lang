@@ -1,0 +1,5 @@
+replay
+$CASES/data/basic.csv
+--quiet
+--json
+-

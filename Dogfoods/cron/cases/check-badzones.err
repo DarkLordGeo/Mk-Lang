@@ -1,0 +1,4 @@
+$CASES/data/badzones.tab:1: CRON_TZFILE=bad.tzif: BadData (not a TZif file)
+$CASES/data/badzones.tab:2: CRON_TZFILE=missing.tzif: NotFound
+$CASES/data/badzones.tab:3: CRON_TZ=Mars/Olympus_Mons: NotFound (in neither the system's zone database nor cron's)
+$CASES/data/badzones.tab:4: CRON_TZ=../../etc/passwd: BadName (not a zone name such as Europe/Berlin)

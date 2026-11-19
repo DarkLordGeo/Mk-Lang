@@ -1,0 +1,32 @@
+{
+  "name": "hash-sha512-stream",
+  "table": "idiomatic",
+  "algorithm": "std SHA-512 through the streaming state, fed 1,500-byte pieces (the last piece is the remainder) of splitmix64 bytes, one fresh state per pass, reps passes with a one-byte write-back (mk/hash-sha512-stream.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "20",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "5377158613969725844",
+  "quick_checksum": "6429066257254225499",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-sha512-stream.zig",
+    "go": "testdata/hash-sha512-stream.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-512",
+    "rust": "no std SHA-512: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in"
+  },
+  "notes": [
+    "Idiomatic standard library, the streaming case (review finding HMR-3): Mk Sha512State.New/Bytes/Sum, Go crypto/sha512.New, Write per piece, Sum, Zig init/update/final. 1,500 is not a multiple of the block, so the partial-block path of Bytes runs on every piece. Bytes per second = mib * 1048576 * reps / median.",
+    "Go: crypto/sha512 uses AVX2 for the message schedule on amd64 when the CPU has it. Mk does too since M9 item 11.24a (D-775): an AVX2 message schedule beside rounds compiled with bmi2 when the CPU has avx2 and bmi2 (run-time dispatch), else the scalar loop. Zig at -mcpu=x86_64_v2 is scalar, so on such a CPU the zig cell compares instruction sets as well as libraries.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2 -pgo=off) printed the same quick values on the owner's machine, 2026-11-07 (std-hashmod session 9, HMR-3); the publish-size checksum was agreed by every column in `go run ./tools/bench verify -publish-size`. Not published: no number here is a measurement."
+  ]
+}

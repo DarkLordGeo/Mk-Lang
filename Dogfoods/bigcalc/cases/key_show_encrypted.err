@@ -1,0 +1,2 @@
+bigcalc: $CASES/data/pki/encrypted.pem: the key is encrypted; decrypt it first, as with openssl pkcs8 -in $CASES/data/pki/encrypted.pem
+bigcalc: $CASES/data/pki/encrypted.pem: Encrypted

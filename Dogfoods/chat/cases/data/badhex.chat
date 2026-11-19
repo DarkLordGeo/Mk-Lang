@@ -1,0 +1,3 @@
+# !hex takes an even run of hex digits
+alice: NICK alice
+alice: !hex 4d5

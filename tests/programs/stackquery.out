@@ -1,0 +1,6 @@
+Main: bounds known true, lo below hi true, room at the start true
+Main: deep recursion ended with its own error StackLow, before the guard page
+Main: room again after it true
+spawned task: bounds known true, lo below hi true, room at the start true
+spawned task: deep recursion ended with its own error StackLow, before the guard page
+spawned task: room again after it true

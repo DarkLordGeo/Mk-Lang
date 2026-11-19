@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E0101","name":"syntax","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":10,"end_line":2,"end_col":13},"message":"number prefixes are lowercase: `0x`","facts":{},"fixes":[],"alternatives":[],"explain":"mk explain E0101"}],"omitted":0}
+

@@ -1,0 +1,55 @@
+# layout.aarch64-macos.golden: expected SizeOf, AlignOf and offsets for tests/conformance/diff/layout.mk (TestDiffLayout).
+# Format: <Name> <size> <align> [<offset>...], one line per Layout<Name> function, in the file's order.
+# Written by hand from Mk's own layout rules (those for slices, str, enums, optionals, results,
+# records, Cell) and, for the C-shaped parts (scalars, struct padding, packed), the Apple arm64 (AAPCS64 with Apple's changes, none of which touch these types; long double, which differs, has no Mk type): every scalar aligned to its size, pointers 8.
+# The four goldens are equal: these types have the same sizes and alignments on all four targets. No clang cross-check was run.
+I8 1 1
+I16 2 2
+I32 4 4
+I64 8 8
+U8 1 1
+U16 2 2
+U32 4 4
+U64 8 8
+Int 8 8
+Uint 8 8
+F32 4 4
+F64 8 8
+Bool 1 1
+Char 4 4
+RefI32 8 8
+SliceU8 16 8 0 8
+SliceI64 16 8 0 8
+Str 16 8 0 8
+ArrayU16 6 2 0 2 4
+ArrayPair 32 8 0 16
+Fn 8 8
+Pair 16 8 0 8
+Mixed 16 4 0 2 4 8 12
+Nested 24 8 0 16
+Tail 8 4 0 4
+PackedMixed 9 1 0 1 3 4 8
+Packed2Mixed 12 2 0 2 4 6 10
+Record 16 8 0 8
+Color 1 1
+Level 2 2
+Code 4 4
+Shape 16 8 0 8
+Tok 4 2 0 2
+OptRef 8 8
+OptI32 8 4 0 4
+OptU8 2 1 0 1
+OptPair 24 8 0 8
+BadI64 16 8 0 8
+BadU8 8 4 0 4
+BigU8 16 8 0 8
+CellI32 4 4
+PageTable 4096 4096
+Align16 16 16
+Align64Pair 64 64 0 8
+Align1 4 4
+HoldsAligned 32 16 0 16
+VecF32x4 16 4
+VecU8x32 32 1
+MaskF64x2 16 8
+HoldsVec 20 4 0 4

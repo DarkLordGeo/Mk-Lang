@@ -1,0 +1,26 @@
+{
+  "name": "spawn",
+  "table": "idiomatic",
+  "algorithm": "n runs of the program itself with the argument child (which exits 0 at once), every stream null, each exit code waited for (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000"
+  ],
+  "quick": [
+    "20"
+  ],
+  "checksum": "1000 0 0",
+  "quick_checksum": "20 0 0",
+  "sources": {
+    "mk": "mk",
+    "c": "spawn.c",
+    "rust": "spawn.rs",
+    "go": "testdata/spawn.go"
+  },
+  "skip": {
+    "zig": "not written yet: std.process.Child is the baseline to add"
+  },
+  "notes": [
+    "Written over the runtime entries core.IoSpawn and core.IoProcWait."
+  ]
+}

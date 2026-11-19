@@ -1,0 +1,27 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+alice> JOIN #a
+alice< ERR 507 client memory budget exhausted
+alice> JOIN #b
+alice< ERR 507 client memory budget exhausted
+alice> JOIN #c
+alice< ERR 507 client memory budget exhausted
+alice> JOIN #d
+alice< ERR 507 client memory budget exhausted
+alice> WHOAMI
+alice< YOU nick=alice op=false rooms=0 memory=0 peak=4
+alice< OK whoami
+alice> PART #a
+alice< ERR 403 no such room
+alice> JOIN #e
+alice< ERR 507 client memory budget exhausted
+alice> WHOAMI
+alice< YOU nick=alice op=false rooms=0 memory=0 peak=4
+alice< OK whoami
+alice> QUIT
+alice< OK bye
+-- server: history=0
+-- endings: quit=1 eof=2 dropped=0 kicked=0 closing=0 broken=0 canceled=0

@@ -1,0 +1,1 @@
+imgproc: $CASES/data/bad-magic.pgm: not a PGM or PPM file

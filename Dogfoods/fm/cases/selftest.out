@@ -1,0 +1,19 @@
+start | *.:docs/#1/3  .:-#0/0
+key j | *.:notes.txt#2/3  .:-#0/0
+key c | confirm copy "notes.txt"
+key y | *.:notes.txt#2/3  .:notes.txt#1/1 -- copy notes.txt: NoSpace
+key c | confirm copy "notes.txt"
+key y | *.:notes.txt#2/3  .:notes.txt#1/1 -- copied notes.txt: 1 files, 73 bytes
+key tab | .:notes.txt#2/3  *.:notes.txt#1/1
+key v | pager "notes.txt" 1-1/1 "Notes kept on a simulated disk, wrapped by the pager at word boundaries."
+key q | .:notes.txt#2/3  *.:notes.txt#1/1
+key d | confirm delete "notes.txt"
+key y | .:notes.txt#2/3  *.:-#0/0 -- deleted notes.txt
+key tab | *.:notes.txt#2/3  .:-#0/0
+key k | *.:docs/#1/3  .:-#0/0
+key d | confirm delete "docs"
+secret: type docs
+key y | *.:notes.txt#1/2  .:-#0/0 -- deleted docs
+paste 8 bytes | *../right:-#0/0  .:-#0/0
+key q | *../right:-#0/0  .:-#0/0
+selftest: exit 0

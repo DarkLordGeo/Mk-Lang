@@ -1,0 +1,30 @@
+{
+  "name": "lox",
+  "table": "app",
+  "algorithm": "Compile and run, on the lox dogfood's bytecode VM with its mark-and-sweep collector, the program of its bench script with larger counts: a recursive Fibonacci, a list of strings pushed and dropped every 100, and an arithmetic loop; print the three results (README.md).",
+  "args": [
+    "--eval",
+    "fun fib(n) { if (n < 2) return n; return fib(n - 2) + fib(n - 1); } print fib(26); var xs = []; for (var i = 0; i < 60000; i = i + 1) { push(xs, str(i)); if (len(xs) > 100) xs = []; } print len(xs); var sum = 0; for (var i = 0; i < 600000; i = i + 1) sum = sum + i % 7; print sum;"
+  ],
+  "quick": [
+    "--eval",
+    "fun fib(n) { if (n < 2) return n; return fib(n - 2) + fib(n - 1); } print fib(24); var xs = []; for (var i = 0; i < 20000; i = i + 1) { push(xs, str(i)); if (len(xs) > 100) xs = []; } print len(xs); var sum = 0; for (var i = 0; i < 200000; i = i + 1) sum = sum + i % 7; print sum;"
+  ],
+  "checksum": "sha256:745c1e726de8411b7d617e35a269889ef6675520b8f8a808744b4bb798172ae7",
+  "quick_checksum": "sha256:230e783588f45987d5f86b6ded72dfa94a6c3d25d19f161d0a588fbac502810a",
+  "package": {
+    "path": "Dogfoods/lox"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the lox dogfood unchanged, compared across mk binaries; no twin (a twin is a whole interpreter), no defect line (README.md).",
+    "The program is Dogfoods/lox/cases/scripts/bench.lox on one line through --eval, the script having no size argument: the quick arguments keep its counts (fib(24), 20,000 pushes, 200,000 sums) and print its bench.out; the publish arguments raise them (fib(26), 60,000 and 600,000).",
+    "The size is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

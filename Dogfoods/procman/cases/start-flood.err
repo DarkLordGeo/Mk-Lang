@@ -1,0 +1,3 @@
+INFO chatty: started (run 1)
+ERROR chatty: run 1 failed: its output passed the limit of 4096 bytes
+INFO every process has ended

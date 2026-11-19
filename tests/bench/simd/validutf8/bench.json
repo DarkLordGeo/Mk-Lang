@@ -1,0 +1,192 @@
+{
+  "name": "validutf8",
+  "table": "simd",
+  "algorithm": "Validate a buffer of mixed 1- to 4-byte UTF-8 (16 encodings drawn by splitmix64, a 64 KiB block repeated), one random byte planted within the last 64 bytes on half the searches; reps validations, the results folded into a checksum (README.md).",
+  "overflow": "wraps",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "validutf8.c",
+    "rust": "validutf8.rs",
+    "zig": "validutf8.zig",
+    "go": "testdata/validutf8.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; validation has no arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "900000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "17847553385475178960",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 14745600000,
+      "dispatching": {
+        "mk": "std's str.From (mk/), whose validator is std.core's ValidUtf8: from D-830 (M9 item 11.24c) it hands a buffer of 256 bytes or more to std.simd.ValidUtf8, which tests Cpu() and runs its 16-, 32- or 64-byte form by the running CPU (avx2, avx512bw), not by this variant's x86-64-v2 target; before D-830 it is scalar (ASCII a word at a time, then table 3-7's per-lead ranges)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "400",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "4126210834813151499",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 13421772800,
+      "sources": {
+        "mk": "mkfixv2"
+      },
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "12",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "26228985616620608",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 12884901888,
+      "sources": {
+        "mk": "mkfixv2"
+      },
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "1750000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "16670461197503712794",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 28672000000,
+      "sources": {
+        "mk": "mkfix"
+      },
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "1000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "1597775540998367779",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 33554432000,
+      "sources": {
+        "mk": "mkfix"
+      },
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "23",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "1619291358942268734",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 24696061952,
+      "sources": {
+        "mk": "mkfix"
+      },
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    }
+  ],
+  "no_counts": "B24 does not apply: a SIMD row compares each language's vector layer, each cell states its algorithm; the checksum folds every validation's result",
+  "notes": [
+    "GB/s counts size * reps bytes; each validation reads the whole buffer. The fill (one 64 KiB block generated, then copied) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is size * reps over the kernel time (BS-3). The buffer starts on a 64-byte boundary in the c, rust, zig and go columns (BS-4); the mk column's cells (std's str.From and the width-fixed vector cells) read an arena slice whose alignment Mk code cannot set without std.raw.",
+    "mk: in validutf8-l1v2 std's validator str.From (mk/) as it ships, beside Go's scalar utf8.Valid, labelled: scalar before D-830, and from D-830 dispatching, since std.core's ValidUtf8 then hands it to std.simd.ValidUtf8's run-time choice (the variant's dispatching label, B16; TestNoRunTimeChoiceInFixedRows). In the other five variants the width-fixed cells (review finding BF-1, B16), std.simd's ValidUtf8N body (Keiser and Lemire's lookup algorithm) without its Cpu() test, L chosen per package as mandelvec does: mkfixv2/ (Vec[u8, 16]) in l3v2 and dramv2, mkfix/ (Vec[u8, 32]) in the v3 variants. Their quick and publish checksums were checked with the row's own mk line, untimed, by M9 item 11.7 (2026-11-15, mk built from ca6060e8; plan/09-deferred.md). mksimd/ is the std-simd lane's program (std.simd.ValidUtf8, which picks its form at run time and in the v3 variants ran a 64-lane AVX-512 form while c, rust and zig are fixed at 32-byte AVX2) and is no cell of this table. c and rust are Keiser-Lemire in intrinsics; zig is Keiser-Lemire in @Vector with compare-and-select lookups.",
+    "The width-fixed Mk cells are labelled alignment exception: the Mk buffer is an arena slice, which Mk code cannot align without std.raw (BS-8) (status/std-simd.md R-5 (a)); but std's heap arenas start a slice of 4 KiB or more on a cache line, and a probe (2026-11-19) finds the slice at 0 mod 64, so at v3 none of their 32-byte loads cross a cache line, as the other columns' loads do not, and at v2 none of their 16-byte loads does.",
+    "std's cells (str.From, utf8.Valid) in validutf8-l1v2 only: as scalar validators elsewhere they would run 10 to 30 times the fastest cell. The 16 KiB buffer repeats, and branch predictors partly learn it: in a size check by bench-std session 2 (2026-11-07, shared machine, single runs, not a published number) Go's utf8.Valid ran about 1.2 GB/s at 16 KiB and about 0.5 GB/s at 32 MiB, so the L1 rate flatters a branchy validator."
+  ]
+}

@@ -1,0 +1,4 @@
+cert
+$CASES/data/tls/server.pem
+--host
+localhost

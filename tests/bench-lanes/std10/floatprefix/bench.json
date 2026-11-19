@@ -1,0 +1,32 @@
+{
+  "name": "floatprefix",
+  "table": "idiomatic",
+  "algorithm": "Parse the longest float prefix of each of 4,096 texts \"<a>.<b>e<e>;\" from splitmix64 words, reps passes; each result folds bits >> 32 of the value and the bytes used (README.md).",
+  "overflow": "wraps",
+  "std": ["std.core.str.ParseFloatPrefix"],
+  "args": ["20000", "1"],
+  "quick": ["100", "1"],
+  "checksum": "89455864750780000",
+  "quick_checksum": "447279323753900",
+  "sources": {
+    "mk": "mk",
+    "c": "floatprefix.c"
+  },
+  "skip": {
+    "rust": "no prefix parse in Rust's std: str::parse::<f64> takes a whole string, so the caller must find the float's end first, which is the task",
+    "zig": "no prefix parse in Zig's std: std.fmt.parseFloat takes a whole slice, so the caller must find the float's end first, which is the task",
+    "go": "no prefix parse in Go's std: strconv.ParseFloat takes a whole string (its prefix form, parseFloatPrefix, is unexported), so the caller must find the float's end first, which is the task",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other integer arithmetic"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the parse's correctness is std/std-text_parseprefix_test.go's (strconv.ParseFloat on the longest grammar prefix of 125,164 inputs)",
+  "variants": [
+    {
+      "name": "prefix",
+      "args": ["20000", "1"],
+      "quick": ["100", "1"],
+      "checksum": "89455864750780000",
+      "quick_checksum": "447279323753900",
+      "baseline": ["0", "1"]
+    }
+  ]
+}

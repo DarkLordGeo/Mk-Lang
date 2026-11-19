@@ -1,0 +1,5 @@
+hash
+--alg
+sha384
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg2.txt

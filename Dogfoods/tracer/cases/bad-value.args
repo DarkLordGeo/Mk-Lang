@@ -1,0 +1,5 @@
+render
+$CASES/data/spheres.scene
+$WORK/out.ppm
+--size
+10by10

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0805","name":"missing-return","phase":"types","root":1,"at":{"file":"E0805.mk","line":7,"col":1,"end_line":7,"end_col":2},"message":"the body can reach its end without returning `int`","facts":{"result":"int"},"fixes":[],"alternatives":[],"explain":"mk explain E0805"}],"omitted":0}

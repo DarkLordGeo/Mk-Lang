@@ -1,0 +1,6 @@
+noisy | a line of error output that does not fit
+noisy | a line of error output that does not fit
+NAME         STATE    RUNS RESTARTS  LAST
+noisy        gave-up     2        1  exit 1
+
+noisy: output not kept (--tail-memory is full)

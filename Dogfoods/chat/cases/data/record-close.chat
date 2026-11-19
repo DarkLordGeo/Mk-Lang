@@ -1,0 +1,6 @@
+# A recorded client sends a long line and closes its side; the server
+# records both and closes too.
+dan: NICK dan
+dan: JOIN #log
+dan: MSG #log this line is long enough that the record shows its first one hundred and twenty bytes and counts the rest, as a log should do
+dan: !shutdown

@@ -1,0 +1,21 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+alice> JOIN #raw
+alice< OK join #raw members=1 topic=
+alice> MSG #raw xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+alice< ERR 414 line too long
+alice> PING still here
+alice< OK pong still here
+alice> !hex 4d534720237261772068e96c6c6f
+alice< ERR 400 not UTF-8
+alice> !hex 50494e470d
+alice< OK pong 
+alice> !hex 4d5347202372617720c3a9
+alice< OK msg 0
+alice> QUIT
+alice< OK bye
+-- server: history=1
+-- endings: quit=1 eof=0 dropped=0 kicked=0 closing=2 broken=0 canceled=0

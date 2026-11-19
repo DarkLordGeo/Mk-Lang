@@ -1,0 +1,3 @@
+case panic
+stderr simd_mulwiden_unjudged.err
+exit 101

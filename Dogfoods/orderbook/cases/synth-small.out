@@ -1,0 +1,81 @@
+commands                  3000
+orders                    2250
+fills                     1126
+cancels                    276
+busts                       28
+live orders                697
+stop queue entries         147
+rejected: account halted          45
+rejected: unknown id              11
+rejected: already done           324
+volume                   79910
+vwap                    100.00
+vwap, buyers            100.02
+vwap, sellers            99.99
+median fill             100.00
+90th percentile         100.05
+99th percentile         100.07
+fills <= vwap              586
+last                     99.94
+traded prices               14
+
+   bid qty orders          bid | ask             ask qty orders
+      1910     15        99.94 | 99.97                40      1
+      7860     31        99.93 | 99.99              2490      4
+      4140     38        99.92 | 100.00              740     10
+      2930     29        99.91 | 100.01              770      7
+
+largest fills
+    34203343  Sell    2220 @      99.99  taker 9/15      maker 46/3
+    34205285  Sell    2090 @      99.95  taker 28/26     maker 1/6
+    34202508  Sell    1500 @     100.03  taker 3/19      maker 28/5
+    34202780  Sell    1190 @     100.02  taker 10/13     maker 53/9
+    34205719  Buy      420 @      99.96  taker 4/27      maker 50/38
+recent fills, newest first
+    34205898  Sell      50 @      99.94  taker 62/33     maker 12/16
+    34205896  Sell      10 @      99.94  taker 9/31      maker 12/16
+    34205896  Sell      90 @      99.94  taker 9/31      maker 16/23
+    34205896  Sell      30 @      99.94  taker 9/31      maker 15/14
+    34205896  Sell      30 @      99.94  taker 9/31      maker 57/18
+    34205896  Sell     100 @      99.94  taker 21/35     maker 57/18
+    34205896  Sell      40 @      99.94  taker 41/35     maker 57/18
+    34205896  Sell     100 @      99.95  taker 41/35     maker 42/41
+most traded prices
+        100.03      10220
+         99.99       8400
+         99.96       8160
+oldest resting orders (697 live)
+  3/1       Buy  Stop          180 @     100.10
+  4/1       Sell Limit          10 @     100.76
+  50/2      Buy  Limit         150 @      99.92
+bars, newest first
+    #       open       high        low      close     volume
+    5      99.96      99.99      99.94      99.94       8270
+    4      99.98      99.99      99.95      99.95      19490
+    3     100.01     100.05      99.98      99.98      18210
+    2     100.04     100.07     100.00     100.00      18030
+    1      99.99     100.07      99.96     100.04      15910
+fill sizes
+  <=10         142
+  <=50         433
+  <=100        333
+  <=500        214
+  <=1000         0
+  <=5000         4
+  >5000          0
+accounts by volume
+rank  account     bought       sold   fills
+   1       28       5240       4180      80
+   2       10        950       5600      71
+   3       53       2770       2880      58
+   4       51       4120        670      64
+   5       46       3460       1050      31
+   6        9        700       3790      37
+   7       41       2790       1180      51
+   8        4       3080        760      47
+   9       19       2190       1560      50
+  10        3        790       2890      42
+checksum 919673a94c62e537
+last snapshot at command 0: 0 live orders, 0 fills
+expired at close: 255 bids (35160), 328 asks (59350)
+engine heap: peak 219272 bytes, 0 bytes in 0 allocations left after release

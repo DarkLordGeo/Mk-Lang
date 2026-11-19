@@ -1,0 +1,611 @@
+# Clang's lowering of the C equivalent of each row of ../suite.txt, for x86_64-linux.
+# clang: clang version 21.1.8
+# command: clang --target=x86_64-unknown-linux-gnu -S -emit-llvm -O0 -ffreestanding -fno-ident -o - suite.c
+# probe: $MK_EVIDENCE/abi-oracle/probe.go generates suite.c from suite.txt in a temporary directory and writes this file;
+# probe-sha256: 44c047dc06e0c891d30ef1158a1dbc2236dec62d123f491a811b33417e0d473c
+# struct and union type names are replaced by their bodies; a row the probe cannot express in C says SKIP.
+=layout 1 1 S1
+=offsets 0 S1
+=layout 2 2 S2
+=offsets 0 S2
+=layout 2 1 S2b
+=offsets 0,1 S2b
+=layout 3 1 S3
+=offsets 0,1,2 S3
+=layout 4 4 S4
+=offsets 0 S4
+=layout 4 4 S4f
+=offsets 0 S4f
+=layout 4 2 S4b
+=offsets 0,1,2 S4b
+=layout 8 4 S5
+=offsets 0,4 S5
+=layout 6 2 S6
+=offsets 0,2,4 S6
+=layout 7 1 [ 7 ] u8
+=layout 7 1 S7
+=offsets 0 S7
+=layout 8 8 S8
+=offsets 0 S8
+=layout 8 8 S8p
+=offsets 0 S8p
+=layout 8 8 S8r
+=offsets 0 S8r
+=layout 8 4 S8ff
+=offsets 0,4 S8ff
+=layout 8 8 S8d
+=offsets 0 S8d
+=layout 8 4 S8if
+=offsets 0,4 S8if
+=layout 8 4 S8fi
+=offsets 0,4 S8fi
+=layout 8 4 S8bf
+=offsets 0,4 S8bf
+=layout 9 1 [ 9 ] u8
+=layout 9 1 S9
+=offsets 0 S9
+=layout 16 8 S10
+=offsets 0,8 S10
+=layout 12 4 S12
+=offsets 0,4,8 S12
+=layout 12 4 S12f
+=offsets 0,4,8 S12f
+=layout 12 4 S12fi
+=offsets 0,4,8 S12fi
+=layout 12 4 S12if
+=offsets 0,4,8 S12if
+=layout 16 8 S16
+=offsets 0,8 S16
+=layout 16 8 S16d
+=offsets 0,8 S16d
+=layout 16 8 S16id
+=offsets 0,8 S16id
+=layout 16 8 S16di
+=offsets 0,8 S16di
+=layout 16 8 S16pp
+=offsets 0,8 S16pp
+=layout 16 8 S16pi
+=offsets 0,8 S16pi
+=layout 16 8 S16ip
+=offsets 0,8 S16ip
+=layout 16 4 S16f4
+=offsets 0,4,8,12 S16f4
+=layout 16 8 S16i8
+=offsets 0,8 S16i8
+=layout 16 8 S16i32
+=offsets 0,8 S16i32
+=layout 16 8 S16i8x
+=offsets 0,8,10 S16i8x
+=layout 16 8 S16mix
+=offsets 0,4,8 S16mix
+=layout 16 8 S16ffd
+=offsets 0,4,8 S16ffd
+=layout 16 8 S16dff
+=offsets 0,8,12 S16dff
+=layout 16 8 S16df
+=offsets 0,8 S16df
+=layout 16 8 S16fd
+=offsets 0,8 S16fd
+=layout 20 4 [ 5 ] i32
+=layout 20 4 S20
+=offsets 0 S20
+=layout 20 4 S20f
+=offsets 0,4,8,12,16 S20f
+=layout 24 8 S24
+=offsets 0,8,16 S24
+=layout 24 8 S24d
+=offsets 0,8,16 S24d
+=layout 32 8 S32d
+=offsets 0,8,16,24 S32d
+=layout 40 8 [ 5 ] i64
+=layout 40 8 S40
+=offsets 0 S40
+=layout 40 8 S40d
+=offsets 0,8,16,24,32 S40d
+=layout 4 4 H1
+=offsets 0 H1
+=layout 8 8 H1d
+=offsets 0 H1d
+=layout 8 4 H2f
+=offsets 0,4 H2f
+=layout 12 4 H3
+=offsets 0,4,8 H3
+=layout 24 8 H3d
+=offsets 0,8,16 H3d
+=layout 16 4 [ 4 ] f32
+=layout 16 4 HArr
+=offsets 0 HArr
+=layout 16 8 [ 2 ] f64
+=layout 16 8 HArr2d
+=offsets 0 HArr2d
+=layout 16 4 HNest
+=offsets 0,8 HNest
+=layout 12 4 HNest3
+=offsets 0,8 HNest3
+=layout 16 8 HMix
+=offsets 0,8 HMix
+=layout 5 1 Pk1
+=offsets 0,1 Pk1
+=layout 9 1 Pk2
+=offsets 0,1 Pk2
+=layout 8 1 Pk3
+=offsets 0,4 Pk3
+=layout 6 2 Pk4
+=offsets 0,2 Pk4
+=layout 10 1 Pk5
+=offsets 0,1,9 Pk5
+=layout 3 1 Pk6
+=offsets 0,2 Pk6
+=layout 8 1 Pk7
+=offsets 0,4 Pk7
+=layout 12 4 Pk8
+=offsets 0,4 Pk8
+=layout 4 1 InP
+=offsets 0 InP
+=layout 5 1 OutP
+=offsets 0,1 OutP
+=layout 4 1 [ 1 ] InP
+=layout 5 1 OutA
+=offsets 0,1 OutA
+=layout 8 4 OutP4
+=offsets 0,4 OutP4
+=layout 5 1 OutPP
+=offsets 0,1 OutPP
+=layout 5 1 ? InP
+=layout 12 4 Nest
+=offsets 0,8 Nest
+=layout 4 1 Nest2
+=offsets 0,3 Nest2
+=layout 24 8 Nest3
+=offsets 0,16 Nest3
+=layout 0 1 Empty
+=layout 8 4 WithEmpty
+=offsets 0,4,4 WithEmpty
+=layout 2 1 Bools
+=offsets 0,1 Bools
+=layout 4 4 Ch
+=offsets 0 Ch
+=layout 12 4 ChCh
+=offsets 0,4,8 ChCh
+=layout 16 8 str
+=layout 16 8 HasStr
+=offsets 0 HasStr
+=layout 16 8 [ ] u8
+=layout 24 8 HasSlice
+=offsets 0,16 HasSlice
+=layout 6 2 [ 3 ] u16
+=layout 6 2 Arr3
+=offsets 0 Arr3
+=layout 8 8 HasOpt
+=offsets 0 HasOpt
+=layout 8 8 HasFn
+=offsets 0 HasFn
+=layout 16 8 IntPair
+=offsets 0,8 IntPair
+=layout 8 4 EP1
+=layout 16 8 EP2
+=layout 4 2 EP3
+=layout 12 4 EP4
+=layout 24 8 EP5
+=layout 2 1 EP6
+=layout 16 8 EP7
+=layout 16 8 EP8
+=layout 16 8 mut [ ] i32
+=layout 8 4 [ 2 ] f32
+=layout 3 1 [ 3 ] u8
+=layout 20 4 [ 5 ] f32
+=layout 24 8 [ 3 ] f64
+=layout 16 1 [ 16 ] u8
+=layout 17 1 [ 17 ] u8
+=layout 8 8 [ 1 ] i64
+=layout 8 4 ( a : i32 , b : f32 )
+=offsets 0,4 ( a : i32 , b : f32 )
+=layout 16 8 ( b : u8 , a : f64 )
+=offsets 0,8 ( b : u8 , a : f64 )
+=layout 12 4 ( x : f32 , y : f32 , z : f32 )
+=offsets 0,4,8 ( x : f32 , y : f32 , z : f32 )
+=layout 2 1 ? u8
+=layout 8 4 ? i32
+=layout 16 8 ? f64
+=layout 8 4 ? f32
+=layout 16 8 ? * u8
+=layout 24 8 ? str
+=layout 24 8 ? [ ] u8
+=layout 16 8 ? S8
+=layout 24 8 ? S16
+=layout 12 4 ? H2f
+=layout 2 1 ? bool
+=layout 4 4 Er1 ! void
+=layout 8 4 Er1 ! i32
+=layout 8 4 Er2 ! i32
+=layout 16 8 Er1 ! f64
+=layout 16 8 Er3 ! i32
+=layout 24 8 Er4 ! i64
+=layout 8 4 Er5 ! u8
+=layout 8 4 Er1 | Er2 ! u8
+=layout 24 8 Er1 ! S16
+=layout 24 8 Er1 ! str
+=layout 4 4 Er1
+=layout 8 4 Er2
+=layout 16 8 Er3
+=layout 16 8 Er1 | Er3
+=layout 24 8 Er4
+=layout 16 8 mut [ ] u8
+p_bool: void @p_bool(i1 noundef zeroext)
+r_bool: zeroext i1 @r_bool()
+p_char: void @p_char(i32 noundef)
+r_char: i32 @r_char()
+p_i8: void @p_i8(i8 noundef signext)
+r_i8: signext i8 @r_i8()
+p_i16: void @p_i16(i16 noundef signext)
+r_i16: signext i16 @r_i16()
+p_i32: void @p_i32(i32 noundef)
+r_i32: i32 @r_i32()
+p_i64: void @p_i64(i64 noundef)
+r_i64: i64 @r_i64()
+p_u8: void @p_u8(i8 noundef zeroext)
+r_u8: zeroext i8 @r_u8()
+p_u16: void @p_u16(i16 noundef zeroext)
+r_u16: zeroext i16 @r_u16()
+p_u32: void @p_u32(i32 noundef)
+r_u32: i32 @r_u32()
+p_u64: void @p_u64(i64 noundef)
+r_u64: i64 @r_u64()
+p_int: void @p_int(i64 noundef)
+r_int: i64 @r_int()
+p_uint: void @p_uint(i64 noundef)
+r_uint: i64 @r_uint()
+p_f32: void @p_f32(float noundef)
+r_f32: float @r_f32()
+p_f64: void @p_f64(double noundef)
+r_f64: double @r_f64()
+p_pu8: void @p_pu8(ptr noundef)
+r_pu8: ptr @r_pu8()
+p_ri32: void @p_ri32(ptr noundef)
+r_ri32: ptr @r_ri32()
+p_mut_i64: void @p_mut_i64(ptr noundef)
+r_mut_i64: ptr @r_mut_i64()
+p_rS24: void @p_rS24(ptr noundef)
+r_rS24: ptr @r_rS24()
+p_fn_i32_c_i32: void @p_fn_i32_c_i32(ptr noundef)
+r_fn_i32_c_i32: ptr @r_fn_i32_c_i32()
+p_qri32: void @p_qri32(ptr noundef)
+r_qri32: ptr @r_qri32()
+p_qmut_u8: void @p_qmut_u8(ptr noundef)
+r_qmut_u8: ptr @r_qmut_u8()
+p_qfn_c_void: void @p_qfn_c_void(ptr noundef)
+r_qfn_c_void: ptr @r_qfn_c_void()
+p_S1: void @p_S1(i8)
+r_S1: i8 @r_S1()
+p_S2: void @p_S2(i16)
+r_S2: i16 @r_S2()
+p_S2b: void @p_S2b(i16)
+r_S2b: i16 @r_S2b()
+p_S3: void @p_S3(i24)
+r_S3: i24 @r_S3()
+p_S4: void @p_S4(i32)
+r_S4: i32 @r_S4()
+p_S4f: void @p_S4f(float)
+r_S4f: float @r_S4f()
+p_S4b: void @p_S4b(i32)
+r_S4b: i32 @r_S4b()
+p_S5: void @p_S5(i64)
+r_S5: i64 @r_S5()
+p_S6: void @p_S6(i48)
+r_S6: i48 @r_S6()
+p_S7: void @p_S7(i56)
+r_S7: i56 @r_S7()
+p_S8: void @p_S8(i64)
+r_S8: i64 @r_S8()
+p_S8p: void @p_S8p(ptr)
+r_S8p: ptr @r_S8p()
+p_S8r: void @p_S8r(ptr)
+r_S8r: ptr @r_S8r()
+p_S8ff: void @p_S8ff(<2 x float>)
+r_S8ff: <2 x float> @r_S8ff()
+p_S8d: void @p_S8d(double)
+r_S8d: double @r_S8d()
+p_S8if: void @p_S8if(i64)
+r_S8if: i64 @r_S8if()
+p_S8fi: void @p_S8fi(i64)
+r_S8fi: i64 @r_S8fi()
+p_S8bf: void @p_S8bf(i64)
+r_S8bf: i64 @r_S8bf()
+p_S9: void @p_S9(i64, i8)
+r_S9: { i64, i8 } @r_S9()
+p_S10: void @p_S10(i64, i16)
+r_S10: { i64, i16 } @r_S10()
+p_S12: void @p_S12(i64, i32)
+r_S12: { i64, i32 } @r_S12()
+p_S12f: void @p_S12f(<2 x float>, float)
+r_S12f: { <2 x float>, float } @r_S12f()
+p_S12fi: void @p_S12fi(<2 x float>, i32)
+r_S12fi: { <2 x float>, i32 } @r_S12fi()
+p_S12if: void @p_S12if(i64, float)
+r_S12if: { i64, float } @r_S12if()
+p_S16: void @p_S16(i64, i64)
+r_S16: { i64, i64 } @r_S16()
+p_S16d: void @p_S16d(double, double)
+r_S16d: { double, double } @r_S16d()
+p_S16id: void @p_S16id(i64, double)
+r_S16id: { i64, double } @r_S16id()
+p_S16di: void @p_S16di(double, i64)
+r_S16di: { double, i64 } @r_S16di()
+p_S16pp: void @p_S16pp(ptr, ptr)
+r_S16pp: { ptr, ptr } @r_S16pp()
+p_S16pi: void @p_S16pi(ptr, i64)
+r_S16pi: { ptr, i64 } @r_S16pi()
+p_S16ip: void @p_S16ip(i64, ptr)
+r_S16ip: { i64, ptr } @r_S16ip()
+p_S16f4: void @p_S16f4(<2 x float>, <2 x float>)
+r_S16f4: { <2 x float>, <2 x float> } @r_S16f4()
+p_S16i8: void @p_S16i8(i64, i8)
+r_S16i8: { i64, i8 } @r_S16i8()
+p_S16i32: void @p_S16i32(i64, i32)
+r_S16i32: { i64, i32 } @r_S16i32()
+p_S16i8x: void @p_S16i8x(i64, i64)
+r_S16i8x: { i64, i64 } @r_S16i8x()
+p_S16mix: void @p_S16mix(i64, double)
+r_S16mix: { i64, double } @r_S16mix()
+p_S16ffd: void @p_S16ffd(<2 x float>, double)
+r_S16ffd: { <2 x float>, double } @r_S16ffd()
+p_S16dff: void @p_S16dff(double, <2 x float>)
+r_S16dff: { double, <2 x float> } @r_S16dff()
+p_S16df: void @p_S16df(double, float)
+r_S16df: { double, float } @r_S16df()
+p_S16fd: void @p_S16fd(float, double)
+r_S16fd: { float, double } @r_S16fd()
+p_S20: void @p_S20(ptr noundef byval({ { [5 x i32] } } ) align 8)
+r_S20: void @r_S20(ptr dead_on_unwind noalias writable sret({ { [5 x i32] } } ) align 4)
+p_S20f: void @p_S20f(ptr noundef byval({ float, float, float, float, float } ) align 8)
+r_S20f: void @r_S20f(ptr dead_on_unwind noalias writable sret({ float, float, float, float, float } ) align 4)
+p_S24: void @p_S24(ptr noundef byval({ i64, i64, i64 } ) align 8)
+r_S24: void @r_S24(ptr dead_on_unwind noalias writable sret({ i64, i64, i64 } ) align 8)
+p_S24d: void @p_S24d(ptr noundef byval({ double, double, double } ) align 8)
+r_S24d: void @r_S24d(ptr dead_on_unwind noalias writable sret({ double, double, double } ) align 8)
+p_S32d: void @p_S32d(ptr noundef byval({ double, double, double, double } ) align 8)
+r_S32d: void @r_S32d(ptr dead_on_unwind noalias writable sret({ double, double, double, double } ) align 8)
+p_S40: void @p_S40(ptr noundef byval({ { [5 x i64] } } ) align 8)
+r_S40: void @r_S40(ptr dead_on_unwind noalias writable sret({ { [5 x i64] } } ) align 8)
+p_S40d: void @p_S40d(ptr noundef byval({ double, double, double, double, double } ) align 8)
+r_S40d: void @r_S40d(ptr dead_on_unwind noalias writable sret({ double, double, double, double, double } ) align 8)
+p_H1: void @p_H1(float)
+r_H1: float @r_H1()
+p_H1d: void @p_H1d(double)
+r_H1d: double @r_H1d()
+p_H2f: void @p_H2f(<2 x float>)
+r_H2f: <2 x float> @r_H2f()
+p_H3: void @p_H3(<2 x float>, float)
+r_H3: { <2 x float>, float } @r_H3()
+p_H3d: void @p_H3d(ptr noundef byval({ double, double, double } ) align 8)
+r_H3d: void @r_H3d(ptr dead_on_unwind noalias writable sret({ double, double, double } ) align 8)
+p_HArr: void @p_HArr(<2 x float>, <2 x float>)
+r_HArr: { <2 x float>, <2 x float> } @r_HArr()
+p_HArr2d: void @p_HArr2d(double, double)
+r_HArr2d: { double, double } @r_HArr2d()
+p_HNest: void @p_HNest(<2 x float>, <2 x float>)
+r_HNest: { <2 x float>, <2 x float> } @r_HNest()
+p_HNest3: void @p_HNest3(<2 x float>, float)
+r_HNest3: { <2 x float>, float } @r_HNest3()
+p_HMix: void @p_HMix(float, double)
+r_HMix: { float, double } @r_HMix()
+p_Pk1: void @p_Pk1(ptr noundef byval(<{ i8, i32 }> ) align 8)
+r_Pk1: void @r_Pk1(ptr dead_on_unwind noalias writable sret(<{ i8, i32 }> ) align 1)
+p_Pk2: void @p_Pk2(ptr noundef byval(<{ i8, i64 }> ) align 8)
+r_Pk2: void @r_Pk2(ptr dead_on_unwind noalias writable sret(<{ i8, i64 }> ) align 1)
+p_Pk3: void @p_Pk3(i64)
+r_Pk3: i64 @r_Pk3()
+p_Pk4: void @p_Pk4(ptr noundef byval(<{ i8, i8, i32 }> ) align 8)
+r_Pk4: void @r_Pk4(ptr dead_on_unwind noalias writable sret(<{ i8, i8, i32 }> ) align 2)
+p_Pk5: void @p_Pk5(ptr noundef byval(<{ i8, double, i8 }> ) align 8)
+r_Pk5: void @r_Pk5(ptr dead_on_unwind noalias writable sret(<{ i8, double, i8 }> ) align 1)
+p_Pk6: void @p_Pk6(i24)
+r_Pk6: i24 @r_Pk6()
+p_Pk7: void @p_Pk7(<2 x float>)
+r_Pk7: <2 x float> @r_Pk7()
+p_Pk8: void @p_Pk8(ptr noundef byval(<{ i32, i64 }> ) align 8)
+r_Pk8: void @r_Pk8(ptr dead_on_unwind noalias writable sret(<{ i32, i64 }> ) align 4)
+p_OutP: void @p_OutP(ptr noundef byval(<{ i8, { i32 } }> ) align 8)
+r_OutP: void @r_OutP(ptr dead_on_unwind noalias writable sret(<{ i8, { i32 } }> ) align 1)
+p_OutA: void @p_OutA(ptr noundef byval(<{ i8, { [1 x { i32 } ] } }> ) align 8)
+r_OutA: void @r_OutA(ptr dead_on_unwind noalias writable sret(<{ i8, { [1 x { i32 } ] } }> ) align 1)
+p_OutP4: void @p_OutP4(i64)
+r_OutP4: i64 @r_OutP4()
+p_OutPP: void @p_OutPP(ptr noundef byval(<{ i8, { i32 } }> ) align 8)
+r_OutPP: void @r_OutPP(ptr dead_on_unwind noalias writable sret(<{ i8, { i32 } }> ) align 1)
+p_OptInP: void @p_OptInP(ptr noundef byval(<{ i8, { i32 } }> ) align 8)
+r_OptInP: void @r_OptInP(ptr dead_on_unwind noalias writable sret(<{ i8, { i32 } }> ) align 1)
+exh_OptInP: void @exh_OptInP(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval(<{ i8, { i32 } }> ) align 8)
+p_Nest: void @p_Nest(i64, float)
+r_Nest: { i64, float } @r_Nest()
+p_Nest2: void @p_Nest2(i32)
+r_Nest2: i32 @r_Nest2()
+p_Nest3: void @p_Nest3(ptr noundef byval({ { i64, i64 } , i8 } ) align 8)
+r_Nest3: void @r_Nest3(ptr dead_on_unwind noalias writable sret({ { i64, i64 } , i8 } ) align 8)
+p_WithEmpty: void @p_WithEmpty(i64)
+r_WithEmpty: i64 @r_WithEmpty()
+p_Bools: void @p_Bools(i16)
+r_Bools: i16 @r_Bools()
+p_Ch: void @p_Ch(i32)
+r_Ch: i32 @r_Ch()
+p_ChCh: void @p_ChCh(i64, i32)
+r_ChCh: { i64, i32 } @r_ChCh()
+p_HasStr: void @p_HasStr(ptr, i64)
+r_HasStr: { ptr, i64 } @r_HasStr()
+p_HasSlice: void @p_HasSlice(ptr noundef byval({ { ptr, i64 } , i32 } ) align 8)
+r_HasSlice: void @r_HasSlice(ptr dead_on_unwind noalias writable sret({ { ptr, i64 } , i32 } ) align 8)
+p_Arr3: void @p_Arr3(i48)
+r_Arr3: i48 @r_Arr3()
+p_HasOpt: void @p_HasOpt(ptr)
+r_HasOpt: ptr @r_HasOpt()
+p_HasFn: void @p_HasFn(ptr)
+r_HasFn: ptr @r_HasFn()
+p_IntPair: void @p_IntPair(i64, i64)
+r_IntPair: { i64, i64 } @r_IntPair()
+p_E1: void @p_E1(i8 noundef zeroext)
+r_E1: zeroext i8 @r_E1()
+p_E2: void @p_E2(i16 noundef zeroext)
+r_E2: zeroext i16 @r_E2()
+p_E4: void @p_E4(i32 noundef)
+r_E4: i32 @r_E4()
+p_E8: void @p_E8(i64 noundef)
+r_E8: i64 @r_E8()
+p_Ei8: void @p_Ei8(i8 noundef signext)
+r_Ei8: signext i8 @r_Ei8()
+p_Ei16: void @p_Ei16(i16 noundef signext)
+r_Ei16: signext i16 @r_Ei16()
+p_Ei32: void @p_Ei32(i32 noundef)
+r_Ei32: i32 @r_Ei32()
+p_E300: void @p_E300(i16 noundef zeroext)
+r_E300: zeroext i16 @r_E300()
+p_E70k: void @p_E70k(i32 noundef)
+r_E70k: i32 @r_E70k()
+p_EP1: void @p_EP1(i64)
+r_EP1: i64 @r_EP1()
+p_EP2: void @p_EP2(i8, double)
+r_EP2: { i8, double } @r_EP2()
+p_EP3: void @p_EP3(i32)
+r_EP3: i32 @r_EP3()
+p_EP4: void @p_EP4(i64, float)
+r_EP4: { i64, float } @r_EP4()
+p_EP5: void @p_EP5(ptr noundef byval({ i8, { { i64, i64 } } } ) align 8)
+r_EP5: void @r_EP5(ptr dead_on_unwind noalias writable sret({ i8, { { i64, i64 } } } ) align 8)
+p_EP6: void @p_EP6(i16)
+r_EP6: i16 @r_EP6()
+p_EP7: void @p_EP7(i8, double)
+r_EP7: { i8, double } @r_EP7()
+p_EP8: void @p_EP8(i8, ptr)
+r_EP8: { i8, ptr } @r_EP8()
+p_str: void @p_str(ptr, i64)
+r_str: { ptr, i64 } @r_str()
+p_a_u8: void @p_a_u8(ptr, i64)
+r_a_u8: { ptr, i64 } @r_a_u8()
+p_mut_a_i32: void @p_mut_a_i32(ptr, i64)
+r_mut_a_i32: { ptr, i64 } @r_mut_a_i32()
+p_a2_f32: void @p_a2_f32(<2 x float>)
+r_a2_f32: <2 x float> @r_a2_f32()
+p_a3_u8: void @p_a3_u8(i24)
+r_a3_u8: i24 @r_a3_u8()
+p_a4_f32: void @p_a4_f32(<2 x float>, <2 x float>)
+r_a4_f32: { <2 x float>, <2 x float> } @r_a4_f32()
+p_a5_f32: void @p_a5_f32(ptr noundef byval({ [5 x float] } ) align 8)
+r_a5_f32: void @r_a5_f32(ptr dead_on_unwind noalias writable sret({ [5 x float] } ) align 4)
+p_a2_f64: void @p_a2_f64(double, double)
+r_a2_f64: { double, double } @r_a2_f64()
+p_a3_f64: void @p_a3_f64(ptr noundef byval({ [3 x double] } ) align 8)
+r_a3_f64: void @r_a3_f64(ptr dead_on_unwind noalias writable sret({ [3 x double] } ) align 8)
+p_a16_u8: void @p_a16_u8(i64, i64)
+r_a16_u8: { i64, i64 } @r_a16_u8()
+p_a17_u8: void @p_a17_u8(ptr noundef byval({ [17 x i8] } ) align 8)
+r_a17_u8: void @r_a17_u8(ptr dead_on_unwind noalias writable sret({ [17 x i8] } ) align 1)
+p_a1_i64: void @p_a1_i64(i64)
+r_a1_i64: i64 @r_a1_i64()
+p_ac_i32_bc_f32: void @p_ac_i32_bc_f32(i64)
+r_ac_i32_bc_f32: i64 @r_ac_i32_bc_f32()
+p_bc_u8_ac_f64: void @p_bc_u8_ac_f64(double, i8)
+r_bc_u8_ac_f64: { double, i8 } @r_bc_u8_ac_f64()
+p_xc_f32_yc_f32_zc_f32: void @p_xc_f32_yc_f32_zc_f32(<2 x float>, float)
+r_xc_f32_yc_f32_zc_f32: { <2 x float>, float } @r_xc_f32_yc_f32_zc_f32()
+p_qu8: void @p_qu8(i16)
+r_qu8: i16 @r_qu8()
+p_qi32: void @p_qi32(i64)
+r_qi32: i64 @r_qi32()
+p_qf64: void @p_qf64(i8, double)
+r_qf64: { i8, double } @r_qf64()
+p_qf32: void @p_qf32(i64)
+r_qf32: i64 @r_qf32()
+p_qpu8: void @p_qpu8(i8, ptr)
+r_qpu8: { i8, ptr } @r_qpu8()
+p_qstr: void @p_qstr(ptr noundef byval({ i8, { ptr, i64 } } ) align 8)
+r_qstr: void @r_qstr(ptr dead_on_unwind noalias writable sret({ i8, { ptr, i64 } } ) align 8)
+p_qa_u8: void @p_qa_u8(ptr noundef byval({ i8, { ptr, i64 } } ) align 8)
+r_qa_u8: void @r_qa_u8(ptr dead_on_unwind noalias writable sret({ i8, { ptr, i64 } } ) align 8)
+p_qS8: void @p_qS8(i8, i64)
+r_qS8: { i8, i64 } @r_qS8()
+p_qS16: void @p_qS16(ptr noundef byval({ i8, { i64, i64 } } ) align 8)
+r_qS16: void @r_qS16(ptr dead_on_unwind noalias writable sret({ i8, { i64, i64 } } ) align 8)
+p_qH2f: void @p_qH2f(i64, float)
+r_qH2f: { i64, float } @r_qH2f()
+p_qbool: void @p_qbool(i16)
+r_qbool: i16 @r_qbool()
+p_Er1xvoid: void @p_Er1xvoid(i32)
+r_Er1xvoid: i32 @r_Er1xvoid()
+p_Er1xi32: void @p_Er1xi32(i64)
+r_Er1xi32: i64 @r_Er1xi32()
+p_Er2xi32: void @p_Er2xi32(i64)
+r_Er2xi32: i64 @r_Er2xi32()
+p_Er1xf64: void @p_Er1xf64(i32, double)
+r_Er1xf64: { i32, double } @r_Er1xf64()
+p_Er3xi32: void @p_Er3xi32(i32, i64)
+r_Er3xi32: { i32, i64 } @r_Er3xi32()
+p_Er4xi64: void @p_Er4xi64(ptr noundef byval({ i32, { { i64, i64 } } } ) align 8)
+r_Er4xi64: void @r_Er4xi64(ptr dead_on_unwind noalias writable sret({ i32, { { i64, i64 } } } ) align 8)
+p_Er5xu8: void @p_Er5xu8(i64)
+r_Er5xu8: i64 @r_Er5xu8()
+p_Er1oEr2xu8: void @p_Er1oEr2xu8(i64)
+r_Er1oEr2xu8: i64 @r_Er1oEr2xu8()
+p_Er1xS16: void @p_Er1xS16(ptr noundef byval({ i32, { { i64, i64 } } } ) align 8)
+r_Er1xS16: void @r_Er1xS16(ptr dead_on_unwind noalias writable sret({ i32, { { i64, i64 } } } ) align 8)
+p_Er1xstr: void @p_Er1xstr(ptr noundef byval({ i32, { { ptr, i64 } } } ) align 8)
+r_Er1xstr: void @r_Er1xstr(ptr dead_on_unwind noalias writable sret({ i32, { { ptr, i64 } } } ) align 8)
+p_Er1: void @p_Er1(i32)
+r_Er1: i32 @r_Er1()
+p_Er2: void @p_Er2(i64)
+r_Er2: i64 @r_Er2()
+p_Er3: void @p_Er3(i32, double)
+r_Er3: { i32, double } @r_Er3()
+p_Er1oEr3: void @p_Er1oEr3(i32, double)
+r_Er1oEr3: { i32, double } @r_Er1oEr3()
+p_Er4: void @p_Er4(ptr noundef byval({ i32, { { i64, i64 } } } ) align 8)
+r_Er4: void @r_Er4(ptr dead_on_unwind noalias writable sret({ i32, { { i64, i64 } } } ) align 8)
+f: void @f(i8 noundef signext, i16 noundef zeroext)
+g: void @g(i1 noundef zeroext)
+h: zeroext i8 @h()
+ext_all: signext i16 @ext_all(i1 noundef zeroext, i8 noundef signext, i8 noundef zeroext, i16 noundef signext, i16 noundef zeroext, i32 noundef, i32 noundef)
+ext_ret_i8: signext i8 @ext_ret_i8()
+ext_ret_bool: zeroext i1 @ext_ret_bool()
+ext_enum: signext i8 @ext_enum(i8 noundef signext, i8 noundef zeroext, i16 noundef signext, i16 noundef zeroext)
+two: float @two(i32 noundef, double noundef)
+mixed: { double, double } @mixed(i64, double, float noundef, i64, i64 noundef)
+ints6: void @ints6(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef)
+ints7: void @ints7(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef)
+exh_s16: void @exh_s16(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i64, i64 } ) align 8)
+exh_s16b: void @exh_s16b(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i64, i64 } ) align 8, i64 noundef)
+exh_s8: void @exh_s8(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64)
+exh_s3: void @exh_s3(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i24)
+exh_s12: void @exh_s12(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i32, i32, i32 } ) align 8)
+exh_str: void @exh_str(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ ptr, i64 } ) align 8, ptr noundef byval({ ptr, i64 } ) align 8)
+exh_mix: void @exh_mix(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64, double, double noundef)
+exh_sse: void @exh_sse(double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, ptr noundef byval({ double, double } ) align 8, double noundef)
+exh_sse2: void @exh_sse2(double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, ptr noundef byval({ double } ) align 8, ptr noundef byval({ float, float } ) align 8, float noundef)
+exh_sse3: void @exh_sse3(double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, i64, double, i64 noundef)
+exh_pk: void @exh_pk(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i40, ptr noundef byval(<{ i8, i64 }> ) align 8)
+exh_big: void @exh_big(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i64, i64, i64 } ) align 8, i64)
+sret_exh: void @sret_exh(ptr dead_on_unwind noalias writable sret({ i64, i64, i64 } ) align 8, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i64, i64 } ) align 8)
+sret_exh2: void @sret_exh2(ptr dead_on_unwind noalias writable sret({ i64, i64, i64 } ) align 8, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef)
+sret_s8: void @sret_s8(ptr dead_on_unwind noalias writable sret({ { [5 x i64] } } ) align 8, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64)
+hfa_many: void @hfa_many(ptr noundef byval({ double, double, double } ) align 8, ptr noundef byval({ double, double, double } ) align 8, ptr noundef byval({ double, double, double, double } ) align 8, float)
+hfa_exh: void @hfa_exh(ptr noundef byval({ double, double, double, double } ) align 8, ptr noundef byval({ double, double, double, double } ) align 8, float, float noundef)
+hfa_exh2: void @hfa_exh2(double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, <2 x float>, ptr noundef byval({ float, float } ) align 8)
+aarch_ints: void @aarch_ints(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ptr noundef byval({ i64, i64 } ) align 8, ptr noundef byval({ i64, i64 } ) align 8)
+aarch_mix: void @aarch_mix(i64, i64, i64, i64, i64, i64, ptr noundef byval({ i64, i64 } ) align 8, i64, i64 noundef)
+many: { <2 x float>, float } @many(i8 noundef signext, i24, float noundef, i64, i64, <2 x float>, float, ptr noundef byval(<{ i8, i32 }> ) align 8, ptr, i64, i1 noundef zeroext)
+receiver: ptr @receiver(ptr noundef, i32 noundef)
+mutrecv: ptr @mutrecv(ptr noundef, ptr, i64)
+fnval: void @fnval(ptr noundef, ptr noundef)
+spawn_thunk: zeroext i1 @spawn_thunk(ptr noundef, ptr noundef, ptr noundef)
+zero: SKIP zero-sized: no C equivalent
+zero2: SKIP zero-sized: no C equivalent
+zero3: SKIP zero-sized: no C equivalent
+r_never: void @r_never()
+v_int: i32 @v_int(ptr noundef, ..., i64 noundef)
+v_mix: i32 @v_mix(ptr noundef, ..., i64 noundef, double noundef, ptr noundef)
+v_none: i32 @v_none(ptr noundef, ...)
+v_i32: void @v_i32(i32 noundef, ..., i32 noundef, i32 noundef)
+v_s16: void @v_s16(ptr noundef, ..., i64, i64, double, double)
+v_big: void @v_big(ptr noundef, ..., ptr noundef byval({ i64, i64, i64 } ) align 8)
+v_hfa: void @v_hfa(ptr noundef, ..., <2 x float>, float, <2 x float>)
+v_str: void @v_str(ptr noundef, ..., ptr, i64)
+v_regs: void @v_regs(i64 noundef, i64 noundef, i64 noundef, i64 noundef, i64 noundef, ..., ptr noundef byval({ i64, i64 } ) align 8, i64 noundef)
+v_f64s: void @v_f64s(double noundef, ..., double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef, double noundef)
+v_sret: void @v_sret(ptr dead_on_unwind writable sret({ i64, i64, i64 } ) align 8, ptr noundef, ..., i64 noundef)

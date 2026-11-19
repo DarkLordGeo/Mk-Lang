@@ -1,0 +1,11 @@
+{
+  "name": "fmtints",
+  "algorithm": "n int64 values in -1e9..1e9 from splitmix64 (Fill, untimed), each written in decimal with a sign and a newline through a 20-byte temporary, then the sum of the bytes written (Run, timed); one round of ../../same/fmtints.",
+  "measures": "Mk's bounds checks on a byte buffer and checked + in a division-bound loop, against C with none",
+  "c": "fmtints.c",
+  "args": ["1000000", "1"],
+  "quick": ["10000", "1"],
+  "checksum": "499688088",
+  "quick_checksum": "4994554",
+  "rounds": 21
+}

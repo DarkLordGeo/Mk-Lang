@@ -1,0 +1,8 @@
+--procfile
+$CASES/data/stop-after.Procfile
+--log-level
+warn
+--stop-after
+300
+start
+--summary

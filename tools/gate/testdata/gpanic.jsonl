@@ -1,0 +1,17 @@
+{"Time":"2026-11-15T00:23:59.2230966+04:00","Action":"start","Package":"mk/gpanic"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"run","Package":"mk/gpanic","Test":"TestPar"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"output","Package":"mk/gpanic","Test":"TestPar","Output":"=== RUN   TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"output","Package":"mk/gpanic","Test":"TestPar","Output":"=== PAUSE TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"pause","Package":"mk/gpanic","Test":"TestPar"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"run","Package":"mk/gpanic","Test":"TestSpawn"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"=== RUN   TestSpawn\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.2343554+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"    g_test.go:4: starting the worker\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"panic: worker lost its carrier\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"goroutine 9 [running]:\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"mk/gpanic.TestSpawn.func1()\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"\tD:/src/mk/fx/gpanic/g_test.go:4 +0x25\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"created by mk/gpanic.TestSpawn in goroutine 8\n"}
+{"Time":"2026-11-15T00:23:59.2368977+04:00","Action":"output","Package":"mk/gpanic","Test":"TestSpawn","Output":"\tD:/src/mk/fx/gpanic/g_test.go:4 +0x45\n"}
+{"Time":"2026-11-15T00:23:59.237836+04:00","Action":"output","Package":"mk/gpanic","Output":"FAIL\tmk/gpanic\t0.014s\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.237836+04:00","Action":"fail","Package":"mk/gpanic","Elapsed":0.015}

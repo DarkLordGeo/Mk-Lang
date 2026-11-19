@@ -1,0 +1,5 @@
+render
+$CASES/data/spheres.scene
+$WORK/no/such/dir/out.ppm
+--samples
+1

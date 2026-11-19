@@ -1,0 +1,167 @@
+{
+  "name": "count",
+  "table": "simd",
+  "algorithm": "Count the bytes equal to b in a buffer of 4-bit values (the top four bits of a multiplicative hash of the index), reps counts with b = mix(st) & 15; the checksum is total * 31 + count over the counts, wrapping (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "count.c",
+    "rust": "count.rs",
+    "zig": "count.zig",
+    "go": "testdata/count.go"
+  },
+  "skip": {
+    "mk-wrap": "no integer arithmetic to wrap in the kernel: the checksum already wraps"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "16000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "9780999111940857777",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 262144000000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "4000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "818598395941357161",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "24",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "12621447204642207648",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "16000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "9780999111940857777",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 262144000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "4000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "818598395941357161",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "24",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "12621447204642207648",
+      "quick_checksum": "170782333659293532",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776
+    }
+  ],
+  "no_counts": "B24 does not apply as a count of operations: the work per count is fixed by the size, and the checksum folds every count in order",
+  "notes": [
+    "GB/s counts size * reps bytes; each count reads the whole buffer. The fill and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted (BS-3). The c, rust, zig and go buffers start on a 64-byte boundary (BS-4); the mk column reads an arena slice whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md).",
+    "c: <immintrin.h>, compare masks subtracted from four byte counters, _mm*_sad_epu8 every 255 steps, _mm_popcnt_u32 of the movemask for single vectors (std.simd.Count's method), chosen by __AVX2__. rust: the same with std::arch, every load from a checked slice (BS-2), count_ones of the movemask. zig: @Vector compares selected to 1 into u8 counters, widened and reduced every 255 steps, @popCount for single vectors (rust and zig added in std-simd session 2). go: bytes.Count, assembly-backed in Go's runtime with its own CPU check, labelled. mk: std.simd.Count.",
+    "Checksums from the go column (go run testdata/count.go at each size, 2026-11-07), checked by tools/bench verify in every written column. The repetitions were set so the c cell ran about 1 s at L1 and L3 in a single run on a shared machine (2026-11-07).",
+    "Written by the std-simd lane (status/std-simd.md, session 1). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

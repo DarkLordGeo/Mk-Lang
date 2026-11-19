@@ -1,0 +1,10 @@
+replay
+--synth
+60000
+--seed
+3
+--bars
+500
+--quiet
+--json
+-

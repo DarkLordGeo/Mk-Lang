@@ -1,0 +1,5 @@
+synth:2048x1536: P5 1024x768, 1 channel(s), maxval 255
+samples: min 0 max 255 mean 134.211 deviation 127.323
+brightest: 413914 samples, the first at x 354 y 2
+bits used 11111111, always set 00000000; xor 00, sum32 064a8926
+binary: every sample is 0 or 255

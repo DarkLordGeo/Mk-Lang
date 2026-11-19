@@ -1,0 +1,36 @@
+{
+  "name": "closuresort",
+  "table": "idiomatic",
+  "std": ["std.core.Slice.Sort"],
+  "algorithm": "Sort n i64 values (splitmix64, below 2^20) by squared distance from an origin that changes each round, with std's sort and a comparator that reads the origin: captured by a fn literal (mk, DD-1) or passed in a context struct (mk-ctx, the pre-DD-2 SortWith form); rounds sorts of a fresh copy, the checksum folds each sorted distance by its position (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000000",
+    "2",
+    "7"
+  ],
+  "quick": [
+    "100000",
+    "2",
+    "7"
+  ],
+  "checksum": "13223099190716565378",
+  "quick_checksum": "9606843552447588921",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "an internal comparison of two Mk forms (DD-1's cost), not a cross-language row: sortints and sort compare the languages' sorts",
+    "rust": "an internal comparison of two Mk forms (DD-1's cost), not a cross-language row",
+    "zig": "an internal comparison of two Mk forms (DD-1's cost), not a cross-language row",
+    "go": "an internal comparison of two Mk forms (DD-1's cost), not a cross-language row",
+    "mk-wrap": "the distances are checked i64 arithmetic in both Mk forms alike, and the checksum already wraps; the row measures how the context arrives, not the checks",
+    "mk-ctx": "held out (review finding BF-6): mkctx/'s sort is a copy of the pre-DD-2 SortWith whose swaps go through Slice.Swap, a bounds check that std's Sort does not make, and whose BitLen is a loop, so mk-ctx against mk is not DD-1's cost alone. The pair that is, mkcap/ (the capture, through the same copied sort with the context argument taken out) against mkctx/, replaces mk and mk-ctx once a run checks its checksums (status/bench.md)"
+  },
+  "no_counts": "B24 does not apply: an internal comparison of two Mk programs that run the same pdqsort on the same input; the checksum checks the sorted order (equal keys have equal distances, so it does not depend on how ties land)",
+  "notes": [
+    "Internal comparison, labelled: the ratio mk-ctx / mk is DD-1's cost (plan/06-m6.md section 3.1), the capturing literal against the context struct and named function it replaces, on the same input. It is not a ranking of Mk against another language.",
+    "mk: xs.Sort(fn(a, b) { ... origin ... }), std/core/core_sort.mk's pdqsort; the compiler passes one hidden record of shared references to the captured names to every comparator call. The mk-ctx column is held (review finding BF-6): its sort, std's SortWith before DD-2 copied into mkctx/sortw with two edits a package outside std needs (SwapAt is Slice.Swap, BitLen a loop), is not std's Sort, so its ratio to mk mixes those edits into DD-1's cost. mkcap/ runs the capture through the same copied sort with only the context argument taken out (TestClosuresortSameSort checks the text), and mkcap/ against mkctx/ will be the published pair.",
+    "Each round copies the input into the work slice, sorts it and folds it; the copy and the fold are the same code in both columns."
+  ]
+}

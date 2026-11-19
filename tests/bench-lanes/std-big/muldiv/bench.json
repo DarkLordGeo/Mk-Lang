@@ -1,0 +1,32 @@
+{
+  "name": "big-muldiv",
+  "table": "idiomatic",
+  "algorithm": "std.big Mul and DivMod in an accumulation loop: x0 (1024 words), y (512 words) and d (1024 words, top bit set) are splitmix64 words of the seed; n times p = x y, (q, r) = p divmod d, x = r + q, x copied out through Words into a HeapList[u64] and the work arena reset each step (mk/big-muldiv.mk); prints x's low word xor its word count.",
+  "overflow": "wraps",
+  "args": [
+    "1000",
+    "1"
+  ],
+  "quick": [
+    "3",
+    "1"
+  ],
+  "checksum": "18245903110989981169",
+  "quick_checksum": "16311101744746131433",
+  "sources": {
+    "mk": "mk",
+    "zig": "big-muldiv.zig",
+    "go": "testdata/big-muldiv.go"
+  },
+  "skip": {
+    "c": "no std big integers: C has none, and GMP is a library, not installed on this machine (tests/bench README: no stand-ins)",
+    "rust": "no std big integers: Rust std has none; num-bigint is a crate (no stand-ins) and is not in the offline cargo cache"
+  },
+  "notes": [
+    "Work per step: a 1024 by 512-word product (Mk: two 512-word Toom-3 pieces, Toom-3 from 300 words over Karatsuba from 40 words, std/big/toom.mk and mul.mk; Go: karatsuba over amd64 assembly kernels; Zig: std.math.big.int's llmulaccKaratsuba) and a 1536 by 1024-word division (Mk: Burnikel-Ziegler from 60 divisor words, std/big/divrec.mk; Go: divRecursive; Zig: divTrunc).",
+    "Mk copies each result out of its arena and resets the arena, as a long-lived std.big value must (D8-6); Go and Zig keep x in their heaps, Zig's being init.gpa, its default-selected general purpose allocator (review finding stdbig-r1: the row first used page_allocator, which maps and unmaps each of the library's per-call temporaries).",
+    "Checksums: from the Mk, Go and Zig programs run by hand on 2026-11-12 (all three agree at both sizes). Not published: no number here is a measurement.",
+    "Copy-out (CopyOut in the Mk source, 2026-11-12): the HeapList's held slots are overwritten through ItemsMut in one CopyFrom and only the words past them pushed, since HeapList has no bulk append (status/std-big.md, Request 6).",
+    "Go cell and x86-64-v2 (review finding stdbig-r2): Go 1.27's math/big picks its amd64 assembly at run time, and on a CPU with ADX and BMI2, as this machine's, its multiply-add kernel addMulVVWW runs MULX/ADCX/ADOX (src/math/big/arith_amd64.go, hasADX), outside the contract's single target x86-64-v2, although the cell is built with GOAMD64=v2. That kernel is the inner loop of Go's basicMul (under karatsuba and divRecursive) and of its Montgomery product. GODEBUG=cpu.adx=off cannot hold the cell to v2 on Windows: Go's runtime reads GODEBUG's cpu options only on Unix systems (runtime/proc.go, getGodebugEarly). Measured by the std-big lane under WSL on the publish machine (lane-internal, 2026-11-12, not a tools/bench number): with cpu.adx=off Go's Mul took 1.6 to 1.8 times as long at 64 to 4,096 words and Exp at 2048 bits 1.84 times. Read this row's Go cell as Go with ADX/BMI2 assembly (status/std-big.md, Request 7)."
+  ]
+}

@@ -1,0 +1,43 @@
+amy> !ws /rooms/lab/ws?nick=amy
+amy! connected
+amy! speaks chat.v1
+amy< MOTD Welcome to chat.
+amy< OK welcome
+amy< OK nick amy
+amy< OK join #lab members=1 topic=
+watch> !events /rooms/lab/events?nick=amy
+watch! connected
+watch< HTTP/1.1 409 Conflict
+watch< Content-Length: 20
+watch< Connection: close
+watch< 
+watch< ERR 433 nick in use
+watch! closed by the server
+bea> !ws /rooms/lab/ws?nick=bea
+bea! connected
+bea! speaks chat.v1
+bea< MOTD Welcome to chat.
+bea< OK welcome
+bea< OK nick bea
+bea< OK join #lab members=2 topic=
+full> !events /rooms/lab/events
+full! connected
+full< HTTP/1.1 503 Service Unavailable
+full< Content-Length: 21
+full< Connection: close
+full< 
+full< too many web clients
+full! closed by the server
+amy> MSG #lab xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+amy< * bea joined #lab
+amy< ERR 414 line too long
+amy> WHO #lab
+amy< MEMBERS #lab amy bea
+amy< OK who
+amy> QUIT
+amy< OK bye
+bea> QUIT
+bea< * amy left #lab (quit)
+bea< OK bye
+-- server: history=0
+-- endings: quit=2 eof=1 dropped=0 kicked=0 closing=0 broken=0 canceled=0

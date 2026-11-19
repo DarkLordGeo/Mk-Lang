@@ -1,0 +1,7 @@
+usage: pack unzlib [options]
+
+Options:
+  --out <str>  Write the decompressed data to this file (required)
+  --max <int>  Fail rather than write more than this many bytes (default 1 GiB)
+Arguments:
+  <inputs>...  The zlib stream to decompress

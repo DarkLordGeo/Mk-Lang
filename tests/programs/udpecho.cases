@@ -1,0 +1,4 @@
+# A UDP echo over IPv4 loopback, server task and client in one process.
+case ok
+stdout udpecho.out
+timeout 30

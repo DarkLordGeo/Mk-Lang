@@ -1,0 +1,5 @@
+wal
+compact
+$CASES/data/torn.wal
+--out
+$WORK/c.wal

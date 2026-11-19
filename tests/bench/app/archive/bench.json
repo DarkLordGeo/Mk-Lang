@@ -1,0 +1,89 @@
+{
+  "name": "archive",
+  "table": "app",
+  "algorithm": "Create a signed, sealed archive of a directory tree: walk it, sort the files by path, read and SHA-256 each one, DEFLATE them as one stream, sign the manifest with Ed25519 and seal the archive with AES-256-GCM under fixed test keys; then, untimed, open it again, verifying the seal, the signature and every file's digest (README.md).",
+  "overflow": "never",
+  "args": [
+    "create",
+    "{data}",
+    "{out}"
+  ],
+  "quick": [
+    "create",
+    "{data}",
+    "{out}",
+    "500"
+  ],
+  "checksum": "sha256:4fba8f914ceccb0184b98d47ade9af51b3512ffa8f796d042e2568c9102575af",
+  "quick_checksum": "sha256:7f3a25117e0eed5965c8760e5d40e3dd9e474099c447b3a18401a6689e185e9b",
+  "sources": {
+    "mk": "mk",
+    "rust": "rs",
+    "zig": "archive.zig",
+    "go": "testdata/archive.go"
+  },
+  "kinds": {
+    "mk": "std",
+    "rust": "eco",
+    "zig": "std",
+    "go": "std"
+  },
+  "libs": {
+    "rust": [
+      {
+        "name": "sha2",
+        "version": "0.10.9",
+        "lang": "Rust",
+        "inside": "unsafe Rust and the x86 SHA extensions (sha256rnds2) through core::arch, chosen at run time by cpufeatures 0.2.17, with a software fallback; digest 0.10.7, block-buffer 0.10.4, crypto-common 0.1.7, generic-array 0.14.7 and typenum 1.20.0"
+      },
+      {
+        "name": "flate2",
+        "version": "1.1.1",
+        "lang": "Rust",
+        "inside": "a few unsafe blocks; its default back end miniz_oxide 0.8.8 (pure Rust, forbid(unsafe_code)) with adler2 2.0.0, and crc32fast 1.4.2 (unsafe Rust and SIMD, unused by raw DEFLATE)"
+      },
+      {
+        "name": "ring",
+        "version": "0.17.14",
+        "lang": "Rust, C and assembly",
+        "inside": "BoringSSL-derived C and pregenerated x86_64 assembly (AES-NI, PCLMULQDQ and VAES/AVX2 AES-GCM, chosen at run time from CPUID), built by its build script with cc 1.11.0; untrusted 0.9.0, getrandom 0.2.17, cfg-if 1.0.5, and windows-sys 0.52.0"
+      },
+      {
+        "name": "walkdir",
+        "version": "2.5.0",
+        "lang": "Rust",
+        "inside": "same-file 1.0.6 and winapi-util 0.1.11 (unsafe Rust calling Windows through windows-sys 0.61.2)"
+      }
+    ]
+  },
+  "labels": {
+    "zig": "software AES, GHASH and SHA-256: Zig 0.17 chooses the crypto instructions at compile time, and the row's x86-64-v2 target has none (README.md, Hardware paths)"
+  },
+  "skip": {
+    "c": "no std hash, compression or cryptography in C, and no C crypto library is vendored (zlib alone would leave a partial task)"
+  },
+  "crates": "crates/flate2-1.1.1-ring-0.17.14-sha2-0.10.9-walkdir-2.5.0",
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "output": {
+    "file": "out.mka",
+    "check": "then",
+    "then": [
+      "open",
+      "{out}"
+    ]
+  },
+  "data": {
+    "kind": "tree",
+    "file": "archive-tree-100mb",
+    "bytes": 100000000,
+    "seed": 36
+  },
+  "notes": [
+    "The checksum is the SHA-256 of `open`'s stdout on the column's own archive (output check then, D-841): the manifest of names, sizes and SHA-256 digests and a summary line. The archive's bytes differ by DEFLATE encoder and are never compared; verify also runs every column's open on every other column's archive, and each must print the checksum (README.md, Checksum).",
+    "Hardware paths at the row's x86-64-v2 target: mk, rust (ring and sha2) and go choose AES-NI, PCLMULQDQ and SHA at run time; Zig 0.17 chooses them at compile time from the target, which has none of them, so the zig cells run software AES, GHASH and SHA-256 (README.md, Hardware paths).",
+    "Each column compresses at its library's default level; the publish-size archives differ by 1.2 percent at most (README.md, DEFLATE effort)."
+  ]
+}

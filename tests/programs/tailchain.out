@@ -1,0 +1,4 @@
+become, direct: 10000000 calls; the stack at the last call is as halfway down: true
+become, through a table of fn values: sum 15000001; the stack at the last call is as halfway down: true
+u8 by ranges: control 32, printable 95, delete 1, high 127, 255 1
+char by ranges: lower 13, upper 2, digit 2, other 6

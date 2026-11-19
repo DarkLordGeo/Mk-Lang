@@ -1,0 +1,14 @@
+error: main.Deep(n: 0)
+    at trace.mk:21:9
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    at trace.mk:23:5
+    ... 10 more

@@ -1,0 +1,9 @@
+verify
+--key
+$CASES/data/pki/leaf.pem
+--format
+fixed
+--sig-encoding
+base64
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg.p256fixed.b64

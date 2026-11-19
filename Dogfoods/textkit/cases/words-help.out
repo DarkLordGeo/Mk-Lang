@@ -1,0 +1,8 @@
+usage: textkit words [--marks | --count] [--hex] [--buffer n] [file...]
+Options:
+  --marks         Print each line's boundaries in the UCD's notation: ÷ at a boundary, × between scalars of one segment
+  --count         Print only the number of words, all inputs together
+  --hex           Read lines of code points in hex, and write words that way
+  --buffer <int>  The read buffer, in bytes (default 16384)
+Arguments:
+  <files>...      Files to read; none, or -, is standard input

@@ -1,0 +1,3 @@
+kernel32.dll system GetTickCount NoSuchSymbol AlsoMissing
+no-such-library.dll system Anything
+user32.dll system GetSystemMetrics

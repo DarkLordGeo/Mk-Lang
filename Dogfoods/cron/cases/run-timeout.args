@@ -1,0 +1,7 @@
+run
+$CASES/data/timeout.tab
+--stop-after
+7s
+--echo
+--max-jobs
+1

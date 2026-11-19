@@ -1,0 +1,7 @@
+ticks 3
+apic
+break
+break
+ticks 0
+ticks 101
+exit

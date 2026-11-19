@@ -1,0 +1,8 @@
+# A year of frequent jobs in three zones, for the rough clock
+CRON_TZ=Europe/Berlin
+*/15 * * * *     quarter   --  jobkit print quarter
+0 9-17 * * 1-5   office    --  jobkit print office
+CRON_TZ=America/Sao_Paulo
+30 0 * * *       night     --  jobkit print night
+CRON_TZ=Asia/Kathmandu
+45 */2 * * *     even      --  jobkit print even

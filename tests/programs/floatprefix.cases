@@ -1,0 +1,5 @@
+# str.ParseFloatPrefix: the longest float prefix and the bytes it used, a signed infinity on
+# overflow, a signed zero on total underflow, NaN with used 0 when nothing parses. Both profiles,
+# both targets.
+case ok
+stdout floatprefix.out

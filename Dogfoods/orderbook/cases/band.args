@@ -1,0 +1,7 @@
+replay
+$CASES/data/basic.csv
+--quiet
+--band
+99.00:101.00
+--account
+1

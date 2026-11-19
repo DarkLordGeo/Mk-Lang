@@ -1,0 +1,33 @@
+{
+  "name": "big-factorial",
+  "table": "idiomatic",
+  "algorithm": "std.big Mul by a one-word value in an accumulation loop, then Text: for i from 2 to n, acc = acc * (i + seed mod 7), the product copied out through Words into a HeapList[u64] and the work arena reset each step; then acc's decimal text (mk/big-factorial.mk); prints the text's length times 31 plus the sum of its digits times their 1-based position, wrapping.",
+  "overflow": "wraps",
+  "args": [
+    "50000",
+    "1"
+  ],
+  "quick": [
+    "500",
+    "1"
+  ],
+  "checksum": "90703045521",
+  "quick_checksum": "2298679",
+  "sources": {
+    "mk": "mk",
+    "zig": "big-factorial.zig",
+    "go": "testdata/big-factorial.go"
+  },
+  "skip": {
+    "c": "no std big integers: C has none, and GMP is a library, not installed on this machine (tests/bench README: no stand-ins)",
+    "rust": "no std big integers: Rust std has none; num-bigint is a crate (no stand-ins) and is not in the offline cargo cache"
+  },
+  "notes": [
+    "Work: n - 1 products of a growing value by one word (Mk MulBasic, Go mulAddVWW in assembly), then one conversion to decimal of a value of about 213,000 digits at the publish size (Mk divide and conquer over Burnikel-Ziegler division from 60 divisor words, std/big/textdc.mk; Go nat.utoa's divide and conquer; Zig std.math.big.int toString over init.gpa, its default-selected general purpose allocator, review finding stdbig-r1).",
+    "Squares (Mul of a value by itself, as in the power tables of Text and Parse) take std/big/sqr.mk: the schoolbook square from 8 words, Karatsuba's square from 80 words and Toom-3's square from 300 words (review finding stdbig-r4).",
+    "Mk copies each product out of its arena and resets the arena (D8-6); Go multiplies in place on its heap.",
+    "Checksums: from the Go and Mk programs run by hand on 2026-11-12, and `go run ./tools/bench verify std-big/big-modpow std-big/big-factorial` agreed at the quick size the same day (status/std-big.md); the Zig column's output agreed at both sizes by hand on 2026-11-12. Not published: no number here is a measurement.",
+    "Copy-out (CopyOut in the Mk source, 2026-11-12): the HeapList's held slots are overwritten through ItemsMut in one CopyFrom and only the words past them pushed, since HeapList has no bulk append (status/std-big.md, Request 6). The first form, Clear and one Push per word, took most of this row's time: in a lane-internal split at the publish size (loaded machine, not a measurement) the copy took 330 to 420 ms of the loop's, against 25 to 32 ms in this form, with Mul at 121 to 187 ms and Text at 14 to 26 ms.",
+    "Go cell and x86-64-v2 (review finding stdbig-r2): Go 1.27's math/big picks its amd64 assembly at run time, and on a CPU with ADX and BMI2, as this machine's, its multiply-add kernel addMulVVWW runs MULX/ADCX/ADOX (src/math/big/arith_amd64.go, hasADX), outside the contract's single target x86-64-v2, although the cell is built with GOAMD64=v2. That kernel is the inner loop of Go's basicMul (under karatsuba and divRecursive) and of its Montgomery product. GODEBUG=cpu.adx=off cannot hold the cell to v2 on Windows: Go's runtime reads GODEBUG's cpu options only on Unix systems (runtime/proc.go, getGodebugEarly). Measured by the std-big lane under WSL on the publish machine (lane-internal, 2026-11-12, not a tools/bench number): with cpu.adx=off Go's Mul took 1.6 to 1.8 times as long at 64 to 4,096 words and Exp at 2048 bits 1.84 times. Read this row's Go cell as Go with ADX/BMI2 assembly (status/std-big.md, Request 7)."
+  ]
+}

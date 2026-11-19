@@ -1,0 +1,2 @@
+y = floor(x)+ceil(x)+round(x)+roundeven(x)+trunc(x)+fract(x)+exp2(x/8)+expm1(x/8)+log1p(x*x)+atan(x)+sinh(x/4)+cosh(x/4)/8+tanh(x)+asinh(x)+cbrt(x)+isfinite(x)+isinf(x)+frexpexp(x)+frexp(x)+ldexp(x,-2)+nextafter(x,0)+pow(2,x/4)+atan2(x,2)+log10(1+x*x)+asin(x/9)+acos(x/9)+acosh(2+x*x)+atanh(x/9)+cos(x)+e+pi+ln2+sqrt2 in f64 over [-5, 5]: y in [-21.323545882365536, 71.45302852459703], grid step 20, 0 samples not finite
+32x16 (2:1), 1549 bytes, fnv1a b6c9df4c50c53510

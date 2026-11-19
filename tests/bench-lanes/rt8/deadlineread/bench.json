@@ -1,0 +1,30 @@
+{
+  "name": "deadlineread",
+  "table": "idiomatic",
+  "algorithm": "n round trips of one byte over a loopback TCP connection (an echo task, goroutine or thread reads each byte and writes it back; the main one writes i % 251, then reads the echo); sum = 31 sum + the byte read, wrapping; prints n, sum and the failed calls. Variant bare: the read is plain. Variant deadline: each read is bounded by the library's one-operation timeout of one second, which never fires (Mk: a scope of its own with Scope.CancelAfter per read, D8-3; Go: SetReadDeadline per read; Rust: set_read_timeout once, which bounds every later read; C: setsockopt SO_RCVTIMEO once). No cell makes a system call per read for its timeout (README.md). D8-3 (6): Mk's deadline cell is recorded against its bare cell, with its cause (README.md).",
+  "overflow": "wraps",
+  "args": ["100000", "0"],
+  "quick": ["1000", "0"],
+  "checksum": "100000 15942106405504090451 0",
+  "quick_checksum": "1000 13725477746376704254 0",
+  "sources": {
+    "mk": "mk",
+    "c": "deadlineread.c",
+    "rust": "deadlineread.rs",
+    "go": "testdata/deadlineread.go"
+  },
+  "skip": {
+    "zig": "not written: Zig 0.17's std.Io stream has no per-read timeout of its own; its form would be a select over the read and a sleep future, which is not one library call as the other cells are"
+  },
+  "concurrency": {"mask": "0x3", "threads": 2, "models": {"mk": "tasks", "go": "goroutines", "rust": "OS threads", "c": "OS threads"}},
+  "variants": [
+    {"name": "bare", "args": ["100000", "0"], "quick": ["1000", "0"], "checksum": "100000 15942106405504090451 0", "quick_checksum": "1000 13725477746376704254 0"},
+    {"name": "deadline", "args": ["100000", "1"], "quick": ["1000", "1"], "checksum": "100000 15942106405504090451 0", "quick_checksum": "1000 13725477746376704254 0"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; sum checks that every read returned the byte written, in order",
+  "notes": [
+    "D8-3 (6)'s second row. Its cause, measured by hand on the owner's machine (Windows 11 Pro 10.0.26300, AMD Ryzen 7 9800X3D, other agents running; rt8 session 5, not a tools/bench number): a loopback round trip on IOCP is about 34 microseconds (3,461 ms bare and 3,423 ms with the deadline for 100,000, the best of 5 each), and a deadline scope adds one timer arm and one synchronous disarm on std.task's timer heap, which is below that run's noise.",
+    "Checksums from a Go model (sum = 31 sum + i % 251 over 0..n, wrapping) and each column's verify run. The publish size is a guess until tools/bench publish times the row on a quiet machine.",
+    "Written by rt8 (plan/08-m8.md 3.3 and section 2's D8-3 (6)); status/rt8.md records what was measured and on what."
+  ]
+}

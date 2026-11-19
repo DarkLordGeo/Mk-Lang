@@ -1,0 +1,5 @@
+grep
+--buffer
+64
+short
+$CASES/data/long.txt

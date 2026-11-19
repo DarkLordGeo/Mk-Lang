@@ -1,0 +1,17 @@
+# a script: variables, comparisons, sorting
+2 61 ^ 1 - =p          # a Mersenne prime
+2 89 ^ 1 - =q
+$p $q * =n
+$p 1 - $q 1 - * =phi
+65537 =e
+$e $phi inv =d
+42 $e $n modpow =c
+$c $d $n modpow .      # decrypts back to 42
+vars
+5 3 9 3 1 sort f uniq . clear
+3 4 cmp 4 3 cmp 4 4 cmp f clear
+7 9 min . 7 9 max . 7 9 lt . 7 7 eq .
+1 2 3 rot f clear
+1 2 over f depth . clear
+0 1 20 rep dup rot +
+. .

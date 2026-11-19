@@ -1,0 +1,37 @@
+{
+  "name": "spin",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; C, Rust and Zig: OS threads) each take the standard short-section lock n times and add one to a shared counter: Mk's atomic.Spin, C11's atomic_flag spin lock, and, where the std has no spin lock, its Mutex (Go, Rust, Zig). Prints the counter (t * n) (README.md).",
+  "overflow": "never",
+  "args": ["1000000", "8"],
+  "quick": ["10000", "8"],
+  "checksum": "8000000",
+  "quick_checksum": "80000",
+  "sources": {
+    "mk": "mk",
+    "c": "spin.c",
+    "rust": "spin.rs",
+    "zig": "spin.zig",
+    "go": "testdata/spin.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is the counter, which stays below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), atomic.Spin (test-and-test-and-set, backoff)",
+      "c": "OS threads, C11 atomic_flag (test-and-set)",
+      "go": "goroutines (GOMAXPROCS 8), sync.Mutex (no spin lock in std)",
+      "rust": "OS threads, std::sync::Mutex (no spin lock in std)",
+      "zig": "OS threads, std.Io.Mutex (no spin lock in std)"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the count, shows that no increment was lost",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0, 2, ..., 14 (mask 0x5555, eight physical cores, one logical CPU each) with 8 threads (MK_CARRIERS=8, GOMAXPROCS=8). C, Rust and Zig use OS threads, labelled so.",
+    "Only C has a spin lock in its standard library; the Go, Rust and Zig cells are their std mutexes, which spin briefly before they park, so the row compares the best std facility for a short critical section, not one algorithm.",
+    "Written by std-missing (status/std-missing.md, M6 session 2); checksums from the workload's arithmetic, printed by the Mk build on the owner's machine, 2026-11-07."
+  ]
+}

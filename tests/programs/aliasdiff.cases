@@ -1,0 +1,5 @@
+# A differential program for scoped alias facts: calls whose slices are disjoint within
+# each call and overlap between neighbouring calls, in swapped roles. Both profiles, both targets:
+# the same line everywhere.
+case ok
+stdout aliasdiff.out

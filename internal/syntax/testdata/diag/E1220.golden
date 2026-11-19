@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1220","name":"inclusive-range","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":15,"end_line":2,"end_col":18},"message":"Mk ranges exclude the end: write `a..b + 1`","facts":{"habits":["E1220"],"target":"    for i in 0..n + 1 {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":17,"end_line":2,"end_col":18,"text":""},{"file":"t.mk","line":2,"col":19,"end_line":2,"end_col":19,"text":" + 1"}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1220"}],"omitted":0}
+

@@ -1,0 +1,9 @@
+--origin
+$CASES/data/site.origin
+-s
+-o
+big.bin
+--parallel
+http://{origin}/big
+http://{origin}/gzip
+http://{origin}/hello

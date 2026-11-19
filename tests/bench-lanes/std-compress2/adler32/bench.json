@@ -1,0 +1,40 @@
+{
+  "name": "compress-adler32",
+  "table": "idiomatic",
+  "algorithm": "The Adler-32 of a 50 MB log text with the std's function, rounds times, round r over the text from byte r % 64 on (so no round repeats another's work and no cell writes to its buffer); the checksum adds the rounds' Adler-32 values.",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "500"
+  ],
+  "quick": [
+    "{data}",
+    "4"
+  ],
+  "checksum": "1104039494473",
+  "quick_checksum": "9672121160",
+  "sources": {
+    "mk": "mk",
+    "zig": "compress-adler32.zig",
+    "go": "testdata/compress-adler32.go"
+  },
+  "skip": {
+    "c": "no std Adler-32 in C; ref/compress-adler32.c (zlib 1.3.1's adler32_z from Mk-evidence/vendor) is the reference C implementation's cell for tools/bench's reference-library table (D-588), which bench8 builds; it never joins this table",
+    "rust": "no std Adler-32 in Rust (adler2 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the values are checked against Go's hash/adler32 by the lane's Go tests (TestCompress_Adler32MatchesGo, TestCompress_AdlerSplitMatchesGo)",
+  "notes": [
+    "The input is the regex row's log text (tools/bench gen kind log, seed 5; 50,000,038 bytes). Bytes per second = (50,000,038 * rounds - 31.5 * rounds) / median.",
+    "Mk: std.compress.Adler32: whole 32-byte blocks by std.simd vectors at x86-64-v2, with no run-time choice (Chromium's adler32_simd method: byte sums, prefix sums and widening-multiply weighted sums in u32 lanes, reduced every 1,024 blocks), the last 0 to 31 bytes 8 a step (SWAR). Go: hash/adler32.Checksum (zlib's NMAX loop, 4 bytes unrolled). Zig: std.hash.Adler32.hash.",
+    "Publish size (CMP2-5, README Timing: the fastest cell at least 1 s): 500 rounds. Out of tree on the owner's machine (Ryzen 7 9800X3D, Windows 11, other agents running; wall time by date, one run each, 2026-11-13, std-compress2 lane; provisional, not published): Mk 1,526 and 1,558 ms at 500 rounds; at 100 rounds Mk 277 to 490 ms, Zig fast 1,095 to 1,142 ms, Go 1,400 to 1,491 ms, zlib 1.3.1 adler32_z (zig cc -O3 -mcpu=x86_64_v2) 1,137 to 1,208 ms.",
+    "Fixed cost per cell (CMP2-8: rounds 0, the file read and process start, same machine and method): Mk 163 ms, Go 187 ms, Zig fast 97 ms, zlib C 275 ms.",
+    "Not published: no number here is a measurement."
+  ]
+}

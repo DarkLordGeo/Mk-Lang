@@ -1,0 +1,8 @@
+--origin
+$CASES/data/site.origin
+--max-memory
+4096
+-i
+http://{origin}/hello
+http://{origin}/big
+http://{origin}/echo

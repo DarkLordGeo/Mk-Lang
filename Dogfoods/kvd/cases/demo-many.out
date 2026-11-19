@@ -1,0 +1,1337 @@
+--- client 0
+> NAME client0
++OK
+> SET u0:name Ada Lovelace
++OK
+> GET u0:name
+$Ada Lovelace
+> INCR u0:visits
+:1
+> INCR u0:visits
+:2
+> INCR u0:visits
+:3
+> APPEND u0:log started
+:7
+> APPEND u0:log ,stopped
+:15
+> GETSET u0:name Grace Hopper
+$Ada Lovelace
+> GET u0:name
+$Grace Hopper
+> INCR u0:name
+-ERR NotAnInteger
+> DEL u0:missing
+:0
+> GET u0:missing
+_
+> HASH u0:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u0:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u0:
+*3
+$u0:log
+$u0:name
+$u0:visits
+-ERR ShuttingDown
+--- client 1
+> NAME client1
++OK
+> SET u1:name Ada Lovelace
++OK
+> GET u1:name
+$Ada Lovelace
+> INCR u1:visits
+:1
+> INCR u1:visits
+:2
+> INCR u1:visits
+:3
+> APPEND u1:log started
+:7
+> APPEND u1:log ,stopped
+:15
+> GETSET u1:name Grace Hopper
+$Ada Lovelace
+> GET u1:name
+$Grace Hopper
+> INCR u1:name
+-ERR NotAnInteger
+> DEL u1:missing
+:0
+> GET u1:missing
+_
+> HASH u1:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u1:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u1:
+*3
+$u1:log
+$u1:name
+$u1:visits
+-ERR ShuttingDown
+--- client 2
+> NAME client2
++OK
+> SET u2:name Ada Lovelace
++OK
+> GET u2:name
+$Ada Lovelace
+> INCR u2:visits
+:1
+> INCR u2:visits
+:2
+> INCR u2:visits
+:3
+> APPEND u2:log started
+:7
+> APPEND u2:log ,stopped
+:15
+> GETSET u2:name Grace Hopper
+$Ada Lovelace
+> GET u2:name
+$Grace Hopper
+> INCR u2:name
+-ERR NotAnInteger
+> DEL u2:missing
+:0
+> GET u2:missing
+_
+> HASH u2:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u2:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u2:
+*3
+$u2:log
+$u2:name
+$u2:visits
+-ERR ShuttingDown
+--- client 3
+> NAME client3
++OK
+> SET u3:name Ada Lovelace
++OK
+> GET u3:name
+$Ada Lovelace
+> INCR u3:visits
+:1
+> INCR u3:visits
+:2
+> INCR u3:visits
+:3
+> APPEND u3:log started
+:7
+> APPEND u3:log ,stopped
+:15
+> GETSET u3:name Grace Hopper
+$Ada Lovelace
+> GET u3:name
+$Grace Hopper
+> INCR u3:name
+-ERR NotAnInteger
+> DEL u3:missing
+:0
+> GET u3:missing
+_
+> HASH u3:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u3:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u3:
+*3
+$u3:log
+$u3:name
+$u3:visits
+-ERR ShuttingDown
+--- client 4
+> NAME client4
++OK
+> SET u4:name Ada Lovelace
++OK
+> GET u4:name
+$Ada Lovelace
+> INCR u4:visits
+:1
+> INCR u4:visits
+:2
+> INCR u4:visits
+:3
+> APPEND u4:log started
+:7
+> APPEND u4:log ,stopped
+:15
+> GETSET u4:name Grace Hopper
+$Ada Lovelace
+> GET u4:name
+$Grace Hopper
+> INCR u4:name
+-ERR NotAnInteger
+> DEL u4:missing
+:0
+> GET u4:missing
+_
+> HASH u4:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u4:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u4:
+*3
+$u4:log
+$u4:name
+$u4:visits
+-ERR ShuttingDown
+--- client 5
+> NAME client5
++OK
+> SET u5:name Ada Lovelace
++OK
+> GET u5:name
+$Ada Lovelace
+> INCR u5:visits
+:1
+> INCR u5:visits
+:2
+> INCR u5:visits
+:3
+> APPEND u5:log started
+:7
+> APPEND u5:log ,stopped
+:15
+> GETSET u5:name Grace Hopper
+$Ada Lovelace
+> GET u5:name
+$Grace Hopper
+> INCR u5:name
+-ERR NotAnInteger
+> DEL u5:missing
+:0
+> GET u5:missing
+_
+> HASH u5:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u5:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u5:
+*3
+$u5:log
+$u5:name
+$u5:visits
+-ERR ShuttingDown
+--- client 6
+> NAME client6
++OK
+> SET u6:name Ada Lovelace
++OK
+> GET u6:name
+$Ada Lovelace
+> INCR u6:visits
+:1
+> INCR u6:visits
+:2
+> INCR u6:visits
+:3
+> APPEND u6:log started
+:7
+> APPEND u6:log ,stopped
+:15
+> GETSET u6:name Grace Hopper
+$Ada Lovelace
+> GET u6:name
+$Grace Hopper
+> INCR u6:name
+-ERR NotAnInteger
+> DEL u6:missing
+:0
+> GET u6:missing
+_
+> HASH u6:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u6:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u6:
+*3
+$u6:log
+$u6:name
+$u6:visits
+-ERR ShuttingDown
+--- client 7
+> NAME client7
++OK
+> SET u7:name Ada Lovelace
++OK
+> GET u7:name
+$Ada Lovelace
+> INCR u7:visits
+:1
+> INCR u7:visits
+:2
+> INCR u7:visits
+:3
+> APPEND u7:log started
+:7
+> APPEND u7:log ,stopped
+:15
+> GETSET u7:name Grace Hopper
+$Ada Lovelace
+> GET u7:name
+$Grace Hopper
+> INCR u7:name
+-ERR NotAnInteger
+> DEL u7:missing
+:0
+> GET u7:missing
+_
+> HASH u7:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u7:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u7:
+*3
+$u7:log
+$u7:name
+$u7:visits
+-ERR ShuttingDown
+--- client 8
+> NAME client8
++OK
+> SET u8:name Ada Lovelace
++OK
+> GET u8:name
+$Ada Lovelace
+> INCR u8:visits
+:1
+> INCR u8:visits
+:2
+> INCR u8:visits
+:3
+> APPEND u8:log started
+:7
+> APPEND u8:log ,stopped
+:15
+> GETSET u8:name Grace Hopper
+$Ada Lovelace
+> GET u8:name
+$Grace Hopper
+> INCR u8:name
+-ERR NotAnInteger
+> DEL u8:missing
+:0
+> GET u8:missing
+_
+> HASH u8:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u8:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u8:
+*3
+$u8:log
+$u8:name
+$u8:visits
+-ERR ShuttingDown
+--- client 9
+> NAME client9
++OK
+> SET u9:name Ada Lovelace
++OK
+> GET u9:name
+$Ada Lovelace
+> INCR u9:visits
+:1
+> INCR u9:visits
+:2
+> INCR u9:visits
+:3
+> APPEND u9:log started
+:7
+> APPEND u9:log ,stopped
+:15
+> GETSET u9:name Grace Hopper
+$Ada Lovelace
+> GET u9:name
+$Grace Hopper
+> INCR u9:name
+-ERR NotAnInteger
+> DEL u9:missing
+:0
+> GET u9:missing
+_
+> HASH u9:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u9:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u9:
+*3
+$u9:log
+$u9:name
+$u9:visits
+-ERR ShuttingDown
+--- client 10
+> NAME client10
++OK
+> SET u10:name Ada Lovelace
++OK
+> GET u10:name
+$Ada Lovelace
+> INCR u10:visits
+:1
+> INCR u10:visits
+:2
+> INCR u10:visits
+:3
+> APPEND u10:log started
+:7
+> APPEND u10:log ,stopped
+:15
+> GETSET u10:name Grace Hopper
+$Ada Lovelace
+> GET u10:name
+$Grace Hopper
+> INCR u10:name
+-ERR NotAnInteger
+> DEL u10:missing
+:0
+> GET u10:missing
+_
+> HASH u10:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u10:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u10:
+*3
+$u10:log
+$u10:name
+$u10:visits
+-ERR ShuttingDown
+--- client 11
+> NAME client11
++OK
+> SET u11:name Ada Lovelace
++OK
+> GET u11:name
+$Ada Lovelace
+> INCR u11:visits
+:1
+> INCR u11:visits
+:2
+> INCR u11:visits
+:3
+> APPEND u11:log started
+:7
+> APPEND u11:log ,stopped
+:15
+> GETSET u11:name Grace Hopper
+$Ada Lovelace
+> GET u11:name
+$Grace Hopper
+> INCR u11:name
+-ERR NotAnInteger
+> DEL u11:missing
+:0
+> GET u11:missing
+_
+> HASH u11:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u11:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u11:
+*3
+$u11:log
+$u11:name
+$u11:visits
+-ERR ShuttingDown
+--- client 12
+> NAME client12
++OK
+> SET u12:name Ada Lovelace
++OK
+> GET u12:name
+$Ada Lovelace
+> INCR u12:visits
+:1
+> INCR u12:visits
+:2
+> INCR u12:visits
+:3
+> APPEND u12:log started
+:7
+> APPEND u12:log ,stopped
+:15
+> GETSET u12:name Grace Hopper
+$Ada Lovelace
+> GET u12:name
+$Grace Hopper
+> INCR u12:name
+-ERR NotAnInteger
+> DEL u12:missing
+:0
+> GET u12:missing
+_
+> HASH u12:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u12:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u12:
+*3
+$u12:log
+$u12:name
+$u12:visits
+-ERR ShuttingDown
+--- client 13
+> NAME client13
++OK
+> SET u13:name Ada Lovelace
++OK
+> GET u13:name
+$Ada Lovelace
+> INCR u13:visits
+:1
+> INCR u13:visits
+:2
+> INCR u13:visits
+:3
+> APPEND u13:log started
+:7
+> APPEND u13:log ,stopped
+:15
+> GETSET u13:name Grace Hopper
+$Ada Lovelace
+> GET u13:name
+$Grace Hopper
+> INCR u13:name
+-ERR NotAnInteger
+> DEL u13:missing
+:0
+> GET u13:missing
+_
+> HASH u13:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u13:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u13:
+*3
+$u13:log
+$u13:name
+$u13:visits
+-ERR ShuttingDown
+--- client 14
+> NAME client14
++OK
+> SET u14:name Ada Lovelace
++OK
+> GET u14:name
+$Ada Lovelace
+> INCR u14:visits
+:1
+> INCR u14:visits
+:2
+> INCR u14:visits
+:3
+> APPEND u14:log started
+:7
+> APPEND u14:log ,stopped
+:15
+> GETSET u14:name Grace Hopper
+$Ada Lovelace
+> GET u14:name
+$Grace Hopper
+> INCR u14:name
+-ERR NotAnInteger
+> DEL u14:missing
+:0
+> GET u14:missing
+_
+> HASH u14:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u14:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u14:
+*3
+$u14:log
+$u14:name
+$u14:visits
+-ERR ShuttingDown
+--- client 15
+> NAME client15
++OK
+> SET u15:name Ada Lovelace
++OK
+> GET u15:name
+$Ada Lovelace
+> INCR u15:visits
+:1
+> INCR u15:visits
+:2
+> INCR u15:visits
+:3
+> APPEND u15:log started
+:7
+> APPEND u15:log ,stopped
+:15
+> GETSET u15:name Grace Hopper
+$Ada Lovelace
+> GET u15:name
+$Grace Hopper
+> INCR u15:name
+-ERR NotAnInteger
+> DEL u15:missing
+:0
+> GET u15:missing
+_
+> HASH u15:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u15:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u15:
+*3
+$u15:log
+$u15:name
+$u15:visits
+-ERR ShuttingDown
+--- client 16
+> NAME client16
++OK
+> SET u16:name Ada Lovelace
++OK
+> GET u16:name
+$Ada Lovelace
+> INCR u16:visits
+:1
+> INCR u16:visits
+:2
+> INCR u16:visits
+:3
+> APPEND u16:log started
+:7
+> APPEND u16:log ,stopped
+:15
+> GETSET u16:name Grace Hopper
+$Ada Lovelace
+> GET u16:name
+$Grace Hopper
+> INCR u16:name
+-ERR NotAnInteger
+> DEL u16:missing
+:0
+> GET u16:missing
+_
+> HASH u16:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u16:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u16:
+*3
+$u16:log
+$u16:name
+$u16:visits
+-ERR ShuttingDown
+--- client 17
+> NAME client17
++OK
+> SET u17:name Ada Lovelace
++OK
+> GET u17:name
+$Ada Lovelace
+> INCR u17:visits
+:1
+> INCR u17:visits
+:2
+> INCR u17:visits
+:3
+> APPEND u17:log started
+:7
+> APPEND u17:log ,stopped
+:15
+> GETSET u17:name Grace Hopper
+$Ada Lovelace
+> GET u17:name
+$Grace Hopper
+> INCR u17:name
+-ERR NotAnInteger
+> DEL u17:missing
+:0
+> GET u17:missing
+_
+> HASH u17:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u17:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u17:
+*3
+$u17:log
+$u17:name
+$u17:visits
+-ERR ShuttingDown
+--- client 18
+> NAME client18
++OK
+> SET u18:name Ada Lovelace
++OK
+> GET u18:name
+$Ada Lovelace
+> INCR u18:visits
+:1
+> INCR u18:visits
+:2
+> INCR u18:visits
+:3
+> APPEND u18:log started
+:7
+> APPEND u18:log ,stopped
+:15
+> GETSET u18:name Grace Hopper
+$Ada Lovelace
+> GET u18:name
+$Grace Hopper
+> INCR u18:name
+-ERR NotAnInteger
+> DEL u18:missing
+:0
+> GET u18:missing
+_
+> HASH u18:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u18:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u18:
+*3
+$u18:log
+$u18:name
+$u18:visits
+-ERR ShuttingDown
+--- client 19
+> NAME client19
++OK
+> SET u19:name Ada Lovelace
++OK
+> GET u19:name
+$Ada Lovelace
+> INCR u19:visits
+:1
+> INCR u19:visits
+:2
+> INCR u19:visits
+:3
+> APPEND u19:log started
+:7
+> APPEND u19:log ,stopped
+:15
+> GETSET u19:name Grace Hopper
+$Ada Lovelace
+> GET u19:name
+$Grace Hopper
+> INCR u19:name
+-ERR NotAnInteger
+> DEL u19:missing
+:0
+> GET u19:missing
+_
+> HASH u19:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u19:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u19:
+*3
+$u19:log
+$u19:name
+$u19:visits
+-ERR ShuttingDown
+--- client 20
+> NAME client20
++OK
+> SET u20:name Ada Lovelace
++OK
+> GET u20:name
+$Ada Lovelace
+> INCR u20:visits
+:1
+> INCR u20:visits
+:2
+> INCR u20:visits
+:3
+> APPEND u20:log started
+:7
+> APPEND u20:log ,stopped
+:15
+> GETSET u20:name Grace Hopper
+$Ada Lovelace
+> GET u20:name
+$Grace Hopper
+> INCR u20:name
+-ERR NotAnInteger
+> DEL u20:missing
+:0
+> GET u20:missing
+_
+> HASH u20:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u20:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u20:
+*3
+$u20:log
+$u20:name
+$u20:visits
+-ERR ShuttingDown
+--- client 21
+> NAME client21
++OK
+> SET u21:name Ada Lovelace
++OK
+> GET u21:name
+$Ada Lovelace
+> INCR u21:visits
+:1
+> INCR u21:visits
+:2
+> INCR u21:visits
+:3
+> APPEND u21:log started
+:7
+> APPEND u21:log ,stopped
+:15
+> GETSET u21:name Grace Hopper
+$Ada Lovelace
+> GET u21:name
+$Grace Hopper
+> INCR u21:name
+-ERR NotAnInteger
+> DEL u21:missing
+:0
+> GET u21:missing
+_
+> HASH u21:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u21:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u21:
+*3
+$u21:log
+$u21:name
+$u21:visits
+-ERR ShuttingDown
+--- client 22
+> NAME client22
++OK
+> SET u22:name Ada Lovelace
++OK
+> GET u22:name
+$Ada Lovelace
+> INCR u22:visits
+:1
+> INCR u22:visits
+:2
+> INCR u22:visits
+:3
+> APPEND u22:log started
+:7
+> APPEND u22:log ,stopped
+:15
+> GETSET u22:name Grace Hopper
+$Ada Lovelace
+> GET u22:name
+$Grace Hopper
+> INCR u22:name
+-ERR NotAnInteger
+> DEL u22:missing
+:0
+> GET u22:missing
+_
+> HASH u22:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u22:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u22:
+*3
+$u22:log
+$u22:name
+$u22:visits
+-ERR ShuttingDown
+--- client 23
+> NAME client23
++OK
+> SET u23:name Ada Lovelace
++OK
+> GET u23:name
+$Ada Lovelace
+> INCR u23:visits
+:1
+> INCR u23:visits
+:2
+> INCR u23:visits
+:3
+> APPEND u23:log started
+:7
+> APPEND u23:log ,stopped
+:15
+> GETSET u23:name Grace Hopper
+$Ada Lovelace
+> GET u23:name
+$Grace Hopper
+> INCR u23:name
+-ERR NotAnInteger
+> DEL u23:missing
+:0
+> GET u23:missing
+_
+> HASH u23:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u23:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u23:
+*3
+$u23:log
+$u23:name
+$u23:visits
+-ERR ShuttingDown
+--- client 24
+> NAME client24
++OK
+> SET u24:name Ada Lovelace
++OK
+> GET u24:name
+$Ada Lovelace
+> INCR u24:visits
+:1
+> INCR u24:visits
+:2
+> INCR u24:visits
+:3
+> APPEND u24:log started
+:7
+> APPEND u24:log ,stopped
+:15
+> GETSET u24:name Grace Hopper
+$Ada Lovelace
+> GET u24:name
+$Grace Hopper
+> INCR u24:name
+-ERR NotAnInteger
+> DEL u24:missing
+:0
+> GET u24:missing
+_
+> HASH u24:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u24:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u24:
+*3
+$u24:log
+$u24:name
+$u24:visits
+-ERR ShuttingDown
+--- client 25
+> NAME client25
++OK
+> SET u25:name Ada Lovelace
++OK
+> GET u25:name
+$Ada Lovelace
+> INCR u25:visits
+:1
+> INCR u25:visits
+:2
+> INCR u25:visits
+:3
+> APPEND u25:log started
+:7
+> APPEND u25:log ,stopped
+:15
+> GETSET u25:name Grace Hopper
+$Ada Lovelace
+> GET u25:name
+$Grace Hopper
+> INCR u25:name
+-ERR NotAnInteger
+> DEL u25:missing
+:0
+> GET u25:missing
+_
+> HASH u25:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u25:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u25:
+*3
+$u25:log
+$u25:name
+$u25:visits
+-ERR ShuttingDown
+--- client 26
+> NAME client26
++OK
+> SET u26:name Ada Lovelace
++OK
+> GET u26:name
+$Ada Lovelace
+> INCR u26:visits
+:1
+> INCR u26:visits
+:2
+> INCR u26:visits
+:3
+> APPEND u26:log started
+:7
+> APPEND u26:log ,stopped
+:15
+> GETSET u26:name Grace Hopper
+$Ada Lovelace
+> GET u26:name
+$Grace Hopper
+> INCR u26:name
+-ERR NotAnInteger
+> DEL u26:missing
+:0
+> GET u26:missing
+_
+> HASH u26:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u26:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u26:
+*3
+$u26:log
+$u26:name
+$u26:visits
+-ERR ShuttingDown
+--- client 27
+> NAME client27
++OK
+> SET u27:name Ada Lovelace
++OK
+> GET u27:name
+$Ada Lovelace
+> INCR u27:visits
+:1
+> INCR u27:visits
+:2
+> INCR u27:visits
+:3
+> APPEND u27:log started
+:7
+> APPEND u27:log ,stopped
+:15
+> GETSET u27:name Grace Hopper
+$Ada Lovelace
+> GET u27:name
+$Grace Hopper
+> INCR u27:name
+-ERR NotAnInteger
+> DEL u27:missing
+:0
+> GET u27:missing
+_
+> HASH u27:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u27:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u27:
+*3
+$u27:log
+$u27:name
+$u27:visits
+-ERR ShuttingDown
+--- client 28
+> NAME client28
++OK
+> SET u28:name Ada Lovelace
++OK
+> GET u28:name
+$Ada Lovelace
+> INCR u28:visits
+:1
+> INCR u28:visits
+:2
+> INCR u28:visits
+:3
+> APPEND u28:log started
+:7
+> APPEND u28:log ,stopped
+:15
+> GETSET u28:name Grace Hopper
+$Ada Lovelace
+> GET u28:name
+$Grace Hopper
+> INCR u28:name
+-ERR NotAnInteger
+> DEL u28:missing
+:0
+> GET u28:missing
+_
+> HASH u28:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u28:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u28:
+*3
+$u28:log
+$u28:name
+$u28:visits
+-ERR ShuttingDown
+--- client 29
+> NAME client29
++OK
+> SET u29:name Ada Lovelace
++OK
+> GET u29:name
+$Ada Lovelace
+> INCR u29:visits
+:1
+> INCR u29:visits
+:2
+> INCR u29:visits
+:3
+> APPEND u29:log started
+:7
+> APPEND u29:log ,stopped
+:15
+> GETSET u29:name Grace Hopper
+$Ada Lovelace
+> GET u29:name
+$Grace Hopper
+> INCR u29:name
+-ERR NotAnInteger
+> DEL u29:missing
+:0
+> GET u29:missing
+_
+> HASH u29:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u29:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u29:
+*3
+$u29:log
+$u29:name
+$u29:visits
+-ERR ShuttingDown
+--- client 30
+> NAME client30
++OK
+> SET u30:name Ada Lovelace
++OK
+> GET u30:name
+$Ada Lovelace
+> INCR u30:visits
+:1
+> INCR u30:visits
+:2
+> INCR u30:visits
+:3
+> APPEND u30:log started
+:7
+> APPEND u30:log ,stopped
+:15
+> GETSET u30:name Grace Hopper
+$Ada Lovelace
+> GET u30:name
+$Grace Hopper
+> INCR u30:name
+-ERR NotAnInteger
+> DEL u30:missing
+:0
+> GET u30:missing
+_
+> HASH u30:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u30:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u30:
+*3
+$u30:log
+$u30:name
+$u30:visits
+-ERR ShuttingDown
+--- client 31
+> NAME client31
++OK
+> SET u31:name Ada Lovelace
++OK
+> GET u31:name
+$Ada Lovelace
+> INCR u31:visits
+:1
+> INCR u31:visits
+:2
+> INCR u31:visits
+:3
+> APPEND u31:log started
+:7
+> APPEND u31:log ,stopped
+:15
+> GETSET u31:name Grace Hopper
+$Ada Lovelace
+> GET u31:name
+$Grace Hopper
+> INCR u31:name
+-ERR NotAnInteger
+> DEL u31:missing
+:0
+> GET u31:missing
+_
+> HASH u31:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u31:bad	key value
+-ERR BadByte(offset: 7)
+> KEYS u31:
+*3
+$u31:log
+$u31:name
+$u31:visits
+-ERR ShuttingDown
+--- operator 32
+> NAME operator
++OK
+> DBSIZE
+:96
+> COMPACT
++OK
+> STATS
+*8
+$clients 33
+$accepted 33
+$commands 516
+$changes 224
+$failures 0
+$keys 96
+$log_records 0
+$compactions 1 generation 1
+> CLIENTS
+*33
+$client0 16
+$client1 16
+$client10 16
+$client11 16
+$client12 16
+$client13 16
+$client14 16
+$client15 16
+$client16 16
+$client17 16
+$client18 16
+$client19 16
+$client2 16
+$client20 16
+$client21 16
+$client22 16
+$client23 16
+$client24 16
+$client25 16
+$client26 16
+$client27 16
+$client28 16
+$client29 16
+$client3 16
+$client30 16
+$client31 16
+$client4 16
+$client5 16
+$client6 16
+$client7 16
+$client8 16
+$client9 16
+$operator 5 (you)
+> NAME -
++OK
+> SHUTDOWN
++BYE
+--- the log holds 96 keys, digest ffb2cdf8b74c5500
+u0:log = started,stopped
+u0:name = Grace Hopper
+u0:visits = 3
+u10:log = started,stopped
+u10:name = Grace Hopper
+u10:visits = 3
+u11:log = started,stopped
+u11:name = Grace Hopper
+u11:visits = 3
+u12:log = started,stopped
+u12:name = Grace Hopper
+u12:visits = 3
+u13:log = started,stopped
+u13:name = Grace Hopper
+u13:visits = 3
+u14:log = started,stopped
+u14:name = Grace Hopper
+u14:visits = 3
+u15:log = started,stopped
+u15:name = Grace Hopper
+u15:visits = 3
+u16:log = started,stopped
+u16:name = Grace Hopper
+u16:visits = 3
+u17:log = started,stopped
+u17:name = Grace Hopper
+u17:visits = 3
+u18:log = started,stopped
+u18:name = Grace Hopper
+u18:visits = 3
+u19:log = started,stopped
+u19:name = Grace Hopper
+u19:visits = 3
+u1:log = started,stopped
+u1:name = Grace Hopper
+u1:visits = 3
+u20:log = started,stopped
+u20:name = Grace Hopper
+u20:visits = 3
+u21:log = started,stopped
+u21:name = Grace Hopper
+u21:visits = 3
+u22:log = started,stopped
+u22:name = Grace Hopper
+u22:visits = 3
+u23:log = started,stopped
+u23:name = Grace Hopper
+u23:visits = 3
+u24:log = started,stopped
+u24:name = Grace Hopper
+u24:visits = 3
+u25:log = started,stopped
+u25:name = Grace Hopper
+u25:visits = 3
+u26:log = started,stopped
+u26:name = Grace Hopper
+u26:visits = 3
+u27:log = started,stopped
+u27:name = Grace Hopper
+u27:visits = 3
+u28:log = started,stopped
+u28:name = Grace Hopper
+u28:visits = 3
+u29:log = started,stopped
+u29:name = Grace Hopper
+u29:visits = 3
+u2:log = started,stopped
+u2:name = Grace Hopper
+u2:visits = 3
+u30:log = started,stopped
+u30:name = Grace Hopper
+u30:visits = 3
+u31:log = started,stopped
+u31:name = Grace Hopper
+u31:visits = 3
+u3:log = started,stopped
+u3:name = Grace Hopper
+u3:visits = 3
+u4:log = started,stopped
+u4:name = Grace Hopper
+u4:visits = 3
+u5:log = started,stopped
+u5:name = Grace Hopper
+u5:visits = 3
+u6:log = started,stopped
+u6:name = Grace Hopper
+u6:visits = 3
+u7:log = started,stopped
+u7:name = Grace Hopper
+u7:visits = 3
+u8:log = started,stopped
+u8:name = Grace Hopper
+u8:visits = 3
+u9:log = started,stopped
+u9:name = Grace Hopper
+u9:visits = 3

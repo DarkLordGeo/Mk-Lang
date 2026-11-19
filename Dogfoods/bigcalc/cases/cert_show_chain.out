@@ -1,0 +1,33 @@
+$CASES/data/pki/chain.pem #1
+  subject:    CN=bigcalc.test
+  issuer:     CN=bigcalc Test Intermediate,O=bigcalc
+  serial:     7f3a9c51e2b84d06a1c3e5f7092b4d6e
+  not before: 2020-01-01T00:00:00Z
+  not after:  2200-01-01T00:00:00Z
+  names:      bigcalc.test, www.bigcalc.test, 127.0.0.1
+  key:        P-256
+  ca:         (no basic constraints)
+  sha-1:      83350e599fbb2ceba6a1685b7e30f4a9c284b78a
+  sha-256:    8b0607249473086c5b08b819043d94167e7f01b282e1b21839a49d99046c0367
+$CASES/data/pki/chain.pem #2
+  subject:    CN=bigcalc Test Intermediate,O=bigcalc
+  issuer:     CN=bigcalc Test Root,O=bigcalc
+  serial:     1000
+  not before: 2020-01-01T00:00:00Z
+  not after:  2200-01-01T00:00:00Z
+  names:      (none)
+  key:        RSA 2048 bits, exponent 65537
+  ca:         yes, path length 0
+  sha-1:      83ee210a9b4ebded5c114041d9f4210e3f4d1200
+  sha-256:    4ac8152e25731c08d28328a99ebcfd2b4b433138de41ad3b2572f6b55fc9270d
+$CASES/data/pki/root.pem #1
+  subject:    CN=bigcalc Test Root,O=bigcalc
+  issuer:     CN=bigcalc Test Root,O=bigcalc
+  serial:     1
+  not before: 2020-01-01T00:00:00Z
+  not after:  2200-01-01T00:00:00Z
+  names:      (none)
+  key:        P-384
+  ca:         yes, path length 1
+  sha-1:      0a62e100a32df14f0fb8c10cb68484c949378460
+  sha-256:    d57f577000fd527c8c08f083d39bee505e396929bc0e920732c1243a9de09d31

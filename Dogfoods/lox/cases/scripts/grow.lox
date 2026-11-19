@@ -1,0 +1,7 @@
+// Keeps everything it makes reachable, so a collection cannot get under the limit.
+var all = [];
+var i = 0;
+while (true) {
+  push(all, "item " + str(i));
+  i = i + 1;
+}

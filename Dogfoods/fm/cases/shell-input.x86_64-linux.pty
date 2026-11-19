@@ -1,0 +1,19 @@
+# A command that reads a line: what is typed while it runs is passed to it,
+# and a resize resizes its terminal. A paste waits 200 ms: DEFECT DF-fm-02.
+size 80 24
+expect 1
+keys !
+expect 2
+sleep 200
+paste read x
+expect 3
+key enter
+expect 4
+resize 70 20
+keys hello\r
+expect 5
+keys z
+expect 6
+keys q
+expect 7
+keys q

@@ -1,0 +1,6 @@
+--origin
+$CASES/data/site.origin
+--parallel
+--max-memory
+4096
+http://{origin}/hello

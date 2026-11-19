@@ -1,0 +1,322 @@
+# Field-level loan sets' mutants, in two steps:
+# step 1, per-field result sources, and step 2, per-field held
+# sets for locals. The format is mutants.txt's,
+# read with it by readMutantTable (every tests/soundness/mutants*.txt, IDs
+# unique across the files). A row may patch one file of internal/borrow or
+# internal/check, and names with `witness` the files of
+# tests/soundness/witness/ it must flip: TestFlowsMutants (MK_SOUND=1)
+# builds each mutant into a child test binary through go test -overlay and
+# judges its witnesses there; each must be accepted, with nothing emitted
+# (flows8Flipped: an error moved to another line or code is no flip).
+# These rows are not run on the generator's sample by default
+# (selectedMutants skips them). The per-field stratum (
+# internal/corpus/soundfields.go, profile fields) was built to reach them:
+# MK_SOUND_MUTANTS_GEN=1 with MK_SOUND_MUTANTS naming rows runs them there.
+# It does not reach M-F8-W2-ret-union, whose one known kill
+# the whole-body recheck rejects;
+# S86 (soundholes.go) draws W2's crossed result in a
+# function of its own, which that recheck does not reach.
+#
+# Rules of step 1 with no row:
+# - Conservative in step 1, so no mutant is owed: a split temporary
+#   becomes whole at a join (step 2's field-wise join is its sound
+#   relaxation); a struct or record literal and some/ok split field-wise
+#   (without them the value is whole, checked against every field). Borrow
+#   splits a view with one more set, its rest; that split has its own
+#   rows, M-P4-view-* in mutants.txt.
+# - Unreachable in step 1, so no witness can show them: a store into a
+#   split root makes it whole (addHeld), and put makes a root whole when
+#   held grows with its vector unchanged. No store or field write reaches a
+#   split temporary in step 1's lowering; they
+#   are step 2's rules.
+# - W1.mk has no row of its own: step 2 splits named locals, so W1's
+#   rule "a whole binding is the union" does not hold, and W1.mk
+#   is judged by step 2's rows below.
+#
+
+mutant M-F8-W2-ret-union
+rule R9
+class R
+file internal/borrow/exits.go
+anchor \t\t\tsrcs, named := c.fieldSources(fl, uint32(i))\n
+replace \t\t\t_, named := c.fieldSources(fl, uint32(i))\n\t\t\tsrcs := fl.Sources\n
+note W2: a split _0 checked against the clause's union, not field by field; the crossed literal is accepted, and so is a crossed fn literal under a per-field fn type (fnlit-cross.mk)
+witness W2.mk fnlit-cross.mk
+end
+
+mutant M-F8-W3-unnamed-free
+rule R9
+class R
+file internal/borrow/exits.go
+anchor \t\t\tjobs = append(jobs, job{s, [][]types.Source{srcs}, label})\n
+replace \t\t\tif !named {\n\t\t\t\tcontinue\n\t\t\t}\n\t\t\tjobs = append(jobs, job{s, [][]types.Source{srcs}, label})\n
+note W3: a field the clause leaves out is not checked against the union; the caller's s reads a's set and holds b's loan
+witness W3.mk
+end
+
+mutant M-F8-whole-union
+rule R9
+class R
+file internal/borrow/exits.go
+anchor \t\t\tall = append(all, f.Sources)\n
+replace \t\t\t_ = f\n
+note the whole operand: a whole _0 checked against the union alone, not against every named field
+witness W2-whole.mk
+end
+
+mutant M-F8-W4-cover-flat
+rule R9
+class R
+file internal/check/flows.go
+anchor \treturn types.FlowsCovered(value, target, valueInto, targetInto)\n
+replace \ttarget.Fields = nil\n\treturn types.FlowsCovered(value, target, valueInto, targetInto)\n
+note W4 (E0608): the target's per-field clause ignored, so a whole clause covering the union fits a per-field interface method (and fn type: on W4.mk, a fn value, mir.Validate reads types.FlowsCovered itself and the mutant ends in an internal error, not an acceptance)
+witness W4-iface.mk
+end
+
+mutant M-F8-W5-forward-by-name
+rule R9
+class R
+file internal/borrow/fields.go
+anchor \t\t\th := argH[s.Param-1]\n
+replace \t\t\th := c.held(st, rootID(s.Param))\n
+note W5: the call result's field sets read the caller's own parameter of the callee's source's position, not the call's argument; a forwarded call's inner clause is not mapped through its arguments
+witness W5.mk
+end
+
+mutant M-F8-W6-res-before
+rule R9 R11
+class R
+file internal/borrow/call.go
+anchor c.resultFV(st, fv, argH,
+replace c.resultFV(st, fv, entryH,
+note W6: the call result's field sets read from the arguments' entry sets, before the call's `x into p` and `*q into p` stores write into them
+witness W6.mk
+end
+
+mutant M-F8-FR5-payload-key
+rule R7 R9
+class R
+file internal/borrow/fields.go
+anchor \t\ti += 2\n
+replace \t\ti++\n
+note the payload key: under ?T and E!T the field key is the first field step after the downcasts, the payload slot .0, so every binding reads field 0's set
+witness FR5-shape14.mk FR5-shape6.mk
+end
+
+mutant M-F8-W3-caller-union
+rule R9
+class R
+file internal/borrow/fields.go
+anchor \t\tsrcs, _ := c.fieldSources(flat, uint32(i))\n
+replace \t\tsrcs, named := c.fieldSources(flat, uint32(i))\n\t\tif !named {\n\t\t\tcontinue\n\t\t}\n
+note W3 at the caller (the call's result): a field the clause leaves out gets nothing from the result instead of the clause's union; the caller's s holds no loan and keep outlives y
+witness W3-caller.mk
+end
+
+# Step 2, per-field held sets for locals. No narrowing of R11's
+# first-level exemption for a clause-free callee is made: it would hold
+# only in the direct callee, and a callee that
+# is not narrowed (a generic, an extern, a fn value) one call further could
+# move a loan between the fields of a local the caller kept split.
+# The witnesses of such a narrowing stay:
+# S2a-t2.mk and the S2-t2-*.mk files. Their notes say what each checks:
+# the callee rules' witnesses are `ok`, and the caller rules' are E0505
+# under M-RV2-1-excl-collapse.
+#
+#
+# Load-bearing, with a row: the collapse at an exclusive whole borrow
+# (M-RV2-1-excl-collapse: R11's first-level exemption lets any callee move a
+# loan between the fields it reaches, and no store the caller sees records
+# it) and the writable-by-type condition on a split kept across a shared
+# whole borrow (M-RV2-a6-writable).
+#
+# Rules of step 2 with no row:
+# - Conservative, so no mutant is owed: a view root never split
+#   (S2-view-root.mk); a def of the whole root defining every field
+#   element.
+# - put making a split root whole when held grows with its vector unchanged
+#   has no row of its own: it is the second half of two rules guarded twice
+#   and M-F8-S2e-fieldloan-lost and M-F8-S2-d122-drop remove both
+#   halves; the two halves are load-bearing jointly.
+# - The union invariant (held is exactly the union of a split root's
+#   fields) is checked on every put and every join by borrow's tests, the
+#   soundness runs and TestFlowsWitnesses (borrow.SetSplitUnionCheck;
+#   borrow's TestSplitUnionJoinChecked breaks a join).
+
+mutant M-F8-S2c-strong-deep
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \tif rest == len(pi.steps) {\n
+replace \tif _ = rest; true {\n
+note S2-c: a write inside field f (`o.f.h = e`) replaces f's set instead of adding to it; W1's mutant under step 2
+witness S2c-strong-deep.mk W1.mk
+end
+
+mutant M-F8-S2d-join-meet
+rule R7
+class R
+file internal/borrow/fields.go
+anchor \t\tout[i] = s.unite(fa[i], fb[i])\n
+replace \t\tout[i] = s.meet(fa[i], fb[i])\n
+note S2-d: a join of two split states meets each field's sets instead of uniting them; W1's mutant under step 2
+witness S2d-join.mk W1.mk
+end
+
+mutant M-F8-S2e-fieldloan-lost
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \t\tif f < 0 && c.roots[r].fcar[i] || i == f {\n
+replace \t\tif f < 0 && c.roots[r].fcar[i] {\n
+note S2-e: a store through a loan whose place names field f lands nowhere instead of in f (the field sets do not see it). The rule is guarded twice: its first half is this field store, its second put's guard (held grown with the vector unchanged makes the root whole); dropping the store from the field and from held together removes both halves, which are load-bearing jointly
+witness S2e-fieldloan.mk S2-swap.mk S2-replace.mk
+end
+
+mutant M-F8-S2e-field-first
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \t\treturn int(f)\n
+replace \t\treturn 0\n
+note the field key of a store through a field loan: a store through a loan on t.b lands in field 0, not in the field the loan's place names
+witness S2e-fieldloan-b.mk
+end
+
+mutant M-F8-S2-whole-store
+rule R7
+class R
+file internal/borrow/locals.go
+anchor f < 0 && c.roots[r].fcar[i] ||
+replace f < 0 && i == 0 ||
+note a store that knows no field of a split root (the writable walk's and the direct write's merge of loans on two different fields) lands in field 0 only, not in every field. S2-whole-loan.mk does not depend on it: `Pick(mut t)` collapses t
+witness RV2-walk-two-fields.mk RV2-direct-two-fields.mk
+end
+
+mutant M-F8-S2-whole-read-one
+rule R7
+class R
+file internal/borrow/fields.go
+anchor \t\treturn h, 0, true\n\t}\n\treturn 0, 0, false\n}\n
+replace \t\treturn h, 0, true\n\t}\n\tif k == keyWhole && len(pi.steps) == 0 {\n\t\treturn fs[0], 0, true\n\t}\n\treturn 0, 0, false\n}\n
+note 'whole read': a whole read of a split root gives its first field's set, not the union
+witness S2-whole-read.mk
+end
+
+mutant M-F8-S2-whole-use-one
+rule R6 R7
+class R
+file internal/borrow/locals.go
+anchor \t\treturn append(buf, c.elem(r, int(f)))\n\t}\n\tfor f := range n {\n
+replace \t\treturn append(buf, c.elem(r, int(f)))\n\t}\n\tfor f := range min(n, 1) {\n
+note 'whole use' (R6): a use of the whole value keeps only its first field live
+witness S2-whole-use.mk
+end
+
+mutant M-F8-S2-d122-drop
+rule R7
+class R
+file internal/borrow/call.go
+anchor \t\t\tc.put(es, s.r, s.e)\n
+replace \t\t\tdrop := s.e\n\t\t\tdrop.fv = es.get(s.r).fv\n\t\t\tes.set(s.r, drop)\n
+note the restore on the error edge: the argument's init and union come back but its field sets stay those of the move, all empty. The rule is guarded twice: its first half is the restore of the field sets, its second put's guard (held grown with the vector unchanged makes the root whole); writing past put (es.set) removes both halves, which are load-bearing jointly
+witness S2-d122.mk
+end
+
+# The collapse at an exclusive whole borrow.
+
+mutant M-RV2-1-excl-collapse
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \tif len(pi.steps) == 0 && !excl && !c.roots[r].writable {\n
+replace \tif len(pi.steps) == 0 && (excl || !c.roots[r].writable) {\n
+note an exclusive borrow of the whole of a split local keeps it split, for every callee: the callee, or one it hands the reference on to (a generic, an extern, a fn value), moves a loan between the local's fields under R11's first-level exemption, unseen
+witness RV2-1-generic-hop.mk RV2-1-generic-shared-hop.mk RV2-1-extern-hop-fnvalue.mk RV2-1-into-escape.mk S2a-t2.mk S2-t2-generic.mk S2-t2-extern.mk S2-t2-extern-fnvalue.mk RV2-1-extern-method-fnvalue.mk RV2-1-fnvalue-field.mk
+end
+
+# Four more load-bearing rules of step 2.
+
+mutant M-RV2-a6-writable
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \tif len(pi.steps) == 0 && !excl && !c.roots[r].writable {\n
+replace \tif len(pi.steps) == 0 && !excl {\n
+note a shared whole borrow keeps a split without the writable-by-type condition: a shared borrow of a type with a Cell inline keeps the local split; the callee (here an extern through a fn value) may store one field's loan into the Cell field under R11's first-level exemption, unseen. S2b-a6.mk depends on it too
+witness RV2-a6-writable-fnvalue.mk S2b-a6.mk
+end
+
+mutant M-RV2-walk-merge
+rule R7
+class R
+file internal/borrow/store.go
+anchor \t\t\t} else if i, ok := at[t]; ok && fld[i] != c.fieldOfLoan(h.l, t) {\n
+replace \t\t\t} else if i, ok := at[t]; false && ok && fld[i] != c.fieldOfLoan(h.l, t) {\n
+note the writable walk reaching a split root through loans on two fields keeps the first field; a call's store lands there only
+witness RV2-walk-two-fields.mk
+end
+
+mutant M-RV2-direct-merge
+rule R7
+class R
+file internal/borrow/store.go
+anchor \t\t\t\tif fld[t] != f {\n
+replace \t\t\t\tif false && fld[t] != f {\n
+note the direct write rule reaching a split root through loans on two fields keeps the first field; the store lands there only
+witness RV2-direct-two-fields.mk
+end
+
+mutant M-RV2-byvalue-entry
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \t\tif ri.fcar[i] {\n\t\t\tfs[i] = held\n
+replace \t\tif ri.fcar[i] && i == 0 {\n\t\t\tfs[i] = held\n
+note a split by-value parameter's fields start at p.outer; with only the first, a read of another field holds nothing and a return of it needs no source
+witness RV2-byvalue-entry.mk
+end
+
+# The whole-body fallback and the generic writable-by-type condition.
+# M-RV2-1-excl-collapse does not name
+# RV2-1-generic-after-result.mk, RV2-1-result-to-fnvalue.mk and
+# RV2-1-from-escape.mk: each body also has a call that may take part in a
+# self-reach through a forwarding parameter (its argument's loans reach a Cell), so the whole check
+# rejects it too and neither row alone flips it; both rules stay needed
+# through their other witnesses. For the same reason the
+# programs SK2-G06-generic-rot-literal-read.mk and SK2-G06b-generic-
+# rot-4242.mk are witnesses under no row: their field b holds a loan of
+# a parameter node of type T, which the whole check counts as writable;
+# SK2-G09-generic-rot-k.mk builds b from a &i32 and is flipped by
+# M-FIX12-a6-generic alone.
+#
+# The 16
+# FR38D and SK1 witnesses are also rejected in their callee F (E0604 x into
+# x at the write), so M-FIX12-remnant-whole alone does not flip them; they
+# stay witnesses under no row, as G06 and G06b. The fallback still decides
+# where no body judges the callee's write: FIX12-unsafe-u1 is FR38D-E1-copy
+# with that write through a raw pointer, the row's own witness.
+
+mutant M-FIX12-remnant-whole
+rule R7 R9
+class R
+file internal/borrow/call.go
+anchor \t\tc.remnant = c.remnantReach(st, fv, argH)\n
+replace \t\tc.remnant = false && c.remnantReach(st, fv, argH)\n
+note the whole-body fallback: without it a body whose call may take part in a self-reach through a forwarding parameter keeps its field sets, and the per-field sets (step 2's strong update, literal, destructuring, join, shared whole borrow, loop, record; step 1's per-field result) take the short loan out of the field read later, which one set per root catches only by accident; F's own check rejects such a write wherever a body is judged, so this matters only where none is (unsafe, extern)
+witness FIX12-unsafe-u1
+end
+
+mutant M-FIX12-a6-generic
+rule R7
+class R
+file internal/borrow/locals.go
+anchor \tif c.mentionsParam(c.roots[r].typ) {\n
+replace \tif false && c.mentionsParam(c.roots[r].typ) {\n
+also-file internal/borrow/setup.go
+also-anchor ) && c.w.fnResultSupplied(c.body.OperandType(t.Callee.Value)) {
+also-replace ) || false && c.w.fnResultSupplied(c.body.OperandType(t.Callee.Value)) {
+note (with M-D756-gen-sfn's rule cut too: Run's `return p` holds mk(&n)'s T, E0602) the writable-by-type condition judged on a type that still mentions a parameter (Two2[T]) keeps a generic local split across a whole shared borrow; the instance T = Slot holds a Cell inline, and the clause-free Rot moves field a's loan into field b's Cell under R11's first-level exemption
+witness SK2-G09-generic-rot-k.mk
+end

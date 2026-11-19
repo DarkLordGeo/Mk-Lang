@@ -1,0 +1,1 @@
+$CASES/data/book-header.csv:1: expected the header id,side,kind,qty,price,stop,ts,tag

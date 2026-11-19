@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0308","name":"no-operator","phase":"types","root":1,"at":{"file":"E0308.mk","line":3,"col":12,"end_line":3,"end_col":17},"message":"`+` is not defined on `bool`","facts":{"operator":"+","type":"bool"},"fixes":[],"alternatives":[],"explain":"mk explain E0308"}],"omitted":0}

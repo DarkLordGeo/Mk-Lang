@@ -1,0 +1,4 @@
+$CASES/data/photo.ppm: P6 33x17, 3 channel(s), maxval 255
+samples: min 0 max 255 mean 112.934 deviation 57.071
+brightest: 1 samples, the first at x 30 y 15
+bits used 11111111, always set 00000000; xor 38, sum32 0002e674

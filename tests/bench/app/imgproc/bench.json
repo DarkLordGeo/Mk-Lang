@@ -1,0 +1,53 @@
+{
+  "name": "imgproc",
+  "table": "app",
+  "algorithm": "Run the imgproc dogfood's bench pipeline (blur, sharpen, equalize, sobel, resize, gamma, a channel swap, posterize, gray, dilate and threshold) over its in-memory colour test pattern at a larger size, then print the result's statistics (README.md).",
+  "args": [
+    "info",
+    "synth:4096x4096",
+    "blur",
+    "sharpen",
+    "equalize",
+    "sobel",
+    "resize=2048x0",
+    "gamma=2.2",
+    "swap=bgr",
+    "posterize=5",
+    "gray",
+    "dilate",
+    "threshold"
+  ],
+  "quick": [
+    "info",
+    "synth:2048x1536",
+    "blur",
+    "sharpen",
+    "equalize",
+    "sobel",
+    "resize=1024x0",
+    "gamma=2.2",
+    "swap=bgr",
+    "posterize=5",
+    "gray",
+    "dilate",
+    "threshold"
+  ],
+  "checksum": "sha256:8d2d58c6d8f6d932ec8f56e3042a7bc16910e13651ea33f0ae3793391c15c16c",
+  "quick_checksum": "sha256:0cf45bb03e641303a17a8b1a5c449b5773727884297f3b86390c3a16e85714c6",
+  "package": {
+    "path": "Dogfoods/imgproc"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the imgproc dogfood unchanged, compared across mk binaries; no twin, no peer, no defect line (README.md).",
+    "Labelled: imgproc writes its own vector code (std.simd's Vec) and chooses its kernel path at run time (--path auto, its Cpu() dispatch in its unsafe module src/dispatch), which keeps it out of a twinned row unchanged (D-781). So the path it times is the machine's widest, and a comparison is between two mk binaries on one machine only.",
+    "The quick arguments are the dogfood's own bench case (Dogfoods/imgproc/cases/bench.args); the publish arguments make the pattern 4096x4096 and resize it to 2048 wide. imgproc refuses a pattern of more than 67,108,864 samples (its pnm.MaxSamples, three per pixel), so 6144x4608 is refused, with a message that names only the 16,384 side limit (seen at 6144x4096 and 6144x4608; the dogfood is used unchanged).",
+    "The size is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

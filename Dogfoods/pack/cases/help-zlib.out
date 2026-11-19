@@ -1,0 +1,8 @@
+usage: pack zlib [options]
+
+Options:
+  --out <str>         Write the zlib stream to this file (required)
+  --level <int>       Compression level, 0 (store) to 9; giving one streams the file
+  --sync-every <int>  End a block with a sync flush every this many input bytes
+Arguments:
+  <inputs>...         The files to compress, one after another into one stream

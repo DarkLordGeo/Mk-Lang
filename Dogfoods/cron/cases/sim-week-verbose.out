@@ -1,0 +1,13 @@
+cron: stopped: the simulated days ran out
+job              started    ok  failed timed out  interrupted  detached overlaps
+nightly                2     2       0         0            0         0        0
+hourly                 0     0       0         0            0         0        0
+early                  0     0       0         0            0         0        0
+howe-back              2     2       0         0            0         0        0
+howe-fwd               2     2       0         0            0         0        0
+INFO nightly: 2026-01-01 02:30:00 +01:00 (2026-01-01T01:30:00Z)
+INFO howe-back: 2026-01-02 01:45:00 +11:00 (2026-01-01T14:45:00Z)
+INFO howe-fwd: 2026-01-02 02:15:00 +11:00 (2026-01-01T15:15:00Z)
+INFO nightly: 2026-01-02 02:30:00 +01:00 (2026-01-02T01:30:00Z)
+INFO howe-back: 2026-01-03 01:45:00 +11:00 (2026-01-02T14:45:00Z)
+INFO howe-fwd: 2026-01-03 02:15:00 +11:00 (2026-01-02T15:15:00Z)

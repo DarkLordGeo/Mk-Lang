@@ -1,0 +1,53 @@
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 15
+
+{"status":"ok"}HTTP/1.1 201 Created
+Location: /notes/1
+Content-Type: application/json
+Content-Length: 73
+
+{"id":1,"title":"Groceries","body":"milk","tags":["food","home"],"rev":1}HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Content-Length: 46
+
+{"message":"the body is not JSON","offset":28}HTTP/1.1 422 Unprocessable Content
+Content-Type: application/json
+Content-Length: 85
+
+{"message":"a note needs a string title and body, and tags as strings","offset":null}HTTP/1.1 405 Method Not Allowed
+Allow: GET, HEAD, POST
+Content-Length: 0
+
+HTTP/1.1 404 Not Found
+Content-Length: 0
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 73
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 70
+
+{"id":1,"title":"Groceries","body":"milk and honey","tags":[],"rev":2}HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 70
+
+{"id":1,"title":"Groceries","body":"milk and honey","tags":[],"rev":2}HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 92
+
+{"notes":[{"id":1,"title":"Groceries","body":"milk and honey","tags":[],"rev":2}],"total":1}HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 44
+
+{"notes":1,"tags":0,"words":3,"avg_words":3}HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 16
+
+{"deleted":true}HTTP/1.1 404 Not Found
+Content-Type: application/json
+Content-Length: 40
+
+{"message":"no such note","offset":null}

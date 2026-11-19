@@ -1,0 +1,9 @@
+run
+$CASES/data/lock.tab
+--stop-after
+5s
+--echo
+--max-jobs
+1
+--lock
+{tmp}/cron.lock

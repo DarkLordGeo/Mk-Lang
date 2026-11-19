@@ -1,0 +1,23 @@
+# a tree made, times set and listed, copied, moved, linked and removed
+mkdir docs/old
+touch 2026-01-02T03:04:05Z docs/a.txt
+touch 2025-07-01T12:00:00Z docs/old/b.txt
+touch 2025-07-02T00:00:00Z docs/old
+ls --times docs
+stat docs/a.txt
+cp docs/a.txt docs/c.txt
+cp docs/a.txt docs/c.txt
+n
+cp --yes docs/a.txt docs/c.txt
+cp docs copy
+mv copy/c.txt copy/moved.txt
+link a.txt docs/a-link
+ls --depth 1 docs
+ls --skip old copy
+du docs copy
+rm copy
+y
+rm docs/a-link
+n
+rm --yes docs/a-link
+ls .

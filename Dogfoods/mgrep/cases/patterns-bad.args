@@ -1,0 +1,3 @@
+-f
+$CASES/data/patterns-bad.txt
+$CASES/data/tree

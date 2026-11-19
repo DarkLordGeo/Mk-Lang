@@ -1,0 +1,4 @@
+run
+--mem-limit
+4096
+$CASES/data/mem_limit.rpn

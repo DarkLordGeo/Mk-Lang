@@ -1,0 +1,10 @@
+# --client-memory 64: each joined room is kept in the client's own budget
+alice: NICK alice
+alice: JOIN #a
+alice: JOIN #b
+alice: JOIN #c
+alice: JOIN #d
+alice: WHOAMI
+alice: PART #a
+alice: JOIN #e
+alice: WHOAMI

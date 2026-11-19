@@ -1,0 +1,58 @@
+{
+  "name": "pack",
+  "table": "app",
+  "algorithm": "Pack a generated source tree into an archive signed with Ed25519 and sealed to a recipient (DEFLATE, a BLAKE3 manifest, X25519 and ChaCha20-Poly1305), the pack dogfood's bench case on a larger tree; then print the SHA-256 of every file the archive holds, opened with the recipient's key (README.md).",
+  "args": [
+    "create",
+    "--sign",
+    "{pkg}/cases/data/alice.key",
+    "--to",
+    "{pkg}/cases/data/bob.pub",
+    "--out",
+    "{out}",
+    "{data}"
+  ],
+  "quick": [
+    "create",
+    "--sign",
+    "{pkg}/cases/data/alice.key",
+    "--to",
+    "{pkg}/cases/data/bob.pub",
+    "--out",
+    "{out}",
+    "{data}"
+  ],
+  "checksum": "sha256:2c4d50564b059a7b91a056b75650ce4c27586e89ea7a9c7894732eb43d771ade",
+  "quick_checksum": "sha256:2c4d50564b059a7b91a056b75650ce4c27586e89ea7a9c7894732eb43d771ade",
+  "package": {
+    "path": "Dogfoods/pack"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "output": {
+    "file": "tree.pk",
+    "check": "then",
+    "then": [
+      "sum",
+      "--key",
+      "{pkg}/cases/data/bob.key",
+      "{out}"
+    ]
+  },
+  "data": {
+    "kind": "tree",
+    "file": "pack-tree-32mb",
+    "bytes": 32000000,
+    "seed": 7
+  },
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the pack dogfood unchanged, compared across mk binaries; no twin, no peer, no defect line (README.md).",
+    "The keys are the dogfood's own (Dogfoods/pack/cases/data: alice.key signs, bob.pub seals, bob.key opens), named through {pkg}. The sealed archive's bytes differ from run to run (a fresh X25519 key and nonce per seal), so the check is the then run, pack sum, whose output is fixed by the tree.",
+    "The size (data.bytes) is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

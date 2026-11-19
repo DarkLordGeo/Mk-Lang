@@ -1,0 +1,6 @@
+replay
+$CASES/data/basic.csv
+--depth
+2
+--band
+99.00:101.00

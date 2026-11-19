@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--deny
+loopback,nowhere
+http://{origin}/hello

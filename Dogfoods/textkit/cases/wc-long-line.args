@@ -1,0 +1,7 @@
+wc
+--buffer
+7
+--chars
+--bytes
+--width
+$CASES/data/long.txt

@@ -1,0 +1,24 @@
+// Generated from the gen lines of main for x86_64-windows. Not read by the compiler.
+
+// gen dyn.Of#1 for Store
+export struct StoreDyn {
+    data: *u8
+    vt: &StoreDynTable
+}
+
+// gen dyn.Of#1 for Store
+export struct StoreDynTable {
+    Get: fn(*u8, int): str
+    Put: fn(*u8, []u8): void
+}
+
+// gen dyn.Of#1 for Store
+StoreDyn.Get(&self, k: int): str {
+    return self.vt.Get(self.data, k)
+}
+
+// gen dyn.Of#1 for Store
+StoreDyn.Put(mut self, v: []u8): void {
+    return self.vt.Put(self.data, v)
+}
+

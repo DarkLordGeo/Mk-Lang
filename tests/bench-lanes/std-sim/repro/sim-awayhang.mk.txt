@@ -1,0 +1,127 @@
+// The guard that no fix of the cross-Sim shape turns a deadlock into a hang: it ends
+// with 0/16 at the bound.
+// A repro of two Sims joined across each
+// other. JoinRec.away, which
+// it was written against, is not part of std.sim. A run
+// that ends with "runs at the bound: 0/16" has no hang. Run:
+// `mk test main.mk` with this file copied as main.mk.
+//
+// JoinRec.away holds a real deadlock of Sim A while main joins a scope of
+// Sim B whose task waits for A's outcome. SA, a task of A, is blocked
+// reading a connection main dialed and never writes to: a deadlock of A,
+// which A reports by answering SA's Read Canceled; SA then sets flag. TB,
+// a task of B that main joins, polls flag, sleeping 1 ms on B's clock per
+// round, and gives up after Bound rounds. Without JoinRec.away, A
+// calls the deadlock at main's note from the Join, so TB sees flag after a
+// few rounds. With JoinRec.away, A calls no deadlock until main's next
+// note, which comes only after the Join, so TB runs to Bound: without the
+// bound the program never ends.
+import std.atomic
+import std.net
+import std.sim
+import std.time
+
+const Bound: int = 200000
+
+SA(io: Io, l: &net.Listener, flag: &atomic.AtomicBool, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        flag.Store(true)
+        return
+    }
+    c := s.Conn()
+    var b: [64]u8 = [0; 64]
+    _ = c.Read(io, mut b[..]) else e {
+        *code = match e {
+            Canceled { 5 }
+            _ { 9 }
+        }
+        flag.Store(true)
+        c.Abandon()
+        return
+    }
+    *code = 0
+    flag.Store(true)
+    c.Abandon()
+}
+
+TB(bio: Io, flag: &atomic.AtomicBool, n: mut int) {
+    for !flag.Load() {
+        bio.Sleep(time.Millis(1)) else {}
+        *n += 1
+        if *n >= Bound {
+            return
+        }
+    }
+}
+
+Addr(b: mut [32]u8, port: int): str from b {
+    pre := "127.0.0.1:".AsBytes()
+    (mut b[0..pre.Len()]).CopyFrom(pre)
+    var d: [8]u8 = [0; 8]
+    var n := 0
+    var x := port
+    for {
+        d[n] = Trunc[u8](48 + x % 10)
+        n += 1
+        x = x / 10
+        if x == 0 {
+            break
+        }
+    }
+    for i in 0..n {
+        b[pre.Len() + i] = d[n - 1 - i]
+    }
+    return str.From(b[0..pre.Len() + n]).Must()
+}
+
+// Run: the rounds TB polled, and SA's code.
+Run(aio: Io, bio: Io): net.Error!(n: int, code: int) {
+    l := try net.Listen(aio, "127.0.0.1:0")
+    defer l.Close()
+    var ab: [32]u8 = [0; 32]
+    addr := Addr(mut ab, l.Port())
+    flag := atomic.AtomicBool.New(false)
+    var code := -1
+    var n := 0
+    scope outer := aio.Scope() {
+        outer.go SA(aio, &l, &flag, mut code)
+        stream := try net.Dial(aio, addr)
+        c := stream.Conn()
+        scope gb := bio.Scope() {
+            gb.go TB(bio, &flag, mut n)
+        }
+        c.Abandon()
+    }
+    return (n: n, code: code)
+}
+
+test "awayhang" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    defer ar.Free()
+    var stuck := 0
+    var maxn := 0
+    for seed in 1..17 {
+        var sa := sim.Sim.New(&ar, Trunc[u64](seed)) else {
+            return
+        }
+        var sb := sim.Sim.New(&ar, Trunc[u64](seed) +% 77) else {
+            sa.Free()
+            return
+        }
+        r := Run(sa.Io(), sb.Io()) else {
+            (n: -1, code: -1)
+        }
+        sb.Free()
+        sa.Free()
+        if r.n >= Bound {
+            stuck += 1
+        }
+        if r.n > maxn {
+            maxn = r.n
+        }
+        sys.Print("seed={s} rounds={n} code={c}\n", (s: seed, n: r.n, c: r.code)) else {}
+    }
+    sys.Print("runs at the bound: {k}/16, most rounds {m}\n", (k: stuck, m: maxn)) else {}
+    Assert(false)
+}

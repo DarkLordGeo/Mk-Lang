@@ -1,0 +1,9 @@
+$CASES/data/dups.pk: 6 files, 52 bytes, deflate, unsigned, manifest dece2048bcd0378c
+= 3 files of 14 bytes, blake3 f4a81502600b1ac1
+  a.txt
+  copy/a.txt
+  copy/b.txt
+= 2 files of 0 bytes, blake3 af1349b9f5f9a1a6
+  empty/one
+  empty/two
+2 sets of files with the same contents; the 3 copies hold 28 bytes

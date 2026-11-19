@@ -1,0 +1,5 @@
+# std.http: ServeWith with options and one Client over loopback: a query, a body, a redirect,
+# a body streamed through Client.Do's Exchange, 404, one client shared by two tasks, and
+# last a head over header_bytes (431).
+case ok
+stdout httploop.out

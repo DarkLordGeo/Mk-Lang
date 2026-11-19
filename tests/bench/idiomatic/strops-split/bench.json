@@ -1,0 +1,39 @@
+{
+  "name": "strops-split",
+  "table": "idiomatic",
+  "std": ["std.core.str.Split", "std.core.str.Trim", "std.core.str.Words"],
+  "algorithm": "Split a 50 MB text at \"e\" with each language's std splitter (empty pieces kept), trim each piece, and iterate its whitespace-separated words; the piece count, an FNV-1a over the trimmed lengths and the word lengths, wrapping; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "10"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "8303082258662503726",
+  "quick_checksum": "17432377892204846827",
+  "sources": {
+    "mk": "mk",
+    "rust": "strops-split.rs",
+    "zig": "strops-split.zig",
+    "go": "testdata/strops-split.go"
+  },
+  "skip": {
+    "c": "no std split in C (strtok writes its input and is not reentrant)",
+    "mk-wrap": "the checksum already uses the wrapping operators; splitting has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "words",
+    "file": "wordfreq-50mb.txt",
+    "bytes": 50000000,
+    "seed": 3
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; every splitter keeps empty pieces and every trim and word iterator strips the same ASCII bytes of this text, so the checksum checks every result",
+  "notes": [
+    "Iterators named: mk str.Split, str.Trim, str.Words; rust str::split(char), str::trim, str::split_whitespace; zig std.mem.splitScalar, std.mem.trim (an ASCII set), std.mem.tokenizeAny; go strings.SplitSeq, strings.TrimSpace, strings.FieldsSeq. Mk, Rust and Go trim and split words at whitespace, Zig at the ASCII set it is given; the text is ASCII letters, spaces and newlines, so all strip the same bytes.",
+    "The input is wordfreq's file (the same data spec, so one generated file serves both rows).",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

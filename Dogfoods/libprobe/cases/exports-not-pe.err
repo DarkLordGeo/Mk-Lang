@@ -1,0 +1,1 @@
+libprobe: $CASES/data/text.dll: not a PE image (no MZ header)

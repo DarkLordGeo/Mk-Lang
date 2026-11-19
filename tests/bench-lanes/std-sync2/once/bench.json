@@ -1,0 +1,34 @@
+{
+  "name": "once",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; Rust: OS threads) share one lazily initialized value; each does n rounds of getting it (the first get runs an init that returns 7) and adds it. Prints 7 * t * n (README.md). Measures the get of a value that exists: one load and a branch on every side.",
+  "overflow": "never",
+  "args": ["1000000000", "8"],
+  "quick": ["100000", "8"],
+  "checksum": "56000000000",
+  "quick_checksum": "5600000",
+  "sources": {
+    "mk": "mk",
+    "rust": "once.rs",
+    "go": "testdata/once.go"
+  },
+  "skip": {
+    "c": "C11 call_once runs a function once but holds no value; the row compares a lazily initialized value",
+    "zig": "no once primitive in Zig 0.17's std",
+    "mk-wrap": "the sum stays below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), sync.Once",
+      "go": "goroutines (GOMAXPROCS 8), sync.OnceValue",
+      "rust": "OS threads, std::sync::OnceLock"
+    }
+  },
+  "no_counts": "B24 does not apply: the sum shows every get returned the value",
+  "notes": [
+    "Concurrency row (B19): mask 0x5555, 8 threads.",
+    "Written by std-sync2 (status/std-sync2.md, M6 session 1); checksums from the workload's arithmetic. Session 2 raised n from 2*10^7 to 10^9 so that every column runs for most of a second: at 2*10^7 the Rust column ran 13 ms."
+  ]
+}

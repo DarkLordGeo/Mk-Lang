@@ -1,0 +1,5 @@
+norm
+--hex
+--form
+nfd
+$CASES/data/norm-source.txt

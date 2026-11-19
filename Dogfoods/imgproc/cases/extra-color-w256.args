@@ -1,0 +1,15 @@
+--ascii
+--path
+w256
+--tile-rows
+3
+run
+$CASES/data/photo.ppm
+-
+resize=53x31
+swap=bgr
+posterize=3:4:5
+gamma=1.8
+swap=gbr
+resize=29x0
+swap=brg

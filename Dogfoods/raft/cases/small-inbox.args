@@ -1,0 +1,9 @@
+sim
+--seeds
+1..3
+--partitions
+--duplicate
+20
+--inbox
+2
+--verbose

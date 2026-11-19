@@ -1,0 +1,2 @@
+{"phase":"names","diagnostics":[{"code":"E1221","name":"foreign-name","phase":"names","root":1,"at":{"file":"main/00.mk","line":1,"col":6,"end_line":1,"end_col":9},"message":"`Vec` is written `List` in Mk","facts":{"mk_name":"List","habits":["E1221"],"target":"F(v: List[int]) { }"},"fixes":[{"class":"proven","edits":[{"file":"main/00.mk","line":1,"col":6,"end_line":1,"end_col":9,"text":"List"}],"why":"the Mk name of `Vec`"}],"alternatives":[],"explain":"mk explain E1221"}],"omitted":0}
+

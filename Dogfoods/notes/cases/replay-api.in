@@ -1,0 +1,47 @@
+GET /health HTTP/1.1
+Host: notes.test
+
+POST /notes HTTP/1.1
+Host: notes.test
+Content-Type: application/json
+Content-Length: 64
+
+{"title": "Groceries", "body": "milk", "tags": ["food", "home"]}POST /notes HTTP/1.1
+Host: notes.test
+Content-Type: application/json
+Content-Length: 28
+
+{"title": "Broken", "body": POST /notes HTTP/1.1
+Host: notes.test
+Content-Type: application/json
+Content-Length: 25
+
+{"title": 5, "body": "x"}DELETE /notes HTTP/1.1
+Host: notes.test
+
+GET /nowhere HTTP/1.1
+Host: notes.test
+
+HEAD /notes/1 HTTP/1.1
+Host: notes.test
+
+PATCH /notes/1 HTTP/1.1
+Host: notes.test
+Content-Type: application/json
+Content-Length: 40
+
+{"body": "milk and honey", "tags": null}GET /notes/1 HTTP/1.1
+Host: notes.test
+
+GET /notes?q=GROCERIES&limit=5 HTTP/1.1
+Host: notes.test
+
+GET /stats HTTP/1.1
+Host: notes.test
+
+DELETE /notes/1 HTTP/1.1
+Host: notes.test
+
+GET /notes/1 HTTP/1.1
+Host: notes.test
+

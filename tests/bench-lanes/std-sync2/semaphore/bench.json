@@ -1,0 +1,34 @@
+{
+  "name": "semaphore",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; Zig: OS threads) share one counting semaphore of 4 permits; each does n rounds of acquire one permit, add one to an atomic in-use count and count a violation when it passes 4, subtract one, release. Prints t * n and the violations (0) (README.md).",
+  "overflow": "never",
+  "args": ["1000000", "8"],
+  "quick": ["10000", "8"],
+  "checksum": "8000000 0",
+  "quick_checksum": "80000 0",
+  "sources": {
+    "mk": "mk",
+    "zig": "semaphore.zig",
+    "go": "testdata/semaphore.go"
+  },
+  "skip": {
+    "c": "no semaphore in standard C (C11 <threads.h> has mtx_t and cnd_t only; sem_t is POSIX)",
+    "rust": "no semaphore in Rust's std (tokio's is a crate)",
+    "mk-wrap": "the only arithmetic is the counters, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), sync.Semaphore",
+      "go": "goroutines (GOMAXPROCS 8), a buffered channel of capacity 4 (Go's std idiom; weight 1 only)",
+      "zig": "OS threads, std.Io.Semaphore (weight 1)"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, every round counted and no violation, shows that no more than 4 held a permit at once",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0, 2, ..., 14 (mask 0x5555) with 8 threads (MK_CARRIERS=8, GOMAXPROCS=8). Zig uses OS threads, labelled so.",
+    "Written by std-sync2 (status/std-sync2.md, M6 session 1); checksums from the workload's arithmetic."
+  ]
+}

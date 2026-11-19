@@ -1,0 +1,3 @@
+case panic
+stderr two_tasks.err
+exit 101

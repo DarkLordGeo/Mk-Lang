@@ -1,0 +1,7 @@
+--color
+always
+-H
+needle
+$CASES/data/tree/a.txt
+--path-separator
+/

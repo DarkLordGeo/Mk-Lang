@@ -1,0 +1,43 @@
+u64 0000000000000000: lz 64 tz 64 ones 0 rotl1 0000000000000000 rotl67 0000000000000000 rotl-5 0000000000000000 rotr1 0000000000000000 rotr-5 0000000000000000 rev 0000000000000000 bswap 0000000000000000
+u64 0000000000000001: lz 63 tz 0 ones 1 rotl1 0000000000000002 rotl67 0000000000000008 rotl-5 0800000000000000 rotr1 8000000000000000 rotr-5 0000000000000020 rev 8000000000000000 bswap 0100000000000000
+u64 8000000000000000: lz 0 tz 63 ones 1 rotl1 0000000000000001 rotl67 0000000000000004 rotl-5 0400000000000000 rotr1 4000000000000000 rotr-5 0000000000000010 rev 0000000000000001 bswap 0000000000000080
+u64 ffffffffffffffff: lz 0 tz 0 ones 64 rotl1 ffffffffffffffff rotl67 ffffffffffffffff rotl-5 ffffffffffffffff rotr1 ffffffffffffffff rotr-5 ffffffffffffffff rev ffffffffffffffff bswap ffffffffffffffff
+u64 f0f0f0f0f0f0f0f0: lz 0 tz 4 ones 32 rotl1 e1e1e1e1e1e1e1e1 rotl67 8787878787878787 rotl-5 8787878787878787 rotr1 7878787878787878 rotr-5 1e1e1e1e1e1e1e1e rev 0f0f0f0f0f0f0f0f bswap f0f0f0f0f0f0f0f0
+u64 0123456789abcdef: lz 7 tz 0 ones 32 rotl1 02468acf13579bde rotl67 091a2b3c4d5e6f78 rotl-5 78091a2b3c4d5e6f rotr1 8091a2b3c4d5e6f7 rotr-5 2468acf13579bde0 rev f7b3d591e6a2c480 bswap efcdab8967452301
+u32 00000000: lz 32 tz 32 ones 0 rotl1 00000000 rotl35 00000000 rotl-5 00000000 rotr1 00000000 rotr-5 00000000 rev 00000000 bswap 00000000
+u32 00000001: lz 31 tz 0 ones 1 rotl1 00000002 rotl35 00000008 rotl-5 08000000 rotr1 80000000 rotr-5 00000020 rev 80000000 bswap 01000000
+u32 80000000: lz 0 tz 31 ones 1 rotl1 00000001 rotl35 00000004 rotl-5 04000000 rotr1 40000000 rotr-5 00000010 rev 00000001 bswap 00000080
+u32 ffffffff: lz 0 tz 0 ones 32 rotl1 ffffffff rotl35 ffffffff rotl-5 ffffffff rotr1 ffffffff rotr-5 ffffffff rev ffffffff bswap ffffffff
+u32 f0f0f0f0: lz 0 tz 4 ones 16 rotl1 e1e1e1e1 rotl35 87878787 rotl-5 87878787 rotr1 78787878 rotr-5 1e1e1e1e rev 0f0f0f0f bswap f0f0f0f0
+u32 01234567: lz 7 tz 0 ones 12 rotl1 02468ace rotl35 091a2b38 rotl-5 38091a2b rotr1 8091a2b3 rotr-5 2468ace0 rev e6a2c480 bswap 67452301
+u16 0000: lz 16 tz 16 ones 0 rotl1 0000 rotl19 0000 rotl-5 0000 rotr1 0000 rotr-5 0000 rev 0000 bswap 0000
+u16 0001: lz 15 tz 0 ones 1 rotl1 0002 rotl19 0008 rotl-5 0800 rotr1 8000 rotr-5 0020 rev 8000 bswap 0100
+u16 8000: lz 0 tz 15 ones 1 rotl1 0001 rotl19 0004 rotl-5 0400 rotr1 4000 rotr-5 0010 rev 0001 bswap 0080
+u16 ffff: lz 0 tz 0 ones 16 rotl1 ffff rotl19 ffff rotl-5 ffff rotr1 ffff rotr-5 ffff rev ffff bswap ffff
+u16 f0f0: lz 0 tz 4 ones 8 rotl1 e1e1 rotl19 8787 rotl-5 8787 rotr1 7878 rotr-5 1e1e rev 0f0f bswap f0f0
+u16 0123: lz 7 tz 0 ones 4 rotl1 0246 rotl19 0918 rotl-5 1809 rotr1 8091 rotr-5 2460 rev c480 bswap 2301
+u8 00: lz 8 tz 8 ones 0 rotl1 00 rotl11 00 rotl-5 00 rotr1 00 rotr-5 00 rev 00
+u8 01: lz 7 tz 0 ones 1 rotl1 02 rotl11 08 rotl-5 08 rotr1 80 rotr-5 20 rev 80
+u8 80: lz 0 tz 7 ones 1 rotl1 01 rotl11 04 rotl-5 04 rotr1 40 rotr-5 10 rev 01
+u8 ff: lz 0 tz 0 ones 8 rotl1 ff rotl11 ff rotl-5 ff rotr1 ff rotr-5 ff rev ff
+u8 f0: lz 0 tz 4 ones 4 rotl1 e1 rotl11 87 rotl-5 87 rotr1 78 rotr-5 1e rev 0f
+u8 2d: lz 2 tz 0 ones 4 rotl1 5a rotl11 69 rotl-5 69 rotr1 96 rotr-5 a5 rev b4
+gcd(0, 0) = 0
+gcd(0, 12) = 12
+gcd(12, 18) = 6
+gcd(1071, 462) = 21
+gcd(9223372036854775808, 1099511627776) = 1099511627776
+gcd(18446744073709551615, 18446744073709551614) = 1
+pow(0, 0) = some(1)
+pow(3, 39) = some(4052555153018976267)
+pow(3, 40) = none
+pow(-2, 63) = some(-9223372036854775808)
+pow(2, 63) = none
+pow(-1, 4294967295) = some(-1)
+pow(10, 18) = some(1000000000000000000)
+powu(2, 63) = some(9223372036854775808)
+powu(2, 64) = none
+powu(3, 40) = some(12157665459056928801)
+powu(10, 19) = some(10000000000000000000)
+powu(10, 20) = none
+powu(18446744073709551615, 1) = some(18446744073709551615)

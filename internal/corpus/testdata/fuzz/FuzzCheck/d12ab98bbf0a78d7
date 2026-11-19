@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("//000\nA000000000(xs: mut []i32, origin: i32) {    xs.Sort(fn(a:  i32,a0:  i32): bool {         da :origin\ndb :origin\nreturn da% db}) } ")

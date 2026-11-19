@@ -1,0 +1,4 @@
+run
+$CASES/data/small.pgm
+-
+posterize=9

@@ -1,0 +1,4 @@
+# Mk sources, goldens and snapshots are LF everywhere: gofmt, archtest and
+# the byte-exact snapshot tests read them as LF, so a Windows checkout with
+# core.autocrlf=true must not convert them.
+* text=auto eol=lf

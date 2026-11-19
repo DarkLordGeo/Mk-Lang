@@ -1,0 +1,36 @@
+{
+  "name": "json-parse",
+  "table": "idiomatic",
+  "algorithm": "Parse a 1 MB JSON document (tools/bench gen kind json, seed 2) into each language's std tree type, reps times, and walk each tree (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "200"
+  ],
+  "quick": [
+    "{data}",
+    "2"
+  ],
+  "checksum": "111428800",
+  "quick_checksum": "1114288",
+  "sources": {
+    "mk": "mk",
+    "zig": "json-parse.zig",
+    "go": "testdata/json-parse.go"
+  },
+  "skip": {
+    "c": "no std JSON: C has no standard JSON parser; no library stands in",
+    "rust": "no std JSON: Rust std has none (serde_json is a crate); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the parse has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "json",
+    "file": "std-json-1mb.json",
+    "bytes": 1000000,
+    "seed": 2
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (values plus decoded string and key bytes) checks that every parser read the same tree",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.json.Parse (zero-copy strings, numbers as text) into an arena Reset per parse; Go encoding/json Decoder with UseNumber (numbers as text) into any; Zig std.json.parseFromSliceLeaky(std.json.Value) into an ArenaAllocator reset per parse. Bytes per second = 1000000 * reps / median."
+  ]
+}

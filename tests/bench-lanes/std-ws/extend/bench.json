@@ -1,0 +1,34 @@
+{
+  "name": "ws-extend",
+  "table": "idiomatic",
+  "algorithm": "Appending n splitmix64 bytes (seed 1) in order to a new, empty growable byte list, piece j of 1 + (r + j) % piece bytes (the last cut at n), rounds times, the list freed after each round; the checksum adds per round the byte at (r * 7919) % n and the number of pieces (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "65536",
+    "4096",
+    "100000"
+  ],
+  "quick": [
+    "65537",
+    "100",
+    "100"
+  ],
+  "checksum": "18695310",
+  "quick_checksum": "142327",
+  "sources": {
+    "mk": "mk",
+    "rust": "extend.rs",
+    "zig": "extend.zig",
+    "go": "testdata/extend.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; appending has no other arithmetic to wrap",
+    "c": "no std growable list: the C standard library has realloc and memcpy but no growable array type, so a C cell would time hand-written code, not C's library (plan/06-m6.md 4.1, idiomatic)"
+  },
+  "no_counts": "B24: every round builds its list from empty through growth, and the next round's sample reads a byte that depends on every piece before it, so a skipped or reordered piece changes the checksum",
+  "notes": [
+    "Each column appends with its standard library's growable byte list, on the allocator named here, so the row compares libraries and their growth policies and allocators, not code generators (WS-5, M8 review): Mk std.core's HeapList[u8].Extend (D-668) on sys.heap's allocator (std.core's heap; HeapList doubles its capacity, at least 4: std/core/mem_slots.mk NextCap), freed each round. Rust: Vec<u8>::extend_from_slice on the global allocator (the system allocator; Vec doubles, at least 8), dropped each round. Zig: std.ArrayList(u8).appendSlice on std.heap.smp_allocator (growth by about 1.5 times plus a cache line), deinit each round. Go: append on a nil slice (doubling below 256 elements, about 1.25 times above), on the garbage-collected heap, dropped each round and reclaimed by the collector, never freed by the program.",
+    "This is the append std.websocket's Recv makes for each read-ahead's worth of a fragmented message (ReadHalf.Gather). The row was filed in the same-algorithm table until the M8 review (WS-5): its columns never shared one data structure, growth policy or allocator.",
+    "Checksums from the Go column (owner's machine, std-ws session 4, 2026-11-13). Not published: no number here is a measurement."
+  ]
+}

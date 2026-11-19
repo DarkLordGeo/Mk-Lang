@@ -1,0 +1,6 @@
+subprotocol chat.v2
+> secure
+< echo: secure
+subprotocol chat.v2
+> secure
+< echo: secure

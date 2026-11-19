@@ -1,0 +1,10 @@
+usage: imgproc [options] run IN OUT [OP...]
+       imgproc [options] info IN [OP...]
+       imgproc [options] compare A B
+IN and OUT are PGM or PPM files; OUT may be - for standard output.
+IN may be synth:WxH, a colour test pattern made in memory.
+Operations: invert, brighten=D, threshold[=T], equalize, levels,
+blur, sharpen, edge, emboss, box=N, conv=W:W:...[/D][+B],
+mirror, flip, gray, half, double, gain=F, sobel[=l1|max],
+resize=WxH, dilate, erode, swap=bgr|gbr|brg, posterize=B[:G:B], gamma=G
+

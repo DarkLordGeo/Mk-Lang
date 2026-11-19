@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--time-cond
+Fri, 01 Jan 2021 00:00:00 GMT
+http://{origin}/dated

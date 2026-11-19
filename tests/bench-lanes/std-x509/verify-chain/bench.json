@@ -1,0 +1,27 @@
+{
+  "name": "x509-verify-chain",
+  "table": "idiomatic",
+  "algorithm": "std.x509 Parse of three DER certificates and Verify of the leaf (example.test, 2024-01-01, serverAuth) against a pool of the root: one P-384 and one P-256 ECDSA verification and the path checks per pass, <reps> passes (mk/x509-verify-chain.mk).",
+  "overflow": "wraps",
+  "args": [
+    "2000"
+  ],
+  "quick": [
+    "3"
+  ],
+  "checksum": "2000",
+  "quick_checksum": "3",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/x509-verify-chain.go"
+  },
+  "skip": {
+    "c": "no std X.509: C has no standard certificate library (OpenSSL is third-party)",
+    "rust": "no std X.509: Rust std has none; rustls-webpki is third-party, and no crate stands in (plan/06-m6.md 4.1)",
+    "zig": "no std X.509 path validation: Zig 0.17.0's std.crypto.Certificate has parse, verifyHostName and a one-step verify (issuer name, validity, signature), but no path builder and no key usage, extended key usage, basic constraints or name constraints check, and no third-party package stands in (plan/06-m6.md 4.1); x509-parse-chain compares the parse"
+  },
+  "notes": [
+    "Work per pass: Mk x509.Parse three times (no allocation), x509.Verify (leaf checks, one candidate issuer per level, crypto.EcdsaVerify P-384 for the leaf's ECDSA-SHA384 signature and P-256 for the intermediate's ECDSA-SHA256, SHA-384 and SHA-256 of the TBS), the arena reset per pass; Go crypto/x509 ParseCertificate three times (allocating, the public key parsed eagerly), two CertPools, Verify with KeyUsages serverAuth (Go 1.27.3: P-256 by its amd64 assembly, p256_asm_amd64.s; P-384 by fiat-crypto's generated Go code, crypto/internal/fips140/nistec/p384.go, no assembly).",
+    "Inputs are decoded from hex at run time in both columns. Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-13). Written by the std-x509 lane. Not published: no number here is a measurement; publish is the bench lane's (it writes tests/bench)."
+  ]
+}

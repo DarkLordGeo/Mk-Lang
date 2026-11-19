@@ -1,0 +1,10 @@
+replay
+$CASES/data/stops.csv
+--book
+$CASES/data/open-book.csv
+--book-out
+$WORK/book.csv
+--fills
+$WORK/fills.csv
+--json
+$WORK/report.json

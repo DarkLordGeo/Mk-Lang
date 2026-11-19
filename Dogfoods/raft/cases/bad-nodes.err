@@ -1,0 +1,2 @@
+raft: --nodes must be from 1 to 5
+run raft --help for usage

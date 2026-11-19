@@ -1,0 +1,2 @@
+mgrep: --threads needs a number, not many
+try mgrep --help

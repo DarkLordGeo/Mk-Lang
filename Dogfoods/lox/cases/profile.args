@@ -1,0 +1,5 @@
+--profile
+--seed
+7
+--eval
+fun roll() { return random(); } var s = 0; for (var i = 0; i < 5; i = i + 1) s = s + roll(); print s > 0; seed(3); print random() == random();

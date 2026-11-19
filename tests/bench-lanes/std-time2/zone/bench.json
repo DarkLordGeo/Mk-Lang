@@ -1,0 +1,33 @@
+{
+  "name": "time-zone",
+  "table": "idiomatic",
+  "algorithm": "Make n instants of 1970 to 2099 (splitmix64, seed 1: whole seconds below 4,102,444,800, then nanoseconds below 10^9), load America/New_York from each library's embedded zone database, then rounds times take each instant's civil fields in the zone; the checksum adds per instant and round the year, month, day, hour, minute, second and the offset plus 86,400, wrapping.",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "1000",
+    "10"
+  ],
+  "checksum": "1455355848400",
+  "quick_checksum": "729174130",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/time-zone.go"
+  },
+  "skip": {
+    "c": "C's std has no named zone: localtime reads TZ or the system database, and the Windows CRT reads neither IANA names nor TZif",
+    "rust": "Rust's std has no time zones (chrono-tz and jiff are crates; no crate stands in)",
+    "zig": "Zig's std.Tz parses TZif but has no lookup of an instant's civil fields in a zone",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the functions are tested against Go by the lane's Go tests (status/std-time2.md)",
+  "notes": [
+    "Mk: time.Zone.Load with tzdata.Database (std.time.tzdata, IANA 2026c), then Time.In, which gives every field and the offset at once (one binary search over the transitions, or the POSIX rule past 2037, then Hinnant's civil_from_days). Go: time.LoadLocation with time/tzdata embedded (Go's own zoneinfo.zip is found first on a machine with a Go tree; the data is the same release), then Time.In, Date, Clock and Zone, each of which looks the zone up again: Go's idiomatic way to read the fields.",
+    "Written by std-time2, M8, 2026-11-13.",
+    "Checksums agree between Mk and Go at both sizes on the owner's machine (std-time2 session 2, 2026-11-13).",
+    "Not published: no number here is a measurement."
+  ]
+}

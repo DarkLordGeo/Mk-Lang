@@ -1,0 +1,7 @@
+run
+$CASES/data/detach.tab
+--stop-after
+2s
+--echo
+--max-jobs
+1

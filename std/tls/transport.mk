@@ -1,0 +1,124 @@
+// Why: std.http's client and std.websocket's Dial open https and wss
+// connections through a net.Secure; this is TLS's.
+//
+// What: tls.Connector and Connect, and Secured, a private net.Transport
+// over a tls.Conn that maps tls.Error to net.Error.
+//
+// How: the connection is boxed by net.ReserveConn and ConnSlot.Fill: the
+// box is reserved first and filled last, so a failed handshake leaves the
+// connection with the caller.
+
+import std.core
+import std.net
+import std.time
+import std.x509
+
+// Secured is a tls.Conn as a net.Transport. Its Close sends close_notify
+// within the Config's close limit and may be called again; Abandon
+// releases.
+struct Secured {
+    c: Conn
+}
+
+impl net.Transport for Secured {
+    Read(&self, io: Io, buf: mut []u8): net.Error!int {
+        return self.c.Read(io, buf) else e {
+            fail NetError(&e)
+        }
+    }
+
+    WriteAll(&self, io: Io, data: []u8): net.Error!void {
+        self.c.WriteAll(io, data) else e {
+            fail NetError(&e)
+        }
+    }
+
+    // Conn.Shutdown (conn.mk's L6): a Read it wakes returns 0, a WriteAll it
+    // wakes fails with Closed, and the write side sends close_notify first (RFC
+    // 8446 6.1) unless a WriteAll is sending, so the peer reads the end of the
+    // stream as TLS's, not as a truncation.
+    Shutdown(&self, io: Io, how: net.Shutdown): net.Error!void {
+        self.c.Shutdown(io, how) else e {
+            fail NetError(&e)
+        }
+    }
+
+    PeerAddr(&self): ?net.Addr {
+        return self.c.conn.PeerAddr()
+    }
+
+    Close(&self, io: Io): net.Error!void {
+        self.c.Notify(io) else e {
+            fail NetError(&e)
+        }
+    }
+
+    Abandon(self) {
+        Secured(c) := self
+        c.Abandon()
+    }
+}
+
+// NetError is a failure of an established connection as net.Error: the
+// connection's own errors as they are, the protocol's as
+// SecureFailed(Protocol).
+NetError(e: &Error): net.Error {
+    return match *e {
+        Alert | Protocol | Unsupported { net.SecureFailed(why: net.SecureFailure.Protocol) }
+        x509.Malformed | x509.UnknownAuthority | x509.Expired | x509.NameMismatch | x509.BadSignature | x509.BadUsage | x509.TooComplex | x509.Unsupported {
+            net.SecureFailed(why: net.SecureFailure.BadCertificate)
+        }
+        OutOfMemory { OutOfMemory }
+        net.Refused { net.Refused }
+        net.Reset { net.Reset }
+        net.AddrInUse { net.AddrInUse }
+        net.Unreachable { net.Unreachable }
+        net.InvalidAddress { net.InvalidAddress }
+        net.Os(code) { net.Os(code: code) }
+        Canceled { Canceled }
+        Closed { Closed }
+        time.TimedOut { time.TimedOut }
+        net.Unsupported { net.Unsupported }
+        net.SecureFailed(why) { net.SecureFailed(why: why) }
+    }
+}
+
+// HandshakeError is a failed handshake as net.Error: why it failed,
+// as net.SecureFailure says it, since no connection exists to ask.
+HandshakeError(e: &Error): net.Error {
+    return match *e {
+        Alert | Protocol | Unsupported { net.SecureFailed(why: net.SecureFailure.Handshake) }
+        x509.UnknownAuthority { net.SecureFailed(why: net.SecureFailure.UnknownAuthority) }
+        x509.Expired { net.SecureFailed(why: net.SecureFailure.Expired) }
+        x509.NameMismatch { net.SecureFailed(why: net.SecureFailure.NameMismatch) }
+        x509.Malformed | x509.BadSignature | x509.BadUsage | x509.TooComplex | x509.Unsupported {
+            net.SecureFailed(why: net.SecureFailure.BadCertificate)
+        }
+        _ { NetError(e) }
+    }
+}
+
+// Connect is the client connector's function: tls.Client over conn for
+// host, in a box reserved before the handshake and filled after it. Like
+// Accept, it needs no `h into conn` of its own.
+Connect(c: &Config, h: &Heap, io: Io, conn: net.Conn, host: str): net.Error!net.Conn from h, conn {
+    slot := try net.ReserveConn[Secured](h)
+    t := Client(h, io, conn, c, host) else e {
+        slot.Free(h.Alloc())
+        fail HandshakeError(&e)
+    }
+    return slot.Fill(Secured(c: t))
+}
+
+/// A client connector over c, to put in http.ClientLimits.secure or
+/// websocket.Options.secure: their https and wss connections then go through
+/// tls.Client with c, for the URL's host. O(1); allocates nothing until it
+/// connects.
+///
+/// A failed handshake is net.SecureFailed(why): Handshake for an alert or
+/// a protocol fault, and BadCertificate, UnknownAuthority, Expired or
+/// NameMismatch for the chain. One past c.handshake is time.TimedOut. It
+/// is a plain value that borrows c; copy it freely.
+export Connector(c: &Config): net.Secure from c {
+    return net.Secure.Of[Config](core.ErasedCall.Of[Config, fn(&Config, h: &Heap into conn, io: Io, conn: net.Conn, host: str): net.Error!net.Conn from h, conn](c, Connect))
+}

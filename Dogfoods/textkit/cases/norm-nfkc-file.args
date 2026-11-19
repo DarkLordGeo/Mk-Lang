@@ -1,0 +1,4 @@
+norm
+--form
+NFKC
+$CASES/data/mixed.txt

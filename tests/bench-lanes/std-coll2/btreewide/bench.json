@@ -1,0 +1,28 @@
+{
+  "name": "btreewide",
+  "table": "idiomatic",
+  "algorithm": "std ordered map of u64 to a 256-byte [32]u64 value: n splitmix64 keys inserted, n lookups (half present), one ascending iteration, every key removed (README.md). The node width with a large value (COLL2-5).",
+  "overflow": "wraps",
+  "args": [
+    "1200000",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "1"
+  ],
+  "checksum": "2046539518016088898 0",
+  "quick_checksum": "18097583875757037946 0",
+  "sources": {
+    "mk": "mk",
+    "rust": "btreewide.rs"
+  },
+  "skip": {
+    "c": "no std ordered map",
+    "zig": "no std ordered map (std.Treap is an intrusive treap of caller-owned nodes, not a map)",
+    "go": "no std ordered map"
+  },
+  "notes": [
+    "Written by std-coll2 (status/std-coll2.md). The checksum folds with wrapping arithmetic in every column."
+  ]
+}

@@ -1,0 +1,1 @@
+web [restart=sometimes]: ./server

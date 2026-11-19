@@ -1,0 +1,8 @@
+create
+--sign
+$CASES/data/alice.key
+--to
+$CASES/data/bob.pub
+--out
+$WORK/b.pk
+$CASES/data/tree

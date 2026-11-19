@@ -1,0 +1,29 @@
+{
+  "name": "jsonlong",
+  "table": "idiomatic",
+  "algorithm": "Each language's std JSON on one array of long strings built in the program from splitmix64(seed), byte for byte the same in every language: parse it reps times and sum the decoded string lengths, or parse it once and write it as compact JSON reps times and sum the lengths (README.md).",
+  "overflow": "wraps",
+  "args": ["parse", "2000", "3000", "7"],
+  "quick": ["parse", "2000", "2", "7"],
+  "checksum": "3607596000",
+  "quick_checksum": "2405064",
+  "sources": {
+    "mk": "mk",
+    "zig": "jsonlong.zig",
+    "go": "testdata/jsonlong.go"
+  },
+  "skip": {
+    "c": "no std JSON: C has no standard JSON parser or writer; no library stands in",
+    "rust": "no std JSON: Rust std has none (serde_json is a crate); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators"
+  },
+  "variants": [
+    {"name": "parse", "args": ["parse", "2000", "3000", "7"], "quick": ["parse", "2000", "2", "7"], "checksum": "3607596000", "quick_checksum": "2405064"},
+    {"name": "write", "args": ["write", "2000", "3000", "7"], "quick": ["write", "2000", "2", "7"], "checksum": "3639822000", "quick_checksum": "2426548"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (decoded or written lengths) checks that every library read or wrote the same strings",
+  "notes": [
+    "The document is about 1.2 MB: 2,000 strings of 100 to 1,099 bytes of printable ASCII without a quote or a backslash, with an escape (backslash n, or backslash quote) about every 256 bytes. parse sums the decoded string lengths over reps parses; write parses once and sums the formatted lengths over reps formats.",
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk json.Parse into an arena Reset per rep, and Value.Format into a Text cleared per rep; Go encoding/json Unmarshal into any, and an Encoder with SetEscapeHTML(false) into a bytes.Buffer reset per rep (the trailing newline not counted); Zig std.json.parseFromSliceLeaky into std.json.Value in an ArenaAllocator reset per rep, and std.json.Stringify.valueAlloc. Every language builds the document inside its timed run."
+  ]
+}

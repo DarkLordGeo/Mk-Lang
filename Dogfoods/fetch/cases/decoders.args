@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+--decode
+gzip,deflate,zstd
+http://{origin}/gzip
+http://{origin}/deflate
+http://{origin}/zstd

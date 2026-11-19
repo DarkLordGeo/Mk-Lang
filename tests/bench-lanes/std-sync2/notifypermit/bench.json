@@ -1,0 +1,39 @@
+{
+  "name": "notifypermit",
+  "table": "idiomatic",
+  "algorithm": "two workers (Mk: tasks; Go: goroutines; Rust and Zig: OS threads) alternate n times, each waking the other, each language with its std's permit-style primitive (SYNC2-R3): Mk one sync.Notify per side (NotifyOne stores a permit, Wait consumes it); Rust std::thread::park and Thread::unpark over a flag per side (park's documented pattern); Go one chan struct{} of capacity 1 per side (non-blocking send, receive); Zig one std.Io.Event per side (set; wait, then reset). No lock and no turn variable on any side. Each counts its rounds; prints the total (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000"
+  ],
+  "quick": [
+    "1000"
+  ],
+  "checksum": "2000000",
+  "quick_checksum": "2000",
+  "sources": {
+    "mk": "mk",
+    "rust": "notifypermit.rs",
+    "zig": "notifypermit.zig",
+    "go": "testdata/notifypermit.go"
+  },
+  "skip": {
+    "c": "no permit-style primitive in standard C (C11 <threads.h> has mtx_t and cnd_t only, which the notify row compares; sem_t is POSIX)",
+    "mk-wrap": "the only arithmetic is the round counters, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5",
+    "threads": 2,
+    "models": {
+      "mk": "tasks (M:N on 2 carriers), sync.Notify",
+      "go": "goroutines (GOMAXPROCS 2), chan struct{} of capacity 1",
+      "rust": "OS threads, std::thread::park and Thread::unpark",
+      "zig": "OS threads, std.Io.Event"
+    }
+  },
+  "no_counts": "B24 does not apply: the total, 2 * n, shows every round completed on both sides",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0 and 2 (mask 0x5, two physical cores) with 2 threads (MK_CARRIERS=2, GOMAXPROCS=2), as the notify and chan rows.",
+    "Written by std-sync2 for review finding SYNC2-R3 (status/std-sync2.md, M6 fix round). The notify row sets Mk's Notify beside condition variables (a mutex, a turn and a condition per side): the comparison D-375 makes, but not like with like. This row is the like-for-like one. The Mk program is the notify row's."
+  ]
+}

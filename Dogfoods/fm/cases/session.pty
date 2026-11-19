@@ -1,0 +1,105 @@
+# A scripted session: the pager and a resize; copy, a refused copy and a
+# copied tree; a directory made by a paste into the prompt; the same
+# directory in both panes; a move; a tree deleted with its name typed
+# again; a link made and opened; a shell command on a pseudo-terminal; the
+# temporary directory; the mouse and focus; sizes; quit.
+# A paste waits 200 ms after the line before it: DEFECT DF-fm-02.
+size 80 24
+expect 1
+key down
+expect 2
+key enter
+expect 3
+key pgdn
+expect 4
+resize 60 20
+expect 5
+keys q
+expect 6
+keys c
+expect 7
+keys y
+expect 8
+key up
+expect 9
+keys c
+expect 10
+keys n
+expect 11
+keys c
+expect 12
+keys y
+expect 13
+key tab
+expect 14
+keys n
+expect 15
+sleep 200
+paste archive
+expect 16
+key enter
+expect 17
+keys =
+expect 18
+key tab
+expect 19
+key enter
+expect 20
+key tab
+expect 21
+key home
+expect 22
+key down down
+expect 24
+keys m
+expect 25
+keys y
+expect 26
+key home
+expect 27
+key down
+expect 28
+keys d
+expect 29
+keys y
+expect 30
+keys docs\r
+expect 31
+key tab
+expect 32
+keys l
+expect 33
+keys y
+expect 34
+key tab
+expect 35
+key end
+expect 36
+key enter
+expect 37
+keys q
+expect 38
+keys !
+expect 39
+sleep 200
+paste echo fm-shell-ok
+expect 40
+key enter
+expect 42
+keys z
+expect 43
+keys q
+expect 44
+keys t
+expect 45
+keys \e[<0;35;4M
+expect 46
+keys \e[<64;35;4M
+expect 47
+keys \e[O
+expect 48
+keys \e[I
+expect 49
+keys s
+expect 50
+keys q

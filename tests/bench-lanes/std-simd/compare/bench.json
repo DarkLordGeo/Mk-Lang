@@ -1,0 +1,167 @@
+{
+  "name": "compare",
+  "table": "simd",
+  "algorithm": "Order two equal-length buffers as unsigned bytes (-1, 0, 1), a one-bit difference planted at random within the last 64 bytes in about half the reps and removed after each compare; the checksum is total * 31 + (compare + 1) over the reps, wrapping (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "compare.c",
+    "rust": "compare.rs",
+    "zig": "compare.zig",
+    "go": "testdata/compare.go"
+  },
+  "skip": {
+    "mk-wrap": "no integer arithmetic to wrap in the kernel: the checksum already wraps"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "8000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "12670901528169750650",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 262144000000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "2000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "903976980938472504",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "12",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "27075055299845921",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "8000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "12670901528169750650",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 262144000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "2000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "903976980938472504",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "12",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "27075055299845921",
+      "quick_checksum": "28173834859361",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 25769803776
+    }
+  ],
+  "no_counts": "B24 does not apply as a count of operations: each compare reads both buffers to the planted difference in the last 64 bytes, and the checksum folds every result in order",
+  "notes": [
+    "GB/s counts 2 * size * reps bytes: each compare reads both buffers (the difference, when planted, is in the last 64 bytes). The fill and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted (BS-3). The c, rust, zig and go buffers start on a 64-byte boundary (BS-4); the mk column reads arena slices whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md).",
+    "c: <immintrin.h>, four _mm*_cmpeq_epi8 ANDed and one movemask test a step, then the first differing byte by __builtin_ctz of the inverted mask (glibc memcmp's shape, std.simd.Compare's method), chosen by __AVX2__. rust: the same with std::arch, every load from a checked slice (BS-2). zig: @Vector compares, @reduce(.And), @ctz. go: bytes.Compare, assembly-backed in Go's runtime with its own CPU check, labelled. mk: std.simd.Compare.",
+    "Checksums from the go column (go run testdata/compare.go at each size, 2026-11-07). The repetitions were estimated from the count row's single-run rates for about 1 s of the c cell at L1 and L3 (std-simd session 2, 2026-11-07).",
+    "Written by the std-simd lane (status/std-simd.md, session 2). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

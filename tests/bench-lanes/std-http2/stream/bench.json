@@ -1,0 +1,30 @@
+{
+  "name": "http-stream",
+  "table": "idiomatic",
+  "algorithm": "n POST requests, targets /up/<i>, sent one after another through the language's std HTTP client with keep-alive to a responder in the same program over loopback, each streaming a 65,536-byte temporary file (byte k is 'a' + k % 26) opened anew as its body: chunked when i is even, with Content-Length when i is odd; the responder uses no HTTP library (it reads a head to its blank line, reads the body by its framing and answers with count * 1,000,003 + the sum of the body's bytes, in decimal); checksum: the sum over every reply of its status and that number (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "20000"
+  ],
+  "quick": [
+    "2000"
+  ],
+  "checksum": "1310867458400000",
+  "quick_checksum": "131086745840000",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/http-stream.go",
+    "zig": "http-stream.zig"
+  },
+  "skip": {
+    "c": "no std HTTP client (C's std has no sockets)",
+    "rust": "no std HTTP client (std has none; reqwest and ureq are crates)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the client has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (each body's byte count and byte sum, as the responder saw them) checks that both clients sent the same bodies",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.http.Client.DoStreaming with DefaultClientLimits, the body a File.Reader over a 16 KiB buffer, url.Parse per request, one Arena Reset after each request; Zig std.http.Client, the body a File.Reader streamed into the request's BodyWriter (transfer_encoding chunked or content_length), the reply read with Reader.allocRemaining into an arena reset per request; Go net/http.Client with a Transport of one idle connection per host and compression off, the body an *os.File (ContentLength -1 for chunked, 65,536 otherwise), io.ReadAll of the reply, the garbage collector. The responder is one task or goroutine in the same program, the same code in every column (the same byte loops: H2-14; field names matched without case, since Zig's client sends them in lower case). Requests per second = n / median.",
+    "Written by the std-http2 lane (status/std-http2.md). Checksums from the Go column, which the Mk column matched at the quick size (owner's machine, 2026-11-13); the publish checksum is n times the per-request value both columns gave at n 200, 2,000 and 5,000.",
+    "Review fix round (H2-13, H2-14, H2-15, 2026-11-13): the Go responder now runs the Mk column's loops (no bufio.ReadSlice, bytes.Index or per-byte sum through a pointer), and the Zig column is written; all three columns give the quick checksum on the owner's machine."
+  ]
+}

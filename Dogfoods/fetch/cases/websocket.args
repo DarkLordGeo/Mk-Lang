@@ -1,0 +1,13 @@
+--origin
+$CASES/data/site.origin
+--ws-send
+hello
+--ws-ping
+p1
+--ws-binary
+raw bytes
+--ws-send
+bye
+--ws-send
+never
+ws://{origin}/ws

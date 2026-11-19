@@ -1,0 +1,6 @@
+extract
+--key
+$CASES/data/dave.key
+--dest
+$WORK/out
+$CASES/data/sealed-aes.pk

@@ -1,0 +1,4 @@
+# Chan.TrySend: room takes x, a full ring and a capacity-0 channel with no receiver give x back,
+# Closed keeps x, and a linear value comes back whole on both refusals. Both profiles, both targets.
+case ok
+stdout trysend.out

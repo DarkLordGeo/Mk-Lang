@@ -1,0 +1,6 @@
+# 10,000 tasks parked at once in Recv on one channel; Close wakes every one with Closed.
+# The held runs (args 100000 hold 3000, args 1000000 hold 3000) are perf-runtime's
+# measurement of memory per parked task, never a case.
+case ok
+args 10000
+stdout idle.out

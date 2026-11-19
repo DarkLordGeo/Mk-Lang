@@ -1,0 +1,51 @@
+{
+  "name": "sqlite-insert-select",
+  "table": "idiomatic",
+  "algorithm": "On an in-memory sqlite database: n rows (id, a 16-byte text) inserted in one transaction through one prepared statement, then n point selects by primary key in the order id = (k * 7919) mod n + 1; the checksum is the sum of each selected id and its text's length (README.md).",
+  "overflow": "never",
+  "args": [
+    "2000000"
+  ],
+  "quick": [
+    "100000"
+  ],
+  "checksum": "2000033000000",
+  "quick_checksum": "5001650000",
+  "sources": {
+    "mk": "mk",
+    "c": "sqlite-insert-select.c"
+  },
+  "vendor": {
+    "dir": "vendor/sqlite",
+    "files": [
+      "sqlite3.c",
+      "sqlite3.h"
+    ],
+    "c_flags": [
+      "-DSQLITE_THREADSAFE=0",
+      "-DSQLITE_OMIT_LOCALTIME",
+      "-DSQLITE_DEFAULT_MEMSTATUS=0",
+      "-DSQLITE_TEMP_STORE=3",
+      "-DSQLITE_WITHOUT_MSIZE",
+      "-DSQLITE_DISABLE_INTRINSIC",
+      "-DSQLITE_OMIT_SEH",
+      "-DSQLITE_MALLOCSIZE=_msize",
+      "-include",
+      "malloc.h",
+      "-fno-builtin"
+    ]
+  },
+  "skip": {
+    "rust": "no sqlite in Rust's std (rusqlite is a crate; no crate stands in)",
+    "zig": "no sqlite in Zig's std",
+    "go": "no sqlite in Go's std (database/sql has no driver; mattn/go-sqlite3 is cgo)",
+    "mk-wrap": "the checksum cannot overflow i64 at these sizes; the task has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares a library binding; the rows read back are checked by the checksum",
+  "notes": [
+    "No standard library of C, Rust, Zig or Go has sqlite, so the row compares Mk's std.db.sqlite with C calling the same amalgamation: what it measures is the wrapper, the VFS, std.libc and the process-wide lock, not sqlite.",
+    "C column: the amalgamation with its own OS layer (os_win.c) and the static C runtime's malloc. Its sqlite flags are the Mk column's, one for one, except SQLITE_OS_OTHER (the OS layer is what differs) and SQLITE_MALLOCSIZE, which names each side's own block-size call (_msize; std.libc's malloc_usable_size), so neither side keeps sqlite's 8-byte size prefix. Both compile the amalgamation without builtins and without sqlite's intrinsics (-fno-builtin here; -ffreestanding -fno-builtin from the driver there; SQLITE_DISABLE_INTRINSIC on both), at -O3 and -march=x86-64-v2 (the Mk CSource passes -march itself, since the driver gives C jobs no --cpu), so the amalgamation is compiled alike and the row measures the wrapper, the VFS, std.libc and the lock (SQL-3). Mk column: the package's CSource flags of status/std-sqlite.md (D-334), with std.libc and vfs.mk under it.",
+    "Not loadable yet: the amalgamation is outside the repository (DD-8), and tools/bench has no way to copy it into a build. The \"vendor\" field is the request (status/std-sqlite.md): copy files from $MK_EVIDENCE/<dir> into the mk package's build copy and compile the C column with them and c_flags. Until tools/bench reads it, the field makes this row load as broken, which tools/bench lists and sets aside.",
+    "Not published: no number here is a measurement."
+  ]
+}

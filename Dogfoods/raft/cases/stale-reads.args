@@ -1,0 +1,7 @@
+sim
+--seeds
+5..5
+--partitions
+--loss
+5
+--stale

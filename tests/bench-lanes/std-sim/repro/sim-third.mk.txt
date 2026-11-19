@@ -1,0 +1,203 @@
+// A third Io owed a note, which the note fan sends; its deterministic form is a
+// block of std/sim/tests_notes.mk, which checks the Sim still waits for main right after the third spawn.
+// A third Io before main's next leaf. OweNote keeps two notes owed; a
+// third Io sends the oldest at once (hooks.mk). Under a Sim that note,
+// with hold 0, reads as main's suspension: DropJoin, DropPend, Decide.
+// Every Io here is one the Sim covers as the run's: the Sim's
+// own, a NoCancel of it (io.NoCancel() records the scope depth, so two
+// taken at different depths are two Ios to SameIo), or a Recorder's.
+// Main joins a scope of the run (a napping task, recorded as JoinRec), then
+// opens scope h from X and, in h's body, scope k from Y, spawns a quick
+// task into each, spins (no leaf) and sends to the server task of the run
+// that is blocked reading. Expected 80 (5 bytes, code 0), as natively.
+// 0 plain Sim: X = io.NoCancel(), Y = io.NoCancel() taken in h's body.
+// 1 control: plain Sim, X = Y = one io.NoCancel() taken before h.
+// 2 control: plain Sim, X = io.NoCancel(), Y = io.
+// 3 Recorder over the Sim: X = rec.Io(), Y = rec.Io().NoCancel().
+// 4 control: Recorder, X = rec.Io(), Y = sm.Io() (the Join re-owes the
+//   inner Io, so this is two Ios).
+// 5 Recorder over a Recorder over the Sim: X = rec2.Io(), Y = rec1.Io().
+// 6 mode 0 with no Join first (switchrace mode 0).
+// 7 mode 0 without the spin.
+// 8 mode 3 without the spin.
+// 9 mode 6 without the spin.
+// 10 control: Recorder, no Join first, X = rec.Io(), Y = its NoCancel (two Ios).
+// 11 mode 10 without the spin.
+// 12 control: Recorder over a Recorder, X = Y = rec2.Io() (two Ios).
+import std.net
+import std.sim
+import std.time
+
+Srv(io: Io, l: &net.Listener, got: mut int, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        return
+    }
+    c := s.Conn()
+    var b: [64]u8 = [0; 64]
+    for {
+        k := c.Read(io, mut b[..]) else e {
+            *code = match e {
+                Canceled { 5 }
+                net.Reset { 6 }
+                _ { 9 }
+            }
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            break
+        }
+        *got += k
+    }
+    *code = 0
+    c.Abandon()
+}
+
+Quick(io: Io) {}
+
+Nap(io: Io) {
+    io.Sleep(time.Millis(1)) else {}
+}
+
+Addr(b: mut [32]u8, port: int): str from b {
+    pre := "127.0.0.1:".AsBytes()
+    (mut b[0..pre.Len()]).CopyFrom(pre)
+    var d: [8]u8 = [0; 8]
+    var n := 0
+    var x := port
+    for {
+        d[n] = Trunc[u8](48 + x % 10)
+        n += 1
+        x = x / 10
+        if x == 0 {
+            break
+        }
+    }
+    for i in 0..n {
+        b[pre.Len() + i] = d[n - 1 - i]
+    }
+    return str.From(b[0..pre.Len() + n]).Must()
+}
+
+// Spin computes for a while with no leaf (no Io call, no wait).
+Spin(n: int): u64 {
+    var x: u64 = 1
+    for _ in 0..n {
+        x = x *% 6364136223846793005 +% 1442695040888963407
+    }
+    return x
+}
+
+// Run: io is the program's Io, sio the Sim's own, mio a middle Io (a
+// Recorder's Io under io for mode 5; else io).
+Run(io: Io, sio: Io, mio: Io, mode: int): net.Error!int {
+    l := try net.Listen(io, "127.0.0.1:0")
+    defer l.Close()
+    var ab: [32]u8 = [0; 32]
+    addr := Addr(mut ab, l.Port())
+    var got := 0
+    var code := -1
+    var sink: u64 = 0
+    spin := if mode == 7 || mode == 8 || mode == 9 || mode == 11 { 0 } else { 3000000 }
+    scope outer := io.Scope() {
+        outer.go Srv(io, &l, mut got, mut code)
+        stream := try net.Dial(io, addr)
+        c := stream.Conn()
+        if mode != 6 && mode != 9 && mode != 10 && mode != 11 {
+            scope g := io.Scope() {
+                g.go Nap(io)
+            }
+        }
+        nc := io.NoCancel()
+        x := if mode == 1 || mode == 2 || mode == 0 || mode == 6 || mode == 7 || mode == 9 { nc } else { io }
+        scope h := x.Scope() {
+            h.go Quick(io)
+            y := if mode == 1 {
+                nc
+            } else if mode == 2 || mode == 12 {
+                io
+            } else if mode == 4 {
+                sio
+            } else if mode == 5 {
+                mio
+            } else {
+                io.NoCancel()
+            }
+            scope k := y.Scope() {
+                k.go Quick(io)
+                sink = Spin(spin)
+                hello: [5]u8 = [104, 101, 108, 108, 111]
+                c.WriteAll(io, hello[..]) else {}
+                c.Close(io) else {
+                    c.Abandon()
+                }
+            }
+        }
+    }
+    extra := if sink == 7 { 1000 } else { 0 }
+    return got * 16 + code + extra
+}
+
+One(a: &Arena, seed: u64, mode: int): int {
+    var sm := sim.Sim.New(a, seed) else {
+        return -100
+    }
+    if mode == 3 || mode == 4 || mode == 8 || mode == 10 || mode == 11 {
+        var rec := sim.Recorder.New(sm.Io()) else {
+            sm.Free()
+            return -102
+        }
+        v := Run(rec.Io(), sm.Io(), rec.Io(), mode) else {
+            -101
+        }
+        rec.Free()
+        sm.Free()
+        return v
+    }
+    if mode == 5 || mode == 12 {
+        var r1 := sim.Recorder.New(sm.Io()) else {
+            sm.Free()
+            return -102
+        }
+        var r2 := sim.Recorder.New(r1.Io()) else {
+            r1.Free()
+            sm.Free()
+            return -102
+        }
+        v := Run(r2.Io(), sm.Io(), r1.Io(), mode) else {
+            -101
+        }
+        r2.Free()
+        r1.Free()
+        sm.Free()
+        return v
+    }
+    v := Run(sm.Io(), sm.Io(), sm.Io(), mode) else {
+        -101
+    }
+    sm.Free()
+    return v
+}
+
+test "third" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    defer ar.Free()
+    for mode in 0..13 {
+        nat := Run(sys.io, sys.io, sys.io, mode) else {
+            -101
+        }
+        var good := 0
+        var differ := 0
+        var last := 0
+        for seed in 1..17 {
+            r := One(&ar, Trunc[u64](seed), mode)
+            again := One(&ar, Trunc[u64](seed), mode)
+            if r == 80 { good += 1 } else { last = r }
+            if again == 80 { good += 1 } else { last = again }
+            if r != again { differ += 1 }
+        }
+        sys.Print("mode={m}: native={n} good={g}/32 differ={d} lastbad={v}\n", (m: mode, n: nat, g: good, d: differ, v: last)) else {}
+    }
+    Assert(false)
+}

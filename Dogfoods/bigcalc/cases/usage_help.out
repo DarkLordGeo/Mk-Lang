@@ -1,0 +1,39 @@
+usage: bigcalc <command> [options] [arguments]
+
+Calculator:
+  calc [options] LINE...     evaluate each argument as a line of RPN, then
+                             print the top of the stack
+  run [options] SCRIPT|-     evaluate a script, one line at a time
+    --base N                 output base, 2 to 36 (default 10)
+    --max-digits N           longest number literal (default 100000)
+    --max-bits N             largest result in bits (default 4000000)
+    --mem-limit BYTES        keep the stack and variables in this many bytes
+    --max-time MS            stop a script after MS milliseconds (run)
+    --keep-going             report a failed line and go on (run)
+
+Certificates and keys:
+  cert show FILE...          print each certificate of PEM or DER files
+  cert verify --roots FILE [--roots FILE...] [--host NAME] [--at TIME] CHAIN
+                             verify a chain (leaf first) against the roots
+  cert der FILE              print the DER structure of a file
+  key show FILE              print a public or private key
+  key public FILE            write the public key of a key as PEM
+  sign --key FILE [--format der|fixed] [--out hex|base64] MESSAGE
+                             sign with a P-256 or Ed25519 key
+  verify --key FILE [--hash sha256|sha384|sha512] [--pss] [--format der|fixed]
+         [--sig-encoding raw|hex|base64] MESSAGE SIGNATURE
+                             check an RSA, ECDSA or Ed25519 signature
+
+Encryption, tags and digests:
+  enc seal|open --key-from SPEC [--salt SPEC] [--info TEXT] [--nonce HEX]
+         [--aad TEXT] [--bits 128|256] [--armor] IN OUT
+                             AES-GCM under a key derived with HKDF-SHA256
+  mac --key SPEC [--hash sha256|sha384|sha512] [--expect HEX] FILE
+  hash [--alg sha1|sha256|sha384|sha512|all] [--base64] FILE...
+  encode base64|base64url|hex FILE
+  decode base64|base64url|hex FILE
+
+A SPEC is hex:..., b64:..., text:... or file:PATH.
+
+Exit codes: 0 success, 1 error, 2 usage, 3 memory limit, 4 time limit,
+5 a signature, tag or certificate that does not verify.

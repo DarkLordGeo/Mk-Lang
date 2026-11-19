@@ -1,0 +1,33 @@
+{
+  "name": "sort",
+  "table": "idiomatic",
+  "algorithm": "Each standard library's unstable sort of n u64 values: per round r the values are splitmix64 from seed + r * 0x5555555555555555, sorted ascending, and every 1,024th value times its index plus the last value is added to the checksum with wrapping (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000000",
+    "1",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "3",
+    "1"
+  ],
+  "checksum": "5816766227949892082",
+  "quick_checksum": "13767744764125270723",
+  "sources": {
+    "mk": "mk",
+    "c": "sort.c",
+    "rust": "sort.rs",
+    "zig": "sort.zig",
+    "go": "testdata/sort.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the sorted order of distinct keys is unique, so the sampled checksum checks every column sorted",
+  "notes": [
+    "Algorithms: Mk Slice.Sort is Go's pdqsort_func with ipnsort's branch-free cyclic Lomuto partition for elements of at most 32 bytes (std/core/core_sort.mk, D8-32), the comparator inlined; Rust slice::sort_unstable is ipnsort; Zig std.mem.sortUnstable is pdqsort; Go slices.Sort is pdqsort; C qsort is the C runtime's (UCRT on Windows), with an indirect comparison call per compare.",
+    "The same task and sources as core-new/sort (M7's row, Mk's Sort before the Lomuto partition); the quick size and checksum are core-new's, so the two rows compare the old and the new Sort there. The publish size is the contract's (plan/06-m6.md 4.1: std sort of 10 M u64), one round of n = 10,000,000, where core-new publishes ten rounds of 1,000,000 (SD8-X-10: 8 MB of keys fit the publish machine's 96 MB L3, 80 MB do not)."
+  ]
+}

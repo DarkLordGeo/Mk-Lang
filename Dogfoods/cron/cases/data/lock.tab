@@ -1,0 +1,5 @@
+# A second daemon on the same lock file is refused: at once, and after
+# waiting half a second for the first to stop
+CRON_TZ=UTC
+@reboot      second   --  $CRON_DIR/cron run $CRON_TAB --lock $CRON_LOCK
+@every 3s    waiter   --  $CRON_DIR/cron run $CRON_TAB --lock $CRON_LOCK --lock-wait 500ms

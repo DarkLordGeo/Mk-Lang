@@ -1,0 +1,865 @@
+$CASES/data/many/f00.txt:1:line 0 of file 0 needle
+$CASES/data/many/f00.txt:2:line 1 of file 0 needle
+$CASES/data/many/f00.txt:3:line 2 of file 0 needle
+$CASES/data/many/f00.txt:4:line 3 of file 0 needle
+$CASES/data/many/f00.txt:5:line 4 of file 0 needle
+$CASES/data/many/f00.txt:6:line 5 of file 0 needle
+$CASES/data/many/f00.txt:7:line 6 of file 0 needle
+$CASES/data/many/f00.txt:8:line 7 of file 0 needle
+$CASES/data/many/f00.txt:9:line 8 of file 0 needle
+$CASES/data/many/f00.txt:10:line 9 of file 0 needle
+$CASES/data/many/f00.txt:11:line 10 of file 0 needle
+$CASES/data/many/f00.txt:12:line 11 of file 0 needle
+$CASES/data/many/f00.txt:13:line 12 of file 0 needle
+$CASES/data/many/f00.txt:14:line 13 of file 0 needle
+$CASES/data/many/f00.txt:15:line 14 of file 0 needle
+$CASES/data/many/f00.txt:16:line 15 of file 0 needle
+$CASES/data/many/f00.txt:17:line 16 of file 0 needle
+$CASES/data/many/f00.txt:18:line 17 of file 0 needle
+$CASES/data/many/f00.txt:19:line 18 of file 0 needle
+$CASES/data/many/f00.txt:20:line 19 of file 0 needle
+$CASES/data/many/f00.txt:21:line 20 of file 0 needle
+$CASES/data/many/f00.txt:22:line 21 of file 0 needle
+$CASES/data/many/f00.txt:23:line 22 of file 0 needle
+$CASES/data/many/f00.txt:24:line 23 of file 0 needle
+$CASES/data/many/f00.txt:25:line 24 of file 0 needle
+$CASES/data/many/f00.txt:26:line 25 of file 0 needle
+$CASES/data/many/f00.txt:27:line 26 of file 0 needle
+$CASES/data/many/f00.txt:28:line 27 of file 0 needle
+$CASES/data/many/f00.txt:29:line 28 of file 0 needle
+$CASES/data/many/f00.txt:30:line 29 of file 0 needle
+--
+$CASES/data/many/f01.txt:1:line 0 of file 1 needle
+$CASES/data/many/f01.txt-2-line 1 of file 1
+--
+$CASES/data/many/f01.txt-7-line 6 of file 1
+$CASES/data/many/f01.txt:8:line 7 of file 1 needle
+$CASES/data/many/f01.txt-9-line 8 of file 1
+--
+$CASES/data/many/f01.txt-14-line 13 of file 1
+$CASES/data/many/f01.txt:15:line 14 of file 1 needle
+$CASES/data/many/f01.txt-16-line 15 of file 1
+--
+$CASES/data/many/f01.txt-21-line 20 of file 1
+$CASES/data/many/f01.txt:22:line 21 of file 1 needle
+$CASES/data/many/f01.txt-23-line 22 of file 1
+--
+$CASES/data/many/f01.txt-28-line 27 of file 1
+$CASES/data/many/f01.txt:29:line 28 of file 1 needle
+$CASES/data/many/f01.txt-30-line 29 of file 1
+--
+$CASES/data/many/f02.txt:1:line 0 of file 2 needle
+$CASES/data/many/f02.txt-2-line 1 of file 2
+--
+$CASES/data/many/f02.txt-7-line 6 of file 2
+$CASES/data/many/f02.txt:8:line 7 of file 2 needle
+$CASES/data/many/f02.txt-9-line 8 of file 2
+--
+$CASES/data/many/f02.txt-14-line 13 of file 2
+$CASES/data/many/f02.txt:15:line 14 of file 2 needle
+$CASES/data/many/f02.txt-16-line 15 of file 2
+--
+$CASES/data/many/f02.txt-21-line 20 of file 2
+$CASES/data/many/f02.txt:22:line 21 of file 2 needle
+$CASES/data/many/f02.txt-23-line 22 of file 2
+--
+$CASES/data/many/f02.txt-28-line 27 of file 2
+$CASES/data/many/f02.txt:29:line 28 of file 2 needle
+$CASES/data/many/f02.txt-30-line 29 of file 2
+--
+$CASES/data/many/f03.txt:1:line 0 of file 3 needle
+$CASES/data/many/f03.txt-2-line 1 of file 3
+--
+$CASES/data/many/f03.txt-7-line 6 of file 3
+$CASES/data/many/f03.txt:8:line 7 of file 3 needle
+$CASES/data/many/f03.txt-9-line 8 of file 3
+--
+$CASES/data/many/f03.txt-14-line 13 of file 3
+$CASES/data/many/f03.txt:15:line 14 of file 3 needle
+$CASES/data/many/f03.txt-16-line 15 of file 3
+--
+$CASES/data/many/f03.txt-21-line 20 of file 3
+$CASES/data/many/f03.txt:22:line 21 of file 3 needle
+$CASES/data/many/f03.txt-23-line 22 of file 3
+--
+$CASES/data/many/f03.txt-28-line 27 of file 3
+$CASES/data/many/f03.txt:29:line 28 of file 3 needle
+$CASES/data/many/f03.txt-30-line 29 of file 3
+--
+$CASES/data/many/f04.txt:1:line 0 of file 4 needle
+$CASES/data/many/f04.txt-2-line 1 of file 4
+--
+$CASES/data/many/f04.txt-7-line 6 of file 4
+$CASES/data/many/f04.txt:8:line 7 of file 4 needle
+$CASES/data/many/f04.txt-9-line 8 of file 4
+--
+$CASES/data/many/f04.txt-14-line 13 of file 4
+$CASES/data/many/f04.txt:15:line 14 of file 4 needle
+$CASES/data/many/f04.txt-16-line 15 of file 4
+--
+$CASES/data/many/f04.txt-21-line 20 of file 4
+$CASES/data/many/f04.txt:22:line 21 of file 4 needle
+$CASES/data/many/f04.txt-23-line 22 of file 4
+--
+$CASES/data/many/f04.txt-28-line 27 of file 4
+$CASES/data/many/f04.txt:29:line 28 of file 4 needle
+$CASES/data/many/f04.txt-30-line 29 of file 4
+--
+$CASES/data/many/f05.txt:1:line 0 of file 5 needle
+$CASES/data/many/f05.txt-2-line 1 of file 5
+--
+$CASES/data/many/f05.txt-7-line 6 of file 5
+$CASES/data/many/f05.txt:8:line 7 of file 5 needle
+$CASES/data/many/f05.txt-9-line 8 of file 5
+--
+$CASES/data/many/f05.txt-14-line 13 of file 5
+$CASES/data/many/f05.txt:15:line 14 of file 5 needle
+$CASES/data/many/f05.txt-16-line 15 of file 5
+--
+$CASES/data/many/f05.txt-21-line 20 of file 5
+$CASES/data/many/f05.txt:22:line 21 of file 5 needle
+$CASES/data/many/f05.txt-23-line 22 of file 5
+--
+$CASES/data/many/f05.txt-28-line 27 of file 5
+$CASES/data/many/f05.txt:29:line 28 of file 5 needle
+$CASES/data/many/f05.txt-30-line 29 of file 5
+--
+$CASES/data/many/f06.txt:1:line 0 of file 6 needle
+$CASES/data/many/f06.txt-2-line 1 of file 6
+--
+$CASES/data/many/f06.txt-7-line 6 of file 6
+$CASES/data/many/f06.txt:8:line 7 of file 6 needle
+$CASES/data/many/f06.txt-9-line 8 of file 6
+--
+$CASES/data/many/f06.txt-14-line 13 of file 6
+$CASES/data/many/f06.txt:15:line 14 of file 6 needle
+$CASES/data/many/f06.txt-16-line 15 of file 6
+--
+$CASES/data/many/f06.txt-21-line 20 of file 6
+$CASES/data/many/f06.txt:22:line 21 of file 6 needle
+$CASES/data/many/f06.txt-23-line 22 of file 6
+--
+$CASES/data/many/f06.txt-28-line 27 of file 6
+$CASES/data/many/f06.txt:29:line 28 of file 6 needle
+$CASES/data/many/f06.txt-30-line 29 of file 6
+--
+$CASES/data/many/f07.txt:1:line 0 of file 7 needle
+$CASES/data/many/f07.txt:2:line 1 of file 7 needle
+$CASES/data/many/f07.txt:3:line 2 of file 7 needle
+$CASES/data/many/f07.txt:4:line 3 of file 7 needle
+$CASES/data/many/f07.txt:5:line 4 of file 7 needle
+$CASES/data/many/f07.txt:6:line 5 of file 7 needle
+$CASES/data/many/f07.txt:7:line 6 of file 7 needle
+$CASES/data/many/f07.txt:8:line 7 of file 7 needle
+$CASES/data/many/f07.txt:9:line 8 of file 7 needle
+$CASES/data/many/f07.txt:10:line 9 of file 7 needle
+$CASES/data/many/f07.txt:11:line 10 of file 7 needle
+$CASES/data/many/f07.txt:12:line 11 of file 7 needle
+$CASES/data/many/f07.txt:13:line 12 of file 7 needle
+$CASES/data/many/f07.txt:14:line 13 of file 7 needle
+$CASES/data/many/f07.txt:15:line 14 of file 7 needle
+$CASES/data/many/f07.txt:16:line 15 of file 7 needle
+$CASES/data/many/f07.txt:17:line 16 of file 7 needle
+$CASES/data/many/f07.txt:18:line 17 of file 7 needle
+$CASES/data/many/f07.txt:19:line 18 of file 7 needle
+$CASES/data/many/f07.txt:20:line 19 of file 7 needle
+$CASES/data/many/f07.txt:21:line 20 of file 7 needle
+$CASES/data/many/f07.txt:22:line 21 of file 7 needle
+$CASES/data/many/f07.txt:23:line 22 of file 7 needle
+$CASES/data/many/f07.txt:24:line 23 of file 7 needle
+$CASES/data/many/f07.txt:25:line 24 of file 7 needle
+$CASES/data/many/f07.txt:26:line 25 of file 7 needle
+$CASES/data/many/f07.txt:27:line 26 of file 7 needle
+$CASES/data/many/f07.txt:28:line 27 of file 7 needle
+$CASES/data/many/f07.txt:29:line 28 of file 7 needle
+$CASES/data/many/f07.txt:30:line 29 of file 7 needle
+--
+$CASES/data/many/f08.txt:1:line 0 of file 8 needle
+$CASES/data/many/f08.txt-2-line 1 of file 8
+--
+$CASES/data/many/f08.txt-7-line 6 of file 8
+$CASES/data/many/f08.txt:8:line 7 of file 8 needle
+$CASES/data/many/f08.txt-9-line 8 of file 8
+--
+$CASES/data/many/f08.txt-14-line 13 of file 8
+$CASES/data/many/f08.txt:15:line 14 of file 8 needle
+$CASES/data/many/f08.txt-16-line 15 of file 8
+--
+$CASES/data/many/f08.txt-21-line 20 of file 8
+$CASES/data/many/f08.txt:22:line 21 of file 8 needle
+$CASES/data/many/f08.txt-23-line 22 of file 8
+--
+$CASES/data/many/f08.txt-28-line 27 of file 8
+$CASES/data/many/f08.txt:29:line 28 of file 8 needle
+$CASES/data/many/f08.txt-30-line 29 of file 8
+--
+$CASES/data/many/f09.txt:1:line 0 of file 9 needle
+$CASES/data/many/f09.txt-2-line 1 of file 9
+--
+$CASES/data/many/f09.txt-7-line 6 of file 9
+$CASES/data/many/f09.txt:8:line 7 of file 9 needle
+$CASES/data/many/f09.txt-9-line 8 of file 9
+--
+$CASES/data/many/f09.txt-14-line 13 of file 9
+$CASES/data/many/f09.txt:15:line 14 of file 9 needle
+$CASES/data/many/f09.txt-16-line 15 of file 9
+--
+$CASES/data/many/f09.txt-21-line 20 of file 9
+$CASES/data/many/f09.txt:22:line 21 of file 9 needle
+$CASES/data/many/f09.txt-23-line 22 of file 9
+--
+$CASES/data/many/f09.txt-28-line 27 of file 9
+$CASES/data/many/f09.txt:29:line 28 of file 9 needle
+$CASES/data/many/f09.txt-30-line 29 of file 9
+--
+$CASES/data/many/f10.txt:1:line 0 of file 10 needle
+$CASES/data/many/f10.txt-2-line 1 of file 10
+--
+$CASES/data/many/f10.txt-7-line 6 of file 10
+$CASES/data/many/f10.txt:8:line 7 of file 10 needle
+$CASES/data/many/f10.txt-9-line 8 of file 10
+--
+$CASES/data/many/f10.txt-14-line 13 of file 10
+$CASES/data/many/f10.txt:15:line 14 of file 10 needle
+$CASES/data/many/f10.txt-16-line 15 of file 10
+--
+$CASES/data/many/f10.txt-21-line 20 of file 10
+$CASES/data/many/f10.txt:22:line 21 of file 10 needle
+$CASES/data/many/f10.txt-23-line 22 of file 10
+--
+$CASES/data/many/f10.txt-28-line 27 of file 10
+$CASES/data/many/f10.txt:29:line 28 of file 10 needle
+$CASES/data/many/f10.txt-30-line 29 of file 10
+--
+$CASES/data/many/f11.txt:1:line 0 of file 11 needle
+$CASES/data/many/f11.txt-2-line 1 of file 11
+--
+$CASES/data/many/f11.txt-7-line 6 of file 11
+$CASES/data/many/f11.txt:8:line 7 of file 11 needle
+$CASES/data/many/f11.txt-9-line 8 of file 11
+--
+$CASES/data/many/f11.txt-14-line 13 of file 11
+$CASES/data/many/f11.txt:15:line 14 of file 11 needle
+$CASES/data/many/f11.txt-16-line 15 of file 11
+--
+$CASES/data/many/f11.txt-21-line 20 of file 11
+$CASES/data/many/f11.txt:22:line 21 of file 11 needle
+$CASES/data/many/f11.txt-23-line 22 of file 11
+--
+$CASES/data/many/f11.txt-28-line 27 of file 11
+$CASES/data/many/f11.txt:29:line 28 of file 11 needle
+$CASES/data/many/f11.txt-30-line 29 of file 11
+--
+$CASES/data/many/f12.txt:1:line 0 of file 12 needle
+$CASES/data/many/f12.txt-2-line 1 of file 12
+--
+$CASES/data/many/f12.txt-7-line 6 of file 12
+$CASES/data/many/f12.txt:8:line 7 of file 12 needle
+$CASES/data/many/f12.txt-9-line 8 of file 12
+--
+$CASES/data/many/f12.txt-14-line 13 of file 12
+$CASES/data/many/f12.txt:15:line 14 of file 12 needle
+$CASES/data/many/f12.txt-16-line 15 of file 12
+--
+$CASES/data/many/f12.txt-21-line 20 of file 12
+$CASES/data/many/f12.txt:22:line 21 of file 12 needle
+$CASES/data/many/f12.txt-23-line 22 of file 12
+--
+$CASES/data/many/f12.txt-28-line 27 of file 12
+$CASES/data/many/f12.txt:29:line 28 of file 12 needle
+$CASES/data/many/f12.txt-30-line 29 of file 12
+--
+$CASES/data/many/f13.txt:1:line 0 of file 13 needle
+$CASES/data/many/f13.txt-2-line 1 of file 13
+--
+$CASES/data/many/f13.txt-7-line 6 of file 13
+$CASES/data/many/f13.txt:8:line 7 of file 13 needle
+$CASES/data/many/f13.txt-9-line 8 of file 13
+--
+$CASES/data/many/f13.txt-14-line 13 of file 13
+$CASES/data/many/f13.txt:15:line 14 of file 13 needle
+$CASES/data/many/f13.txt-16-line 15 of file 13
+--
+$CASES/data/many/f13.txt-21-line 20 of file 13
+$CASES/data/many/f13.txt:22:line 21 of file 13 needle
+$CASES/data/many/f13.txt-23-line 22 of file 13
+--
+$CASES/data/many/f13.txt-28-line 27 of file 13
+$CASES/data/many/f13.txt:29:line 28 of file 13 needle
+$CASES/data/many/f13.txt-30-line 29 of file 13
+--
+$CASES/data/many/f14.txt:1:line 0 of file 14 needle
+$CASES/data/many/f14.txt:2:line 1 of file 14 needle
+$CASES/data/many/f14.txt:3:line 2 of file 14 needle
+$CASES/data/many/f14.txt:4:line 3 of file 14 needle
+$CASES/data/many/f14.txt:5:line 4 of file 14 needle
+$CASES/data/many/f14.txt:6:line 5 of file 14 needle
+$CASES/data/many/f14.txt:7:line 6 of file 14 needle
+$CASES/data/many/f14.txt:8:line 7 of file 14 needle
+$CASES/data/many/f14.txt:9:line 8 of file 14 needle
+$CASES/data/many/f14.txt:10:line 9 of file 14 needle
+$CASES/data/many/f14.txt:11:line 10 of file 14 needle
+$CASES/data/many/f14.txt:12:line 11 of file 14 needle
+$CASES/data/many/f14.txt:13:line 12 of file 14 needle
+$CASES/data/many/f14.txt:14:line 13 of file 14 needle
+$CASES/data/many/f14.txt:15:line 14 of file 14 needle
+$CASES/data/many/f14.txt:16:line 15 of file 14 needle
+$CASES/data/many/f14.txt:17:line 16 of file 14 needle
+$CASES/data/many/f14.txt:18:line 17 of file 14 needle
+$CASES/data/many/f14.txt:19:line 18 of file 14 needle
+$CASES/data/many/f14.txt:20:line 19 of file 14 needle
+$CASES/data/many/f14.txt:21:line 20 of file 14 needle
+$CASES/data/many/f14.txt:22:line 21 of file 14 needle
+$CASES/data/many/f14.txt:23:line 22 of file 14 needle
+$CASES/data/many/f14.txt:24:line 23 of file 14 needle
+$CASES/data/many/f14.txt:25:line 24 of file 14 needle
+$CASES/data/many/f14.txt:26:line 25 of file 14 needle
+$CASES/data/many/f14.txt:27:line 26 of file 14 needle
+$CASES/data/many/f14.txt:28:line 27 of file 14 needle
+$CASES/data/many/f14.txt:29:line 28 of file 14 needle
+$CASES/data/many/f14.txt:30:line 29 of file 14 needle
+--
+$CASES/data/many/f15.txt:1:line 0 of file 15 needle
+$CASES/data/many/f15.txt-2-line 1 of file 15
+--
+$CASES/data/many/f15.txt-7-line 6 of file 15
+$CASES/data/many/f15.txt:8:line 7 of file 15 needle
+$CASES/data/many/f15.txt-9-line 8 of file 15
+--
+$CASES/data/many/f15.txt-14-line 13 of file 15
+$CASES/data/many/f15.txt:15:line 14 of file 15 needle
+$CASES/data/many/f15.txt-16-line 15 of file 15
+--
+$CASES/data/many/f15.txt-21-line 20 of file 15
+$CASES/data/many/f15.txt:22:line 21 of file 15 needle
+$CASES/data/many/f15.txt-23-line 22 of file 15
+--
+$CASES/data/many/f15.txt-28-line 27 of file 15
+$CASES/data/many/f15.txt:29:line 28 of file 15 needle
+$CASES/data/many/f15.txt-30-line 29 of file 15
+--
+$CASES/data/many/f16.txt:1:line 0 of file 16 needle
+$CASES/data/many/f16.txt-2-line 1 of file 16
+--
+$CASES/data/many/f16.txt-7-line 6 of file 16
+$CASES/data/many/f16.txt:8:line 7 of file 16 needle
+$CASES/data/many/f16.txt-9-line 8 of file 16
+--
+$CASES/data/many/f16.txt-14-line 13 of file 16
+$CASES/data/many/f16.txt:15:line 14 of file 16 needle
+$CASES/data/many/f16.txt-16-line 15 of file 16
+--
+$CASES/data/many/f16.txt-21-line 20 of file 16
+$CASES/data/many/f16.txt:22:line 21 of file 16 needle
+$CASES/data/many/f16.txt-23-line 22 of file 16
+--
+$CASES/data/many/f16.txt-28-line 27 of file 16
+$CASES/data/many/f16.txt:29:line 28 of file 16 needle
+$CASES/data/many/f16.txt-30-line 29 of file 16
+--
+$CASES/data/many/f17.txt:1:line 0 of file 17 needle
+$CASES/data/many/f17.txt-2-line 1 of file 17
+--
+$CASES/data/many/f17.txt-7-line 6 of file 17
+$CASES/data/many/f17.txt:8:line 7 of file 17 needle
+$CASES/data/many/f17.txt-9-line 8 of file 17
+--
+$CASES/data/many/f17.txt-14-line 13 of file 17
+$CASES/data/many/f17.txt:15:line 14 of file 17 needle
+$CASES/data/many/f17.txt-16-line 15 of file 17
+--
+$CASES/data/many/f17.txt-21-line 20 of file 17
+$CASES/data/many/f17.txt:22:line 21 of file 17 needle
+$CASES/data/many/f17.txt-23-line 22 of file 17
+--
+$CASES/data/many/f17.txt-28-line 27 of file 17
+$CASES/data/many/f17.txt:29:line 28 of file 17 needle
+$CASES/data/many/f17.txt-30-line 29 of file 17
+--
+$CASES/data/many/f18.txt:1:line 0 of file 18 needle
+$CASES/data/many/f18.txt-2-line 1 of file 18
+--
+$CASES/data/many/f18.txt-7-line 6 of file 18
+$CASES/data/many/f18.txt:8:line 7 of file 18 needle
+$CASES/data/many/f18.txt-9-line 8 of file 18
+--
+$CASES/data/many/f18.txt-14-line 13 of file 18
+$CASES/data/many/f18.txt:15:line 14 of file 18 needle
+$CASES/data/many/f18.txt-16-line 15 of file 18
+--
+$CASES/data/many/f18.txt-21-line 20 of file 18
+$CASES/data/many/f18.txt:22:line 21 of file 18 needle
+$CASES/data/many/f18.txt-23-line 22 of file 18
+--
+$CASES/data/many/f18.txt-28-line 27 of file 18
+$CASES/data/many/f18.txt:29:line 28 of file 18 needle
+$CASES/data/many/f18.txt-30-line 29 of file 18
+--
+$CASES/data/many/f19.txt:1:line 0 of file 19 needle
+$CASES/data/many/f19.txt-2-line 1 of file 19
+--
+$CASES/data/many/f19.txt-7-line 6 of file 19
+$CASES/data/many/f19.txt:8:line 7 of file 19 needle
+$CASES/data/many/f19.txt-9-line 8 of file 19
+--
+$CASES/data/many/f19.txt-14-line 13 of file 19
+$CASES/data/many/f19.txt:15:line 14 of file 19 needle
+$CASES/data/many/f19.txt-16-line 15 of file 19
+--
+$CASES/data/many/f19.txt-21-line 20 of file 19
+$CASES/data/many/f19.txt:22:line 21 of file 19 needle
+$CASES/data/many/f19.txt-23-line 22 of file 19
+--
+$CASES/data/many/f19.txt-28-line 27 of file 19
+$CASES/data/many/f19.txt:29:line 28 of file 19 needle
+$CASES/data/many/f19.txt-30-line 29 of file 19
+--
+$CASES/data/many/f20.txt:1:line 0 of file 20 needle
+$CASES/data/many/f20.txt-2-line 1 of file 20
+--
+$CASES/data/many/f20.txt-7-line 6 of file 20
+$CASES/data/many/f20.txt:8:line 7 of file 20 needle
+$CASES/data/many/f20.txt-9-line 8 of file 20
+--
+$CASES/data/many/f20.txt-14-line 13 of file 20
+$CASES/data/many/f20.txt:15:line 14 of file 20 needle
+$CASES/data/many/f20.txt-16-line 15 of file 20
+--
+$CASES/data/many/f20.txt-21-line 20 of file 20
+$CASES/data/many/f20.txt:22:line 21 of file 20 needle
+$CASES/data/many/f20.txt-23-line 22 of file 20
+--
+$CASES/data/many/f20.txt-28-line 27 of file 20
+$CASES/data/many/f20.txt:29:line 28 of file 20 needle
+$CASES/data/many/f20.txt-30-line 29 of file 20
+--
+$CASES/data/many/f21.txt:1:line 0 of file 21 needle
+$CASES/data/many/f21.txt:2:line 1 of file 21 needle
+$CASES/data/many/f21.txt:3:line 2 of file 21 needle
+$CASES/data/many/f21.txt:4:line 3 of file 21 needle
+$CASES/data/many/f21.txt:5:line 4 of file 21 needle
+$CASES/data/many/f21.txt:6:line 5 of file 21 needle
+$CASES/data/many/f21.txt:7:line 6 of file 21 needle
+$CASES/data/many/f21.txt:8:line 7 of file 21 needle
+$CASES/data/many/f21.txt:9:line 8 of file 21 needle
+$CASES/data/many/f21.txt:10:line 9 of file 21 needle
+$CASES/data/many/f21.txt:11:line 10 of file 21 needle
+$CASES/data/many/f21.txt:12:line 11 of file 21 needle
+$CASES/data/many/f21.txt:13:line 12 of file 21 needle
+$CASES/data/many/f21.txt:14:line 13 of file 21 needle
+$CASES/data/many/f21.txt:15:line 14 of file 21 needle
+$CASES/data/many/f21.txt:16:line 15 of file 21 needle
+$CASES/data/many/f21.txt:17:line 16 of file 21 needle
+$CASES/data/many/f21.txt:18:line 17 of file 21 needle
+$CASES/data/many/f21.txt:19:line 18 of file 21 needle
+$CASES/data/many/f21.txt:20:line 19 of file 21 needle
+$CASES/data/many/f21.txt:21:line 20 of file 21 needle
+$CASES/data/many/f21.txt:22:line 21 of file 21 needle
+$CASES/data/many/f21.txt:23:line 22 of file 21 needle
+$CASES/data/many/f21.txt:24:line 23 of file 21 needle
+$CASES/data/many/f21.txt:25:line 24 of file 21 needle
+$CASES/data/many/f21.txt:26:line 25 of file 21 needle
+$CASES/data/many/f21.txt:27:line 26 of file 21 needle
+$CASES/data/many/f21.txt:28:line 27 of file 21 needle
+$CASES/data/many/f21.txt:29:line 28 of file 21 needle
+$CASES/data/many/f21.txt:30:line 29 of file 21 needle
+--
+$CASES/data/many/f22.txt:1:line 0 of file 22 needle
+$CASES/data/many/f22.txt-2-line 1 of file 22
+--
+$CASES/data/many/f22.txt-7-line 6 of file 22
+$CASES/data/many/f22.txt:8:line 7 of file 22 needle
+$CASES/data/many/f22.txt-9-line 8 of file 22
+--
+$CASES/data/many/f22.txt-14-line 13 of file 22
+$CASES/data/many/f22.txt:15:line 14 of file 22 needle
+$CASES/data/many/f22.txt-16-line 15 of file 22
+--
+$CASES/data/many/f22.txt-21-line 20 of file 22
+$CASES/data/many/f22.txt:22:line 21 of file 22 needle
+$CASES/data/many/f22.txt-23-line 22 of file 22
+--
+$CASES/data/many/f22.txt-28-line 27 of file 22
+$CASES/data/many/f22.txt:29:line 28 of file 22 needle
+$CASES/data/many/f22.txt-30-line 29 of file 22
+--
+$CASES/data/many/f23.txt:1:line 0 of file 23 needle
+$CASES/data/many/f23.txt-2-line 1 of file 23
+--
+$CASES/data/many/f23.txt-7-line 6 of file 23
+$CASES/data/many/f23.txt:8:line 7 of file 23 needle
+$CASES/data/many/f23.txt-9-line 8 of file 23
+--
+$CASES/data/many/f23.txt-14-line 13 of file 23
+$CASES/data/many/f23.txt:15:line 14 of file 23 needle
+$CASES/data/many/f23.txt-16-line 15 of file 23
+--
+$CASES/data/many/f23.txt-21-line 20 of file 23
+$CASES/data/many/f23.txt:22:line 21 of file 23 needle
+$CASES/data/many/f23.txt-23-line 22 of file 23
+--
+$CASES/data/many/f23.txt-28-line 27 of file 23
+$CASES/data/many/f23.txt:29:line 28 of file 23 needle
+$CASES/data/many/f23.txt-30-line 29 of file 23
+--
+$CASES/data/many/f24.txt:1:line 0 of file 24 needle
+$CASES/data/many/f24.txt-2-line 1 of file 24
+--
+$CASES/data/many/f24.txt-7-line 6 of file 24
+$CASES/data/many/f24.txt:8:line 7 of file 24 needle
+$CASES/data/many/f24.txt-9-line 8 of file 24
+--
+$CASES/data/many/f24.txt-14-line 13 of file 24
+$CASES/data/many/f24.txt:15:line 14 of file 24 needle
+$CASES/data/many/f24.txt-16-line 15 of file 24
+--
+$CASES/data/many/f24.txt-21-line 20 of file 24
+$CASES/data/many/f24.txt:22:line 21 of file 24 needle
+$CASES/data/many/f24.txt-23-line 22 of file 24
+--
+$CASES/data/many/f24.txt-28-line 27 of file 24
+$CASES/data/many/f24.txt:29:line 28 of file 24 needle
+$CASES/data/many/f24.txt-30-line 29 of file 24
+--
+$CASES/data/many/f25.txt:1:line 0 of file 25 needle
+$CASES/data/many/f25.txt-2-line 1 of file 25
+--
+$CASES/data/many/f25.txt-7-line 6 of file 25
+$CASES/data/many/f25.txt:8:line 7 of file 25 needle
+$CASES/data/many/f25.txt-9-line 8 of file 25
+--
+$CASES/data/many/f25.txt-14-line 13 of file 25
+$CASES/data/many/f25.txt:15:line 14 of file 25 needle
+$CASES/data/many/f25.txt-16-line 15 of file 25
+--
+$CASES/data/many/f25.txt-21-line 20 of file 25
+$CASES/data/many/f25.txt:22:line 21 of file 25 needle
+$CASES/data/many/f25.txt-23-line 22 of file 25
+--
+$CASES/data/many/f25.txt-28-line 27 of file 25
+$CASES/data/many/f25.txt:29:line 28 of file 25 needle
+$CASES/data/many/f25.txt-30-line 29 of file 25
+--
+$CASES/data/many/f26.txt:1:line 0 of file 26 needle
+$CASES/data/many/f26.txt-2-line 1 of file 26
+--
+$CASES/data/many/f26.txt-7-line 6 of file 26
+$CASES/data/many/f26.txt:8:line 7 of file 26 needle
+$CASES/data/many/f26.txt-9-line 8 of file 26
+--
+$CASES/data/many/f26.txt-14-line 13 of file 26
+$CASES/data/many/f26.txt:15:line 14 of file 26 needle
+$CASES/data/many/f26.txt-16-line 15 of file 26
+--
+$CASES/data/many/f26.txt-21-line 20 of file 26
+$CASES/data/many/f26.txt:22:line 21 of file 26 needle
+$CASES/data/many/f26.txt-23-line 22 of file 26
+--
+$CASES/data/many/f26.txt-28-line 27 of file 26
+$CASES/data/many/f26.txt:29:line 28 of file 26 needle
+$CASES/data/many/f26.txt-30-line 29 of file 26
+--
+$CASES/data/many/f27.txt:1:line 0 of file 27 needle
+$CASES/data/many/f27.txt-2-line 1 of file 27
+--
+$CASES/data/many/f27.txt-7-line 6 of file 27
+$CASES/data/many/f27.txt:8:line 7 of file 27 needle
+$CASES/data/many/f27.txt-9-line 8 of file 27
+--
+$CASES/data/many/f27.txt-14-line 13 of file 27
+$CASES/data/many/f27.txt:15:line 14 of file 27 needle
+$CASES/data/many/f27.txt-16-line 15 of file 27
+--
+$CASES/data/many/f27.txt-21-line 20 of file 27
+$CASES/data/many/f27.txt:22:line 21 of file 27 needle
+$CASES/data/many/f27.txt-23-line 22 of file 27
+--
+$CASES/data/many/f27.txt-28-line 27 of file 27
+$CASES/data/many/f27.txt:29:line 28 of file 27 needle
+$CASES/data/many/f27.txt-30-line 29 of file 27
+--
+$CASES/data/many/f28.txt:1:line 0 of file 28 needle
+$CASES/data/many/f28.txt:2:line 1 of file 28 needle
+$CASES/data/many/f28.txt:3:line 2 of file 28 needle
+$CASES/data/many/f28.txt:4:line 3 of file 28 needle
+$CASES/data/many/f28.txt:5:line 4 of file 28 needle
+$CASES/data/many/f28.txt:6:line 5 of file 28 needle
+$CASES/data/many/f28.txt:7:line 6 of file 28 needle
+$CASES/data/many/f28.txt:8:line 7 of file 28 needle
+$CASES/data/many/f28.txt:9:line 8 of file 28 needle
+$CASES/data/many/f28.txt:10:line 9 of file 28 needle
+$CASES/data/many/f28.txt:11:line 10 of file 28 needle
+$CASES/data/many/f28.txt:12:line 11 of file 28 needle
+$CASES/data/many/f28.txt:13:line 12 of file 28 needle
+$CASES/data/many/f28.txt:14:line 13 of file 28 needle
+$CASES/data/many/f28.txt:15:line 14 of file 28 needle
+$CASES/data/many/f28.txt:16:line 15 of file 28 needle
+$CASES/data/many/f28.txt:17:line 16 of file 28 needle
+$CASES/data/many/f28.txt:18:line 17 of file 28 needle
+$CASES/data/many/f28.txt:19:line 18 of file 28 needle
+$CASES/data/many/f28.txt:20:line 19 of file 28 needle
+$CASES/data/many/f28.txt:21:line 20 of file 28 needle
+$CASES/data/many/f28.txt:22:line 21 of file 28 needle
+$CASES/data/many/f28.txt:23:line 22 of file 28 needle
+$CASES/data/many/f28.txt:24:line 23 of file 28 needle
+$CASES/data/many/f28.txt:25:line 24 of file 28 needle
+$CASES/data/many/f28.txt:26:line 25 of file 28 needle
+$CASES/data/many/f28.txt:27:line 26 of file 28 needle
+$CASES/data/many/f28.txt:28:line 27 of file 28 needle
+$CASES/data/many/f28.txt:29:line 28 of file 28 needle
+$CASES/data/many/f28.txt:30:line 29 of file 28 needle
+--
+$CASES/data/many/f29.txt:1:line 0 of file 29 needle
+$CASES/data/many/f29.txt-2-line 1 of file 29
+--
+$CASES/data/many/f29.txt-7-line 6 of file 29
+$CASES/data/many/f29.txt:8:line 7 of file 29 needle
+$CASES/data/many/f29.txt-9-line 8 of file 29
+--
+$CASES/data/many/f29.txt-14-line 13 of file 29
+$CASES/data/many/f29.txt:15:line 14 of file 29 needle
+$CASES/data/many/f29.txt-16-line 15 of file 29
+--
+$CASES/data/many/f29.txt-21-line 20 of file 29
+$CASES/data/many/f29.txt:22:line 21 of file 29 needle
+$CASES/data/many/f29.txt-23-line 22 of file 29
+--
+$CASES/data/many/f29.txt-28-line 27 of file 29
+$CASES/data/many/f29.txt:29:line 28 of file 29 needle
+$CASES/data/many/f29.txt-30-line 29 of file 29
+--
+$CASES/data/many/f30.txt:1:line 0 of file 30 needle
+$CASES/data/many/f30.txt-2-line 1 of file 30
+--
+$CASES/data/many/f30.txt-7-line 6 of file 30
+$CASES/data/many/f30.txt:8:line 7 of file 30 needle
+$CASES/data/many/f30.txt-9-line 8 of file 30
+--
+$CASES/data/many/f30.txt-14-line 13 of file 30
+$CASES/data/many/f30.txt:15:line 14 of file 30 needle
+$CASES/data/many/f30.txt-16-line 15 of file 30
+--
+$CASES/data/many/f30.txt-21-line 20 of file 30
+$CASES/data/many/f30.txt:22:line 21 of file 30 needle
+$CASES/data/many/f30.txt-23-line 22 of file 30
+--
+$CASES/data/many/f30.txt-28-line 27 of file 30
+$CASES/data/many/f30.txt:29:line 28 of file 30 needle
+$CASES/data/many/f30.txt-30-line 29 of file 30
+--
+$CASES/data/many/f31.txt:1:line 0 of file 31 needle
+$CASES/data/many/f31.txt-2-line 1 of file 31
+--
+$CASES/data/many/f31.txt-7-line 6 of file 31
+$CASES/data/many/f31.txt:8:line 7 of file 31 needle
+$CASES/data/many/f31.txt-9-line 8 of file 31
+--
+$CASES/data/many/f31.txt-14-line 13 of file 31
+$CASES/data/many/f31.txt:15:line 14 of file 31 needle
+$CASES/data/many/f31.txt-16-line 15 of file 31
+--
+$CASES/data/many/f31.txt-21-line 20 of file 31
+$CASES/data/many/f31.txt:22:line 21 of file 31 needle
+$CASES/data/many/f31.txt-23-line 22 of file 31
+--
+$CASES/data/many/f31.txt-28-line 27 of file 31
+$CASES/data/many/f31.txt:29:line 28 of file 31 needle
+$CASES/data/many/f31.txt-30-line 29 of file 31
+--
+$CASES/data/many/f32.txt:1:line 0 of file 32 needle
+$CASES/data/many/f32.txt-2-line 1 of file 32
+--
+$CASES/data/many/f32.txt-7-line 6 of file 32
+$CASES/data/many/f32.txt:8:line 7 of file 32 needle
+$CASES/data/many/f32.txt-9-line 8 of file 32
+--
+$CASES/data/many/f32.txt-14-line 13 of file 32
+$CASES/data/many/f32.txt:15:line 14 of file 32 needle
+$CASES/data/many/f32.txt-16-line 15 of file 32
+--
+$CASES/data/many/f32.txt-21-line 20 of file 32
+$CASES/data/many/f32.txt:22:line 21 of file 32 needle
+$CASES/data/many/f32.txt-23-line 22 of file 32
+--
+$CASES/data/many/f32.txt-28-line 27 of file 32
+$CASES/data/many/f32.txt:29:line 28 of file 32 needle
+$CASES/data/many/f32.txt-30-line 29 of file 32
+--
+$CASES/data/many/f33.txt:1:line 0 of file 33 needle
+$CASES/data/many/f33.txt-2-line 1 of file 33
+--
+$CASES/data/many/f33.txt-7-line 6 of file 33
+$CASES/data/many/f33.txt:8:line 7 of file 33 needle
+$CASES/data/many/f33.txt-9-line 8 of file 33
+--
+$CASES/data/many/f33.txt-14-line 13 of file 33
+$CASES/data/many/f33.txt:15:line 14 of file 33 needle
+$CASES/data/many/f33.txt-16-line 15 of file 33
+--
+$CASES/data/many/f33.txt-21-line 20 of file 33
+$CASES/data/many/f33.txt:22:line 21 of file 33 needle
+$CASES/data/many/f33.txt-23-line 22 of file 33
+--
+$CASES/data/many/f33.txt-28-line 27 of file 33
+$CASES/data/many/f33.txt:29:line 28 of file 33 needle
+$CASES/data/many/f33.txt-30-line 29 of file 33
+--
+$CASES/data/many/f34.txt:1:line 0 of file 34 needle
+$CASES/data/many/f34.txt-2-line 1 of file 34
+--
+$CASES/data/many/f34.txt-7-line 6 of file 34
+$CASES/data/many/f34.txt:8:line 7 of file 34 needle
+$CASES/data/many/f34.txt-9-line 8 of file 34
+--
+$CASES/data/many/f34.txt-14-line 13 of file 34
+$CASES/data/many/f34.txt:15:line 14 of file 34 needle
+$CASES/data/many/f34.txt-16-line 15 of file 34
+--
+$CASES/data/many/f34.txt-21-line 20 of file 34
+$CASES/data/many/f34.txt:22:line 21 of file 34 needle
+$CASES/data/many/f34.txt-23-line 22 of file 34
+--
+$CASES/data/many/f34.txt-28-line 27 of file 34
+$CASES/data/many/f34.txt:29:line 28 of file 34 needle
+$CASES/data/many/f34.txt-30-line 29 of file 34
+--
+$CASES/data/many/f35.txt:1:line 0 of file 35 needle
+$CASES/data/many/f35.txt:2:line 1 of file 35 needle
+$CASES/data/many/f35.txt:3:line 2 of file 35 needle
+$CASES/data/many/f35.txt:4:line 3 of file 35 needle
+$CASES/data/many/f35.txt:5:line 4 of file 35 needle
+$CASES/data/many/f35.txt:6:line 5 of file 35 needle
+$CASES/data/many/f35.txt:7:line 6 of file 35 needle
+$CASES/data/many/f35.txt:8:line 7 of file 35 needle
+$CASES/data/many/f35.txt:9:line 8 of file 35 needle
+$CASES/data/many/f35.txt:10:line 9 of file 35 needle
+$CASES/data/many/f35.txt:11:line 10 of file 35 needle
+$CASES/data/many/f35.txt:12:line 11 of file 35 needle
+$CASES/data/many/f35.txt:13:line 12 of file 35 needle
+$CASES/data/many/f35.txt:14:line 13 of file 35 needle
+$CASES/data/many/f35.txt:15:line 14 of file 35 needle
+$CASES/data/many/f35.txt:16:line 15 of file 35 needle
+$CASES/data/many/f35.txt:17:line 16 of file 35 needle
+$CASES/data/many/f35.txt:18:line 17 of file 35 needle
+$CASES/data/many/f35.txt:19:line 18 of file 35 needle
+$CASES/data/many/f35.txt:20:line 19 of file 35 needle
+$CASES/data/many/f35.txt:21:line 20 of file 35 needle
+$CASES/data/many/f35.txt:22:line 21 of file 35 needle
+$CASES/data/many/f35.txt:23:line 22 of file 35 needle
+$CASES/data/many/f35.txt:24:line 23 of file 35 needle
+$CASES/data/many/f35.txt:25:line 24 of file 35 needle
+$CASES/data/many/f35.txt:26:line 25 of file 35 needle
+$CASES/data/many/f35.txt:27:line 26 of file 35 needle
+$CASES/data/many/f35.txt:28:line 27 of file 35 needle
+$CASES/data/many/f35.txt:29:line 28 of file 35 needle
+$CASES/data/many/f35.txt:30:line 29 of file 35 needle
+--
+$CASES/data/many/f36.txt:1:line 0 of file 36 needle
+$CASES/data/many/f36.txt-2-line 1 of file 36
+--
+$CASES/data/many/f36.txt-7-line 6 of file 36
+$CASES/data/many/f36.txt:8:line 7 of file 36 needle
+$CASES/data/many/f36.txt-9-line 8 of file 36
+--
+$CASES/data/many/f36.txt-14-line 13 of file 36
+$CASES/data/many/f36.txt:15:line 14 of file 36 needle
+$CASES/data/many/f36.txt-16-line 15 of file 36
+--
+$CASES/data/many/f36.txt-21-line 20 of file 36
+$CASES/data/many/f36.txt:22:line 21 of file 36 needle
+$CASES/data/many/f36.txt-23-line 22 of file 36
+--
+$CASES/data/many/f36.txt-28-line 27 of file 36
+$CASES/data/many/f36.txt:29:line 28 of file 36 needle
+$CASES/data/many/f36.txt-30-line 29 of file 36
+--
+$CASES/data/many/f37.txt:1:line 0 of file 37 needle
+$CASES/data/many/f37.txt-2-line 1 of file 37
+--
+$CASES/data/many/f37.txt-7-line 6 of file 37
+$CASES/data/many/f37.txt:8:line 7 of file 37 needle
+$CASES/data/many/f37.txt-9-line 8 of file 37
+--
+$CASES/data/many/f37.txt-14-line 13 of file 37
+$CASES/data/many/f37.txt:15:line 14 of file 37 needle
+$CASES/data/many/f37.txt-16-line 15 of file 37
+--
+$CASES/data/many/f37.txt-21-line 20 of file 37
+$CASES/data/many/f37.txt:22:line 21 of file 37 needle
+$CASES/data/many/f37.txt-23-line 22 of file 37
+--
+$CASES/data/many/f37.txt-28-line 27 of file 37
+$CASES/data/many/f37.txt:29:line 28 of file 37 needle
+$CASES/data/many/f37.txt-30-line 29 of file 37
+--
+$CASES/data/many/f38.txt:1:line 0 of file 38 needle
+$CASES/data/many/f38.txt-2-line 1 of file 38
+--
+$CASES/data/many/f38.txt-7-line 6 of file 38
+$CASES/data/many/f38.txt:8:line 7 of file 38 needle
+$CASES/data/many/f38.txt-9-line 8 of file 38
+--
+$CASES/data/many/f38.txt-14-line 13 of file 38
+$CASES/data/many/f38.txt:15:line 14 of file 38 needle
+$CASES/data/many/f38.txt-16-line 15 of file 38
+--
+$CASES/data/many/f38.txt-21-line 20 of file 38
+$CASES/data/many/f38.txt:22:line 21 of file 38 needle
+$CASES/data/many/f38.txt-23-line 22 of file 38
+--
+$CASES/data/many/f38.txt-28-line 27 of file 38
+$CASES/data/many/f38.txt:29:line 28 of file 38 needle
+$CASES/data/many/f38.txt-30-line 29 of file 38
+--
+$CASES/data/many/f39.txt:1:line 0 of file 39 needle
+$CASES/data/many/f39.txt-2-line 1 of file 39
+--
+$CASES/data/many/f39.txt-7-line 6 of file 39
+$CASES/data/many/f39.txt:8:line 7 of file 39 needle
+$CASES/data/many/f39.txt-9-line 8 of file 39
+--
+$CASES/data/many/f39.txt-14-line 13 of file 39
+$CASES/data/many/f39.txt:15:line 14 of file 39 needle
+$CASES/data/many/f39.txt-16-line 15 of file 39
+--
+$CASES/data/many/f39.txt-21-line 20 of file 39
+$CASES/data/many/f39.txt:22:line 21 of file 39 needle
+$CASES/data/many/f39.txt-23-line 22 of file 39
+--
+$CASES/data/many/f39.txt-28-line 27 of file 39
+$CASES/data/many/f39.txt:29:line 28 of file 39 needle
+$CASES/data/many/f39.txt-30-line 29 of file 39
+--
+$CASES/data/tree/a.txt:1:alpha needle
+$CASES/data/tree/a.txt-2-short
+$CASES/data/tree/a.txt:3:this line is longer than sixteen bytes and ends with needle
+$CASES/data/tree/a.txt-4-NEEDLE in caps
+$CASES/data/tree/a.txt-5-id=42 name=one; id=7 name=two
+$CASES/data/tree/a.txt:6:needles are not a word needle
+$CASES/data/tree/a.txt-7-
+$CASES/data/tree/a.txt:8:last line without newline needle
+--
+$CASES/data/tree/b.md-2-
+$CASES/data/tree/b.md:3:A needle in a haystack.
+$CASES/data/tree/b.md-4-; a comment line
+--
+$CASES/data/tree/crlf.txt:1:crlf needle
+$CASES/data/tree/crlf.txt-2-second
+--
+$CASES/data/tree/latin1.txt:2:plain needle line
+--
+$CASES/data/tree/latin1.txt-4-ok
+--
+$CASES/data/tree/sub/c.txt:1:deep needle one
+$CASES/data/tree/sub/c.txt-2-quiet line
+$CASES/data/tree/sub/c.txt-3-another line
+$CASES/data/tree/sub/c.txt:4:needle two
+$CASES/data/tree/sub/c.txt-5-five
+--
+$CASES/data/tree/sub/c.txt-7-seven
+$CASES/data/tree/sub/c.txt:8:needle eight
+--
+$CASES/data/tree/wide.txt:1:Hello 世界 needle
+$CASES/data/tree/wide.txt:2:こんにちは needle
+--
+$CASES/data/tree/日本.txt:1:needle in a wide name

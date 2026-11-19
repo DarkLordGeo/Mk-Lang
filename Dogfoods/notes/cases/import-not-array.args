@@ -1,0 +1,4 @@
+import
+$CASES/data/object.json
+--db
+$WORK/i.db

@@ -1,0 +1,4 @@
+run
+--max-time
+100
+$CASES/data/forever.rpn

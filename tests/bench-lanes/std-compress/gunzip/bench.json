@@ -1,0 +1,39 @@
+{
+  "name": "compress-gunzip",
+  "table": "idiomatic",
+  "algorithm": "One-shot: inflate a gzip file of 100 MB of text from memory into one output buffer with the std's decompressor (the gzip row's input, tests/bench/idiomatic/gzip/README.md, but the output is decoded whole, not read in 64 KiB chunks), then add every decompressed byte and the length to the checksum; rounds times. Each column makes its buffer (Mk: its arena) once, before the loop.",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "39949381712",
+  "quick_checksum": "9987345428",
+  "sources": {
+    "mk": "mk",
+    "zig": "compress-gunzip.zig",
+    "go": "testdata/compress-gunzip.go"
+  },
+  "skip": {
+    "c": "no std gzip in C (zlib is not std)",
+    "rust": "no std gzip in Rust (flate2 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "data": {
+    "kind": "gzip",
+    "file": "gzip-100mb.txt.gz",
+    "bytes": 100000000,
+    "seed": 6
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; every decompressor checks the gzip trailer's CRC-32 and length, and the checksum (the sum of the decompressed bytes plus the length) checks the output",
+  "notes": [
+    "One-shot shape on every side (SC-1): the gzip row (tests/bench/idiomatic/gzip) is the streaming task, reading in 64 KiB chunks; this row is not that task. Mk: std.compress.Gunzip into one arena made before the loop and Reset each round; Gunzip sizes its output from the trailer's ISIZE and decodes straight into it. Zig: flate.Decompress in direct mode (an empty window buffer) with streamRemaining into a fixed std.Io.Writer over one buffer of ISIZE + flate.max_window_len bytes, made once; it also decodes straight into the buffer. Go: compress/gzip has no one-shot form, so one gzip.Reader, Reset each round, is read into one buffer of ISIZE + 1 bytes made once; it copies every byte from its window into the buffer, which is the only form Go's std has. Every column sums the whole output after decoding it.",
+    "What still differs: Mk's arena returns a chunk of over 512 KiB to the heap at Reset, so its 100 MB output is a fresh heap allocation, zero filled by Arena.Slice, every round; the Go and Zig buffers are reused. That cost is Mk's API, and is counted against Mk.",
+    "The streaming row (Mk's Inflater.NewGzip in 64 KiB reads against the gzip row's Go and Zig sources) is not built: std has no Reader over memory or a file (status/std-compress.md, Requests). C and Rust: no std gzip. Bytes per second = 100,000,000 * rounds / median.",
+    "Not published: no number here is a measurement."
+  ]
+}

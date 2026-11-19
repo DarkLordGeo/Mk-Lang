@@ -1,0 +1,2 @@
+{"phase":"names","diagnostics":[{"code":"E0201","name":"unknown-name","phase":"names","root":1,"at":{"file":"main/00.mk","line":1,"col":11,"end_line":1,"end_col":18},"message":"unknown name `Missing`","facts":{"name":"Missing"},"fixes":[],"alternatives":[],"explain":"mk explain E0201"}],"omitted":0}
+

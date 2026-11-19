@@ -1,0 +1,9 @@
+plot
+x^3
+plot.ppm
+--size
+8x8
+--seed
+5
+--fault
+denied

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0707","name":"impl-signature","phase":"types","root":1,"at":{"file":"m/00.mk","line":11,"col":1,"end_line":11,"end_col":5},"message":"the impl has no method `Put`","facts":{"expected":"Put(&self, c: &Cell[&str], v: &str) *v into c","found":"nothing"},"fixes":[],"alternatives":[],"explain":"mk explain E0707"}],"omitted":0}

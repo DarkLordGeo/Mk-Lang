@@ -1,0 +1,13 @@
+sim
+--seeds
+1..200
+--partitions
+--loss
+10
+--delay
+5
+--duplicate
+5
+--corrupt
+3
+--faults

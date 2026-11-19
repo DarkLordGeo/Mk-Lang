@@ -1,0 +1,4 @@
+run
+$CASES/data/small.ppm
+-
+resize=16384x16384

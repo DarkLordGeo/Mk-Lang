@@ -1,0 +1,6 @@
+--web
+127.0.0.1:99999
+--bots
+0
+replay
+$CASES/data/noweb.chat

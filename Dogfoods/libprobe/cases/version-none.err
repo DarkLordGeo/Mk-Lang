@@ -1,0 +1,2 @@
+libprobe: $CASES/data/text.dll: no version resource
+libprobe: $CASES/data/absent.dll: no version resource

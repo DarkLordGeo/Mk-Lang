@@ -1,0 +1,4 @@
+extract
+--dest
+$WORK/out
+$CASES/data/cut-data.pk

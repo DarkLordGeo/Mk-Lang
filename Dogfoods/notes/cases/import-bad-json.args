@@ -1,0 +1,4 @@
+import
+$CASES/data/bad.json
+--db
+$WORK/i.db

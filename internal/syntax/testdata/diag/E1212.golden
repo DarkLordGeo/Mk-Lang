@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1212","name":"ampersand-mut","phase":"parse","root":1,"at":{"file":"t.mk","line":1,"col":6,"end_line":1,"end_col":10},"message":"write `mut x`, not `&mut x`","facts":{"habits":["E1212"],"target":"F(a: mut T) {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":1,"col":6,"end_line":1,"end_col":7,"text":""}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1212"}],"omitted":0}
+

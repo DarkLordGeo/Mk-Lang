@@ -1,0 +1,6 @@
+replay
+$CASES/data/stops.csv
+--depth
+3
+--bars
+5

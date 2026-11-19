@@ -1,0 +1,32 @@
+{
+  "name": "encoding-utf16enc",
+  "table": "idiomatic",
+  "algorithm": "UTF-8 to UTF-16LE of a mixed-script line (ASCII, Latin-1, Cyrillic, CJK, one astral scalar) repeated n times, rounds times, each language's standard encoder; the checksum adds per round the encoding's length in bytes and one of its bytes at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "1400009581",
+  "quick_checksum": "705159",
+  "sources": {
+    "mk": "mk",
+    "rust": "utf16enc.rs",
+    "zig": "utf16enc.zig",
+    "go": "testdata/utf16enc.go"
+  },
+  "skip": {
+    "c": "no UTF-16 encoder in C's standard library (c16rtomb is locale-bound and one unit at a time)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the encoder is tested by the lane's Go tests (TestStdEncoding_DecodeAdversarial)",
+  "notes": [
+    "Mk: encoding.Utf16Le.Encode into an arena reset each round (sized in one pass, written in a second: Mk's API, bytes in little-endian order). Rust: str::encode_utf16 into one Vec<u16> reused. Zig: std.unicode.utf8ToUtf16Le into one []u16 made once (an ASCII vector fast path). Go: utf16.AppendRune over the string's runes into one []uint16 reused.",
+    "Checksums: Go's at both sizes on the owner's machine (std-encoding session 2, 2026-11-12); tools/bench verify checks the other columns.",
+    "Not published: no number here is a measurement."
+  ]
+}

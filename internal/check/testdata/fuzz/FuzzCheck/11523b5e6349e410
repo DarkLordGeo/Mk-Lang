@@ -1,0 +1,2 @@
+go test fuzz v1
+string("gen(00[else{A:0")

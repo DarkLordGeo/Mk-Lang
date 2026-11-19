@@ -1,0 +1,31 @@
+{
+  "name": "crypto-p256-sign",
+  "table": "idiomatic",
+  "algorithm": "std ECDSA P-256 signing, RFC 6979 nonces, DER form: <keys> secrets and digests of splitmix64 bytes, <reps> passes sign each digest under its secret, the digest's first byte xored with the signature's last after each (mk/crypto-p256-sign.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "64",
+    "1"
+  ],
+  "quick": [
+    "4",
+    "1",
+    "1"
+  ],
+  "checksum": "10930030934927036545",
+  "quick_checksum": "14487907285944981076",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/crypto-p256-sign.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard elliptic-curve or RSA library",
+    "rust": "no std crypto: Rust std has no ECDSA, ECDH or RSA; the p256 and rsa crates are third-party, and no crate stands in (plan/06-m6.md 4.1)",
+    "zig": "not comparable: Zig's deterministic ECDSA nonce (std/crypto/ecdsa.zig deterministicScalar, 0.17.0) puts a noise block, zero when none is given, into RFC 6979's HMAC input, so its signatures are not RFC 6979's and the row's checksum, the signatures' bytes, cannot match; the verify row has the Zig column"
+  },
+  "notes": [
+    "Work per step: one deterministic ECDSA P-256 signature of a 32-byte digest, written in DER, the checksum over its first and last 8 bytes: Mk crypto.EcSecret.FromBytes (a range check of the scalar) then crypto.EcdsaSign(..., SigFormat.Der, ...) (RFC 6979 HMAC-DRBG, a constant-time comb multiplication of G over a precomputed table (since 2026-11-13; before, a 4-bit window), Fermat inversions, fiat-crypto field arithmetic, the DER encoding), Go ecdsa.PrivateKey.Sign(nil, digest, crypto.SHA256) used as it returns (RFC 6979, amd64 assembly field arithmetic and a precomputed base table, the DER encoding; per call crypto/ecdsa's privateKeyToFIPS checks the public point on the curve (pointFromAffine) and looks the converted key up in privateKeyCache, comparing its public key's bytes; the first call builds it with fips140/ecdsa.NewPrivateKey, which checks the given public point and does no scalar multiplication; Go 1.27.3's source). The signatures are the same bytes. Since 2026-11-13 (review finding CR2-5) both columns stay in DER; before, Mk signed in Fixed form and Go parsed each DER signature with encoding/asn1 into two big.Int, work Mk did not do (425 to 673 ns of a 24.5 to 29.6 us step, the reviewer's measurement), so the session 3 numbers of this row are of the old definition.",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-13, DER form); every column printed the same at both arg sets (tools/bench verify with and without -publish-size, 2026-11-13). Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

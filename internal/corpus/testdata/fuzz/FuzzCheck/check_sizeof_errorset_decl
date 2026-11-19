@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("struct Big {\n    a: [10]u8\n}\n\nerror Bad(b: Big)\n\nstruct Box[const N: u8] {\n    v: int\n}\n\nF1(b: Box[SizeOf[Bad!u8]()]): int {\n    return b.v\n}\n\nF2(b: Box[SizeOf[Bad!void]()]): int {\n    return b.v\n}\n\nF3(b: Box[SizeOf[&Big]()], c: Box[SizeOf[[]Big]()]): int {\n    return b.v + c.v\n}\n")

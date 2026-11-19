@@ -1,0 +1,4 @@
+# A detached job outlives the daemon; its output goes straight to the log
+CRON_TZ=UTC
+@reboot   quick    detach   --  $CRON_DIR/jobkit print written to the log
+@reboot   keeper   detach   --  $CRON_DIR/jobkit sleep 4000

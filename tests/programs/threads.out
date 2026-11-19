@@ -1,0 +1,3 @@
+Dedicated: 32 tasks ran on its carrier, 0 times two were in their loop at once; 8 shared tasks ran beside them
+Thread: Join returned after f and its 8 tasks ended, which added 36 (want 36); Joins canceled 0
+Join in a cancelled scope: Canceled 1 time, the Joined kept, and a NoCancel Join waited for the end

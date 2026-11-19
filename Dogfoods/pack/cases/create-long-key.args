@@ -1,0 +1,6 @@
+create
+--to
+$CASES/data/long.pub
+--out
+$WORK/a.pk
+$CASES/data/tree

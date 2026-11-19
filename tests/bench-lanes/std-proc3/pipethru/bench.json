@@ -1,0 +1,26 @@
+{
+  "name": "pipethru",
+  "table": "idiomatic",
+  "algorithm": "the program runs itself with the arguments child n; the child writes n bytes to its standard output in 64 KiB writes, one 64 KiB chunk of a splitmix64 stream (each word's 8 bytes little endian, from state 0) filled once and written again and again; the parent reads the child's stdout from a pipe into a 64 KiB buffer, sums the bytes, waits for the child and prints the bytes read, their sum and the exit code (tests/bench-lanes/std-proc3/README.md).",
+  "overflow": "never",
+  "args": [
+    "268435456"
+  ],
+  "quick": [
+    "1048576"
+  ],
+  "checksum": "268435456 34129735680 0",
+  "quick_checksum": "1048576 133319280 0",
+  "sources": {
+    "mk": "mk",
+    "rust": "pipethru.rs",
+    "go": "testdata/pipethru.go",
+    "zig": "pipethru.zig"
+  },
+  "notes": [
+    "Written by std-proc3 (status/std-proc3.md, review P3X-5) over the public proc.Spawn with Stdio.Pipe and PipeReader.Read on the end it returns. The child fills its chunk once, so the row measures the pipe and the parent's reads, not the stream's generation; every column starts the program by the path of its own executable."
+  ],
+  "skip": {
+    "c": "no std facility: ISO C has no process creation or pipes (posix_spawn and CreateProcessW are OS APIs, not the C library), as spawnpipe says"
+  }
+}

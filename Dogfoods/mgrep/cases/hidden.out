@@ -1,0 +1,8 @@
+$CASES/data/tree/.hidden/h.txt
+$CASES/data/tree/a.txt
+$CASES/data/tree/b.md
+$CASES/data/tree/crlf.txt
+$CASES/data/tree/latin1.txt
+$CASES/data/tree/sub/c.txt
+$CASES/data/tree/wide.txt
+$CASES/data/tree/日本.txt

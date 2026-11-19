@@ -1,0 +1,7 @@
+sim
+--seeds
+1..20
+--partitions
+--loss
+5
+--tasks

@@ -1,0 +1,16 @@
+> mkdir raw
+made raw
+> touch 2026-01-02T03:04:05Z raw/plain.txt
+touched raw/plain.txt at 2026-01-02 03:04:05 +00:00
+> touch --bytes 2026-01-02T03:04:05Z raw/caf\xed\xa0\x80.txt
+made raw/caf\xed\xa0\x80.txt; its time stays, since std sets one only by a str path
+> ls .
+.
+  raw/
+    caf\xed\xa0\x80.txt  0
+    plain.txt  0
+> rm --yes raw
+removed raw
+> ls .
+.
+> touch --bytes 2026-01-02T03:04:05Z bad\xzz

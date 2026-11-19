@@ -1,0 +1,37 @@
+# gen cli.Args over Options: a cli tool run on both targets.
+# Sources and expected text from std's TestSTDCLI_ExamplePrograms; the
+# stderr files of the refused command lines are the whole help, as that test checks by prefix.
+case ok
+args --pattern alpha
+stdin grepc.in
+stdout grepc.out
+
+case invert-max-labels
+args x --invert --pattern=alpha --max 1 y
+stdin grepc.in
+stdout grepc-invert.out
+
+case verbose
+args --verbose --pattern three
+stdin grepc.in
+stdout grepc-verbose.out
+stderr grepc-verbose.err
+
+case help
+args --help
+stdout grepc-help.out
+
+case unknown
+args --pattern p --colour
+stderr grepc-unknown.err
+exit 2
+
+case missing
+args --invert
+stderr grepc-missing.err
+exit 2
+
+case bad-max
+args --pattern p --max many
+stderr grepc-badmax.err
+exit 2

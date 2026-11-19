@@ -1,0 +1,4 @@
+# a history with a typo on line 4
+0 1000 2000 put k0 5
+1 1500 2500 get k0 -> 5
+2 3000 4000 pu k0 6

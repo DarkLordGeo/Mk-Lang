@@ -1,0 +1,1 @@
+fetch: http://{origin}/hello: cannot write the output file: NotFound

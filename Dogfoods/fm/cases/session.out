@@ -1,0 +1,51 @@
+start | *.:docs/#1/3  .:-#0/0
+key down | *.:notes.txt#2/3  .:-#0/0
+key enter | pager "notes.txt" 1-23/29 "Notes for the file manager. This first paragraph is one long line, so the pager"
+key pgdn | pager "notes.txt" 7-29/29 ""
+resize 60x20 | pager "notes.txt" 7-25/31 "emoji 😀 in the middle of a sentence."
+key q | *.:notes.txt#2/3  .:-#0/0
+key c | confirm copy "notes.txt"
+key y | *.:notes.txt#2/3  .:notes.txt#1/1 -- copied notes.txt: 1 files, 739 bytes
+key up | *.:docs/#1/3  .:notes.txt#1/1
+key c | confirm copy "docs"
+key n | *.:docs/#1/3  .:notes.txt#1/1 -- cancelled
+key c | confirm copy "docs"
+key y | *.:docs/#1/3  .:docs/#1/2 -- copied docs: 1 files, 29 bytes
+key tab | .:docs/#1/3  *.:docs/#1/2
+key n | prompt mkdir ""
+paste 7 bytes | prompt mkdir "archive"
+key enter | .:docs/#1/3  *.:archive/#1/3 -- made archive
+key = | .:archive/#1/3  *.:archive/#1/3
+key tab | *.:archive/#1/3  .:archive/#1/3
+key enter | *./archive:-#0/0  .:archive/#1/3
+key tab | ./archive:-#0/0  *.:archive/#1/3
+key home | ./archive:-#0/0  *.:archive/#1/3
+key down | ./archive:-#0/0  *.:docs/#2/3
+key down | ./archive:-#0/0  *.:notes.txt#3/3
+key m | confirm move "notes.txt"
+key y | ./archive:notes.txt#1/1  *.:docs/#2/2 -- moved notes.txt
+key home | ./archive:notes.txt#1/1  *.:archive/#1/2
+key down | ./archive:notes.txt#1/1  *.:docs/#2/2
+key d | confirm delete "docs"
+secret: type docs
+key y | ./archive:notes.txt#1/1  *.:archive/#1/1 -- deleted docs
+key tab | *./archive:notes.txt#1/1  .:archive/#1/1
+key l | confirm link "notes.txt"
+key y | *./archive:notes.txt#1/1  .:archive/#1/2 -- linked notes.txt
+key tab | ./archive:notes.txt#1/1  *.:archive/#1/2
+key end | ./archive:notes.txt#1/1  *.:notes.txt@#2/2
+key enter | pager "notes.txt" 1-19/31 "Notes for the file manager. This first paragraph is one long"
+key q | ./archive:notes.txt#1/1  *.:notes.txt@#2/2
+key ! | prompt shell ""
+paste 16 bytes | prompt shell "echo fm-shell-ok"
+shell started: echo fm-shell-ok
+shell ended: exit 0; press a key
+key enter | output "$ echo fm-shell-ok  (exit 0)" "fm-shell-ok"
+key q | ./archive:notes.txt#1/1  *.:notes.txt@#2/2 -- exit 0: fm-shell-ok
+key t | ./archive:notes.txt#1/1  *.:archive/#1/2 -- temporary directory
+mouse 0 at 3,34 | ./archive:notes.txt#1/1  *.:notes.txt@#2/2 -- temporary directory
+mouse 64 at 3,34 | ./archive:notes.txt#1/1  *.:archive/#1/2 -- temporary directory
+focus out | ./archive:notes.txt#1/1  *.:archive/#1/2 -- temporary directory
+focus in | ./archive:notes.txt#1/1  *.:archive/#1/2 -- temporary directory
+key s | ./archive:notes.txt#1/1  *.:archive/#1/2 -- sizes: left 1 files, 739 bytes; right 2 files, 739 bytes
+key q | ./archive:notes.txt#1/1  *.:archive/#1/2

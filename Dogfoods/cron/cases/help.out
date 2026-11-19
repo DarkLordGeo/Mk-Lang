@@ -1,0 +1,27 @@
+usage: cron <command> [options] <crontab>
+
+commands:
+  check <crontab>   read the crontab and list its entries and zones
+  next <crontab>    print the next fires of each entry
+  zone <name>       print a zone's daylight-saving transitions in a year
+  run <crontab>     run the jobs as they fall due (the daemon)
+  sim <crontab>     run a year of the schedule under a simulated clock
+
+Options:
+  --help              Print this help and exit
+  --from <str>        next: start from this instant, RFC 3339 (default: now)
+  --count <int>       next: fires to print for each entry (default 5)
+  --year <int>        zone: the year to list (default: this year)
+  --lock <str>        run, sim: the lock file (default: cron.lock)
+  --lock-wait <str>   run: wait this long for the lock instead of refusing at once
+  --log <str>         run, sim: the job log (default: cron.log)
+  --stop-after <str>  run: stop after this long, such as 90s (default: at an interrupt)
+  --echo              run: copy every log record to standard error
+  --max-jobs <int>    run: jobs that may run at once (default 16)
+  --max-memory <int>  run, sim: bytes the job table may use (default: no limit)
+  --days <int>        sim: days to simulate (default 365)
+  --seed <int>        sim: the simulation's seed (default 1)
+  --fault <str>       sim: a fault to inject: log-write or lock-open
+  --verbose           sim: print every fire, not only those at a transition
+Arguments:
+  <rest>...           check|next|run|sim <crontab>, or zone <name>

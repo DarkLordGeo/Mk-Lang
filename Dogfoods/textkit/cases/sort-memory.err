@@ -1,0 +1,2 @@
+textkit: $CASES/data/words.txt: OutOfMemory
+textkit sort: the input does not fit in --memory 200 bytes

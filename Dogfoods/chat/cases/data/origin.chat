@@ -1,0 +1,4 @@
+# A page from another site may not open a WebSocket; one from this machine may.
+evil: !ws /ws http://evil.example
+good: !ws /ws?nick=good http://localhost:8080
+good: ROOMS

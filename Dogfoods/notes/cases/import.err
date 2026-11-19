@@ -1,0 +1,6 @@
+DEBUG $CASES/data/notes.json: entry 0: Shopping list
+DEBUG $CASES/data/notes.json: entry 1: Reading
+WARN $CASES/data/notes.json: entry 2 has no body
+DEBUG $CASES/data/notes.json: entry 2: Ideas
+DEBUG $CASES/data/notes.json: entry 3: Café menu
+INFO $CASES/data/notes.json: imported 4 notes

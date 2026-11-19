@@ -1,0 +1,33 @@
+{
+  "name": "time-duration",
+  "table": "idiomatic",
+  "algorithm": "Make n durations (splitmix64, seed 1: each the next output as a signed 64-bit value, shifted right arithmetically by the next output modulo 64, so every magnitude occurs), then rounds times write each in Go's Duration.String form (\"1h2m3.5s\") and parse the text back; the checksum adds per duration and round the parsed nanoseconds with the sign bit cleared and the text's length, wrapping.",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "1000",
+    "10"
+  ],
+  "checksum": "13339929425165474776",
+  "quick_checksum": "265981014055508296",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/time-duration.go"
+  },
+  "skip": {
+    "c": "C's std has no duration type or text form",
+    "rust": "Rust's std writes a Duration with Debug (\"1.5s\") and has no parser",
+    "zig": "Zig's std.fmt writes a duration (fmtDuration) but has no parser",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the functions are tested against Go by the lane's Go tests (status/std-time2.md)",
+  "notes": [
+    "Mk: Duration.Format through Arena.Fmt (an arena per round, freed at its end), then time.ParseDuration. Go: Duration.String (a 32-byte stack buffer, then one string allocation), then time.ParseDuration. Both write and read the same text (TestStdTime_DurationFormatAgainstGo, TestStdTime_DurationAgainstGo).",
+    "Written by std-time2, M8, 2026-11-13.",
+    "Checksums agree between Mk and Go at both sizes on the owner's machine (std-time2 session 2, 2026-11-13).",
+    "Not published: no number here is a measurement."
+  ]
+}

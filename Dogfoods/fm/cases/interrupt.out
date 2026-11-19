@@ -1,0 +1,3 @@
+start | *.:docs/#1/3  .:docs/#1/3
+key n | prompt mkdir ""
+key ctrl-c | prompt mkdir ""

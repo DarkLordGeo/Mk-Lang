@@ -1,0 +1,1 @@
+pack: $CASES/data/bad-signature.pk: the signature does not match the manifest

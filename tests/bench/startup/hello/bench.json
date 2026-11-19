@@ -1,0 +1,21 @@
+{
+  "name": "hello",
+  "table": "startup",
+  "algorithm": "Process start, print one line, exit. Reported and never subtracted from another row (B15).",
+  "overflow": "never",
+  "args": [],
+  "quick": [],
+  "checksum": "1",
+  "quick_checksum": "1",
+  "sources": {
+    "mk": "mk",
+    "c": "hello.c",
+    "rust": "hello.rs",
+    "zig": "hello.zig",
+    "go": "testdata/hello.go"
+  },
+  "skip": {},
+  "notes": [
+    "Times of a few milliseconds are below the 1 s floor by nature: this row exists to show the startup cost each other row carries."
+  ]
+}

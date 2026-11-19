@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0301","name":"type-mismatch","phase":"types","root":1,"at":{"file":"m/00.mk","line":2,"col":9,"end_line":2,"end_col":12},"message":"expected `int`, found `str`","facts":{"expected":"int","found":"str"},"fixes":[],"alternatives":[],"explain":"mk explain E0301"}],"omitted":0}

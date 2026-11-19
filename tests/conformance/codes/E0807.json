@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0807","name":"onerr-two-values","phase":"flow","root":1,"at":{"file":"E0807.mk","line":11,"col":5,"end_line":11,"end_col":10},"message":"one `onerr` may consume one linear value; this one consumes a, b","facts":{"values":["a","b"]},"fixes":[],"alternatives":["write one `onerr` per value"],"explain":"mk explain E0807"}],"omitted":0}

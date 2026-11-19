@@ -1,0 +1,27 @@
+INFO GET /health 200 15
+INFO GET /version 200 43
+INFO POST /notes 201 97
+INFO POST /notes 201 95
+WARN POST /notes 409 55
+WARN POST /notes 422 69
+INFO GET /notes/1 200 97
+WARN GET /notes/99 404 40
+INFO GET /notes 200 215
+INFO GET /notes 200 119
+INFO GET /notes 200 117
+INFO PATCH /notes/2 200 91
+INFO DELETE /notes/1 200 16
+WARN DELETE /notes/1 404 40
+INFO GET /stats 200 44
+WARN DELETE /notes 405 0
+WARN POST /notes 400 46
+WARN POST /notes 422 85
+WARN PATCH /notes/2 422 66
+WARN GET /notes 400 67
+INFO GET /notes 200 22
+INFO GET /tags/books 200 113
+INFO GET /tags/nothing 200 22
+notes: error 409: another note has this title
+notes: error 422: a tag is not 1 to 32 bytes of a-z, 0-9 and -
+notes: error 404: no such note
+notes: error 404: no such note

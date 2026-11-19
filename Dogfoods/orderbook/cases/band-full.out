@@ -1,0 +1,79 @@
+commands                    20
+orders                      14
+fills                        8
+cancels                      1
+busts                        1
+live orders                  3
+stop queue entries           0
+rejected: account halted           1
+rejected: already done             1
+volume                     475
+vwap                    100.86
+vwap, buyers            101.22
+vwap, sellers           100.40
+median fill             101.00
+90th percentile         101.50
+99th percentile         101.50
+fills <= vwap                3
+last                     99.00
+traded prices                5
+
+   bid qty orders          bid | ask             ask qty orders
+        15      2        99.00 | 100.30               10      1
+
+largest fills
+        1012  Sell     120 @     100.40  taker 8/1       maker 4/1
+        1007  Buy      100 @     101.00  taker 6/1       maker 1/1
+        1012  Sell      80 @     100.50  taker 8/1       maker 3/1
+        1008  Buy       60 @     101.50  taker 7/1       maker 1/2
+        1008  Buy       60 @     101.50  taker 5/1       maker 1/2
+recent fills, newest first
+        1019  Sell       5 @      99.00  taker 2/2       maker 3/1
+        1012  Sell     120 @     100.40  taker 8/1       maker 4/1
+        1012  Sell      80 @     100.50  taker 8/1       maker 3/1
+        1008  Buy       60 @     101.50  taker 5/1       maker 1/2
+        1008  Buy       60 @     101.50  taker 7/1       maker 1/2
+        1008  Buy       30 @     101.00  taker 7/1       maker 2/1
+        1007  Buy       20 @     101.00  taker 6/1       maker 2/1
+        1007  Buy      100 @     101.00  taker 6/1       maker 1/1
+most traded prices
+        101.00        150
+        100.40        120
+        101.50        120
+oldest resting orders (3 live)
+  5/2       Sell Limit          10 @     100.30
+  3/1       Buy  Limit           5 @      99.00
+  9/1       Buy  Limit          10 @      99.00
+bars, newest first
+    #       open       high        low      close     volume
+    1     101.00     101.50      99.00      99.00        475
+fill sizes
+  <=10           1
+  <=50           2
+  <=100          4
+  <=500          1
+  <=1000         0
+  <=5000         0
+  >5000          0
+accounts by volume
+rank  account     bought       sold   fills
+   1        1          0        220       3
+   2        8          0        200       2
+   3        4        120          0       1
+   4        6        120          0       2
+   5        7         90          0       2
+   6        3         85          0       2
+   7        5         60          0       1
+   8        2          0         55       3
+
+band 99.00 to 101.00
+   bid qty orders          bid | ask             ask qty orders
+        15      2        99.00 | 100.30               10      1
+  traded        99.00          5
+  traded       100.40        120
+  traded       100.50         80
+  traded       101.00        150
+checksum e40a9c4c962129d6
+last snapshot at command 0: 0 live orders, 0 fills
+expired at close: 2 bids (15), 1 asks (10)
+engine heap: peak 2952 bytes, 0 bytes in 0 allocations left after release

@@ -1,0 +1,3 @@
+case panic
+stderr stack_main.err
+exit 101

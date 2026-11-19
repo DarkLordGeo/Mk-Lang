@@ -1,0 +1,7 @@
+usage: pack untar [options]
+
+Options:
+  --dest <str>          Extract into this directory, made if missing, instead of listing
+  --window-limit <int>  Refuse a zstd window over this many bytes (default 8 MiB)
+Arguments:
+  <archives>...         The tar archive: plain, or compressed with zstd, gzip or zlib

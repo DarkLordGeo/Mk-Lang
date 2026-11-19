@@ -1,0 +1,4 @@
+line 1: kernel32.dll: missing NoSuchSymbol AlsoMissing
+line 2: no-such-library.dll: cannot load (not found)
+line 3: user32.dll: ok (1 found)
+1 of 3 libraries ready

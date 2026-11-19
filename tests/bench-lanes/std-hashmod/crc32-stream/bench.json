@@ -1,0 +1,33 @@
+{
+  "name": "hash-crc32-stream",
+  "table": "idiomatic",
+  "algorithm": "std CRC-32/ISO-HDLC through the streaming state, fed 1,500-byte pieces (the last piece is the remainder) of splitmix64 bytes, one fresh state per pass, reps passes with a one-byte write-back (mk/hash-crc32-stream.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "320",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "2152836421",
+  "quick_checksum": "141937850",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-crc32-stream.zig",
+    "go": "testdata/hash-crc32-stream.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard CRC-32/ISO-HDLC",
+    "rust": "no std CRC-32/ISO-HDLC: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in"
+  },
+  "notes": [
+    "Idiomatic standard library, the streaming case (gzip's trailer over a writer's pieces, review finding HMR-3): Mk Crc32State.New/Bytes/Sum, Go crc32.Update(crc, crc32.IEEETable, piece), Zig std.hash.Crc32 init/update/final. Bytes per second = mib * 1048576 * reps / median.",
+    "Go: hash/crc32 uses PCLMULQDQ folding on amd64 for pieces of 64 bytes or more. Mk does too since M9 item 11.24a (D-775): PCLMULQDQ folding of a piece of 64 bytes or more when the CPU has pclmul and aes (run-time dispatch), else slicing-by-16. Zig at -mcpu=x86_64_v2 is table-driven, so on a CPU with PCLMULQDQ the zig cell compares instruction sets as well as libraries.",
+    "The quick checksum equals hash-crc32's: the same CRCs of the same bytes with the same write-back, which is the cross-check that the split loses nothing.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2 -pgo=off) printed the same quick values on the owner's machine, 2026-11-07 (std-hashmod session 9, HMR-3); the publish-size checksum was agreed by every column in `go run ./tools/bench verify -publish-size`. Not published: no number here is a measurement."
+  ]
+}

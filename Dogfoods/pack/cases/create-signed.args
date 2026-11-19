@@ -1,0 +1,6 @@
+create
+--out
+$WORK/t.pk
+--sign
+$CASES/data/alice.key
+$CASES/data/tree

@@ -1,0 +1,1 @@
+bigcalc: $CASES/data/keep_going.rpn:2: DivisionByZero(column: 5)

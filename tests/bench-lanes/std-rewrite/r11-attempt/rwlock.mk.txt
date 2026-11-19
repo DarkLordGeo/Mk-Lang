@@ -1,0 +1,287 @@
+// Implements sync.RwLock and ReadGuard:
+// Lock excludes everyone and returns the prelude Guard[T]; LockRead
+// excludes only Lock. Layer 2.
+//
+// Algorithm: a writer-preferring reader-writer lock over a Mutex, after
+// Go's sync.RWMutex (writers serialised by a Mutex; a pending-writer mark
+// in the reader count turns new readers away; the writer waits for the
+// active readers to drain). The value lives inside the Mutex, so the write
+// lock is that Mutex's own Guard, and Guard.Unlock is the whole write
+// unlock. The state word rs holds:
+//   bits 0 to 27  the active reader count (RwCount);
+//   bit 28, Q     readers wait on rs for W to clear;
+//   bit 29, L     a reader, the leader, is queued on the mutex for them;
+//   bit 30, P     the writer is parked on rs, waiting for the count to drain;
+//   bit 31, W     a writer holds the mutex, or held it last.
+// LockRead: Add(1), in when it read W clear; else it takes the count back
+// (an exit, which may wake the writer) and waits for W to clear in one of
+// two ways. The first reader to find L clear sets it and takes the mutex
+// (FIFO behind the writers, with Mutex's starvation handoff); holding it,
+// it clears W, P, L and Q, which are stale because no writer holds the
+// mutex, adds itself, unlocks, and wakes every reader waiting on rs when Q
+// was set. Every other reader sets Q and waits on the gate word, which
+// only a leader changes. So the readers behind a writer are admitted by one mutex round
+// trip and one wake of all of them, as Go's Unlock releases its readers
+// at once, instead of passing the mutex one
+// by one. Lock: take the mutex, set W, and wait on rs until the count is 0
+// (P is set before each wait; the reader whose unlock makes the count 0
+// with P set wakes the writer). The write unlock leaves W set: the leader
+// clears it, one uncontended mutex round trip per writer phase, so the
+// write unlock (the prelude Guard's) needs no wake of its own.
+//
+// Invariants:
+//
+//   RW1 W and P change only while the mutex is held, except a reader's
+//       count change, which keeps them. L is set by a reader that read it
+//       clear (Cas) and cleared only by that leader, with Q; Q is set only
+//       while L is (the setter's Cas read L set).
+//   RW2 While a writer holds a Guard, W is set and no reader holds a
+//       ReadGuard: no reader can enter (the fast path's Add must read W
+//       clear; the leader needs the mutex). A fast reader that read W set
+//       adds to the count only until it takes it back.
+//   RW3 No lost wakeup: the writer waits on rs only while it reads a value
+//       with P set and a non-zero count; the reader whose unlock takes the
+//       count to 0 reads P in the same read-modify-write and wakes it; only
+//       the writer waits on rs.
+//   RW4 No starvation: new readers stop at W, so the count drains; writers
+//       and leaders queue in the mutex's FIFO, whose starvation handoff
+//       bounds the wait.
+//   RW5 No reader is left waiting: it waits on gate only after a Cas or a
+//       Load of rs that saw L and Q set, with the gate value it loaded
+//       before; the leader's RMW that clears L reads Q and opens the gate
+//       (Add, then wake all), on its way in and when it is cancelled before
+//       the mutex, so the wait returns or is woken.
+//
+// Memory ordering (raw.Atomic is seq_cst only). Reader enter: the Cas that
+// adds one reads W clear, which the slow reader's clearing RMW wrote after
+// it took the mutex (acquiring the last writer's critical section from its
+// unlock), so the writes of the last writer happen before the read; the
+// RMW chain on rs carries that edge to every later fast reader. Reader
+// exit: its Add is a release of its reads; the writer's Load that reads a
+// count of 0 acquires them, so no read overlaps the write that follows.
+
+import std.core
+import std.raw
+
+export struct RwLock[T] {
+    m: Mutex[T]
+    rs: raw.Atomic[u32]
+    gate: raw.Atomic[u32] // the readers waiting for W to clear wait here
+}
+
+// Holds the lock by raw pointer, as Guard holds its Mutex; its loan on the
+// RwLock keeps it alive and its reader count keeps writers out.
+export linear view struct ReadGuard[T] {
+    l: *RwLock[T]
+    io: Io
+}
+
+// Readers on many tasks share &T, so T must be Share as well as Send.
+unsafe impl[T: Send] Send for RwLock[T] {}
+unsafe impl[T: Send + Share] Share for RwLock[T] {}
+
+const RwW: u32 = 0x8000_0000
+const RwP: u32 = 0x4000_0000
+const RwL: u32 = 0x2000_0000
+const RwQ: u32 = 0x1000_0000
+const RwCount: u32 = 0x0FFF_FFFF
+
+// No allocation, so it can initialize a `var` global.
+export RwLock[T].New(x: T): RwLock[T] {
+    return RwLock[T](m: Mutex[T].New(x), rs: raw.Atomic[u32].New(0), gate: raw.Atomic[u32].New(0))
+}
+
+// The write lock. Canceled, without the lock, when the scope is cancelled
+// at the call or while waiting for the mutex or for readers to leave.
+export RwLock[T].Lock(&self, io: Io): Canceled!Guard[T] {
+    g := try self.m.Lock(io)
+    rs := &self.rs
+    // Announce: from here no reader enters by the fast path (RW2). The
+    // Cas is ordered after the readers' Cas that it reads the count of.
+    for {
+        s := rs.Load()
+        if rs.Cas(s, s | RwW) {
+            break
+        }
+    }
+    for {
+        s := rs.Load()
+        if (s & RwCount) == 0 {
+            // Acquire edge: this Load reads the last reader's exit Add.
+            if (s & RwP) != 0 {
+                RwClear(rs, RwP)
+            }
+            return g
+        }
+        if (s & RwP) == 0 && !rs.Cas(s, s | RwP) {
+            continue
+        }
+        if core.SyncWait(io, rs, s | RwP) {
+            // Cancelled: let readers in again and give the mutex back.
+            RwClear(rs, RwW | RwP)
+            g.Unlock()
+            fail Canceled
+        }
+    }
+}
+
+// RwClear clears bits in rs, keeping the count. Only the mutex holder
+// calls it (RW1).
+RwClear(rs: &raw.Atomic[u32], bits: u32) {
+    for {
+        s := rs.Load()
+        if rs.Cas(s, s & ~bits) {
+            return
+        }
+    }
+}
+
+// A read lock. A cancellation point first (level-triggered, as
+// Mutex.Lock), and a wait behind a writer is one too. More than RwCount
+// readers at once panics with code 1.
+export RwLock[T].LockRead(&self, io: Io): Canceled!ReadGuard[T] {
+    try core.SyncCancel(io)
+    rs := &self.rs
+    for {
+        // Fast path, as Go's RLock: one fetch-and-add, which never fails
+        // and never retries. Acquire edge: the Add that reads W
+        // clear reads the RMW chain on rs from the leader that cleared W
+        // under the mutex, so the last writer's critical section happens
+        // before this reader's reads.
+        old := rs.Add(1)
+        if (old & RwW) == 0 {
+            if (old & RwCount) == RwCount {
+                RwExit(rs, io)
+                raw.Fail(1, "RwLock: too many readers")
+            }
+            return ReadGuard[T](l: raw.Of(self), io: io)
+        }
+        // W is set: this reader is not in. It takes its count back as a
+        // reader's exit does, so when that takes the count to 0 with P set
+        // the parked writer is woken (RW3); RW2 counts only readers that
+        // returned a ReadGuard.
+        RwExit(rs, io)
+        gate := &self.gate
+        for {
+            // Ordering edge (RW5): the gate Load comes before the rs Load
+            // and the Cas that sets Q, so a leader whose clearing RMW comes
+            // after them reads Q and its gate Add makes this wait return.
+            g := gate.Load()
+            s := rs.Load()
+            if (s & RwW) == 0 {
+                break // W cleared: the fast path again
+            }
+            if (s & RwL) == 0 {
+                if rs.Cas(s, s | RwL) {
+                    return try self.LockReadLead(io)
+                }
+                continue
+            }
+            if (s & RwQ) == 0 && !rs.Cas(s, s | RwQ) {
+                continue
+            }
+            // Wait on the gate, which changes only when a leader admits the
+            // readers or gives up the lead, not on rs, whose count every
+            // arriving reader changes (waiting on rs made every arrival a
+            // spurious return for every waiter, and the writer's drain
+            // wake reach a reader: 2.4x slower on std-missing/rwlock).
+            if core.SyncWait(io, gate, g) {
+                fail Canceled
+            }
+        }
+    }
+}
+
+// LockReadLead is the leader's way in (it set L): take the mutex, then,
+// holding it, clear W, P, L and Q (stale: no writer holds the mutex, RW1)
+// and add one reader in one RMW, unlock, and wake every reader waiting on
+// rs when that RMW read Q (RW5). Cancelled before the mutex, it gives the
+// lead up the same way, so a waiter leads next. Release edge of the clear:
+// it follows this task's mutex acquire, which read the last writer's
+// unlock, and the woken readers' Adds read it (the fast path's edge).
+RwLock[T].LockReadLead(&self, io: Io): Canceled!ReadGuard[T] {
+    rs := &self.rs
+    g := self.m.Lock(io) else {
+        RwDropLead(rs, &self.gate, io)
+        fail Canceled
+    }
+    var old: u32 = 0
+    for {
+        s := rs.Load()
+        if (s & RwCount) == RwCount {
+            RwDropLead(rs, &self.gate, io)
+            g.Unlock()
+            raw.Fail(1, "RwLock: too many readers")
+        }
+        if rs.Cas(s, (s & RwCount) + 1) {
+            old = s
+            break
+        }
+    }
+    g.Unlock()
+    if (old & RwQ) != 0 {
+        RwOpenGate(&self.gate, io)
+    }
+    return ReadGuard[T](l: raw.Of(self), io: io)
+}
+
+// RwDropLead clears L and Q and opens the gate when Q was set (RW5).
+// Only the leader calls it.
+RwDropLead(rs: &raw.Atomic[u32], gate: &raw.Atomic[u32], io: Io) {
+    for {
+        s := rs.Load()
+        if rs.Cas(s, s & ~(RwL | RwQ)) {
+            if (s & RwQ) != 0 {
+                RwOpenGate(gate, io)
+            }
+            return
+        }
+    }
+}
+
+// RwOpenGate wakes every reader waiting for W to clear. Ordering edge: the
+// Add comes after the RMW on rs that read Q and cleared it, and before the
+// wake, so a waiter that loaded the gate before its Q-setting Cas finds it
+// changed (RW5).
+RwOpenGate(gate: &raw.Atomic[u32], io: Io) {
+    _ = gate.Add(1)
+    core.SyncWake(io, gate, true)
+}
+
+// The value; nothing borrows an RwLock given by value, so it is unlocked.
+export RwLock[T].Into(self): T {
+    RwLock(m, rs: _, gate: _) := self
+    return m.Into()
+}
+
+// RwAt is the RwLock a ReadGuard holds by raw pointer.
+RwAt[T](l: *RwLock[T]): &RwLock[T] {
+    unsafe "l is the live RwLock whose ReadGuard holds it: the guard's loan keeps it alive" {
+        return &*l
+    }
+}
+
+// The value, shared with the other readers; no writer can hold a Guard
+// while this reader's count is held (RW2).
+export ReadGuard[T].Ref(&self): &T {
+    return core.MutexPeek(&RwAt(self.l).m)
+}
+
+// Release edge: the Add publishes this reader's reads as done to the
+// writer whose Load reads the count it leaves. The reader that takes the
+// count to 0 with P set wakes the writer (RW3).
+export ReadGuard[T].Unlock(self) {
+    ReadGuard(l, io) := self
+    RwExit(&RwAt(l).rs, io)
+}
+
+// RwExit takes one reader's count back; the exit that takes the count to
+// 0 with P set wakes the parked writer (RW3: it reads P in the same RMW).
+// Only the writer waits on rs (queued readers wait on gate), so one
+// wake reaches it. The Add is the release edge named at ReadGuard.Unlock.
+RwExit(rs: &raw.Atomic[u32], io: Io) {
+    old := rs.Add(0xFFFF_FFFF)
+    if (old & RwCount) == 1 && (old & RwP) != 0 {
+        core.SyncWake(io, rs, false)
+    }
+}

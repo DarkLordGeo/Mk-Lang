@@ -1,0 +1,7 @@
+cron: stopped: the simulated days ran out
+job              started    ok  failed timed out  interrupted  detached overlaps
+nightly                2     2       0         0            0         0        0
+hourly                 0     0       0         0            0         0        0
+early                  0     0       0         0            0         0        0
+howe-back              2     2       0         0            0         0        0
+howe-fwd               2     2       0         0            0         0        0

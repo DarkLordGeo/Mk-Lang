@@ -1,0 +1,6 @@
+--origin
+$CASES/data/site.origin
+-L
+--data-file
+$CASES/data/upload.txt
+http://{origin}/redirect/307

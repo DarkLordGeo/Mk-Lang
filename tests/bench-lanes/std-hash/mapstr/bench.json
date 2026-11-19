@@ -1,0 +1,37 @@
+{
+  "name": "mapstr",
+  "table": "idiomatic",
+  "algorithm": "Hash map churn with str keys of 1 to 7 bytes (wordfreq's case, SH-1): n splitmix64-generated lowercase keys, views of one buffer, inserted, each looked up once with a hit and once with a miss (its first letter upper case), every other key removed, all n looked up again; rounds times with a fresh map over the same keys (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000000",
+    "10",
+    "1",
+    "1",
+    "7"
+  ],
+  "quick": [
+    "100000",
+    "3",
+    "1",
+    "1",
+    "7"
+  ],
+  "checksum": "3173286910710",
+  "quick_checksum": "11067391680",
+  "sources": {
+    "mk": "mk",
+    "rust": "mapstr.rs",
+    "zig": "mapstr.zig",
+    "go": "testdata/mapstr.go"
+  },
+  "skip": {
+    "c": "no standard hash map in C",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "notes": [
+    "Default string hashes: Mk the fold hash (DD-5, FoldStr), Rust SipHash-1-3 under a random key (RandomState), Zig std.hash.Wyhash with seed 0 (StringHashMap), Go the runtime string hash (AES-based with AES-NI, seeded per map).",
+    "Keys of 1 to 7 bytes repeat (there are fewer distinct ones than n at 1 to 3 bytes), so later inserts replace values; every column replays the same sequence.",
+    "Written by the std-hash lane (status/std-hash.md, session 2); checksums agree across all four columns at both sizes on the owner's machine, 2026-11-06."
+  ]
+}

@@ -1,0 +1,4 @@
+$CASES/data/forms.txt:2: not NFC
+$CASES/data/mixed.txt:1: not NFC
+$CASES/data/mixed.txt:2: not NFC
+$CASES/data/mixed.txt:4: not NFC

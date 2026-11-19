@@ -1,0 +1,31 @@
+{
+  "name": "dispatch",
+  "table": "same",
+  "algorithm": "n dynamic calls through a two-element array of {context pointer, inline function pointer} pairs (Mk: gen dyn.Of's StepDyn) over an Add and a Xor, the target picked by bit 0 of a splitmix64 stream and the argument its upper 63 bits; the results summed with wrapping arithmetic (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "500000000",
+    "1"
+  ],
+  "quick": [
+    "1000000",
+    "1"
+  ],
+  "checksum": "7530917614485774527",
+  "quick_checksum": "14545399457460801341",
+  "sources": {
+    "mk": "mk",
+    "c": "dispatch.c",
+    "rust": "dispatch.rs",
+    "zig": "dispatch.zig",
+    "go": "testdata/dispatch.go"
+  },
+  "skip": {
+    "mk-wrap": "the algorithm already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24: no data-dependent control flow besides the dispatch target, which is the checksum's input; the trip count is n, and the checksum is exact wrapping integer arithmetic over the whole sequence of targets and arguments",
+  "notes": [
+    "Dispatch values, one data structure (C's {context pointer, function pointer} pair, the fn inline): C {void *self; fn pointer}; Zig {*anyopaque, *const fn}; Rust {&mut Acc, fn pointer} and Go {*Acc, func value}, both objects one Acc type since safe Rust and Go cannot erase a pointer's type; Mk gen dyn.Of(Step)'s StepDyn (a dyn.Ref, the address and the type key, and the fn inline; the adapter compares the key before the direct call). Go's func value points to a closure record, one dependent load more, which Go cannot avoid. Review finding DYN-6 moved Rust (&mut dyn), Zig (vtable pointer) and Go (interface) off their native vtable-pointer values, which are a different data structure.",
+    "Written by the std-dyn lane (status/std-dyn.md). Checksums: from the earlier columns' verified runs (all columns agreed, 2026-11-07) and a Go reference of the pseudo-code; the reworked columns are reverified through tools/bench verify (status/std-dyn.md audit table)."
+  ]
+}

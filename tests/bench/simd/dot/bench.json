@@ -1,0 +1,156 @@
+{
+  "name": "dot",
+  "table": "simd",
+  "algorithm": "f32 dot product of two n-element vectors with 16 partial sums in a stated order, reduced as a pairwise tree, then the tail in order; one element of x changed before each of reps products; the checksum sums the result's bits (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mkfix",
+    "c": "dot.c",
+    "rust": "dot.rs",
+    "zig": "dot.zig",
+    "go": "testdata/dot.go"
+  },
+  "skip": {
+    "mk-wrap": "a float kernel: no integer arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "2048",
+        "12000000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "39788195464738905",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "2048",
+        "0",
+        "1"
+      ],
+      "bytes": 196608000000
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "4194304",
+        "5000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "16158184274508",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "4194304",
+        "0",
+        "1"
+      ],
+      "bytes": 167772160000
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "134217728",
+        "40",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "43739233076",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "134217728",
+        "0",
+        "1"
+      ],
+      "bytes": 42949672960
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "2048",
+        "20000000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "66441433244828897",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "2048",
+        "0",
+        "1"
+      ],
+      "bytes": 327680000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "4194304",
+        "6000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "19388914708349",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "4194304",
+        "0",
+        "1"
+      ],
+      "bytes": 201326592000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "134217728",
+        "40",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "43739233076",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "134217728",
+        "0",
+        "1"
+      ],
+      "bytes": 42949672960
+    }
+  ],
+  "notes": [
+    "GB/s counts the 8 * n bytes of x and y per product. The fill (one pass) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is over the kernel time (BS-3). Both buffers start on a 64-byte boundary in the c, rust, zig and go columns (BS-4); the mk column's are arena slices (labelled alignment exception, below). Go is scalar (Go has no SIMD layer), with the same 16 sums in the same order.",
+    "mk: the width-fixed cell mkfix/ (review finding BF-1, B16) in all six variants: std.simd.Dot's baseline body without its Cpu() test, the 16 partial sums in one Vec[f32, 16], products rounded before their sums, ReduceSum's pairwise tree, then the tail in order, the same bits as every other column; LLVM keeps the sums in four xmm registers at v2 and two ymm registers at v3. Every variant's quick and publish checksum was checked with the row's own mk line, untimed, by M9 item 11.7 (2026-11-15, mk built from ca6060e8; plan/09-deferred.md). mk/ is the std-simd lane's program (std.simd.Dot, which picks its form at run time) and is no cell of this table.",
+    "mkfix/ is labelled alignment exception: the Mk buffers are arena slices, and Mk code cannot read or set an address without std.raw (banned in every table, BS-8) (status/std-simd.md R-5 (a)). But std's heap arenas start a slice of 4 KiB or more on a cache line, and a probe (2026-11-19, a scratch package with std.raw) finds both slices at 0 mod 64; TestArenaOffsetsAsLabelled rebuilds that probe with the tree's mk. mkfix's loads do not align themselves, and need not: at v3 none of its 32-byte loads of either buffer cross a cache line and at v2 none of its 16-byte loads does. std.simd.Dot's avx2 form (mk/, not published) starts its loads of x on a 32-byte boundary (std/simd/float.mk, HeadElems), and no load of either slice crosses a line."
+  ]
+}

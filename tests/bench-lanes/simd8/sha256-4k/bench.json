@@ -1,0 +1,34 @@
+{
+  "name": "sha256-4k",
+  "table": "idiomatic",
+  "algorithm": "std SHA-256 over every 4096-byte message of 32 KiB of splitmix64 bytes held in L1, reps passes with a one-byte write-back (mk/sha256-4k.mk).",
+  "overflow": "wraps",
+  "args": [
+    "32",
+    "100000",
+    "1"
+  ],
+  "quick": [
+    "32",
+    "10",
+    "1"
+  ],
+  "checksum": "17183042341270522390",
+  "quick_checksum": "14960898163105457997",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/sha256-4k.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-256",
+    "rust": "no std SHA-256: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in",
+    "zig": "no run-time dispatch: Zig's std.crypto.hash.sha2 uses sha256rnds2 only when compiled for a CPU with the sha feature, and the row's x86_64_v2 lacks it, so a Zig cell would run scalar against Go's and Mk's run-time choice of the SHA extensions: a comparison of instruction sets, not libraries (review finding simd8-R4; plan/06-m6.md 4.1, one CPU target and no per-language tuning unless every side has the same)"
+  },
+  "no_counts": "B24 does not apply as a count of operations: every pass hashes the same eight messages, and the checksum folds every digest in order",
+  "notes": [
+    "Idiomatic standard library, the block-loop case with the input in L1 (std-hashmod's hash-sha256 runs 64 MiB, its hash-sha256-short 64-byte messages): one one-shot call per 4096-byte message, so the 64-block compression loop dominates and an instruction path shows. Bytes per second = 32768 * reps / median.",
+    "What it measures in Mk: std.hash.Sha256's block loop. Until std-hash2 routes its private Sha256Blocks through std.simd.kernel.Sha256Blocks (D8-17), the Mk column is the portable scalar path; after it, on a CPU with the SHA extensions, the instruction kernel, with the same checksum. The kernel is std-only and std.raw is banned in every table (BS-8), so no bench program calls it directly; a run before and after std-hash2's change compares the two paths.",
+    "Run-time dispatch, labelled (as std-rewrite/d358's dispatching cell): both columns are built at x86-64-v2 and choose their instructions at run time. Go: crypto/sha256 uses the SHA extensions (SHA-NI) or AVX2 on amd64 when the CPU has them, whatever GOAMD64 says, and tools/bench cannot mask it (it clears GODEBUG, and Go reads GODEBUG's cpu options only on Unix systems). Mk: std.hash.Sha256 uses std.simd.kernel.Sha256Blocks (SHA-NI) when simd.Cpu() has sha, once std-hash2 wires it; until then Mk is scalar against Go's SHA-NI, the shape std-hashmod's sha256 rows have. Zig has no run-time dispatch and is skipped (skip.zig), so no column runs instructions another column is forbidden. bench8 decides whether the row is folded (status/simd8.md, Requests 5).",
+    "Checksums from the go column (GOAMD64=v2 go run testdata/sha256-4k.go 32 100000 1, and 32 10 1 for quick; Go 1.27, owner's machine, 2026-11-12, simd8 session 2). The repetitions were raised from 60000 after a verify run timed the go cell (SHA-NI) at 0.79 s under load (one provisional run, simd8 session 2), so the fastest cell runs at least 1 s. Written by the simd8 lane (status/simd8.md). Not published: no number here is a measurement."
+  ]
+}

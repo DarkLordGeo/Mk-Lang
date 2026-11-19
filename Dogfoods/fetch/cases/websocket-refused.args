@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--ws-send
+hi
+ws://{origin}/hello

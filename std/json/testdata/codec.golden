@@ -1,0 +1,602 @@
+// Generated from the gen lines of main for x86_64-windows. Not read by the compiler.
+
+// gen js.Codec#1 for Shape
+impl json.Json for Shape {
+    FormatJson(&self, w: mut Writer): WriteError!void {
+        match self {
+            .Empty {
+                try w.Str("\"Empty\"")
+            }
+            .Circle(r: r_g0_1) {
+                try w.Str("{\"Circle\":{\"r\":")
+                if *r_g0_1 - *r_g0_1 != 0.0 {
+                    try w.Str("null")
+                } else {
+                    try r_g0_1.Format(w)
+                }
+                try w.Str("}}")
+            }
+            .Rect(w: w_g0_8, h: h_g0_9) {
+                try w.Str("{\"Rect\":{\"w\":")
+                try w_g0_8.Format(w)
+                try w.Str(",\"h\":")
+                try h_g0_9.Format(w)
+                try w.Str("}}")
+            }
+        }
+    }
+}
+
+// gen js.Codec#1 for Shape
+Shape.FromJson(a: &Arena, v: &json.Value): json.Error!Shape from a {
+    match v {
+        .Text(s) {
+            match *s {
+                "Empty" {
+                    return Shape.Empty
+                }
+                _ { }
+            }
+        }
+        .Object(members) {
+            ms := members.Items()
+            if ms.Len() == 1 {
+                p := &ms[0]
+                match p.key {
+                    "Circle" {
+                        var r_g0_5: ?f64 = none
+                        match (&p.value) {
+                            .Object(members: members_g0_2) {
+                                ms_g0_3 := members_g0_2.Items()
+                                for k_g0_4 in 0..ms_g0_3.Len() {
+                                    match ms_g0_3[k_g0_4].key {
+                                        "r" {
+                                            x_g0_6 := (&ms_g0_3[k_g0_4].value).Float() else { fail json.Mismatch(offset: -1) }
+                                            r_g0_5 = some(x_g0_6)
+                                        }
+                                        _ { }
+                                    }
+                                }
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        r_g0_7 := r_g0_5 else { fail json.Mismatch(offset: -1) }
+                        return Shape.Circle(r: r_g0_7)
+                    }
+                    "Rect" {
+                        var w_g0_13: ?i32 = none
+                        var h_g0_17: ?u8 = none
+                        match (&p.value) {
+                            .Object(members: members_g0_10) {
+                                ms_g0_11 := members_g0_10.Items()
+                                for k_g0_12 in 0..ms_g0_11.Len() {
+                                    match ms_g0_11[k_g0_12].key {
+                                        "w" {
+                                            n_g0_15 := (&ms_g0_11[k_g0_12].value).Int() else { fail json.Mismatch(offset: -1) }
+                                            if n_g0_15 < -2147483648 || n_g0_15 > 2147483647 {
+                                                fail json.Mismatch(offset: -1)
+                                            }
+                                            x_g0_14 := Cast[i32](n_g0_15)
+                                            w_g0_13 = some(x_g0_14)
+                                        }
+                                        "h" {
+                                            n_g0_19 := (&ms_g0_11[k_g0_12].value).Int() else { fail json.Mismatch(offset: -1) }
+                                            if n_g0_19 < 0 || n_g0_19 > 255 {
+                                                fail json.Mismatch(offset: -1)
+                                            }
+                                            x_g0_18 := Cast[u8](n_g0_19)
+                                            h_g0_17 = some(x_g0_18)
+                                        }
+                                        _ { }
+                                    }
+                                }
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        w_g0_16 := w_g0_13 else { fail json.Mismatch(offset: -1) }
+                        h_g0_20 := h_g0_17 else { fail json.Mismatch(offset: -1) }
+                        return Shape.Rect(w: w_g0_16, h: h_g0_20)
+                    }
+                    _ { }
+                }
+            }
+        }
+        _ { }
+    }
+    fail json.Mismatch(offset: -1)
+}
+
+// gen js.Codec#1 for Point
+JsonF32G1N1(t: str): ?f32 {
+    d := t.ParseFloat() else {
+        return none
+    }
+    neg := d < 0.0
+    ad := if neg { -d } else { d }
+    var r: f32 = 0.0
+    if ad > 3.4028235677973366e38 {
+        return none
+    }
+    if ad == 3.4028235677973366e38 {
+        if JsonF32CmpG1N2(t, ad) >= 0 {
+            return none
+        }
+        r = Cast[f32](3.4028234663852886e38)
+    } else {
+        r = Cast[f32](ad)
+        back := Cast[f64](r)
+        if back != ad {
+            other := 2.0 * ad - back
+            if other < 3.4028235677973366e38 && Cast[f64](Cast[f32](other)) == other && (back + other) * 0.5 == ad {
+                k := JsonF32CmpG1N2(t, ad)
+                if k != 0 {
+                    pick := if (k > 0) == (other > back) { other } else { back }
+                    r = Cast[f32](pick)
+                }
+            }
+        }
+    }
+    return some(if neg { -r } else { r })
+}
+
+// gen js.Codec#1 for Point
+JsonF32CmpG1N2(t: str, m: f64): int {
+    var x := m
+    var e := 0
+    for x >= 67108864.0 {
+        x = x * 0.5
+        e += 1
+    }
+    for x < 33554432.0 {
+        x = x * 2.0
+        e -= 1
+    }
+    var dg: [160]u8 = [0 ; 160]
+    var nd := 0
+    var v := Cast[u64](x)
+    for v > 0 {
+        dg[nd] = Trunc[u8](v % 10)
+        v = v / 10
+        nd += 1
+    }
+    var steps := e
+    var mul: u64 = 2
+    if e < 0 {
+        steps = -e
+        mul = 5
+    }
+    for _ in 0..steps {
+        var carry: u64 = 0
+        for i in 0..nd {
+            p := u64(dg[i]) * mul + carry
+            dg[i] = Trunc[u8](p % 10)
+            carry = p / 10
+        }
+        for carry > 0 {
+            dg[nd] = Trunc[u8](carry % 10)
+            carry = carry / 10
+            nd += 1
+        }
+    }
+    mdp := if e < 0 { nd + e } else { nd }
+    var lo := 0
+    for dg[lo] == 0 {
+        lo += 1
+    }
+    b := t.AsBytes()
+    n := b.Len()
+    var i := 0
+    if i < n && (b[i] == 0x2D || b[i] == 0x2B) {
+        i += 1
+    }
+    var j := i
+    for j < n && (b[j] | 0x20) != 0x65 {
+        j += 1
+    }
+    var ex := 0
+    if j < n {
+        var q := j + 1
+        var eneg := false
+        if q < n && (b[q] == 0x2D || b[q] == 0x2B) {
+            eneg = b[q] == 0x2D
+            q += 1
+        }
+        for q < n {
+            if ex < 100000000 {
+                ex = ex * 10 + Cast[int](b[q] - 0x30)
+            }
+            q += 1
+        }
+        if eneg {
+            ex = -ex
+        }
+    }
+    var xdp := 0
+    var seen := false
+    var dot := false
+    var first := j
+    for p in i..j {
+        ch := b[p]
+        if ch == 0x2E {
+            dot = true
+            continue
+        }
+        if !seen {
+            if ch == 0x30 {
+                if dot {
+                    xdp -= 1
+                }
+                continue
+            }
+            seen = true
+            first = p
+        }
+        if !dot {
+            xdp += 1
+        }
+    }
+    if !seen {
+        return -1
+    }
+    xdp += ex
+    if xdp != mdp {
+        return if xdp > mdp { 1 } else { -1 }
+    }
+    var at := nd - 1
+    for p in first..j {
+        ch := b[p]
+        if ch == 0x2E {
+            continue
+        }
+        dx := ch - 0x30
+        if at < lo {
+            if dx != 0 {
+                return 1
+            }
+            continue
+        }
+        if dx != dg[at] {
+            return if dx > dg[at] { 1 } else { -1 }
+        }
+        at -= 1
+    }
+    if at >= lo {
+        return -1
+    }
+    return 0
+}
+
+// gen js.Codec#2 for Point
+impl json.Json for Point {
+    FormatJson(&self, w: mut Writer): WriteError!void {
+        try w.Str("{\"x\":")
+        try (&self.x).Format(w)
+        try w.Str(",\"y\":")
+        if *(&self.y) - *(&self.y) != 0.0 {
+            try w.Str("null")
+        } else {
+            try (&self.y).Format(w)
+        }
+        try w.Str("}")
+    }
+}
+
+// gen js.Codec#2 for Point
+Point.FromJson(a: &Arena, v: &json.Value): json.Error!Point from a {
+    var x_g1_6: ?i64 = none
+    var y_g1_10: ?f32 = none
+    match v {
+        .Object(members: members_g1_3) {
+            ms_g1_4 := members_g1_3.Items()
+            for k_g1_5 in 0..ms_g1_4.Len() {
+                match ms_g1_4[k_g1_5].key {
+                    "x" {
+                        n_g1_8 := (&ms_g1_4[k_g1_5].value).Int() else { fail json.Mismatch(offset: -1) }
+                        if false {
+                            fail json.Mismatch(offset: -1)
+                        }
+                        x_g1_7 := Cast[i64](n_g1_8)
+                        x_g1_6 = some(x_g1_7)
+                    }
+                    "y" {
+                        x_g1_11 := match (&ms_g1_4[k_g1_5].value) {
+                            .Number(text: text_g1_12) {
+                                JsonF32G1N1(*text_g1_12) else { fail json.Mismatch(offset: -1) }
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        y_g1_10 = some(x_g1_11)
+                    }
+                    _ { }
+                }
+            }
+        }
+        _ {
+            fail json.Mismatch(offset: -1)
+        }
+    }
+    x_g1_9 := x_g1_6 else { fail json.Mismatch(offset: -1) }
+    y_g1_13 := y_g1_10 else { fail json.Mismatch(offset: -1) }
+    return Point(x: x_g1_9, y: y_g1_13)
+}
+
+// gen js.Codec#1 for All
+impl json.Json for All {
+    FormatJson(&self, w: mut Writer): WriteError!void {
+        try w.Str("{\"name\":")
+        try json.Value.Text(s: *(&self.name)).Format(w)
+        try w.Str(",\"ok\":")
+        try w.Str(if *(&self.ok) { "true" } else { "false" })
+        try w.Str(",\"small\":")
+        try (&self.small).Format(w)
+        try w.Str(",\"big\":")
+        try (&self.big).Format(w)
+        try w.Str(",\"neg\":")
+        try (&self.neg).Format(w)
+        try w.Str(",\"shapes\":")
+        xs_g2_1 := (&self.shapes).Items()
+        try w.Str("[")
+        for i_g2_2 in 0..xs_g2_1.Len() {
+            if i_g2_2 > 0 {
+                try w.Str(",")
+            }
+            try (&xs_g2_1[i_g2_2]).FormatJson(w)
+        }
+        try w.Str("]")
+        try w.Str(",\"pts\":")
+        xs_g2_3 := *(&self.pts)
+        try w.Str("[")
+        for i_g2_4 in 0..xs_g2_3.Len() {
+            if i_g2_4 > 0 {
+                try w.Str(",")
+            }
+            try (&xs_g2_3[i_g2_4]).FormatJson(w)
+        }
+        try w.Str("]")
+        try w.Str(",\"ints\":")
+        match (&self.ints) {
+            some(x_g2_5) {
+                xs_g2_6 := x_g2_5.Items()
+                try w.Str("[")
+                for i_g2_7 in 0..xs_g2_6.Len() {
+                    if i_g2_7 > 0 {
+                        try w.Str(",")
+                    }
+                    try (&xs_g2_6[i_g2_7]).Format(w)
+                }
+                try w.Str("]")
+            }
+            none {
+                try w.Str("null")
+            }
+        }
+        try w.Str(",\"maybe\":")
+        match (&self.maybe) {
+            some(x_g2_8) {
+                try x_g2_8.FormatJson(w)
+            }
+            none {
+                try w.Str("null")
+            }
+        }
+        try w.Str(",\"none_here\":")
+        match (&self.none_here) {
+            some(x_g2_9) {
+                try json.Value.Text(s: *x_g2_9).Format(w)
+            }
+            none {
+                try w.Str("null")
+            }
+        }
+        try w.Str(",\"real\":")
+        if *(&self.real) - *(&self.real) != 0.0 {
+            try w.Str("null")
+        } else {
+            try (&self.real).Format(w)
+        }
+        try w.Str("}")
+    }
+}
+
+// gen js.Codec#1 for All
+All.FromJson(a: &Arena, v: &json.Value): json.Error!All from a {
+    var name_g2_13: ?str = none
+    var ok_g2_16: ?bool = none
+    var small_g2_19: ?u8 = none
+    var big_g2_23: ?u64 = none
+    var neg_g2_32: ?i16 = none
+    var shapes_g2_36: ?core.List[Shape] = none
+    var pts_g2_44: ?[]Point = none
+    var ints_g2_53: ?core.List[int] = none
+    var maybe_g2_62: ?Point = none
+    var none_here_g2_65: ?str = none
+    var real_g2_68: ?f64 = none
+    match v {
+        .Object(members: members_g2_10) {
+            ms_g2_11 := members_g2_10.Items()
+            for k_g2_12 in 0..ms_g2_11.Len() {
+                match ms_g2_11[k_g2_12].key {
+                    "name" {
+                        x_g2_14 := match (&ms_g2_11[k_g2_12].value) {
+                            .Text(s) {
+                                try a.Dup(*s)
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        name_g2_13 = some(x_g2_14)
+                    }
+                    "ok" {
+                        x_g2_17 := match (&ms_g2_11[k_g2_12].value) {
+                            .Bool(b) {
+                                *b
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        ok_g2_16 = some(x_g2_17)
+                    }
+                    "small" {
+                        n_g2_21 := (&ms_g2_11[k_g2_12].value).Int() else { fail json.Mismatch(offset: -1) }
+                        if n_g2_21 < 0 || n_g2_21 > 255 {
+                            fail json.Mismatch(offset: -1)
+                        }
+                        x_g2_20 := Cast[u8](n_g2_21)
+                        small_g2_19 = some(x_g2_20)
+                    }
+                    "big" {
+                        var n_g2_25: u64 = 0
+                        var good_g2_30 := false
+                        match (&ms_g2_11[k_g2_12].value) {
+                            .Number(text: text_g2_26) {
+                                b_g2_27 := text_g2_26.AsBytes()
+                                good_g2_30 = b_g2_27.Len() > 0
+                                for i_g2_28 in 0..b_g2_27.Len() {
+                                    if b_g2_27[i_g2_28] < 0x30 || b_g2_27[i_g2_28] > 0x39 {
+                                        good_g2_30 = false
+                                        break
+                                    }
+                                    d_g2_29 := u64(b_g2_27[i_g2_28] - 0x30)
+                                    if n_g2_25 > 1844674407370955161 || (n_g2_25 == 1844674407370955161 && d_g2_29 > 5) {
+                                        good_g2_30 = false
+                                        break
+                                    }
+                                    n_g2_25 = n_g2_25 * 10 + d_g2_29
+                                }
+                            }
+                            _ { }
+                        }
+                        if !good_g2_30 {
+                            fail json.Mismatch(offset: -1)
+                        }
+                        x_g2_24 := Cast[u64](n_g2_25)
+                        big_g2_23 = some(x_g2_24)
+                    }
+                    "neg" {
+                        n_g2_34 := (&ms_g2_11[k_g2_12].value).Int() else { fail json.Mismatch(offset: -1) }
+                        if n_g2_34 < -32768 || n_g2_34 > 32767 {
+                            fail json.Mismatch(offset: -1)
+                        }
+                        x_g2_33 := Cast[i16](n_g2_34)
+                        neg_g2_32 = some(x_g2_33)
+                    }
+                    "shapes" {
+                        var l_g2_38 := core.List[Shape].New(a)
+                        match (&ms_g2_11[k_g2_12].value) {
+                            .Array(items: arr_g2_39) {
+                                items_g2_40 := arr_g2_39.Items()
+                                for i_g2_41 in 0..items_g2_40.Len() {
+                                    x_g2_42 := try Shape.FromJson(a, (&items_g2_40[i_g2_41]))
+                                    try l_g2_38.Push(x_g2_42)
+                                }
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        x_g2_37 := l_g2_38
+                        shapes_g2_36 = some(x_g2_37)
+                    }
+                    "pts" {
+                        var l_g2_46 := List[Point].New(a)
+                        match (&ms_g2_11[k_g2_12].value) {
+                            .Array(items: arr_g2_47) {
+                                items_g2_48 := arr_g2_47.Items()
+                                for i_g2_49 in 0..items_g2_48.Len() {
+                                    x_g2_50 := try Point.FromJson(a, (&items_g2_48[i_g2_49]))
+                                    try l_g2_46.Push(x_g2_50)
+                                }
+                            }
+                            _ {
+                                fail json.Mismatch(offset: -1)
+                            }
+                        }
+                        m_g2_51 := l_g2_46.Done()
+                        x_g2_45 := m_g2_51[..]
+                        pts_g2_44 = some(x_g2_45)
+                    }
+                    "ints" {
+                        x_g2_54: ?core.List[int] = match (&ms_g2_11[k_g2_12].value) {
+                            .Null { none }
+                            _ {
+                                var l_g2_56 := core.List[int].New(a)
+                                match (&ms_g2_11[k_g2_12].value) {
+                                    .Array(items: arr_g2_57) {
+                                        items_g2_58 := arr_g2_57.Items()
+                                        for i_g2_59 in 0..items_g2_58.Len() {
+                                            n_g2_61 := (&items_g2_58[i_g2_59]).Int() else { fail json.Mismatch(offset: -1) }
+                                            if false {
+                                                fail json.Mismatch(offset: -1)
+                                            }
+                                            x_g2_60 := Cast[int](n_g2_61)
+                                            try l_g2_56.Push(x_g2_60)
+                                        }
+                                    }
+                                    _ {
+                                        fail json.Mismatch(offset: -1)
+                                    }
+                                }
+                                x_g2_55 := l_g2_56
+                                some(x_g2_55)
+                            }
+                        }
+                        ints_g2_53 = x_g2_54
+                    }
+                    "maybe" {
+                        x_g2_63: ?Point = match (&ms_g2_11[k_g2_12].value) {
+                            .Null { none }
+                            _ {
+                                x_g2_64 := try Point.FromJson(a, (&ms_g2_11[k_g2_12].value))
+                                some(x_g2_64)
+                            }
+                        }
+                        maybe_g2_62 = x_g2_63
+                    }
+                    "none_here" {
+                        x_g2_66: ?str = match (&ms_g2_11[k_g2_12].value) {
+                            .Null { none }
+                            _ {
+                                x_g2_67 := match (&ms_g2_11[k_g2_12].value) {
+                                    .Text(s) {
+                                        try a.Dup(*s)
+                                    }
+                                    _ {
+                                        fail json.Mismatch(offset: -1)
+                                    }
+                                }
+                                some(x_g2_67)
+                            }
+                        }
+                        none_here_g2_65 = x_g2_66
+                    }
+                    "real" {
+                        x_g2_69 := (&ms_g2_11[k_g2_12].value).Float() else { fail json.Mismatch(offset: -1) }
+                        real_g2_68 = some(x_g2_69)
+                    }
+                    _ { }
+                }
+            }
+        }
+        _ {
+            fail json.Mismatch(offset: -1)
+        }
+    }
+    name_g2_15 := name_g2_13 else { fail json.Mismatch(offset: -1) }
+    ok_g2_18 := ok_g2_16 else { fail json.Mismatch(offset: -1) }
+    small_g2_22 := small_g2_19 else { fail json.Mismatch(offset: -1) }
+    big_g2_31 := big_g2_23 else { fail json.Mismatch(offset: -1) }
+    neg_g2_35 := neg_g2_32 else { fail json.Mismatch(offset: -1) }
+    shapes_g2_43 := shapes_g2_36 else { fail json.Mismatch(offset: -1) }
+    pts_g2_52 := pts_g2_44 else { fail json.Mismatch(offset: -1) }
+    real_g2_70 := real_g2_68 else { fail json.Mismatch(offset: -1) }
+    return All(name: name_g2_15, ok: ok_g2_18, small: small_g2_22, big: big_g2_31, neg: neg_g2_35, shapes: shapes_g2_43, pts: pts_g2_52, ints: ints_g2_53, maybe: maybe_g2_62, none_here: none_here_g2_65, real: real_g2_70)
+}
+

@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E1001","name":"not-send","phase":"flow","root":1,"at":{"file":"m/00.mk","line":9,"col":12,"end_line":9,"end_col":13},"message":"`R` is not Send, so it cannot cross to another task","facts":{"type":"R","part":"R"},"fixes":[],"alternatives":[],"explain":"mk explain E1001"}],"omitted":0}

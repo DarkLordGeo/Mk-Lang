@@ -1,0 +1,27 @@
+> > > 2
+> > after the error 8
+> > >   a = 1
+  b = 3
+2 of 17 globals
+>   a = 1
+  b = 3
+  chr = <native fn>
+  extend = <native fn>
+  gc = <native fn>
+  int = <native fn>
+  len = <native fn>
+  num = <native fn>
+  objects = <native fn>
+  ord = <native fn>
+  pop = <native fn>
+  push = <native fn>
+  random = <native fn>
+  seed = <native fn>
+  str = <native fn>
+  substr = <native fn>
+  twice = <fn twice>
+17 of 17 globals
+> > > > > :globals [lo hi]  list globals, or those in [lo, hi)
+:forget name      remove a global
+> > bye
+> 

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E1103","name":"raw-outside-unsafe","phase":"types","root":1,"at":{"file":"E1103.mk","line":3,"col":5,"end_line":3,"end_col":7},"message":"dereferencing `*i32` needs an `unsafe \"reason\" { }` block","facts":{"type":"*i32"},"fixes":[],"alternatives":[],"explain":"mk explain E1103"}],"omitted":0}

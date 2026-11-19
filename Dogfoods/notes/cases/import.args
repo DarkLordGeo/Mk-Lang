@@ -1,0 +1,6 @@
+import
+$CASES/data/notes.json
+--db
+$WORK/i.db
+--level
+debug

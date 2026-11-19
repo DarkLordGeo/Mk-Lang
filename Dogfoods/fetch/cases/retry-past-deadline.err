@@ -1,0 +1,1 @@
+fetch: http://{origin}/fail: the server answered 503; giving up after 1 attempt(s), as the next would start past --max-time

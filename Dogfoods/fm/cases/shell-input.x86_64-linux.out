@@ -1,0 +1,8 @@
+start | *.:docs/#1/3  .:docs/#1/3
+key ! | prompt shell ""
+paste 6 bytes | prompt shell "read x"
+shell started: read x
+shell ended: exit 0; press a key
+key enter | output "$ read x  (exit 0)" "hello"
+key q | *.:docs/#1/3  .:docs/#1/3 -- exit 0: hello
+key q | *.:docs/#1/3  .:docs/#1/3

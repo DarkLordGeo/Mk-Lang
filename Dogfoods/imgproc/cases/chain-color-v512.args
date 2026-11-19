@@ -1,0 +1,13 @@
+--ascii
+--path
+v512
+--tile-rows
+4
+run
+$CASES/data/photo.ppm
+-
+emboss
+equalize
+brighten=35
+conv=0:1:0:1:-4:1:0:1:0+128
+threshold=140

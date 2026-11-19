@@ -1,0 +1,5 @@
+columns
+--limit
+60
+$CASES/data/people.tsv
+$CASES/data/fruit.csv

@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+-b
+$CASES/data/bad-jar.txt
+http://{origin}/echo

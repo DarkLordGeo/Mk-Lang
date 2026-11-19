@@ -1,0 +1,7 @@
+frobnicate
+--embed
+--db
+$WORK/notes.db
+--addr
+127.0.0.1:18534
+--quiet

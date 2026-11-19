@@ -1,0 +1,29 @@
+{
+  "name": "simkv",
+  "table": "idiomatic",
+  "algorithm": "a write-ahead-log key-value store run three lives per seed on std.sim's simulated disk, crashing at a seeded point in the first two and checking every recovery against the committed writes (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "200000",
+    "1"
+  ],
+  "quick": [
+    "20000",
+    "1"
+  ],
+  "checksum": "seeds 200000 crashed 89880 bad 0",
+  "quick_checksum": "seeds 20000 crashed 9043 bad 0",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std simulated Io",
+    "rust": "no std simulated Io",
+    "zig": "no std simulated Io",
+    "go": "no std simulated Io (testing/fstest.MapFS is a read-only file tree with no crash model)"
+  },
+  "notes": [
+    "Written by std-sim (status/std-sim.md). A row with no baseline: it tracks std.sim's own cost per seed across M6, and no ratio is published from it.",
+    "SIM-R10 (2026-11-07) changed the crash point's span (half the draws over the first 128 operations, half log-uniform up to 8 million), so fewer short lives crash: the checksums' crash counts were recomputed then (168512 and 16811 before)."
+  ]
+}

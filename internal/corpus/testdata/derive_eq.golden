@@ -1,0 +1,15 @@
+// Generated from the gen lines of derive/eq for x86_64-windows. Not read by the compiler.
+
+// gen derive.Eq#1 for User
+impl Eq for User {
+    Eq(&self, other: &User): bool {
+        if !self.id.Eq(&other.id) {
+            return false
+        }
+        if !self.name.Eq(&other.name) {
+            return false
+        }
+        return true
+    }
+}
+

@@ -1,0 +1,6 @@
+tiny.dll: 5 functions, 4 named, ordinal base 1
+    1  Add
+    2  Forwarded -> KERNEL32.GetTickCount
+    3  Multiply
+    4  Version
+    5  (by ordinal only)

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0806","name":"try-in-defer","phase":"types","root":1,"at":{"file":"E0806.mk","line":4,"col":9,"end_line":4,"end_col":15},"message":"`return` cannot leave a `defer` or `onerr` body","facts":{"token":"return"},"fixes":[],"alternatives":[],"explain":"mk explain E0806"}],"omitted":0}

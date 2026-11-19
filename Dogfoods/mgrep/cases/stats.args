@@ -1,0 +1,8 @@
+--stats
+-j
+2
+-c
+needle
+$CASES/data/tree
+--path-separator
+/

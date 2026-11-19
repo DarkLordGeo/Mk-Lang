@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1222","name":"as-cast","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":12,"end_line":2,"end_col":14},"message":"Mk has no `as`: convert with `Cast[T](x)` or `T(x)`","facts":{"habits":["E1222"],"target":"    y := Cast[f64](n)"},"fixes":[],"alternatives":["Cast[f64](n)","f64(n)"],"explain":"mk explain E1222"}],"omitted":0}
+

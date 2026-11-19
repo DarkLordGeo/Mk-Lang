@@ -1,0 +1,4 @@
+replay
+--db
+$WORK/r.db
+--quiet

@@ -1,0 +1,57 @@
+{
+  "name": "line-echo",
+  "table": "idiomatic",
+  "algorithm": "a buffered line echo between a client and a server connection, 4096-byte buffered readers and writers at each end; each of n rounds writes 16 lines of 32 bytes (byte 0 = 32 + k mod 64 for the k-th line, 30 'x', a newline) through the client's writer and flushes, reads each line at the server up to its newline and writes it back through the server's writer, flushes, and reads the 16 lines back at the client; sum = 31 sum + byte 0 + 256 * length of each line read back, wrapping. Variant tcp: one loopback TCP connection of one thread, TCP_NODELAY at both ends (Mk Stream.Conn at both ends). Variant inmem: two in-memory 4096-byte pipes, each under its own mutex, one connection per end that takes a read or a write mutex of its own and calls its transport through one indirect call (Mk net.NewConn). Mk reads and writes through Conn.Reader and Conn.Writer. README.md.",
+  "overflow": "wraps",
+  "args": [
+    "20000",
+    "tcp"
+  ],
+  "quick": [
+    "500",
+    "tcp"
+  ],
+  "checksum": "20000 17159479884574650624 0",
+  "quick_checksum": "500 2027602646374895520 0",
+  "sources": {
+    "mk": "mk",
+    "c": "lineecho.c",
+    "rust": "lineecho.rs",
+    "zig": "lineecho.zig",
+    "go": "testdata/lineecho.go"
+  },
+  "variants": [
+    {
+      "name": "tcp",
+      "args": [
+        "20000",
+        "tcp"
+      ],
+      "quick": [
+        "500",
+        "tcp"
+      ],
+      "checksum": "20000 17159479884574650624 0",
+      "quick_checksum": "500 2027602646374895520 0"
+    },
+    {
+      "name": "inmem",
+      "args": [
+        "1000000",
+        "inmem"
+      ],
+      "quick": [
+        "10000",
+        "inmem"
+      ],
+      "checksum": "1000000 4747762569625080320 0",
+      "quick_checksum": "10000 6708440219979102336 0"
+    }
+  ],
+  "notes": [
+    "Written by std-net3 (status/std-net3.md, core8's request 7): the row of net.Conn's Reader and Writer (Conn.Reader, Conn.Writer, Reader.Until, Writer.Bytes and Flush) over a stream's Conn and over a transport boxed by net.NewConn. Checksums from a Python model (over k = 0..16n-1: sum = 31 sum + (32 + k mod 64) + 256 * 32, mod 2^64) and each column's run.",
+    "Readers and writers: Go bufio.Reader (ReadSlice, no copy) and bufio.Writer; Rust std::io::BufReader (read_until into a reused Vec) and BufWriter; C a hand-written buffered reader (memchr) and writer over a function-pointer table, as stdio has no FILE over a user transport on both targets; Zig std.Io.Reader (takeDelimiterInclusive, no copy) and std.Io.Writer, Stream.reader and Stream.writer for tcp and a stream and drain vtable over the connection for inmem; Mk Conn.Reader and Conn.Writer (core8's ReadPort and WritePort; Reader.Until copies the line into the caller's buffer, as Rust's read_until does).",
+    "inmem connections: Mk net.NewConn over a transport of two &Mutex pipes; Go an io.ReadWriter interface value whose concrete type takes sync.Mutex per direction; Rust a Box<dyn Transport + Send + Sync> with std::sync::Mutex per direction; C SRWLOCK (Windows) or pthread_mutex_t (Linux) and a function-pointer table; Zig std.Io.Mutex (lock, the cancelable form, as Mk's Lock is) and a vtable. Every cell picks the in-memory transport at run time from the mode argument (the pipe end, or for mode null one that reads the end of the stream; no variant runs it), so no optimiser sees one transport type, and none uses an opacity device (NET3-R1). One thread, so every lock is uncontended.",
+    "tcp: Zig sets TCP_NODELAY through ws2_32's setsockopt (Linux: the setsockopt system call), as tcp-pingpong does; a round's 512 bytes fit every socket buffer, so the one thread never blocks on its own write."
+  ]
+}

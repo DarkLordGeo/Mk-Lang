@@ -1,0 +1,7 @@
+PASS main "prop Clamp"
+    100 cases, 101 discarded by requires or invariant
+PASS main "prop Mid"
+    100 cases, 99 discarded by requires or invariant
+PASS main "prop Span.Len"
+    118 cases, 83 discarded by requires or invariant
+3 passed, 0 failed (prop seed 30798615365709680)

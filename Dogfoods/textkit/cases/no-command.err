@@ -1,0 +1,22 @@
+usage: textkit <command> [options] [file...]
+
+Unicode text tools. Each command reads the files named, or standard input
+when none is or a file is -, and writes standard output.
+
+commands:
+  norm       rewrite lines in a normalization form (NFC, NFD, NFKC, NFKD)
+  fold       fold case for caseless comparison, or map to lower or upper case
+  width      measure lines in terminal columns, or show their grapheme clusters
+  columns    line up separated fields into columns by display width
+  sort       sort lines by a plain, folded or numeric key
+  uniq       drop repeated lines, adjacent or all
+  wc         count lines, words, characters, bytes and grapheme clusters
+  grep       print lines that match a regular expression
+  utf16      convert between UTF-8 and UTF-16
+  words      split lines into words at Unicode word boundaries
+  sentences  split paragraphs into sentences at Unicode sentence boundaries
+  convert    convert text between the encodings of the Encoding Standard
+
+textkit <command> --help describes a command's options.
+exit status: 0 done, 1 nothing matched or not in form, 2 bad command line,
+3 an input failed, 4 out of memory.

@@ -1,0 +1,26 @@
+{
+  "name": "binarytrees",
+  "table": "same",
+  "algorithm": "binary-trees with one bump-allocated buffer of u32-index nodes in every language (B9); the sum of every tree check (README.md).",
+  "overflow": "never",
+  "args": [
+    "22"
+  ],
+  "quick": [
+    "10"
+  ],
+  "checksum": "1361750702",
+  "quick_checksum": "135854",
+  "sources": {
+    "mk": "mk",
+    "c": "binarytrees.c",
+    "rust": "binarytrees.rs",
+    "zig": "binarytrees.zig",
+    "go": "testdata/binarytrees.go"
+  },
+  "skip": {
+    "mk-wrap": "not needed for the budgets; written if the checked column shows an overflow-check cost"
+  },
+  "no_counts": "B24: the checksum is itself the operation count (every node built is checked once, and the total of the checks is printed)",
+  "notes": []
+}

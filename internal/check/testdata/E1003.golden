@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E1003","name":"scope-escape","phase":"types","root":1,"at":{"file":"m/00.mk","line":2,"col":7,"end_line":2,"end_col":17},"message":"a `Scope` lives only in `scope s := .. { }`","facts":{},"fixes":[],"alternatives":["scope s := io.Scope() { .. }"],"explain":"mk explain E1003"}],"omitted":0}

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0706","name":"requires-failed","phase":"types","root":1,"at":{"file":"E0706.mk","line":9,"col":12,"end_line":9,"end_col":18},"message":"the callee requires `n > 0`, which is false for these arguments","facts":{"clause":"n > 0"},"fixes":[],"alternatives":[],"explain":"mk explain E0706"}],"omitted":0}

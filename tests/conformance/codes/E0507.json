@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0507","name":"mut-through-shared","phase":"flow","root":1,"at":{"file":"E0507.mk","line":7,"col":5,"end_line":7,"end_col":13},"message":"*s.n is reached through a shared reference and cannot be written","facts":{"place":"*s.n"},"fixes":[],"alternatives":[],"explain":"mk explain E0507"}],"omitted":0}

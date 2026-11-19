@@ -1,0 +1,5 @@
+# 1,000 round trips through two capacity-0 channels; the sum is n(n+1)/2 + n = 501500.
+# The timed run (args 10000000 time) is perf-runtime's measurement, never a case.
+case ok
+args 1000
+stdout pingpong.out

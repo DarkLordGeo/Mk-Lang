@@ -1,0 +1,2 @@
+load Plan(clients: 4, requests: 10): 40 created, 0 refused, 0 failed
+40 notes, 1 tags, 160 words, 4.0 words a note

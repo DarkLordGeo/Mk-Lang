@@ -1,0 +1,28 @@
+{
+  "name": "crypto-random",
+  "table": "idiomatic",
+  "algorithm": "std OS CSPRNG draws: n calls, each filling one buffer of size bytes (32 bytes: the cost per call, a nonce or a key; 64 KiB: the throughput) (mk/crypto-random.mk).",
+  "overflow": "wraps",
+  "args": ["40000000", "32"],
+  "quick": ["1000", "32"],
+  "checksum": "1280000000",
+  "quick_checksum": "32000",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-random.zig",
+    "go": "testdata/crypto-random.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard CSPRNG (rand is not one)",
+    "rust": "no std crypto: Rust std has no CSPRNG API (std's hash seeding is private); getrandom and rand are crates; no crate stands in"
+  },
+  "variants": [
+    {"name": "32", "args": ["40000000", "32"], "quick": ["1000", "32"], "checksum": "1280000000", "quick_checksum": "32000"},
+    {"name": "64k", "args": ["120000", "65536"], "quick": ["10", "65536"], "checksum": "7864320000", "quick_checksum": "655360"}
+  ],
+  "notes": [
+    "Work per step: one call that fills the buffer with CSPRNG output. Mk crypto.Random (Io.Random, std/sys: ProcessPrng from bcryptprimitives.dll on Windows, every call), Go crypto/rand.Read (outside FIPS mode crypto/internal/sysrand: ProcessPrng, every call), Zig std.Io.random (its idiomatic CSPRNG: a per-thread ChaCha DRBG in user space, seeded once from Io.randomSecure). ProcessPrng is a user-mode generator too (per-CPU AES state seeded from the kernel's CNG device, as the comment in Zig 0.17.0's Io/Threaded.zig describes it; not checked further here), so by that description no column makes a system call per draw; Zig's DRBG is its library's design and counts as such. Zig's Io.randomSecure, one IOCTL to the CNG device per draw, is the other form and not this column. Calls per second = n / median; bytes per second = n * size / median.",
+    "Checksum: n * size, the bytes drawn, the same whatever the random bytes are (CRY-8). No column can drop a draw: Mk and Go pass the buffer to an OS call (ProcessPrng), and Zig's buffer goes to page_allocator.free, an OS call, after the fills.",
+    "Written by the std-crypto lane (status/std-crypto.md). Not published: no number here is a measurement."
+  ]
+}

@@ -1,0 +1,54 @@
+mgrep: search files for lines that match a pattern
+
+usage: mgrep [OPTIONS] PATTERN [PATH...]
+       mgrep [OPTIONS] -e PATTERN [PATH...]
+       mgrep [OPTIONS] -f FILE [PATH...]
+
+Directories are searched recursively, each one's entries in byte order, and
+files that hold a NUL byte are skipped. With no PATH, mgrep searches the
+current directory. The output is the same whatever the number of carriers.
+
+Options:
+  --ignore-case           Match case-insensitively (-i)
+  --fixed-strings         Take the patterns as fixed strings, not regular expressions (-F)
+  --word-regexp           Match whole words only (-w)
+  --invert-match          Print the lines that do not match (-v)
+  --count                 Print the number of matching lines in each file (-c)
+  --count-matches         Print the number of matches in each file
+  --files-with-matches    Print only the names of the files that match (-l)
+  --only-matching         Print each match on a line of its own (-o)
+  --line-number           Print line numbers, which is the default (-n)
+  --no-line-number        Leave out line numbers (-N)
+  --column                Print the terminal column where each line's first match starts
+  --heading               Print each file's name once, above its lines
+  --with-filename         Print the file name on every line, even for one file (-H)
+  --no-filename           Never print file names
+  --after-context <int>   Print this many lines after each match (-A)
+  --before-context <int>  Print this many lines before each match (-B)
+  --context <int>         Print this many lines before and after each match (-C)
+  --max-count <int>       Stop reading a file after this many matching lines (-m)
+  --quiet                 Print nothing, and stop at the first match (-q)
+  --threads <int>         Search with this many tasks; 4 when not given (-j)
+  --max-open <int>        Keep at most this many files open at once; 8 when not given
+  --regexp <str>          The pattern, when it starts with a dash (-e)
+  --file <str>            Read the patterns from this file, one a line; - is standard input (-f)
+  --replace <str>         Print each matching line with its matches replaced; $1 and $name expand groups (-r)
+  --group <int>           With --only-matching, print this capture group of each match
+  --color <str>           Colour output: always or never; never when not given
+  --hidden                Search names that start with a dot (-.)
+  --glob <str>            Search only files whose names match one of these comma-separated globs (-g)
+  --max-depth <int>       Descend at most this many directory levels below each path (-d)
+  --max-filesize <int>    Skip files larger than this many bytes
+  --binary                Search files that hold NUL bytes as well (-a)
+  --path-separator <str>  Print paths with this separator instead of the system's
+  --stats                 Print a table of the matching files and the totals at the end
+  --help                  Print this help (-h)
+  --version               Print the version (-V)
+Arguments:
+  <args>...               PATTERN, then the files and directories to search; - is standard input
+
+Short forms: -i -F -w -v -c -l -o -n -N -H -q -a -. -h -V, and -A N -B N -C N
+-m N -j N -e PAT -f FILE -r TEXT -g GLOBS -d N, which group as in -iw or -C2.
+--name=value is --name value.
+
+Exit status: 0 when a line matched, 1 when none did, 2 on an error.

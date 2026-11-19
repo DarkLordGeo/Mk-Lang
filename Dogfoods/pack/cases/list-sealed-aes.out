@@ -1,0 +1,9 @@
+$CASES/data/sealed-aes.pk: 5 files, 361278 bytes, deflate, signed by 34750f98bd59fcfc, manifest a3be7ca88a1e260e
+f         15  README.txt
+d          -  docs/
+f         49  docs/guide.txt
+d          -  docs/notes/
+f         17  docs/notes/todo.txt
+d          -  src/
+f     262893  src/big.txt
+f      98304  src/noise.bin

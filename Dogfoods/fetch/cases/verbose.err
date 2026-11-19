@@ -1,0 +1,3 @@
+> GET /hello
+> X-Fetch-Test: yes
+< 200

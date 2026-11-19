@@ -1,0 +1,4 @@
+--procfile
+$CASES/data/tasks.Procfile
+run
+fail

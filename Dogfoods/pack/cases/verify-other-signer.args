@@ -1,0 +1,4 @@
+verify
+--signer
+$CASES/data/bob.pub
+$CASES/data/plain.pk

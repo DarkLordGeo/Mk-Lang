@@ -1,0 +1,35 @@
+{
+  "name": "rwlock",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; Rust and Zig: OS threads) share one pair under the standard reader-writer lock; each does n operations: every tenth (i % 10 == 0) takes the write lock and adds one to both fields, the others take the read lock and count a pair whose fields differ. Prints the first field (t * ceil(n / 10)) and the mismatches (0) (README.md).",
+  "overflow": "never",
+  "args": ["1000000", "8"],
+  "quick": ["10000", "8"],
+  "checksum": "800000 0",
+  "quick_checksum": "8000 0",
+  "sources": {
+    "mk": "mk",
+    "rust": "rwlock.rs",
+    "zig": "rwlock.zig",
+    "go": "testdata/rwlock.go"
+  },
+  "skip": {
+    "c": "no reader-writer lock in standard C (C11 <threads.h> has mtx_t only; pthread_rwlock_t is POSIX, SRWLOCK is Win32)",
+    "mk-wrap": "the only arithmetic is the counters, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), sync.RwLock",
+      "go": "goroutines (GOMAXPROCS 8), sync.RWMutex",
+      "rust": "OS threads, std::sync::RwLock",
+      "zig": "OS threads, std.Io.RwLock"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the final count and no mismatch, shows that every write landed once and no read saw a write in progress",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0, 2, ..., 14 (mask 0x5555, eight physical cores, one logical CPU each) with 8 threads (MK_CARRIERS=8, GOMAXPROCS=8). Rust and Zig use OS threads (their std has no tasks), labelled so.",
+    "Written by std-missing (status/std-missing.md, M6 session 2); checksums from the workload's arithmetic, printed by the Mk build on the owner's machine, 2026-11-07."
+  ]
+}

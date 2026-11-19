@@ -1,0 +1,4 @@
+cert
+show
+$CASES/data/pki/chain.pem
+$CASES/data/pki/root.pem

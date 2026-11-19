@@ -1,0 +1,4 @@
+# What a build of the example leaves beside its sources (the gen/ views are
+# ignored by the repository's own .gitignore).
+examples/hello/hello
+examples/hello/hello.exe

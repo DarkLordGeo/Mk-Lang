@@ -1,0 +1,10 @@
+alloc
+alloc 0
+alloc x
+alloc 0x
+alloc 99999
+alloc 1 2
+free 0x1234
+free zz
+alloc 3
+exit

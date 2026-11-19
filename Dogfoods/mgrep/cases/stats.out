@@ -1,0 +1,20 @@
+$CASES/data/tree/a.txt:4
+$CASES/data/tree/b.md:1
+$CASES/data/tree/crlf.txt:1
+$CASES/data/tree/empty.txt:0
+$CASES/data/tree/latin1.txt:1
+$CASES/data/tree/sub/c.txt:3
+$CASES/data/tree/sub/deep/d.txt:0
+$CASES/data/tree/wide.txt:2
+$CASES/data/tree/日本.txt:1
+file         lines  matches
+a.txt            4        5
+b.md             1        1
+crlf.txt         1        1
+latin1.txt       1        1
+sub/c.txt        3        3
+wide.txt         2        2
+日本.txt         1        1
+7 of 10 files matched, 13 lines, 14 matches, 32 lines searched
+binary files skipped: 1
+lines skipped as not UTF-8: 1

@@ -1,0 +1,4 @@
+grep
+--ignore-case
+日本Übermaß[
+$CASES/data/log.txt

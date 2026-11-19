@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0707","name":"impl-signature","phase":"types","root":1,"at":{"file":"m/00.mk","line":9,"col":1,"end_line":9,"end_col":5},"message":"the impl has no method `Area`","facts":{"expected":"Area(&self): f64","found":"nothing"},"fixes":[],"alternatives":[],"explain":"mk explain E0707"}],"omitted":0}

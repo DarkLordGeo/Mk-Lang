@@ -1,0 +1,6 @@
+sim
+--seed
+10
+--crash
+--faults
+--verbose

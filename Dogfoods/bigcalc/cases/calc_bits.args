@@ -1,0 +1,10 @@
+calc
+1 1000 << bitlen p 1 1000 << 999 >> p -1 100 >> p
+-5 0 bit -5 70 bit 5 2 bit f clear
+16#ff 0b1010 0o777 0xDEADbeef -0x10 36#zz f clear
+bytes:00ff10 b64:AQID f clear
+2 64 ^ i64 f64 bytes b64 words neg words i64 clear
+-9223372036854775808 i64 1 - i64 2 53 ^ 1 + f64 clear
+255 hex p oct p bin p 36 base p dec p
+0 der 127 der 128 der -128 der 2 64 ^ der clear
+1 2 swap - p 3 4 5 swap f clear

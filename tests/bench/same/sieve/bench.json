@@ -1,0 +1,27 @@
+{
+  "name": "sieve",
+  "table": "same",
+  "algorithm": "Sieve of Eratosthenes over n + 1 byte flags, rounds times; the checksum is rounds times the count of primes up to n (README.md).",
+  "overflow": "never",
+  "args": [
+    "20000000",
+    "46"
+  ],
+  "quick": [
+    "2000000",
+    "2"
+  ],
+  "checksum": "58447922",
+  "quick_checksum": "297866",
+  "sources": {
+    "mk": "mk",
+    "mk-wrap": "mkwrap",
+    "c": "sieve.c",
+    "rust": "sieve.rs",
+    "zig": "sieve.zig",
+    "go": "testdata/sieve.go"
+  },
+  "skip": {},
+  "counts": ["marks"],
+  "notes": []
+}

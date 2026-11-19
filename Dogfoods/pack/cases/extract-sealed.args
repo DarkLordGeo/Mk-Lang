@@ -1,0 +1,7 @@
+extract
+--key
+$CASES/data/bob.key
+--dest
+$WORK/out
+--stats
+$CASES/data/sealed.pk

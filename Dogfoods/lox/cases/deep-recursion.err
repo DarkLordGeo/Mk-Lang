@@ -1,0 +1,18 @@
+Stack overflow.
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[... 240 calls not shown]
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 3] in down()
+[line 6] in script

@@ -1,0 +1,3 @@
+open
+--keep=yes
+kernel32.dll

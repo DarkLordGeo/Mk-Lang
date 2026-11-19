@@ -1,0 +1,8 @@
+create
+--to
+$CASES/data/dave.pub
+--cipher
+des
+--out
+$WORK/a.pk
+$CASES/data/tree

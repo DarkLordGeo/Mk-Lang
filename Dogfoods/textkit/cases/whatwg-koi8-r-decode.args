@@ -1,0 +1,4 @@
+convert
+--from
+koi8-r
+$CASES/data/whatwg/koi8-r.bin

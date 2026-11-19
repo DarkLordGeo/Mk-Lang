@@ -1,0 +1,3 @@
+go test fuzz v1
+string("import std.fs\nA000(){}\nA0000(io:Io){scope a:=io.Scope{}}")
+bool(false)

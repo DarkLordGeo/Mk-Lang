@@ -1,0 +1,4 @@
+convert
+--from
+windows-874
+$CASES/data/whatwg/windows-874.bin

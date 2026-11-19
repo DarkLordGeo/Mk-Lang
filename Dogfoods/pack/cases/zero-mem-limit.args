@@ -1,0 +1,4 @@
+verify
+--mem-limit
+0
+$CASES/data/plain.pk

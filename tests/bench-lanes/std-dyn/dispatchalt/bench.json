@@ -1,0 +1,31 @@
+{
+  "name": "dispatchalt",
+  "table": "same",
+  "algorithm": "dispatch's loop with the target alternating (objs[i & 1]), so the indirect branch is predicted and the per-call overhead shows; the same data structures, argument stream and wrapping arithmetic (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "500000000",
+    "1"
+  ],
+  "quick": [
+    "1000000",
+    "1"
+  ],
+  "checksum": "5376492962469361624",
+  "quick_checksum": "5382184753454588733",
+  "sources": {
+    "mk": "mk",
+    "c": "dispatchalt.c",
+    "rust": "dispatchalt.rs",
+    "zig": "dispatchalt.zig",
+    "go": "testdata/dispatchalt.go"
+  },
+  "skip": {
+    "mk-wrap": "the algorithm already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24: no data-dependent control flow; the target is i & 1 and the trip count is n, and the checksum is exact wrapping integer arithmetic over the whole sequence",
+  "notes": [
+    "The columns of ../dispatch (the same pairs and the same Mk StepDyn), with the index i & 1 (review finding DYN-7: the random target's mispredicts, about the same in every column, hide the adapter's key compare and frame).",
+    "Written by the std-dyn lane (status/std-dyn.md). Checksums from a Go reference of the pseudo-code (seed 1), checked against every column by tools/bench verify."
+  ]
+}

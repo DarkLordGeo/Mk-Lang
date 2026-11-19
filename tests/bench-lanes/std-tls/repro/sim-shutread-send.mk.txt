@@ -1,0 +1,89 @@
+import std.net
+import std.sim
+import std.time
+
+const RpAddr = "127.0.0.1:7791"
+
+RpServer(io: Io, l: &net.Listener, got: mut int, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        return
+    }
+    c := s.Conn()
+    var b: [64]u8 = [0; 64]
+    for {
+        k := c.Read(io, mut b[..]) else e {
+            *code = match e {
+                Canceled { 5 }
+                net.Reset { 6 }
+                _ { 9 }
+            }
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            break
+        }
+        *got += k
+    }
+    *code = 0
+    c.Abandon()
+}
+
+RpPark(io: Io, c: &net.Conn, k: mut int) {
+    var b: [64]u8 = [0; 64]
+    *k = c.Read(io, mut b[..]) else {
+        -1
+    }
+}
+
+RpRun(a: &Arena, park: bool): Error|OutOfMemory!(k: int, got: int, code: int) {
+    var sm := try sim.Sim.New(a, 23)
+    defer sm.Free()
+    io := sm.Io()
+    l := try net.Listen(io, RpAddr)
+    defer l.Close()
+    var got := 0
+    var code := -1
+    var k := -2
+    scope outer := io.Scope() {
+        outer.go RpServer(io, &l, mut got, mut code)
+        stream := try net.Dial(io, RpAddr)
+        c := stream.Conn()
+        scope s := io.Scope() {
+            if park {
+                s.go RpPark(io, &c, mut k)
+            }
+            io.Sleep(time.Millis(5)) else {}
+            c.Shutdown(io, net.Shutdown.Read) else {}
+        }
+        hello: [5]u8 = [104, 101, 108, 108, 111]
+        c.WriteAll(io, hello[..]) else {}
+        c.Close(io) else {
+            c.Abandon()
+        }
+    }
+    return (k: k, got: got, code: code)
+}
+
+test "REPRO plain net.Conn under std.sim: Shutdown(Read) with a parked Read, then WriteAll and Close: the peer reads the 5 bytes" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    r := RpRun(&ar, true) else e {
+        ar.Free()
+        fail e
+    }
+    ar.Free()
+    sys.Print("parked k={k} got={g} code={c} ", (k: r.k, g: r.got, c: r.code)) else {}
+    Assert(r.got == 5 && r.code == 0)
+}
+
+test "REPRO plain net.Conn under std.sim: Shutdown(Read) with no Read parked, then WriteAll and Close: the peer reads the 5 bytes" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    r := RpRun(&ar, false) else e {
+        ar.Free()
+        fail e
+    }
+    ar.Free()
+    sys.Print("unparked got={g} code={c} ", (g: r.got, c: r.code)) else {}
+    Assert(r.got == 5 && r.code == 0)
+}

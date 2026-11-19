@@ -1,0 +1,4 @@
+replay
+$CASES/data/basic.csv
+--book
+$CASES/data

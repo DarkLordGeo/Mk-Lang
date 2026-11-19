@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+-o
+no-such-dir/out.bin
+http://{origin}/hello

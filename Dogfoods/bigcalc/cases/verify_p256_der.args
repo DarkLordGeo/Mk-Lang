@@ -1,0 +1,7 @@
+verify
+--key
+$CASES/data/pki/p256_pub.pem
+--sig-encoding
+hex
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg.p256.hex

@@ -1,0 +1,6 @@
+mac
+--key
+text:key
+--hash
+sha384
+$CASES/data/pki/msg.txt

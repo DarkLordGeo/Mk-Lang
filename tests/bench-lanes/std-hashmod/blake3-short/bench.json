@@ -1,0 +1,32 @@
+{
+  "name": "hash-blake3-short",
+  "table": "idiomatic",
+  "algorithm": "std BLAKE3, 32-byte output, over every 64-byte message of splitmix64 bytes, reps passes with a one-byte write-back (mk/hash-blake3-short.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "12",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "11878427795717742183",
+  "quick_checksum": "10902312893545924056",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-blake3-short.zig"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard BLAKE3, 32-byte output",
+    "rust": "no std BLAKE3, 32-byte output: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in",
+    "go": "no std BLAKE3, 32-byte output: Go std has none (hash/maphash is a different, seeded hash); no module stands in"
+  },
+  "notes": [
+    "Idiomatic standard library, the short-input case (review findings HMR-2 and HMR-3): one one-shot call per 64-byte message, a single chunk of one block, so the one-shot's setup cost is what is measured. Messages per second = mib * 1048576 / 64 * reps / median.",
+    "Zig: std.crypto.hash.Blake3.hash; on one 64-byte block neither side uses several SIMD chunks.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2 -pgo=off) printed the same quick values on the owner's machine, 2026-11-07 (std-hashmod session 9, HMR-3); the publish-size checksum was agreed by every column in `go run ./tools/bench verify -publish-size` (session 9 at reps 10, session 10 at reps 12). Not published: no number here is a measurement."
+  ]
+}

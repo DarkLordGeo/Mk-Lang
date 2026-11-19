@@ -1,0 +1,6 @@
+run
+$CASES/data/local.tab
+--stop-after
+1s
+--log
+$CASES/data

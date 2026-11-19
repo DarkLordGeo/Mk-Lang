@@ -1,0 +1,3 @@
+--disasm
+--eval
+fun f(a) { return a + 1; } print f(-0.5);

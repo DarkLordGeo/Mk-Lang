@@ -1,0 +1,1 @@
+fetch: http://{origin}/redirect/307: the redirect asks for the body again, and a streamed body cannot be sent twice

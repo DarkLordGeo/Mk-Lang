@@ -1,0 +1,13 @@
+{
+  "name": "pq",
+  "table": "idiomatic",
+  "algorithm": "std priority queue of u64, least first: n splitmix64 values pushed, all popped (README.md).",
+  "overflow": "wraps",
+  "args": ["12000000", "1"],
+  "quick": ["100000", "1"],
+  "checksum": "3394851595694490409",
+  "quick_checksum": "14192557167369299301",
+  "sources": {"mk": "mk", "rust": "pq.rs", "zig": "pq.zig", "go": "testdata/pq.go"},
+  "skip": {"c": "no std priority queue"},
+  "notes": ["Rust BinaryHeap is a max-heap: the baseline wraps values in Reverse. Go is container/heap over a []uint64."]
+}

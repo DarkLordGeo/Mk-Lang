@@ -1,0 +1,429 @@
+source_filename = "every.mk"
+target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-windows-msvc19.33.0"
+
+module asm ".text"
+module asm ".globl __chkstk"
+module asm "__chkstk:"
+module asm "  pushq %rcx"
+module asm "  pushq %rax"
+module asm "  cmpq $0x1000, %rax"
+module asm "  leaq 24(%rsp), %rcx"
+module asm "  jb 1f"
+module asm "2:"
+module asm "  subq $0x1000, %rcx"
+module asm "  orq $0, (%rcx)"
+module asm "  subq $0x1000, %rax"
+module asm "  cmpq $0x1000, %rax"
+module asm "  ja 2b"
+module asm "1:"
+module asm "  subq %rax, %rcx"
+module asm "  orq $0, (%rcx)"
+module asm "  popq %rax"
+module asm "  popq %rcx"
+module asm "  retq"
+module asm ".section .rdata,\22dr\22"
+module asm ".ascii \22mk\5Cn\22"
+module asm ".text"
+
+@mk.s.00112233aabbccdd = private unnamed_addr constant [11 x i8] c"hi \22mk\22\5C\0A\00\FF", align 1
+@mk.c.0123456789abcdef = private unnamed_addr constant <{ i32, [4 x i8], ptr, i64 }> <{ i32 7, [4 x i8] c"\00\00\00\00", ptr @mk.s.00112233aabbccdd, i64 9 }>, align 8
+@mk.pos.mk.every.F.0 = private unnamed_addr constant { ptr, i64, i32, i32 } { ptr @mk.s.00112233aabbccdd, i64 8, i32 3, i32 5 }, align 8
+@mk.every.counter = dso_local global [16 x i8] zeroinitializer, align 8
+@mk.every.local = internal global i32 -3, align 4
+@_fltused = dso_local global i32 0
+@mk.every.pgo = dso_local global [3 x i64] zeroinitializer, align 8
+@mk.other.Table = external dso_local global [4 x i8], align 1
+@mk.every.sect = global i64 1, section ".data.mk", align 8
+@mk.c.floats = private unnamed_addr constant { float, float, float, float, float, float, float, double, double } { float 0x3FB99999A0000000, float 0x7FF8000000000000, float 0x7FF0000000000000, float 0xFFF0000000000000, float 0x8000000000000000, float 0x7FF0000020000000, float 0x36A0000000000000, double 0x3FB999999999999A, double 0x7FF8000000000000 }
+@mk.support.errnames = private unnamed_addr constant [2 x { i32, ptr, i64 }] [{ i32, ptr, i64 } { i32 1, ptr getelementptr inbounds (i8, ptr @mk.s.00112233aabbccdd, i64 1), i64 2 }, { i32, ptr, i64 } { i32 2, ptr null, i64 0 }], align 8
+@mk.c.misc = internal constant { ptr, i32, i64, double, i1, i128, <2 x float> } { ptr inttoptr (i64 8 to ptr), i32 undef, i64 poison, double 0x0000000000000000, i1 true, i128 -1, <2 x float> zeroinitializer }
+@mk.c.empty = private unnamed_addr constant { <{}>, {}, [0 x i8] } { <{}> <{}>, {} {}, [0 x i8] zeroinitializer }
+@mk.every.self = internal global ptr @mk.every.self
+@mk.every.odr = linkonce_odr dso_local constant i64 42, align 8
+@llvm.used = appending global [2 x ptr] [ptr @memset, ptr @mk.every.priv], section "llvm.metadata"
+
+@mk.every.counter.alias = alias [16 x i8], ptr @mk.every.counter
+@mk.every.tail = internal alias i8, ptr getelementptr inbounds (i8, ptr @mk.every.counter, i64 8)
+
+declare void @mk.std.rt.Panic(i32 noundef, ptr noundef nonnull align 8 dereferenceable(24)) cold noreturn nounwind
+
+declare noundef i32 @mk_printf(ptr noundef nonnull, ...) nounwind
+
+declare dso_local noundef zeroext range(i8 0, 3) i8 @mk.other.Small(i8 noundef signext range(i8 -3, 5), i16 noundef zeroext range(i16 0, 1000), i1 noundef zeroext) nounwind uwtable "target-cpu"="x86-64"
+
+declare dso_local { i64, double } @mk.other.Coerced(i64 noundef, double noundef, <2 x float> noundef) nounwind uwtable "target-cpu"="x86-64"
+
+define dso_local noundef nonnull align 8 dereferenceable(8) ptr @mk.every.GetX(ptr noundef nonnull noalias align 8 dereferenceable(16) %p0) nounwind uwtable "target-cpu"="x86-64" {
+b0:
+  %v0 = getelementptr inbounds i8, ptr %p0, i64 8
+  ret ptr %v0
+}
+
+define noundef nonnull align 8 dereferenceable(8) ptr @mk.every.First(ptr noundef nonnull noalias readonly align 8 dereferenceable(24) %p0) nounwind uwtable "target-cpu"="x86-64" {
+b0:
+  %v0 = load ptr, ptr %p0, align 8, !nonnull !0, !noundef !0, !align !1
+  ret ptr %v0
+}
+
+define internal void @mk.every.Rows(ptr sret([24 x i8]) noalias nonnull align 8 %p0, ptr noundef nonnull noalias readonly %p1, i64 noundef %p2, ptr noundef nonnull noalias %p3, i64 noundef %p4, ptr noundef nonnull noalias readonly %p5, i64 noundef %p6, ptr noundef %p7, ptr noundef %p8, ptr noundef nonnull noalias align 8 dereferenceable(40) %p9) nounwind uwtable "target-cpu"="x86-64" inlinehint {
+b0:
+  ret void
+}
+
+define dso_local noundef i64 @mk.every.F(i64 noundef %p0, i32 noundef %p1, ptr noundef nonnull %p2, double noundef %p3, float noundef %p4, i1 noundef zeroext %p5) nounwind uwtable "target-cpu"="x86-64" hot !dbg !7 !prof !8 {
+entry:
+  %v0 = alloca [16 x i8], align 8, !dbg !10
+  %v1 = alloca i64, align 8, !dbg !10
+  %v2 = alloca i8, align 1, !dbg !10
+  store i64 %p0, ptr %v1, align 8, !dbg !10
+  %v3 = zext i1 %p5 to i8, !dbg !10
+  store i8 %v3, ptr %v2, align 1, !dbg !10
+  br label %b0, !dbg !10
+
+b0:
+  %v4 = load i8, ptr %v2, align 1, !range !12, !noundef !0, !dbg !11
+  %v5 = trunc i8 %v4 to i1, !dbg !11
+  %v6 = load i32, ptr %p2, align 4, !range !13, !noundef !0, !dbg !11
+  %v7 = load i8, ptr %p2, align 1, !range !14, !noundef !0, !dbg !11
+  %v8 = getelementptr inbounds i8, ptr %v0, i64 8, !dbg !11
+  %v9 = getelementptr i8, ptr %p2, i64 %p0, !dbg !11
+  store i64 5, ptr %v8, align 8, !dbg !11
+  %v10 = getelementptr inbounds nuw i8, ptr %v0, i64 8, !dbg !11
+  store i64 6, ptr %v10, align 8, !dbg !11
+  %v11 = getelementptr nusw nuw i8, ptr %p2, i64 %p0, !dbg !11
+  store i8 7, ptr %v11, align 1, !dbg !11
+  %v12 = getelementptr nuw i8, ptr %p2, i64 %p0, !dbg !11
+  store i8 8, ptr %v12, align 1, !dbg !11
+  %v13 = load i64, ptr %v9, align 1, !dbg !15
+  %v14 = add i64 %v13, %p0, !dbg !11
+  %v15 = sub i64 %v14, %p0, !dbg !11
+  %v16 = mul i64 %v15, %p0, !dbg !11
+  %v17 = sdiv i64 %v16, %p0, !dbg !11
+  %v18 = udiv i64 %v17, %p0, !dbg !11
+  %v19 = srem i64 %v18, %p0, !dbg !11
+  %v20 = urem i64 %v19, %p0, !dbg !11
+  %v21 = shl i64 %v20, %p0, !dbg !11
+  %v22 = lshr i64 %v21, %p0, !dbg !11
+  %v23 = ashr i64 %v22, %p0, !dbg !11
+  %v24 = and i64 %v23, %p0, !dbg !11
+  %v25 = or i64 %v24, %p0, !dbg !11
+  %v26 = xor i64 %v25, %p0, !dbg !11
+  %v27 = add nuw nsw i64 %v26, %p0, !dbg !11
+  %v28 = sub nsw i64 %v27, %p0, !dbg !11
+  %v29 = mul nuw i64 %v28, %p0, !dbg !11
+  %v30 = shl nuw i64 %v29, 1, !dbg !11
+  %v31 = sdiv exact i64 %v30, 2, !dbg !11
+  %v32 = lshr exact i64 %v31, 1, !dbg !11
+  %v33 = fadd double %p3, %p3, !dbg !11
+  %v34 = fsub double %v33, %p3, !dbg !11
+  %v35 = fmul double %v34, %p3, !dbg !11
+  %v36 = fdiv double %v35, %p3, !dbg !11
+  %v37 = fneg double %v36, !dbg !11
+  %v38 = icmp eq i64 %v32, %p0, !dbg !11
+  %v39 = icmp ne i64 %v32, %p0, !dbg !11
+  %v40 = icmp ugt i64 %v32, %p0, !dbg !11
+  %v41 = icmp uge i64 %v32, %p0, !dbg !11
+  %v42 = icmp ult i64 %v32, %p0, !dbg !11
+  %v43 = icmp ule i64 %v32, %p0, !dbg !11
+  %v44 = icmp sgt i64 %v32, %p0, !dbg !11
+  %v45 = icmp sge i64 %v32, %p0, !dbg !11
+  %v46 = icmp slt i64 %v32, %p0, !dbg !11
+  %v47 = icmp sle i64 %v32, %p0, !dbg !11
+  %v48 = icmp eq ptr %p2, null, !dbg !11
+  %v49 = fcmp false double %v37, %p3, !dbg !11
+  %v50 = fcmp oeq double %v37, %p3, !dbg !11
+  %v51 = fcmp ogt double %v37, %p3, !dbg !11
+  %v52 = fcmp oge double %v37, %p3, !dbg !11
+  %v53 = fcmp olt double %v37, %p3, !dbg !11
+  %v54 = fcmp ole double %v37, %p3, !dbg !11
+  %v55 = fcmp one double %v37, %p3, !dbg !11
+  %v56 = fcmp ord double %v37, %p3, !dbg !11
+  %v57 = fcmp ueq double %v37, %p3, !dbg !11
+  %v58 = fcmp ugt double %v37, %p3, !dbg !11
+  %v59 = fcmp uge double %v37, %p3, !dbg !11
+  %v60 = fcmp ult double %v37, %p3, !dbg !11
+  %v61 = fcmp ule double %v37, %p3, !dbg !11
+  %v62 = fcmp une double %v37, %p3, !dbg !11
+  %v63 = fcmp uno double %v37, %p3, !dbg !11
+  %v64 = fcmp true double %v37, %p3, !dbg !11
+  %v65 = trunc i64 %v32 to i8, !dbg !11
+  %v66 = zext i8 %v65 to i32, !dbg !11
+  %v67 = sext i32 %p1 to i64, !dbg !11
+  %v68 = fptrunc double %p3 to float, !dbg !11
+  %v69 = fpext float %p4 to double, !dbg !11
+  %v70 = fptoui double %p3 to i32, !dbg !11
+  %v71 = fptosi double %p3 to i64, !dbg !11
+  %v72 = uitofp i32 %p1 to double, !dbg !11
+  %v73 = sitofp i64 %p0 to float, !dbg !11
+  %v74 = ptrtoint ptr %p2 to i64, !dbg !11
+  %v75 = inttoptr i64 %v74 to ptr, !dbg !11
+  %v76 = bitcast double %p3 to i64, !dbg !11
+  %v77 = select i1 %p5, i64 %v32, i64 %p0, !dbg !11
+  %v78 = insertvalue { i64, double } undef, i64 %v77, 0, !dbg !11
+  %v79 = insertvalue { i64, double } %v78, double %v37, 1, !dbg !11
+  %v80 = extractvalue { i64, double } %v79, 1, !dbg !11
+  %v81 = insertvalue { { i64, double }, [2 x i32] } zeroinitializer, i32 %p1, 1, 1, !dbg !11
+  %v82 = extractvalue { { i64, double }, [2 x i32] } %v81, 0, 0, !dbg !11
+  %v83 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %v32, i64 %p0), !dbg !11
+  %v84 = extractvalue { i64, i1 } %v83, 0, !dbg !11
+  %v85 = extractvalue { i64, i1 } %v83, 1, !dbg !11
+  br i1 %v85, label %trap.0, label %b1, !prof !16, !dbg !11
+
+b1:
+  %v86 = call { i64, i1 } @llvm.uadd.with.overflow.i64(i64 %v84, i64 %p0), !dbg !17
+  %v87 = call { i64, i1 } @llvm.ssub.with.overflow.i64(i64 %v84, i64 %p0), !dbg !17
+  %v88 = call { i64, i1 } @llvm.usub.with.overflow.i64(i64 %v84, i64 %p0), !dbg !17
+  %v89 = call { i64, i1 } @llvm.smul.with.overflow.i64(i64 %v84, i64 %p0), !dbg !17
+  %v90 = call { i64, i1 } @llvm.umul.with.overflow.i64(i64 %v84, i64 %p0), !dbg !17
+  %v91 = call i64 @llvm.sadd.sat.i64(i64 %v84, i64 %p0), !dbg !17
+  %v92 = call i64 @llvm.uadd.sat.i64(i64 %v84, i64 %p0), !dbg !17
+  %v93 = call i64 @llvm.ssub.sat.i64(i64 %v84, i64 %p0), !dbg !17
+  %v94 = call i64 @llvm.usub.sat.i64(i64 %v84, i64 %p0), !dbg !17
+  %v95 = call i64 @llvm.smax.i64(i64 %v84, i64 %p0), !dbg !17
+  %v96 = call i64 @llvm.smin.i64(i64 %v84, i64 %p0), !dbg !17
+  %v97 = call i64 @llvm.umax.i64(i64 %v84, i64 %p0), !dbg !17
+  %v98 = call i64 @llvm.umin.i64(i64 %v84, i64 %p0), !dbg !17
+  %v99 = call i64 @llvm.fshl.i64(i64 %v84, i64 %p0, i64 %p0), !dbg !17
+  %v100 = call i64 @llvm.fshr.i64(i64 %v84, i64 %p0, i64 %p0), !dbg !17
+  %v101 = call i64 @llvm.ctpop.i64(i64 %v84), !dbg !17
+  %v102 = call i64 @llvm.bswap.i64(i64 %v84), !dbg !17
+  %v103 = call i64 @llvm.bitreverse.i64(i64 %v84), !dbg !17
+  %v104 = call i64 @llvm.ctlz.i64(i64 %v84, i1 false), !dbg !17
+  %v105 = call i64 @llvm.cttz.i64(i64 %v84, i1 false), !dbg !17
+  %v106 = call i64 @llvm.abs.i64(i64 %v84, i1 false), !dbg !17
+  %v107 = call i64 @llvm.expect.i64(i64 %v84, i64 %p0), !dbg !17
+  %v108 = call double @llvm.fabs.f64(double %p3), !dbg !17
+  %v109 = call float @llvm.fabs.f32(float %p4), !dbg !17
+  %v110 = call double @llvm.sqrt.f64(double %p3), !dbg !17
+  %v111 = call float @llvm.sqrt.f32(float %p4), !dbg !17
+  %v112 = call double @llvm.floor.f64(double %p3), !dbg !17
+  %v113 = call double @llvm.ceil.f64(double %p3), !dbg !17
+  %v114 = call double @llvm.trunc.f64(double %p3), !dbg !17
+  %v115 = call double @llvm.rint.f64(double %p3), !dbg !17
+  %v116 = call double @llvm.nearbyint.f64(double %p3), !dbg !17
+  %v117 = call double @llvm.round.f64(double %p3), !dbg !17
+  %v118 = call double @llvm.roundeven.f64(double %p3), !dbg !17
+  %v119 = call double @llvm.copysign.f64(double %p3, double %p3), !dbg !17
+  %v120 = call double @llvm.minnum.f64(double %p3, double %p3), !dbg !17
+  %v121 = call double @llvm.maxnum.f64(double %p3, double %p3), !dbg !17
+  %v122 = call double @llvm.minimum.f64(double %p3, double %p3), !dbg !17
+  %v123 = call double @llvm.maximum.f64(double %p3, double %p3), !dbg !17
+  %v124 = call double @llvm.fma.f64(double %p3, double %p3, double %p3), !dbg !17
+  call void @llvm.memcpy.p0.p0.i64(ptr %v0, ptr %p2, i64 16, i1 false), !dbg !17
+  call void @llvm.memmove.p0.p0.i64(ptr %v0, ptr %p2, i64 %p0, i1 false), !dbg !17
+  call void @llvm.memset.p0.i64(ptr %v0, i8 0, i64 16, i1 false), !dbg !17
+  call void @llvm.assume(i1 true), !dbg !17
+  %v125 = call <4 x i32> @llvm.ctpop.v4i32(<4 x i32> zeroinitializer), !dbg !17
+  %v126 = getelementptr inbounds i8, ptr %v0, i64 0, !dbg !17
+  %v127 = atomicrmw xchg ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v128 = atomicrmw add ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v129 = atomicrmw sub ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v130 = atomicrmw and ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v131 = atomicrmw nand ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v132 = atomicrmw or ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v133 = atomicrmw xor ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v134 = atomicrmw max ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v135 = atomicrmw min ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v136 = atomicrmw umax ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v137 = atomicrmw umin ptr %v126, i64 %p0 seq_cst, align 8, !dbg !17
+  %v138 = atomicrmw fadd ptr %v126, double %p3 monotonic, align 8, !dbg !17
+  %v139 = atomicrmw fsub ptr %v126, double %p3 acq_rel, align 8, !dbg !17
+  %v140 = cmpxchg ptr %v126, i64 %p0, i64 %v84 seq_cst seq_cst, align 8, !dbg !17
+  %v141 = extractvalue { i64, i1 } %v140, 1, !dbg !17
+  %v142 = cmpxchg ptr %v126, i64 %p0, i64 %v84 acq_rel acquire, align 8, !dbg !17
+  %v143 = load atomic i64, ptr %v126 seq_cst, align 8, !dbg !17
+  %v144 = load atomic i64, ptr %v126 acquire, align 8, !dbg !17
+  %v145 = load atomic i64, ptr %v126 unordered, align 8, !dbg !17
+  store atomic i64 %v143, ptr %v126 seq_cst, align 8, !dbg !17
+  store atomic i64 %v143, ptr %v126 release, align 8, !dbg !17
+  store atomic i64 %v143, ptr %v126 monotonic, align 8, !dbg !17
+  fence seq_cst, !dbg !17
+  fence acquire, !dbg !17
+  fence release, !dbg !17
+  fence acq_rel, !dbg !17
+  %v146 = call ptr asm "movq %gs:0x30, $0", "=r"(), !dbg !17
+  %v147 = call i64 asm sideeffect "movq %rsp, $0", "=r"(), !dbg !17
+  call void asm sideeffect "", "~{memory}"(), !dbg !17
+  %v148 = call noundef nonnull align 8 dereferenceable(8) ptr @mk.every.GetX(ptr noundef nonnull noalias align 8 dereferenceable(16) %v0) nounwind uwtable "target-cpu"="x86-64", !dbg !17
+  %v149 = call noundef zeroext range(i8 0, 3) i8 @mk.other.Small(i8 noundef signext range(i8 -3, 5) %v65, i16 noundef zeroext range(i16 0, 1000) -1, i1 noundef zeroext %p5) nounwind uwtable "target-cpu"="x86-64", !dbg !17
+  %v150 = call { i64, double } @mk.other.Coerced(i64 noundef %p0, double noundef %p3, <2 x float> noundef zeroinitializer) nounwind uwtable "target-cpu"="x86-64", !dbg !17
+  %v151 = extractvalue { i64, double } %v150, 0, !dbg !17
+  %v152 = call noundef i32 (ptr, ...) @mk_printf(ptr noundef nonnull @mk.s.00112233aabbccdd, i64 noundef %p0, double noundef %p3), !dbg !17
+  %v153 = load ptr, ptr %p2, align 8, !noundef !0, !dbg !17
+  %v154 = call noundef i64 %v153(i64 noundef %p0) nounwind, !dbg !17
+  %v155 = alloca [24 x i8], align 8, !dbg !17
+  call void @mk.every.Rows(ptr sret([24 x i8]) noalias nonnull align 8 %v155, ptr noundef nonnull noalias readonly %p2, i64 noundef %p0, ptr noundef nonnull noalias %p2, i64 noundef %p0, ptr noundef nonnull noalias readonly @mk.s.00112233aabbccdd, i64 noundef 3, ptr noundef %p2, ptr noundef null, ptr noundef nonnull noalias align 8 dereferenceable(40) %v0) nounwind uwtable "target-cpu"="x86-64" inlinehint, !dbg !17
+  %v156 = load i8, ptr @mk.other.Table, align 1, !dbg !17
+  %v157 = load i64, ptr @mk.every.odr, align 8, !dbg !17
+  switch i32 %p1, label %b2 [
+    i32 0, label %b3
+    i32 1, label %b3
+    i32 -7, label %exit
+  ], !prof !18, !dbg !17
+
+b2:
+  switch i32 %p1, label %exit [ ], !dbg !19
+
+b3:
+  br i1 %p5, label %exit, label %exit, !prof !21, !dbg !20
+
+exit:
+  ret i64 %v84, !dbg !22
+
+trap.0:
+  call void @mk.std.rt.Panic(i32 noundef 1, ptr noundef nonnull align 8 dereferenceable(24) @mk.pos.mk.every.F.0) cold noreturn nounwind, !dbg !9
+  unreachable, !dbg !9
+}
+
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)
+
+declare { i64, i1 } @llvm.uadd.with.overflow.i64(i64, i64)
+
+declare { i64, i1 } @llvm.ssub.with.overflow.i64(i64, i64)
+
+declare { i64, i1 } @llvm.usub.with.overflow.i64(i64, i64)
+
+declare { i64, i1 } @llvm.smul.with.overflow.i64(i64, i64)
+
+declare { i64, i1 } @llvm.umul.with.overflow.i64(i64, i64)
+
+declare i64 @llvm.sadd.sat.i64(i64, i64)
+
+declare i64 @llvm.uadd.sat.i64(i64, i64)
+
+declare i64 @llvm.ssub.sat.i64(i64, i64)
+
+declare i64 @llvm.usub.sat.i64(i64, i64)
+
+declare i64 @llvm.smax.i64(i64, i64)
+
+declare i64 @llvm.smin.i64(i64, i64)
+
+declare i64 @llvm.umax.i64(i64, i64)
+
+declare i64 @llvm.umin.i64(i64, i64)
+
+declare i64 @llvm.fshl.i64(i64, i64, i64)
+
+declare i64 @llvm.fshr.i64(i64, i64, i64)
+
+declare i64 @llvm.ctpop.i64(i64)
+
+declare i64 @llvm.bswap.i64(i64)
+
+declare i64 @llvm.bitreverse.i64(i64)
+
+declare i64 @llvm.ctlz.i64(i64, i1 immarg)
+
+declare i64 @llvm.cttz.i64(i64, i1 immarg)
+
+declare i64 @llvm.abs.i64(i64, i1 immarg)
+
+declare i64 @llvm.expect.i64(i64, i64)
+
+declare double @llvm.fabs.f64(double)
+
+declare float @llvm.fabs.f32(float)
+
+declare double @llvm.sqrt.f64(double)
+
+declare float @llvm.sqrt.f32(float)
+
+declare double @llvm.floor.f64(double)
+
+declare double @llvm.ceil.f64(double)
+
+declare double @llvm.trunc.f64(double)
+
+declare double @llvm.rint.f64(double)
+
+declare double @llvm.nearbyint.f64(double)
+
+declare double @llvm.round.f64(double)
+
+declare double @llvm.roundeven.f64(double)
+
+declare double @llvm.copysign.f64(double, double)
+
+declare double @llvm.minnum.f64(double, double)
+
+declare double @llvm.maxnum.f64(double, double)
+
+declare double @llvm.minimum.f64(double, double)
+
+declare double @llvm.maximum.f64(double, double)
+
+declare double @llvm.fma.f64(double, double, double)
+
+declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1 immarg)
+
+declare void @llvm.memmove.p0.p0.i64(ptr, ptr, i64, i1 immarg)
+
+declare void @llvm.memset.p0.i64(ptr, i8, i64, i1 immarg)
+
+declare void @llvm.assume(i1)
+
+declare <4 x i32> @llvm.ctpop.v4i32(<4 x i32>)
+
+define <4 x i32> @vec(<4 x i32> %p0, <2 x double> %p1) nounwind uwtable "target-cpu"="x86-64" !dbg !23 {
+b0:
+  %v0 = add nsw <4 x i32> %p0, %p0, !dbg !24
+  %v1 = icmp slt <4 x i32> %v0, %p0, !dbg !24
+  %v2 = fmul <2 x double> %p1, %p1, !dbg !24
+  %v3 = fcmp olt <2 x double> %p1, %v2, !dbg !24
+  %v4 = select <4 x i1> %v1, <4 x i32> %v0, <4 x i32> %p0, !dbg !24
+  ret <4 x i32> %v4, !dbg !24
+}
+
+define void @mk_start() noreturn nounwind {
+b0:
+  call void @mk.std.rt.Panic(i32 0, ptr @mk.pos.mk.every.F.0)
+  unreachable
+}
+
+define ptr @memset(ptr %p0, i32 %p1, i64 %p2) nounwind "no-builtins" noinline {
+b0:
+  ret ptr %p0
+}
+
+define private void @mk.every.priv() nounwind uwtable "target-cpu"="x86-64" cold {
+b0:
+  ret void
+}
+
+define linkonce_odr dso_local void @mk.every.odrf() nounwind uwtable "target-cpu"="x86-64" {
+b0:
+  ret void
+}
+
+!llvm.dbg.cu = !{!3}
+!mk.notes = !{!25, !26}
+!llvm.module.flags = !{!4, !5}
+!0 = !{}
+!1 = !{i64 8}
+!2 = !DIFile(filename: "every.mk", directory: ".")
+!3 = distinct !DICompileUnit(language: DW_LANG_C99, file: !2, producer: "mk", isOptimized: false, runtimeVersion: 0, emissionKind: LineTablesOnly)
+!4 = !{i32 2, !"CodeView", i32 1}
+!5 = !{i32 2, !"Debug Info Version", i32 3}
+!6 = !DISubroutineType(types: !0)
+!7 = distinct !DISubprogram(name: "F", linkageName: "mk.every.F", scope: !2, file: !2, line: 3, type: !6, scopeLine: 3, spFlags: DISPFlagDefinition, unit: !3)
+!8 = !{!"function_entry_count", i64 1000}
+!9 = !DILocation(line: 9, column: 2, scope: !7)
+!10 = !DILocation(line: 3, column: 1, scope: !7)
+!11 = !DILocation(line: 4, column: 5, scope: !7)
+!12 = !{i8 0, i8 2}
+!13 = !{i32 0, i32 55296, i32 57344, i32 1114112}
+!14 = !{i8 -56, i8 -55, i8 0, i8 2}
+!15 = !DILocation(line: 4, column: 9, scope: !7)
+!16 = !{!"branch_weights", i32 1, i32 1048575}
+!17 = !DILocation(line: 5, column: 3, scope: !7)
+!18 = !{!"branch_weights", i32 5, i32 10, i32 0, i32 1}
+!19 = !DILocation(line: 6, column: 1, scope: !7)
+!20 = !DILocation(line: 7, column: 1, scope: !7)
+!21 = !{!"branch_weights", i32 4294967295, i32 0}
+!22 = !DILocation(line: 8, column: 1, scope: !7)
+!23 = distinct !DISubprogram(name: "vec", scope: !2, file: !2, line: 20, type: !6, scopeLine: 20, spFlags: DISPFlagDefinition | DISPFlagOptimized, unit: !3)
+!24 = !DILocation(line: 21, column: 1, scope: !23)
+!25 = distinct !{!"mk", ptr @vec, null, !2, null, i64 1}
+!26 = !{!"second"}

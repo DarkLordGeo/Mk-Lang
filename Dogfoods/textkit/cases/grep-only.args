@@ -1,0 +1,4 @@
+grep
+--only
+[0-9]+
+$CASES/data/log.txt

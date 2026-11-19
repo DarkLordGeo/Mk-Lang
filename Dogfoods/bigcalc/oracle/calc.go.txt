@@ -1,0 +1,416 @@
+// The oracle for bigcalc's calculator cases: the same RPN words evaluated
+// with Go's math/big, writing each case's expected stdout. Kept as .go.txt
+// so the repository's Go build never sees it; run it from a scratch
+// directory:  go run calc.go <Dogfoods/bigcalc/cases>
+// Only the words the cases use on their happy paths are mirrored; error
+// paths are written by hand from the error catalogue in src/calc/errors.mk.
+package main
+
+import (
+	"encoding/asn1"
+	"encoding/base64"
+	"fmt"
+	"math"
+	"math/big"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+type machine struct {
+	stack []*big.Int
+	vars  map[string]*big.Int
+	base  int
+	out   strings.Builder
+}
+
+func (m *machine) push(x *big.Int) { m.stack = append(m.stack, x) }
+func (m *machine) pop() *big.Int {
+	x := m.stack[len(m.stack)-1]
+	m.stack = m.stack[:len(m.stack)-1]
+	return x
+}
+func (m *machine) top() *big.Int { return m.stack[len(m.stack)-1] }
+
+func (m *machine) print(x *big.Int) { m.out.WriteString(x.Text(m.base) + "\n") }
+
+func number(tok string) (*big.Int, bool) {
+	if strings.HasPrefix(tok, "bytes:") {
+		b := mustHex(tok[6:])
+		return new(big.Int).SetBytes(b), true
+	}
+	if strings.HasPrefix(tok, "b64:") {
+		b, err := base64.StdEncoding.DecodeString(tok[4:])
+		if err != nil {
+			panic(err)
+		}
+		return new(big.Int).SetBytes(b), true
+	}
+	body := tok
+	neg := false
+	if strings.HasPrefix(body, "-") || strings.HasPrefix(body, "+") {
+		neg = body[0] == '-'
+		body = body[1:]
+	}
+	if body == "" || body[0] < '0' || body[0] > '9' {
+		return nil, false
+	}
+	base := 10
+	switch {
+	case strings.HasPrefix(body, "0x") || strings.HasPrefix(body, "0X"):
+		base, body = 16, body[2:]
+	case strings.HasPrefix(body, "0o") || strings.HasPrefix(body, "0O"):
+		base, body = 8, body[2:]
+	case strings.HasPrefix(body, "0b") || strings.HasPrefix(body, "0B"):
+		base, body = 2, body[2:]
+	case strings.Contains(body, "#"):
+		i := strings.Index(body, "#")
+		b, _ := strconv.Atoi(body[:i])
+		base, body = b, body[i+1:]
+	}
+	x, ok := new(big.Int).SetString(body, base)
+	if !ok {
+		panic("bad number " + tok)
+	}
+	if neg {
+		x.Neg(x)
+	}
+	return x, true
+}
+
+func mustHex(s string) []byte {
+	b := make([]byte, len(s)/2)
+	for i := range b {
+		v, err := strconv.ParseUint(s[2*i:2*i+2], 16, 8)
+		if err != nil {
+			panic(err)
+		}
+		b[i] = byte(v)
+	}
+	return b
+}
+
+func b2i(b bool) *big.Int {
+	if b {
+		return big.NewInt(1)
+	}
+	return big.NewInt(0)
+}
+
+// formatF64 is Mk's float format: shortest round-trip digits, fixed for a
+// decimal exponent from -4 to 20, else d.ddde+XX.
+func formatF64(f float64) string {
+	if f == 0 || math.IsInf(f, 0) {
+		return strconv.FormatFloat(f, 'g', -1, 64)
+	}
+	exp := int(math.Floor(math.Log10(math.Abs(f))))
+	e := strconv.FormatFloat(f, 'e', -1, 64)
+	if i := strings.Index(e, "e"); i >= 0 {
+		exp, _ = strconv.Atoi(e[i+1:])
+	}
+	if exp >= -4 && exp <= 20 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	return e
+}
+
+func (m *machine) line(src string) {
+	words := strings.Fields(src)
+	for i := 0; i < len(words); i++ {
+		tok := words[i]
+		if strings.HasPrefix(tok, "#") {
+			return
+		}
+		if tok == "rep" {
+			n := int(m.pop().Int64())
+			rest := strings.Join(words[i+1:], " ")
+			for k := 0; k < n; k++ {
+				m.line(rest)
+			}
+			return
+		}
+		if strings.HasPrefix(tok, "=") {
+			m.vars[tok[1:]] = m.pop()
+			continue
+		}
+		if strings.HasPrefix(tok, "$") {
+			m.push(new(big.Int).Set(m.vars[tok[1:]]))
+			continue
+		}
+		if x, ok := number(tok); ok {
+			m.push(x)
+			continue
+		}
+		m.word(tok)
+	}
+}
+
+func (m *machine) word(tok string) {
+	z := new(big.Int)
+	switch tok {
+	case "+", "-", "*", "/", "%", "mod", "divmod", "gcd", "^", "<<", ">>", "cmp", "eq", "lt", "min", "max", "inv", "bit":
+		y := m.pop()
+		x := m.pop()
+		switch tok {
+		case "+":
+			m.push(z.Add(x, y))
+		case "-":
+			m.push(z.Sub(x, y))
+		case "*":
+			m.push(z.Mul(x, y))
+		case "/":
+			m.push(z.Quo(x, y))
+		case "%":
+			m.push(z.Rem(x, y))
+		case "divmod":
+			q, r := new(big.Int).QuoRem(x, y, new(big.Int))
+			m.push(q)
+			m.push(r)
+		case "mod":
+			m.push(z.Mod(x, y))
+		case "gcd":
+			m.push(z.GCD(nil, nil, new(big.Int).Abs(x), new(big.Int).Abs(y)))
+		case "^":
+			m.push(z.Exp(x, y, nil))
+		case "<<":
+			m.push(z.Lsh(x, uint(y.Int64())))
+		case ">>":
+			m.push(z.Rsh(x, uint(y.Int64())))
+		case "cmp":
+			m.push(big.NewInt(int64(x.Cmp(y))))
+		case "eq":
+			m.push(b2i(x.Cmp(y) == 0))
+		case "lt":
+			m.push(b2i(x.Cmp(y) < 0))
+		case "min":
+			if y.Cmp(x) < 0 {
+				m.push(y)
+			} else {
+				m.push(x)
+			}
+		case "max":
+			if x.Cmp(y) < 0 {
+				m.push(y)
+			} else {
+				m.push(x)
+			}
+		case "inv":
+			if z.ModInverse(x, y) == nil {
+				panic("no inverse")
+			}
+			m.push(z)
+		case "bit":
+			m.push(big.NewInt(int64(x.Bit(int(y.Int64())))))
+		}
+	case "modpow":
+		mod := m.pop()
+		e := m.pop()
+		x := m.pop()
+		if z.Exp(x, e, mod) == nil {
+			panic("no inverse")
+		}
+		m.push(z)
+	case "neg":
+		m.push(z.Neg(m.pop()))
+	case "abs":
+		m.push(z.Abs(m.pop()))
+	case "sqrt":
+		m.push(z.Sqrt(m.pop()))
+	case "sign":
+		m.push(big.NewInt(int64(m.pop().Sign())))
+	case "bitlen":
+		m.push(big.NewInt(int64(m.pop().BitLen())))
+	case "fact":
+		n := m.pop().Int64()
+		z.SetInt64(1)
+		for i := int64(2); i <= n; i++ {
+			z.Mul(z, big.NewInt(i))
+		}
+		m.push(z)
+	case "fib":
+		n := m.pop().Int64()
+		x, y := big.NewInt(0), big.NewInt(1)
+		for i := int64(0); i < n; i++ {
+			x, y = y, new(big.Int).Add(x, y)
+		}
+		m.push(x)
+	case "dup":
+		m.push(new(big.Int).Set(m.top()))
+	case "drop":
+		m.pop()
+	case "swap":
+		n := len(m.stack)
+		m.stack[n-1], m.stack[n-2] = m.stack[n-2], m.stack[n-1]
+	case "over":
+		m.push(new(big.Int).Set(m.stack[len(m.stack)-2]))
+	case "rot":
+		n := len(m.stack)
+		x := m.stack[n-3]
+		m.stack = append(append(m.stack[:n-3:n-3], m.stack[n-2:]...), x)
+	case "clear":
+		m.stack = m.stack[:0]
+	case "depth":
+		m.push(big.NewInt(int64(len(m.stack))))
+	case "sort":
+		sort.SliceStable(m.stack, func(i, j int) bool { return m.stack[i].Cmp(m.stack[j]) < 0 })
+	case "uniq":
+		seen := map[string]bool{}
+		for _, v := range m.stack {
+			seen[v.String()] = true
+		}
+		m.push(big.NewInt(int64(len(seen))))
+	case "p":
+		m.print(m.top())
+	case ".":
+		m.print(m.pop())
+	case "f", "stack":
+		for _, v := range m.stack {
+			m.print(v)
+		}
+	case "i64":
+		if m.top().IsInt64() {
+			fmt.Fprintf(&m.out, "%d\n", m.top().Int64())
+		} else {
+			m.out.WriteString("does not fit in i64\n")
+		}
+	case "f64":
+		f, _ := new(big.Float).SetInt(m.top()).Float64()
+		fmt.Fprintf(&m.out, "%s (bits %016x)\n", formatF64(f), math.Float64bits(f))
+	case "bytes":
+		fmt.Fprintf(&m.out, "bytes:%x\n", m.top().Bytes())
+	case "b64":
+		fmt.Fprintf(&m.out, "b64:%s\n", base64.StdEncoding.EncodeToString(m.top().Bytes()))
+	case "der":
+		b, err := asn1.Marshal(new(big.Int).Abs(m.top()))
+		if err != nil {
+			panic(err)
+		}
+		fmt.Fprintf(&m.out, "der:%x\n", b)
+	case "words":
+		t := m.top()
+		if t.Sign() < 0 {
+			m.out.WriteString("-")
+		} else {
+			m.out.WriteString("+")
+		}
+		for _, w := range t.Bits() {
+			fmt.Fprintf(&m.out, " %016x", uint64(w))
+		}
+		m.out.WriteString("\n")
+	case "vars":
+		names := make([]string, 0, len(m.vars))
+		for k := range m.vars {
+			names = append(names, k)
+		}
+		sort.Strings(names)
+		for _, k := range names {
+			m.out.WriteString(k + " = " + m.vars[k].Text(m.base) + "\n")
+		}
+	case "hex":
+		m.base = 16
+	case "dec":
+		m.base = 10
+	case "oct":
+		m.base = 8
+	case "bin":
+		m.base = 2
+	case "base":
+		m.base = int(m.pop().Int64())
+	default:
+		panic("unknown word " + tok)
+	}
+}
+
+func newMachine() *machine { return &machine{vars: map[string]*big.Int{}, base: 10} }
+
+// calcCase is a `bigcalc calc` case: each argument a line, the top printed
+// at the end.
+func calcCase(dir, name string, lines ...string) {
+	m := newMachine()
+	for _, l := range lines {
+		m.line(l)
+	}
+	if len(m.stack) > 0 {
+		m.print(m.top())
+	}
+	write(filepath.Join(dir, name+".args"), "calc\n"+strings.Join(lines, "\n")+"\n")
+	write(filepath.Join(dir, name+".out"), m.out.String())
+}
+
+// runCase is a `bigcalc run` case over a script in cases/data.
+func runCase(dir, name string, args []string, script string) {
+	m := newMachine()
+	for _, l := range strings.Split(strings.TrimSuffix(script, "\n"), "\n") {
+		m.line(l)
+	}
+	write(filepath.Join(dir, "data", name+".rpn"), script)
+	all := append([]string{"run"}, args...)
+	all = append(all, "$CASES/data/"+name+".rpn")
+	write(filepath.Join(dir, name+".args"), strings.Join(all, "\n")+"\n")
+	write(filepath.Join(dir, name+".out"), m.out.String())
+}
+
+func write(path, text string) {
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	dir := os.Args[1]
+	calcCase(dir, "calc_arith",
+		"123456789012345678901234567890 987654321098765432109876543210 * p",
+		"-170141183460469231731687303715884105728 3 / p",
+		"-7 2 / p -7 2 % p -7 2 mod p 7 -2 mod p",
+		"2 200 ^ 3 divmod f clear",
+		"99999999999999999999999 -1 + 1 - neg abs",
+	)
+	calcCase(dir, "calc_numtheory",
+		"2 127 ^ 1 - =m 3 $m 1 - $m modpow p",
+		"17 3120 inv p 3 -1 7 modpow p",
+		"2 64 ^ 1 + 2 32 ^ 1 + gcd p",
+		"10 50 ^ sqrt p 2 sqrt p",
+		"100 fact p 1000 fib p 0 fact p 1 fact p 0 fib p",
+		"-42 sign 0 sign 42 sign f clear",
+	)
+	calcCase(dir, "calc_bits",
+		"1 1000 << bitlen p 1 1000 << 999 >> p -1 100 >> p",
+		"-5 0 bit -5 70 bit 5 2 bit f clear",
+		"16#ff 0b1010 0o777 0xDEADbeef -0x10 36#zz f clear",
+		"bytes:00ff10 b64:AQID f clear",
+		"2 64 ^ i64 f64 bytes b64 words neg words i64 clear",
+		"-9223372036854775808 i64 1 - i64 2 53 ^ 1 + f64 clear",
+		"255 hex p oct p bin p 36 base p dec p",
+		"0 der 127 der 128 der -128 der 2 64 ^ der clear",
+		"1 2 swap - p 3 4 5 swap f clear",
+	)
+	runCase(dir, "run_script", nil, `# a script: variables, comparisons, sorting
+2 61 ^ 1 - =p          # a Mersenne prime
+2 89 ^ 1 - =q
+$p $q * =n
+$p 1 - $q 1 - * =phi
+65537 =e
+$e $phi inv =d
+42 $e $n modpow =c
+$c $d $n modpow .      # decrypts back to 42
+vars
+5 3 9 3 1 sort f uniq . clear
+3 4 cmp 4 3 cmp 4 4 cmp f clear
+7 9 min . 7 9 max . 7 9 lt . 7 7 eq .
+1 2 3 rot f clear
+1 2 over f depth . clear
+0 1 20 rep dup rot +
+. .
+`)
+	runCase(dir, "bench", nil, `# the rough clock: factorials, Fibonacci, a Mersenne prime's Fermat test
+3000 fact bitlen p
+20000 fib 1000000007 mod p
+2 4423 ^ 1 - =m
+3 $m 1 - $m modpow p
+10 3000 ^ sqrt 7 mod p
+2 4423 ^ 1 - 2 4253 ^ 1 - gcd p
+$m 12345678901234567890 inv 1000 mod p
+`)
+}

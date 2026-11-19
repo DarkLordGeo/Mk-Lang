@@ -1,0 +1,1 @@
+textkit: $CASES/data/truncated.txt: BadUtf8(line: 2)

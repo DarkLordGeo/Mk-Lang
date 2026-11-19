@@ -1,0 +1,31 @@
+{
+  "name": "crypto-equal",
+  "table": "idiomatic",
+  "algorithm": "std constant-time comparison of two copies of splitmix64 bytes, reps passes, every odd pass with one byte flipped (mk/crypto-equal.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "500",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "4",
+    "1"
+  ],
+  "checksum": "250000538",
+  "quick_checksum": "2000002",
+  "sources": {
+    "go": "testdata/crypto-equal.go",
+    "mk": "mk",
+    "zig": "crypto-equal.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard constant-time compare",
+    "rust": "no std crypto: Rust std has no constant-time compare; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one constant-time comparison of two 64 MiB buffers. Mk crypto.Equal and Go subtle.ConstantTimeCompare compute equality. Zig's std has no constant-time equality over runtime-length slices (timing_safe.eql takes a comptime array or vector type), so its cell uses timing_safe.compare(u8, a, b, .little) == .eq, which computes an ordering (greater, equal or less) from the last byte down: more work than equality, labelled here (CRY-9). Bytes per second = mib * 1048576 * reps / median.",
+    "Checksums: every column printed the same value at the quick and the publish args in `go run ./tools/bench verify` and `verify -publish-size` (mk built from the tree, Zig 0.17.0, Go 1.27.3) on the owner's machine, 2026-11-07 (std-crypto session 1; session 3 added the Zig column and raised reps from 400 to 500, so that the fastest column runs about 1 s). Not published: no number here is a measurement."
+  ]
+}

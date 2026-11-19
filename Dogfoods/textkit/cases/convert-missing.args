@@ -1,0 +1,5 @@
+convert
+--from
+latin1
+$CASES/data/no-such-file.txt
+$CASES/data/latin1.txt

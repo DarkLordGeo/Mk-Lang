@@ -1,0 +1,44 @@
+{
+  "name": "tracer",
+  "table": "app",
+  "algorithm": "Ray-trace the tracer dogfood's bench scene (a mesh, its lights and materials) at a larger image size and its bench's 8 samples per pixel, and write the PPM image; the checksum takes the image's SHA-256 (README.md).",
+  "args": [
+    "render",
+    "{pkg}/cases/data/mesh.scene",
+    "{out}",
+    "--size",
+    "640x480",
+    "--samples",
+    "8"
+  ],
+  "quick": [
+    "render",
+    "{pkg}/cases/data/mesh.scene",
+    "{out}",
+    "--size",
+    "160x120",
+    "--samples",
+    "8"
+  ],
+  "checksum": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 file sha256:4546e3ac4b4dedb72eb70213af4b746601244b2f2a218fd2f736ade2bdf93767",
+  "quick_checksum": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 file sha256:50d028e8a7f30897acc49d2f1e4b56f0c5c83dd2c9868725c6b026cad7c69cc0",
+  "package": {
+    "path": "Dogfoods/tracer"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "output": {
+    "file": "out.ppm",
+    "check": "digest"
+  },
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the tracer dogfood unchanged, compared across mk binaries; no twin (another language's libm differs in its last bits, so the bytes would differ), no defect line (README.md).",
+    "The scene is the dogfood's own (Dogfoods/tracer/cases/data/mesh.scene), named through {pkg}. The quick arguments are the dogfood's bench case; the publish arguments quadruple the width and height.",
+    "The size is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

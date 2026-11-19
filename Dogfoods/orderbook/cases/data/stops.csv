@@ -1,0 +1,21 @@
+# Crossing stops: a cascade of buy stops, a stop-limit that rests, a stop
+# already reached when it arrives, a cancelled stop and an amended one.
+N,1,1/1,S,10,50.00
+N,2,1/2,S,10,50.10
+N,3,1/3,S,10,50.20
+N,4,1/4,S,10,50.30
+N,5,1/5,S,10,50.40
+N,6,2/1,B,30,49.80
+S,7,3/1,B,10,50.05
+S,8,3/2,B,10,50.15
+T,9,3/3,B,15,50.25,50.30
+S,10,3/4,B,5,50.90
+C,11,3/4
+C,12,3/4
+S,13,4/1,S,10,49.90
+A,14,4/1,10,49.70
+M,15,5/1,B,10
+S,16,6/1,B,5,49.00
+M,17,7/1,S,40
+N,18,8/1,B,20,49.60
+M,19,9/1,S,5

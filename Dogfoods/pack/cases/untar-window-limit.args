@@ -1,0 +1,4 @@
+untar
+--window-limit
+100
+$CASES/data/tar/site.tar.zst

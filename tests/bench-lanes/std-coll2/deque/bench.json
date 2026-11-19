@@ -1,0 +1,28 @@
+{
+  "name": "deque",
+  "table": "idiomatic",
+  "algorithm": "std double-ended queue of u64 held at depth 1,000: push back and pop front, every 16th step push front and pop back (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "800000000",
+    "1"
+  ],
+  "quick": [
+    "1000000",
+    "1"
+  ],
+  "checksum": "11873018141379739339 1000",
+  "quick_checksum": "4619316412558537863 1000",
+  "sources": {
+    "mk": "mk",
+    "rust": "deque.rs",
+    "zig": "deque.zig"
+  },
+  "skip": {
+    "c": "no std deque",
+    "go": "no std deque (container/list is a linked list, container/ring a fixed ring)"
+  },
+  "notes": [
+    "Written by std-coll2 (status/std-coll2.md)."
+  ]
+}

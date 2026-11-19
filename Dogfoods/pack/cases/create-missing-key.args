@@ -1,0 +1,6 @@
+create
+--to
+$CASES/data/carol.pub
+--out
+$WORK/t.pk
+$CASES/data/tree

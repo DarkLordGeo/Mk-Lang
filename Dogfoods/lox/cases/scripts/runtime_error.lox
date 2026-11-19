@@ -1,0 +1,13 @@
+// A runtime error deep in a call chain prints its message and the trace.
+fun a(x) {
+  return b(x) + 1;
+}
+fun b(x) {
+  return c(x, "two");
+}
+fun c(x, y) {
+  print "about to fail";
+  return x * y;
+}
+print a(1);
+print "never printed";

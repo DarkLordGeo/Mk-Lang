@@ -1,0 +1,13 @@
+$CASES/data/tree/a.txt:1:alpha needle
+$CASES/data/tree/a.txt:3:this line is longer than sixteen bytes and ends with needle
+$CASES/data/tree/a.txt:6:needles are not a word needle
+$CASES/data/tree/a.txt:8:last line without newline needle
+$CASES/data/tree/b.md:3:A needle in a haystack.
+$CASES/data/tree/crlf.txt:1:crlf needle
+$CASES/data/tree/latin1.txt:2:plain needle line
+$CASES/data/tree/sub/c.txt:1:deep needle one
+$CASES/data/tree/sub/c.txt:4:needle two
+$CASES/data/tree/sub/c.txt:8:needle eight
+$CASES/data/tree/wide.txt:1:Hello 世界 needle
+$CASES/data/tree/wide.txt:2:こんにちは needle
+$CASES/data/tree/日本.txt:1:needle in a wide name

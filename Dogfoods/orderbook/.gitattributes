@@ -1,0 +1,3 @@
+# Case inputs and expected outputs are compared byte for byte, and the CSV
+# ones hold CR LF line ends (RFC 4180): never convert them.
+cases/** -text

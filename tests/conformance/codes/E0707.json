@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0707","name":"impl-signature","phase":"types","root":1,"at":{"file":"E0707.mk","line":11,"col":5,"end_line":11,"end_col":11},"message":"this method's signature differs from the interface's","facts":{"expected":"Weight(&self): int","found":"Weight(&self): i64"},"fixes":[],"alternatives":[],"explain":"mk explain E0707"}],"omitted":0}

@@ -1,0 +1,15 @@
+enc
+seal
+--key-from
+text:correct horse battery staple
+--salt
+hex:000102030405060708090a0b0c
+--info
+bigcalc file
+--nonce
+cafebabefacedbaddecaf888
+--bits
+128
+--armor
+$CASES/data/pki/plain.txt
+-

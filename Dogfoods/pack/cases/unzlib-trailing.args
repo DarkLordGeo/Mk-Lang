@@ -1,0 +1,4 @@
+unzlib
+--out
+$WORK/o
+$CASES/data/tar/trailing.zz

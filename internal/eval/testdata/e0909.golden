@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0909","name":"const-cycle","phase":"types","root":1,"at":{"file":"main.mk","line":9,"col":33,"end_line":9,"end_col":34},"message":"const cycle: A -> B -> A","facts":{"cycle":["A","B"]},"fixes":[],"alternatives":[],"explain":"mk explain E0909"}],"omitted":0}

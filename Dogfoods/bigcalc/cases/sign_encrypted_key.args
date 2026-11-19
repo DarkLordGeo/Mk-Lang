@@ -1,0 +1,4 @@
+sign
+--key
+$CASES/data/pki/encrypted.pem
+$CASES/data/pki/msg.txt

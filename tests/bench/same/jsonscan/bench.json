@@ -1,0 +1,34 @@
+{
+  "name": "jsonscan",
+  "table": "same",
+  "algorithm": "A JSON tokenizer over a 32 MB generated document, hashing every token, repeated rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "52"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "7010378328625811788",
+  "quick_checksum": "15515566729441000639",
+  "sources": {
+    "mk": "mk",
+    "c": "jsonscan.c",
+    "rust": "jsonscan.rs",
+    "zig": "jsonscan.zig",
+    "go": "testdata/jsonscan.go"
+  },
+  "skip": {
+    "mk-wrap": "the hash already uses the wrapping operators in every column (overflow class wraps)"
+  },
+  "data": {
+    "kind": "json",
+    "file": "jsonscan.json",
+    "bytes": 32000000,
+    "seed": 1
+  },
+  "no_counts": "B24: every token goes into the order-sensitive hash with its class (a string by its decoded length, a number by its digits and sign, a literal or punctuation byte by its code), so a scanner that splits or classifies one token differently changes the checksum",
+  "notes": []
+}

@@ -1,0 +1,1 @@
+{"phase":"imports","diagnostics":[{"code":"E0202","name":"unknown-module","phase":"imports","root":1,"at":{"file":"E0202.mk","line":3,"col":8,"end_line":3,"end_col":20},"message":"no module nothing.here in this package or the standard library","facts":{"module":"nothing.here","reason":"not-found"},"fixes":[],"alternatives":[],"explain":"mk explain E0202"}],"omitted":0}

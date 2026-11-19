@@ -1,0 +1,32 @@
+{
+  "name": "crypto-chacha20poly1305",
+  "table": "idiomatic",
+  "algorithm": "std ChaCha20-Poly1305 (RFC 8439) seal then open of every 16,384-byte record of splitmix64 bytes, a fresh nonce per record, a 13-byte aad, reps passes (mk/crypto-chacha20poly1305.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "32",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "2",
+    "1"
+  ],
+  "checksum": "9957168830333597945",
+  "quick_checksum": "1931051275227674959",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-chacha20poly1305.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard AEAD",
+    "go": "no exported ChaCha20-Poly1305 in Go std: it is vendor/golang.org/x/crypto, importable only by std itself; x/crypto is not std",
+    "rust": "no std crypto: Rust std has no AEAD; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one seal and one open of one 16,384-byte record with a 13-byte aad, the tag checked before decryption on both sides. Mk ChaCha20Poly1305.Seal and Open, Zig aead.chacha_poly.ChaCha20Poly1305.encrypt and decrypt. Go's std has no exported ChaCha20-Poly1305 (golang.org/x/crypto is not std). Bytes per second = 2 * mib * 1048576 * reps / median (each byte is sealed and opened).",
+    "Zig: std.crypto ChaCha20 uses @Vector lanes (several blocks at once); Mk's is scalar, one block at a time (std-vector's rewrite).",
+    "Checksums: every column printed the same value at the quick and the publish args in `go run ./tools/bench verify` and `verify -publish-size` (mk built from the tree, Zig 0.17.0, Go 1.27.3) on the owner's machine, 2026-11-07 (std-crypto session 1). Not published: no number here is a measurement."
+  ]
+}

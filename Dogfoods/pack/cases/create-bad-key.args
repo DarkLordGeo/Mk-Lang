@@ -1,0 +1,6 @@
+create
+--sign
+$CASES/data/alice.pub
+--out
+$WORK/t.pk
+$CASES/data/tree

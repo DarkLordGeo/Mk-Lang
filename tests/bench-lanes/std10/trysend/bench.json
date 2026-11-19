@@ -1,0 +1,32 @@
+{
+  "name": "trysend",
+  "table": "idiomatic",
+  "algorithm": "Send without waiting on one task: reps rounds of 1,040 tries into a channel of capacity 1,024 (the last 16 given back), then 1,024 receives; the checksum adds every value received and given back (README.md).",
+  "overflow": "wraps",
+  "std": ["std.core.Chan.TrySend"],
+  "args": ["20000"],
+  "quick": ["100"],
+  "checksum": "216320010400000",
+  "quick_checksum": "5408052000",
+  "sources": {
+    "mk": "mk",
+    "rust": "trysend.rs",
+    "go": "testdata/trysend.go"
+  },
+  "skip": {
+    "c": "no channel in C's std",
+    "zig": "no channel in Zig's std: std.Thread has a Mutex, a Condition and a ResetEvent, no bounded queue",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other integer arithmetic"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; TrySend's correctness is std/core/tests_sync.mk's three blocks named \"TrySend ...\"",
+  "variants": [
+    {
+      "name": "full",
+      "args": ["20000"],
+      "quick": ["100"],
+      "checksum": "216320010400000",
+      "quick_checksum": "5408052000",
+      "baseline": ["0"]
+    }
+  ]
+}

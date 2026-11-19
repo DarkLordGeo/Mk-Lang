@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E1106","name":"cpu-feature","phase":"types","root":1,"at":{"file":"m/00.mk","line":1,"col":27,"end_line":1,"end_col":33},"message":"a cpu clause names features outside the reference's CPU feature table","facts":{"feature":"avx9","reason":"feature"},"fixes":[],"alternatives":[],"explain":"mk explain E1106"}],"omitted":0}

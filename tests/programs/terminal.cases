@@ -1,0 +1,5 @@
+# std.term on a pseudo-terminal: the program spawns itself on a proc.Pty, types keys, and prints
+# what the child decoded; plus the bytes of a style, a cursor move and a sanitized string.
+case ok
+stdout terminal.out
+timeout 30

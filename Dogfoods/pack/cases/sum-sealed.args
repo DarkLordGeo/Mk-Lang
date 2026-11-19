@@ -1,0 +1,4 @@
+sum
+--key
+$CASES/data/bob.key
+$CASES/data/sealed.pk

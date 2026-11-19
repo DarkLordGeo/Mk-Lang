@@ -1,0 +1,4 @@
+kernel32.dll: loaded (system)
+  GetTickCount: found
+  NoSuchSymbol: missing
+kernel32.dll: closed

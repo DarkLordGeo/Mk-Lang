@@ -1,0 +1,32 @@
+{
+  "name": "encoding-base64",
+  "table": "idiomatic",
+  "algorithm": "Base64 (RFC 4648, standard padded alphabet) of n splitmix64 bytes, rounds times: encode, then decode back, each language's standard codec; the checksum adds per round the text length, the decoded length and one decoded byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000000",
+    "2000"
+  ],
+  "quick": [
+    "10000",
+    "100"
+  ],
+  "checksum": "4666925596",
+  "quick_checksum": "2346923",
+  "sources": {
+    "mk": "mk",
+    "zig": "base64.zig",
+    "go": "testdata/base64.go"
+  },
+  "skip": {
+    "c": "no base64 in C's standard library",
+    "rust": "no base64 in Rust's std (base64 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the round trip is tested by the lane's Go tests (TestStdEncoding_Base64Adversarial, TestStdEncoding_VectorSteps)",
+  "notes": [
+    "Mk: Base64Encode into an arena reset each round (an allocation of Mk's API, counted against Mk), Base64DecodeTo into one buffer; both take the 16-byte vector path (Mula and Lemire, SSSE3 at the hosted baseline) past 32 bytes. Go: encoding/base64 Encode and Decode into buffers made once (scalar, 8 bytes a step). Zig: std.base64.standard Encoder.encode and Decoder.decode into buffers made once (scalar).",
+    "Checksums agree between Go and Mk at the quick size on the owner's machine (std-encoding session 1, 2026-11-12); the publish checksum is Go's.",
+    "Not published: no number here is a measurement."
+  ]
+}

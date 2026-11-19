@@ -1,0 +1,2 @@
+imgproc: unknown option --bogus
+run imgproc --help for the options

@@ -1,0 +1,4 @@
+run
+$CASES/data/small.pgm
+-
+conv=1:1:1:1:30000:1:1:1:40000

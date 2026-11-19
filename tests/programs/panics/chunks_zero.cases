@@ -1,0 +1,8 @@
+case chunks
+stderr chunks_zero.err
+exit 101
+
+case chunks-mut
+args mut
+stderr chunks_zero_mut.err
+exit 101

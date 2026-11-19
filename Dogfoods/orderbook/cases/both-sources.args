@@ -1,0 +1,4 @@
+replay
+$CASES/data/basic.csv
+--synth
+10

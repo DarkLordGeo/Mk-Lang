@@ -1,0 +1,2 @@
+{"version":1,"phase":"flow","diagnostics":[{"code":"E0501","name":"exclusive-conflict","phase":"flow","root":1,"at":{"file":"src/lex.mk","line":41,"col":5,"end_line":41,"end_col":17},"message":"*pager conflicts with a live exclusive loan held by a","facts":{"loan":{"place":"*pager","kind":"exclusive","at":"src/lex.mk:40:10"},"holder":"a","signature":"Skip(mut self)"},"fixes":[],"alternatives":[],"explain":"mk explain E0501"}],"omitted":0}
+

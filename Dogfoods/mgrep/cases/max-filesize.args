@@ -1,0 +1,7 @@
+--max-filesize
+100
+-l
+needle
+$CASES/data
+--path-separator
+/

@@ -1,0 +1,2 @@
+mgrep: unknown option --bogus
+try mgrep --help

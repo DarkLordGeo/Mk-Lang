@@ -1,0 +1,41 @@
+{
+  "name": "notify",
+  "table": "idiomatic",
+  "algorithm": "the condition-variable comparison (D-375; the like-for-like row is notifypermit, SYNC2-R3): two workers (Mk: tasks; Go: goroutines; C, Rust and Zig: OS threads) alternate n times, each waking the other: Mk with one sync.Notify per side (a stored permit, no lock); C, Go, Rust and Zig with a mutex holding whose turn it is and one condition variable per side. Each counts its rounds; prints the total (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000"
+  ],
+  "quick": [
+    "1000"
+  ],
+  "checksum": "2000000",
+  "quick_checksum": "2000",
+  "sources": {
+    "mk": "mk",
+    "c": "notify.c",
+    "rust": "notify.rs",
+    "zig": "notify.zig",
+    "go": "testdata/notify.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is the round counters, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5",
+    "threads": 2,
+    "models": {
+      "mk": "tasks (M:N on 2 carriers), sync.Notify",
+      "c": "OS threads, C11 <threads.h> mtx_t and cnd_t",
+      "go": "goroutines (GOMAXPROCS 2), sync.Mutex and sync.Cond",
+      "rust": "OS threads, std::sync::Mutex and Condvar",
+      "zig": "OS threads, std.Io.Mutex and std.Io.Condition"
+    }
+  },
+  "no_counts": "B24 does not apply: the total, 2 * n, shows every round completed on both sides",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0 and 2 (mask 0x5, two physical cores) with 2 threads (MK_CARRIERS=2, GOMAXPROCS=2), as the chan row. C, Rust and Zig use OS threads, labelled so.",
+    "Written by std-sync2 (status/std-sync2.md, M6 session 2); checksums from the workload's arithmetic.",
+    "The C column (session 3) is C11 <threads.h>: MSVC 14.51's static runtime on Windows (probed: thrd_t, mtx_t and cnd_t build and run with the bench's clang flags), glibc on Linux."
+  ]
+}

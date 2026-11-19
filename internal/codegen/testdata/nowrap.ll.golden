@@ -1,0 +1,229 @@
+source_filename = "mk.main.CountI8"
+target triple = "x86_64-unknown-linux-gnu"
+
+@mk.fr.mk.main.CountI8 = private constant { ptr, ptr, i32 } { ptr @mk.main.CountI8, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !40
+@mk.fr.mk.main.CountU8 = private constant { ptr, ptr, i32 } { ptr @mk.main.CountU8, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !41
+@mk.fr.mk.main.CountI64 = private constant { ptr, ptr, i32 } { ptr @mk.main.CountI64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !42
+@mk.fr.mk.main.CountU64 = private constant { ptr, ptr, i32 } { ptr @mk.main.CountU64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !43
+@llvm.compiler.used = appending global [4 x ptr] [ptr @mk.fr.mk.main.CountI8, ptr @mk.fr.mk.main.CountU8, ptr @mk.fr.mk.main.CountI64, ptr @mk.fr.mk.main.CountU64], section "llvm.metadata"
+
+define hidden noundef i64 @mk.main.CountI8(i64 noundef %p0, i64 noundef %p1) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !7 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !8
+  %v1 = alloca [8 x i8], align 8, !dbg !8
+  %v2 = alloca [8 x i8], align 8, !dbg !8
+  %v3 = alloca [1 x i8], align 1, !dbg !8
+  %v4 = alloca [1 x i8], align 1, !dbg !8
+  %v5 = alloca [1 x i8], align 1, !dbg !8
+  store i64 %p0, ptr %v1, align 8, !dbg !8
+  store i64 %p1, ptr %v2, align 8, !dbg !8
+  br label %b0, !dbg !8
+
+b0:
+  %v6 = load i64, ptr %v1, align 8, !noundef !5, !dbg !9
+  %v7 = trunc i64 %v6 to i8, !dbg !9
+  store i8 %v7, ptr %v3, align 1, !dbg !9
+  %v8 = load i64, ptr %v2, align 8, !noundef !5, !dbg !10
+  %v9 = trunc i64 %v8 to i8, !dbg !10
+  store i8 %v9, ptr %v4, align 1, !dbg !10
+  br label %b1, !dbg !11
+
+b1:
+  %v10 = load i8, ptr %v3, align 1, !noundef !5, !dbg !12
+  %v11 = load i8, ptr %v4, align 1, !noundef !5, !dbg !12
+  %v12 = icmp slt i8 %v10, %v11, !dbg !12
+  %v13 = zext i1 %v12 to i8, !dbg !12
+  store i8 %v13, ptr %v5, align 1, !dbg !12
+  %v14 = load i8, ptr %v5, align 1, !range !13, !noundef !5, !dbg !11
+  %v15 = trunc i8 %v14 to i1, !dbg !11
+  br i1 %v15, label %b2, label %b3, !dbg !11
+
+b2:
+  %v16 = load i8, ptr %v3, align 1, !noundef !5, !dbg !14
+  %v17 = add nsw i8 %v16, 1, !dbg !14
+  store i8 %v17, ptr %v3, align 1, !dbg !14
+  br label %b1, !dbg !14
+
+b3:
+  %v18 = load i8, ptr %v3, align 1, !noundef !5, !dbg !15
+  %v19 = sext i8 %v18 to i64, !dbg !15
+  store i64 %v19, ptr %v0, align 8, !dbg !15
+  %v20 = load i64, ptr %v0, align 8, !noundef !5, !dbg !15
+  ret i64 %v20, !dbg !15
+}
+
+define hidden noundef i64 @mk.main.CountU8(i64 noundef %p0, i64 noundef %p1) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !16 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !17
+  %v1 = alloca [8 x i8], align 8, !dbg !17
+  %v2 = alloca [8 x i8], align 8, !dbg !17
+  %v3 = alloca [1 x i8], align 1, !dbg !17
+  %v4 = alloca [1 x i8], align 1, !dbg !17
+  %v5 = alloca [1 x i8], align 1, !dbg !17
+  store i64 %p0, ptr %v1, align 8, !dbg !17
+  store i64 %p1, ptr %v2, align 8, !dbg !17
+  br label %b0, !dbg !17
+
+b0:
+  %v6 = load i64, ptr %v1, align 8, !noundef !5, !dbg !18
+  %v7 = trunc i64 %v6 to i8, !dbg !18
+  store i8 %v7, ptr %v3, align 1, !dbg !18
+  %v8 = load i64, ptr %v2, align 8, !noundef !5, !dbg !19
+  %v9 = trunc i64 %v8 to i8, !dbg !19
+  store i8 %v9, ptr %v4, align 1, !dbg !19
+  br label %b1, !dbg !20
+
+b1:
+  %v10 = load i8, ptr %v3, align 1, !noundef !5, !dbg !21
+  %v11 = load i8, ptr %v4, align 1, !noundef !5, !dbg !21
+  %v12 = icmp ult i8 %v10, %v11, !dbg !21
+  %v13 = zext i1 %v12 to i8, !dbg !21
+  store i8 %v13, ptr %v5, align 1, !dbg !21
+  %v14 = load i8, ptr %v5, align 1, !range !13, !noundef !5, !dbg !20
+  %v15 = trunc i8 %v14 to i1, !dbg !20
+  br i1 %v15, label %b2, label %b3, !dbg !20
+
+b2:
+  %v16 = load i8, ptr %v3, align 1, !noundef !5, !dbg !22
+  %v17 = add nuw i8 %v16, 1, !dbg !22
+  store i8 %v17, ptr %v3, align 1, !dbg !22
+  br label %b1, !dbg !22
+
+b3:
+  %v18 = load i8, ptr %v3, align 1, !noundef !5, !dbg !23
+  %v19 = zext i8 %v18 to i64, !dbg !23
+  store i64 %v19, ptr %v0, align 8, !dbg !23
+  %v20 = load i64, ptr %v0, align 8, !noundef !5, !dbg !23
+  ret i64 %v20, !dbg !23
+}
+
+define hidden noundef i64 @mk.main.CountI64(i64 noundef %p0, i64 noundef %p1) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !24 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !25
+  %v1 = alloca [8 x i8], align 8, !dbg !25
+  %v2 = alloca [8 x i8], align 8, !dbg !25
+  %v3 = alloca [8 x i8], align 8, !dbg !25
+  %v4 = alloca [8 x i8], align 8, !dbg !25
+  %v5 = alloca [1 x i8], align 1, !dbg !25
+  store i64 %p0, ptr %v1, align 8, !dbg !25
+  store i64 %p1, ptr %v2, align 8, !dbg !25
+  br label %b0, !dbg !25
+
+b0:
+  %v6 = load i64, ptr %v1, align 8, !noundef !5, !dbg !26
+  store i64 %v6, ptr %v3, align 8, !dbg !26
+  %v7 = load i64, ptr %v2, align 8, !noundef !5, !dbg !27
+  store i64 %v7, ptr %v4, align 8, !dbg !27
+  br label %b1, !dbg !28
+
+b1:
+  %v8 = load i64, ptr %v3, align 8, !noundef !5, !dbg !29
+  %v9 = load i64, ptr %v4, align 8, !noundef !5, !dbg !29
+  %v10 = icmp slt i64 %v8, %v9, !dbg !29
+  %v11 = zext i1 %v10 to i8, !dbg !29
+  store i8 %v11, ptr %v5, align 1, !dbg !29
+  %v12 = load i8, ptr %v5, align 1, !range !13, !noundef !5, !dbg !28
+  %v13 = trunc i8 %v12 to i1, !dbg !28
+  br i1 %v13, label %b2, label %b3, !dbg !28
+
+b2:
+  %v14 = load i64, ptr %v3, align 8, !noundef !5, !dbg !30
+  %v15 = add nsw i64 %v14, 1, !dbg !30
+  store i64 %v15, ptr %v3, align 8, !dbg !30
+  br label %b1, !dbg !30
+
+b3:
+  %v16 = load i64, ptr %v3, align 8, !noundef !5, !dbg !31
+  store i64 %v16, ptr %v0, align 8, !dbg !31
+  %v17 = load i64, ptr %v0, align 8, !noundef !5, !dbg !31
+  ret i64 %v17, !dbg !31
+}
+
+define hidden noundef i64 @mk.main.CountU64(i64 noundef %p0, i64 noundef %p1) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !32 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !33
+  %v1 = alloca [8 x i8], align 8, !dbg !33
+  %v2 = alloca [8 x i8], align 8, !dbg !33
+  %v3 = alloca [8 x i8], align 8, !dbg !33
+  %v4 = alloca [8 x i8], align 8, !dbg !33
+  %v5 = alloca [1 x i8], align 1, !dbg !33
+  store i64 %p0, ptr %v1, align 8, !dbg !33
+  store i64 %p1, ptr %v2, align 8, !dbg !33
+  br label %b0, !dbg !33
+
+b0:
+  %v6 = load i64, ptr %v1, align 8, !noundef !5, !dbg !34
+  store i64 %v6, ptr %v3, align 8, !dbg !34
+  %v7 = load i64, ptr %v2, align 8, !noundef !5, !dbg !35
+  store i64 %v7, ptr %v4, align 8, !dbg !35
+  br label %b1, !dbg !36
+
+b1:
+  %v8 = load i64, ptr %v3, align 8, !noundef !5, !dbg !37
+  %v9 = load i64, ptr %v4, align 8, !noundef !5, !dbg !37
+  %v10 = icmp ult i64 %v8, %v9, !dbg !37
+  %v11 = zext i1 %v10 to i8, !dbg !37
+  store i8 %v11, ptr %v5, align 1, !dbg !37
+  %v12 = load i8, ptr %v5, align 1, !range !13, !noundef !5, !dbg !36
+  %v13 = trunc i8 %v12 to i1, !dbg !36
+  br i1 %v13, label %b2, label %b3, !dbg !36
+
+b2:
+  %v14 = load i64, ptr %v3, align 8, !noundef !5, !dbg !38
+  %v15 = add nuw i64 %v14, 1, !dbg !38
+  store i64 %v15, ptr %v3, align 8, !dbg !38
+  br label %b1, !dbg !38
+
+b3:
+  %v16 = load i64, ptr %v3, align 8, !noundef !5, !dbg !39
+  store i64 %v16, ptr %v0, align 8, !dbg !39
+  %v17 = load i64, ptr %v0, align 8, !noundef !5, !dbg !39
+  ret i64 %v17, !dbg !39
+}
+
+!llvm.dbg.cu = !{!3}
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 7, !"Dwarf Version", i32 4}
+!1 = !{i32 2, !"Debug Info Version", i32 3}
+!2 = !DIFile(filename: "mk.main.CountI8", directory: ".")
+!3 = distinct !DICompileUnit(language: DW_LANG_C99, file: !2, producer: "mk", isOptimized: false, runtimeVersion: 0, emissionKind: LineTablesOnly)
+!4 = !DIFile(filename: "main/t.mk", directory: ".")
+!5 = !{}
+!6 = !DISubroutineType(types: !5)
+!7 = distinct !DISubprogram(name: "main.CountI8", linkageName: "mk.main.CountI8", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!8 = !DILocation(line: 1, column: 1, scope: !7)
+!9 = !DILocation(line: 2, column: 5, scope: !7)
+!10 = !DILocation(line: 2, column: 25, scope: !7)
+!11 = !DILocation(line: 3, column: 5, scope: !7)
+!12 = !DILocation(line: 3, column: 11, scope: !7)
+!13 = !{i8 0, i8 2}
+!14 = !DILocation(line: 3, column: 21, scope: !7)
+!15 = !DILocation(line: 4, column: 5, scope: !7)
+!16 = distinct !DISubprogram(name: "main.CountU8", linkageName: "mk.main.CountU8", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!17 = !DILocation(line: 1, column: 1, scope: !16)
+!18 = !DILocation(line: 2, column: 5, scope: !16)
+!19 = !DILocation(line: 2, column: 25, scope: !16)
+!20 = !DILocation(line: 3, column: 5, scope: !16)
+!21 = !DILocation(line: 3, column: 11, scope: !16)
+!22 = !DILocation(line: 3, column: 21, scope: !16)
+!23 = !DILocation(line: 4, column: 5, scope: !16)
+!24 = distinct !DISubprogram(name: "main.CountI64", linkageName: "mk.main.CountI64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!25 = !DILocation(line: 1, column: 1, scope: !24)
+!26 = !DILocation(line: 2, column: 5, scope: !24)
+!27 = !DILocation(line: 2, column: 25, scope: !24)
+!28 = !DILocation(line: 3, column: 5, scope: !24)
+!29 = !DILocation(line: 3, column: 11, scope: !24)
+!30 = !DILocation(line: 3, column: 21, scope: !24)
+!31 = !DILocation(line: 4, column: 5, scope: !24)
+!32 = distinct !DISubprogram(name: "main.CountU64", linkageName: "mk.main.CountU64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!33 = !DILocation(line: 1, column: 1, scope: !32)
+!34 = !DILocation(line: 2, column: 5, scope: !32)
+!35 = !DILocation(line: 2, column: 25, scope: !32)
+!36 = !DILocation(line: 3, column: 5, scope: !32)
+!37 = !DILocation(line: 3, column: 11, scope: !32)
+!38 = !DILocation(line: 3, column: 21, scope: !32)
+!39 = !DILocation(line: 4, column: 5, scope: !32)
+!40 = !{ptr @mk.main.CountI8}
+!41 = !{ptr @mk.main.CountU8}
+!42 = !{ptr @mk.main.CountI64}
+!43 = !{ptr @mk.main.CountU64}

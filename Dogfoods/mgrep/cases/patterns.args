@@ -1,0 +1,6 @@
+-f
+$CASES/data/patterns.txt
+$CASES/data/tree/a.txt
+$CASES/data/tree/b.md
+--path-separator
+/

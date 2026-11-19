@@ -1,0 +1,6 @@
+CRON_TZFILE=bad.tzif
+CRON_TZFILE=missing.tzif
+CRON_TZ=Mars/Olympus_Mons
+CRON_TZ=../../etc/passwd
+CRON_TZ=Europe/Berlin
+0 0 * * *   ok   --  jobkit print ok

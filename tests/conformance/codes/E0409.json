@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0409","name":"move-out-of-reference","phase":"flow","root":1,"at":{"file":"E0409.mk","line":8,"col":5,"end_line":8,"end_col":15},"message":"w.r is not plain and cannot be moved or copied out of a place","facts":{"place":"w.r","kind":"linear"},"fixes":[],"alternatives":[],"explain":"mk explain E0409"}],"omitted":0}

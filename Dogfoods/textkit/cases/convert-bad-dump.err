@@ -1,0 +1,1 @@
+textkit convert: --dump must be raw, hex or base64, not octal

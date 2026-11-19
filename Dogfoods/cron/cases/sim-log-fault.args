@@ -1,0 +1,6 @@
+sim
+$CASES/data/zones.tab
+--days
+2
+--fault
+log-write

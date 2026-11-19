@@ -1,0 +1,4 @@
+# alice waits for a line nobody sends, so the deadline ends the run
+alice: NICK alice
+alice: !read
+alice: PING never

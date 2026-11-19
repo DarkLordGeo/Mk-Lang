@@ -1,0 +1,4 @@
+create
+--out
+$WORK/no/such/dir/t.pk
+$CASES/data/tree

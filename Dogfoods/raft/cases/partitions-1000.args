@@ -1,0 +1,6 @@
+sim
+--seeds
+1..1000
+--partitions
+--loss
+5

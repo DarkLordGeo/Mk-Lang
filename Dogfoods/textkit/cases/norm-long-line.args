@@ -1,0 +1,4 @@
+norm
+--buffer
+16
+$CASES/data/long.txt

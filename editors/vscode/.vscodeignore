@@ -1,0 +1,6 @@
+test/**
+.gitignore
+*.vsix
+install.ps1
+install.sh
+package-lock.json

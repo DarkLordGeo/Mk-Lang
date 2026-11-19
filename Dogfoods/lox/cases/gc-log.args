@@ -1,0 +1,5 @@
+--gc-log
+--max-objects
+100
+--eval
+var xs = []; for (var i = 0; i < 300; i = i + 1) { var t = [i]; if (i % 50 == 0) push(xs, t); } print len(xs);

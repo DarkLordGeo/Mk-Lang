@@ -1,0 +1,18 @@
+body main.Show generics=0 params=1 {
+  let _0: NotFound!i32 // return
+  let _1: i64 // param 1 id
+  let _2: i32 // temp
+  let _3: NotFound // temp
+  bb0:
+    _2 = call main.Load(copy _1) -> bb1 err try _3 -> bb3
+  bb1:
+    _0 = ok(copy _2)
+    goto bb2
+  bb2 (defer 0):
+    return normal
+  bb3:
+    _0 = err(move _3)
+    goto bb4
+  bb4 (defer 0):
+    return try
+}

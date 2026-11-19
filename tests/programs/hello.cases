@@ -1,0 +1,6 @@
+case ok
+stdout hello.out
+
+case two-args
+args a b
+stdout hello3.out

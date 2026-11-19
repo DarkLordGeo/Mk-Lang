@@ -1,0 +1,5 @@
+grep
+--count
+--ignore-case
+\b0[0-9a-f]{3} 03[0-9a-f]{2}\b
+$CASES/data/norm-source.txt

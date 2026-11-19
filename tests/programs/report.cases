@@ -1,0 +1,33 @@
+# Expected output written by hand from report.in: totals alice 150, carol 120, bob 100, erin 45, dave 5;
+# grand total 420; shares 0.357.., 0.285.., 0.238.., 0.107.., 0.0119.. (none on a rounding tie).
+case ok
+args report.in
+files report.in
+stdout report.out
+
+case missing-file
+profile release
+args missing.txt
+stderr notfound.err
+exit 1
+
+# Line 2 has no comma: BadLine(line: 2). Release prints the error line only: the display
+# name's module prefix, then the error as {e} prints it; a user error's prefix is its
+# module path and a single-file bin's root module is main,
+# so main.BadLine(line: 2).
+case bad-line
+profile release
+args report.bad.in
+files report.bad.in
+stderr badline.err
+exit 1
+
+# Dev adds the error-return trace: the `fail BadLine` at 36:13 (line 2
+# has a name but no second field), then Main's `try Sum` at 54:13. missing-file has no dev case:
+# its trace runs through std/fs/fs.mk, whose line numbers move whenever that file changes.
+case bad-line-dev
+profile dev
+args report.bad.in
+files report.bad.in
+stderr badline-dev.err
+exit 1

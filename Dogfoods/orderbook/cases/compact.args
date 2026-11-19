@@ -1,0 +1,4 @@
+replay
+$CASES/data/compact.csv
+--depth
+1

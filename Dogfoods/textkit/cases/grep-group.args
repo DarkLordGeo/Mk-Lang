@@ -1,0 +1,5 @@
+grep
+--group
+2
+^(ERROR|error) ([0-9]+)
+$CASES/data/log.txt

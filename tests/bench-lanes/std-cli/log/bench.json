@@ -1,0 +1,30 @@
+{
+  "name": "log",
+  "table": "idiomatic",
+  "algorithm": "Write n log lines \"INFO event <k> took <(k*7) mod 1000> us\" through each language's standard logger (or formatted write) into one in-memory buffer, emptied before each rep, reps times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1000000",
+    "20"
+  ],
+  "quick": [
+    "10000",
+    "2"
+  ],
+  "checksum": "595577800",
+  "quick_checksum": "555580",
+  "sources": {
+    "mk": "mk",
+    "c": "log.c",
+    "zig": "log.zig",
+    "go": "testdata/log.go"
+  },
+  "skip": {
+    "rust": "no std logger: Rust std has none (the log crate is not std); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the logger has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum (the output's length summed over reps) checks that every column wrote the same text",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.log Logger.New over a Text's Writer, Info with a two-hole format (interim run-time walk until R-L1, status/std-cli.md); Go log.New(&bytes.Buffer, \"INFO \", 0) and Printf; C snprintf after a memcpy of the level word into a doubling buffer; Zig std.log.info through a custom std_options.logFn into one std.Io.Writer.Allocating (the comptime format, as std.log's). Lines per second = n x reps / median. Checksums from a Go reference of the pseudo-code (std-cli session 1); verify through tools/bench before timing."
+  ]
+}

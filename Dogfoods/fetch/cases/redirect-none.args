@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+-L
+--max-redirs
+0
+-i
+http://{origin}/redirect/302

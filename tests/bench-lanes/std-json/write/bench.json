@@ -1,0 +1,36 @@
+{
+  "name": "json-write",
+  "table": "idiomatic",
+  "algorithm": "Parse a 1 MB JSON document (tools/bench gen kind json, seed 2) once into each language's std tree type, then serialise the tree as compact JSON into an in-memory buffer reps times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "300"
+  ],
+  "quick": [
+    "{data}",
+    "2"
+  ],
+  "checksum": "298175700",
+  "quick_checksum": "1987838",
+  "sources": {
+    "mk": "mk",
+    "zig": "json-write.zig",
+    "go": "testdata/json-write.go"
+  },
+  "skip": {
+    "c": "no std JSON: C has no standard JSON writer; no library stands in",
+    "rust": "no std JSON: Rust std has none (serde_json is a crate); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the writer has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "json",
+    "file": "std-json-1mb.json",
+    "bytes": 1000000,
+    "seed": 2
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (the output's length summed over reps) checks that every writer wrote the same compact text up to member order",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk Value's Format (compact, escapes as RFC 8259 section 7 requires) into a Text through its Writer, cleared per rep; Go encoding/json Encoder with SetEscapeHTML(false) into a bytes.Buffer reset per rep (keys sorted, the trailing newline not counted); Zig std.json.Stringify.valueAlloc into an ArenaAllocator reset per rep, numbers kept as text (parse_numbers = false). The parse runs once and is outside what the reps measure, but inside the program's time. Bytes per second = output length x reps / median."
+  ]
+}

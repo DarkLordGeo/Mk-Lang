@@ -1,0 +1,5 @@
+serve
+--log-level
+loud
+--data
+$WORK/d

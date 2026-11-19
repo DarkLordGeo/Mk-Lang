@@ -1,0 +1,4 @@
+verify
+--key
+$CASES/data/bob.key
+$CASES/data/sealed-bad-last.pk

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0801","name":"error-not-in-set","phase":"types","root":1,"at":{"file":"m/00.mk","line":8,"col":9,"end_line":8,"end_col":12},"message":"the function's error set does not include E","facts":{"missing":["E"]},"fixes":[],"alternatives":["add them to the result's error set","handle them with `else`"],"explain":"mk explain E0801"}],"omitted":0}

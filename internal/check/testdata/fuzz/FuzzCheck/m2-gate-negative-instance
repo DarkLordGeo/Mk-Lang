@@ -1,0 +1,2 @@
+go test fuzz v1
+string("struct Buf[const N: int] {\n    data: [N]u8\n}\nstruct W {\n    b: Buf[-1]\n}\n")

@@ -1,0 +1,20 @@
+# every refusal a client can get
+alice: FROB
+alice: JOIN #early
+alice: NICK al ice
+alice: NICK alice
+bob: NICK alice
+bob: NICK bob
+bob: JOIN lobby
+bob: MSG #nowhere hi
+bob: JOIN #lobby
+bob: JOIN #lobby
+alice: MSG #lobby hi
+alice: PART #lobby
+alice: TOPIC #lobby mine
+alice: HISTORY #lobby 0
+alice: WHO #nowhere
+bob: MSG #lobby
+bob: PING
+bob: !close
+alice: PING after bob

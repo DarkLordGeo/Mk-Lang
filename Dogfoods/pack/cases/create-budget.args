@@ -1,0 +1,7 @@
+create
+--mem-limit
+65536
+--stats
+--out
+$WORK/t.pk
+$CASES/data/tree

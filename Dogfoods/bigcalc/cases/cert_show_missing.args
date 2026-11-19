@@ -1,0 +1,3 @@
+cert
+show
+$CASES/data/pki/nope.pem

@@ -1,0 +1,1 @@
+fetch: http://{origin}/redirect/loop: too many redirects

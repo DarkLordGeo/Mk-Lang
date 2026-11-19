@@ -1,0 +1,11 @@
+{
+  "name": "intsum",
+  "algorithm": "Sum of n int64 values in 0..1023 from splitmix64 (Fill, untimed), passes times, each pass writing its sum & 1023 back into element r % n (Run, timed); the algorithm of ../../same/intsum.",
+  "measures": "Mk's checked + and bounds checks against C's add nsw (budget: overflow checks at most 5 percent, design/budgets.md)",
+  "c": "intsum.c",
+  "args": ["1000000", "200", "1"],
+  "quick": ["100000", "10", "1"],
+  "checksum": "102281624636",
+  "quick_checksum": "512540761",
+  "rounds": 21
+}

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("StACk2[:PlAin]\nA[T].{StACk2[T")

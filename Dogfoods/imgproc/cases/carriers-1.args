@@ -1,0 +1,11 @@
+--ascii
+--tasks
+1
+--tile-rows
+2
+run
+$CASES/data/photo.ppm
+-
+blur
+equalize
+threshold

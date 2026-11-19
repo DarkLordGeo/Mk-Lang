@@ -1,0 +1,5 @@
+cookies set
+GET /echo
+Cookie: session=abc123; keep=1; hour=1
+GET /cookies/echo
+Cookie: session=abc123; scoped=1; keep=1; hour=1

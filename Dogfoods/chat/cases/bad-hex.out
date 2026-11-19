@@ -1,0 +1,7 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+-- server: history=0
+-- endings: quit=0 eof=1 dropped=0 kicked=0 closing=2 broken=0 canceled=0

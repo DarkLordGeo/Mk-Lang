@@ -1,0 +1,1 @@
+{"phase":"imports","diagnostics":[{"code":"E0216","name":"mk-too-old","phase":"imports","root":1,"at":{"file":"pkg.mk","line":3,"col":9,"end_line":3,"end_col":15},"message":"this package needs mk 99.0 or newer, and this mk is older","facts":{"needed":"99.0"},"fixes":[],"alternatives":["run `mk upgrade` to install a newer mk"],"explain":"mk explain E0216"}],"omitted":0}

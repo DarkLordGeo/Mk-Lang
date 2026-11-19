@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0311","name":"value-if-without-else","phase":"types","root":1,"at":{"file":"E0311.mk","line":3,"col":10,"end_line":3,"end_col":12},"message":"a value `if` needs an `else`","facts":{},"fixes":[],"alternatives":["add the `else`","the statement form"],"explain":"mk explain E0311"}],"omitted":0}

@@ -1,0 +1,12 @@
+enc
+seal
+--ecdh-key
+$CASES/data/pki/p256.pem
+--ecdh-peer
+$CASES/data/pki/rfc6979_pub.pem
+--info
+ecdh
+--nonce
+cafebabefacedbaddecaf888
+$CASES/data/pki/plain.txt
+-

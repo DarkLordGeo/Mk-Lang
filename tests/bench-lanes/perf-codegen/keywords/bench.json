@@ -1,0 +1,32 @@
+{
+  "name": "keywords",
+  "table": "same",
+  "algorithm": "Classify n generated words (a quarter keywords, a quarter keywords with the last letter replaced, half random lowercase words of 1 to 8 letters), views of one buffer, by a chain of equality tests against 16 keyword literals, as a lexer's keyword match; rounds times, the wrapping sum of class times (i mod 1000 + 1) (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "2000000",
+    "50",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "3",
+    "1"
+  ],
+  "checksum": "110246408250",
+  "quick_checksum": "329723190",
+  "sources": {
+    "mk": "mk",
+    "mk-wrap": "mkwrap",
+    "c": "keywords.c",
+    "rust": "keywords.rs",
+    "zig": "keywords.zig",
+    "go": "testdata/keywords.go"
+  },
+  "no_counts": "B24: the checksum adds every word's class times its position's weight (i mod 1000 + 1), so a classifier that answers differently for any word changes it; the work per word (the chain of compares up to the first match) is fixed by the words, which the generator fixes",
+  "notes": [
+    "Mk: Classify is 16 tests `w == \"kw\"` (str's ==); C: `n == len && memcmp(p, kw, len) == 0`, what a C lexer writes; Rust `w == \"kw\"` on &str, Zig `std.mem.eql(u8, w, \"kw\")`, Go `w == \"kw\"`. Each sees the literal's length on the compare's path.",
+    "Per word in the timed loop, as written in the source (what each optimizer removes is not read): Mk checks both offsets' bounds, the range, the two UTF-8 boundary bytes, the overflow of i + 1 and of i % 1000 + 1, and the Cast[u64] range; mk-wrap (mkwrap/, B4) writes those three wrapping (+% and Trunc[u64]) and keeps the rest; Rust checks the bounds, the range and both char boundaries (rust-ovf also the two overflows); Zig ReleaseSafe the bounds, the range, the overflow of i + 1 and of @rem(i, 1000) + 1, and the range of its five @intCast; Go the bounds and the range; C and Zig ReleaseFast nothing (README.md, Cells).",
+    "Written by the perf-codegen lane (status/perf-codegen.md, session 4) for the change of str == to a branch on the lengths; the Rust, Zig and Go columns and C's int64_t types and byte-loop copy in session 5 (review findings PCG-2, PCG-3)."
+  ]
+}

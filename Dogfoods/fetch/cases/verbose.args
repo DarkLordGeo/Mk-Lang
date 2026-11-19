@@ -1,0 +1,6 @@
+--origin
+$CASES/data/site.origin
+-v
+-H
+X-Fetch-Test: yes
+http://{origin}/hello

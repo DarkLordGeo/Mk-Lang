@@ -1,0 +1,34 @@
+usage: libprobe <command> [options] [arguments]
+
+commands:
+  open LIB [SYMBOL...]      load LIB, look up each SYMBOL, release it
+  scan LIB...               try each LIB under every search
+  check FILE                check a requirements file: one library a
+                            line, its search, then its symbols
+  call LIB SYMBOL [TEXT]    call SYMBOL as fn(): u32, or with TEXT as
+                            fn(*u8): i32 given TEXT NUL-terminated
+  exports FILE              list the names a PE file exports
+  version FILE...           print the file version of each FILE
+                            (Windows)
+  help                      print this text
+
+options:
+  --search S                open and call: system (the system's own
+                            libraries), application (beside this
+                            program, then the system's) or path (an
+                            absolute path); default: path for a name
+                            with a separator, else system
+  --keep                    open: keep LIB loaded instead of closing it
+  --system                  exports and version: FILE names a file in
+                            the system's library directory
+  --filter PREFIX           exports: only names starting with PREFIX
+  --ordinals                exports: print each ordinal
+  --summary                 exports: print the counts first; version:
+                            say only whether FILE has a version
+  --help                    print this text
+
+The current directory and PATH are never searched.
+
+exit status: 0 done, 1 a library, symbol or version is missing, 2 bad
+command line, 3 not possible on this system, 4 unreadable or malformed
+file.

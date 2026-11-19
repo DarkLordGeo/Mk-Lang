@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0403","name":"use-before-assign","phase":"flow","root":1,"at":{"file":"E0403.mk","line":7,"col":5,"end_line":7,"end_col":13},"message":"y is used before it is assigned on every path","facts":{"place":"y","declared_at":"E0403.mk:3:5"},"fixes":[],"alternatives":[],"explain":"mk explain E0403"}],"omitted":0}

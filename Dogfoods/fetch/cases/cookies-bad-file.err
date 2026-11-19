@@ -1,0 +1,1 @@
+fetch: cannot read the cookie file $CASES/data/bad-jar.txt: BadJar(line: 2)

@@ -1,0 +1,30 @@
+// Lists: literals, indexing, the list natives, nesting and cycles.
+var xs = [1, 2, 3];
+print xs;
+print len(xs);
+xs[0] = "one";
+print xs[0];
+push(xs, 4);
+print xs;
+print pop(xs);
+print xs;
+extend(xs, [5, 6]);
+print xs;
+var nested = [[1, 2], [], ["a", nil, true]];
+print nested;
+print nested[2][0];
+var empty = [];
+print pop(empty);
+print len([]);
+// A list that holds itself prints its cycle once.
+var self = [1];
+push(self, self);
+print self;
+var grid = [];
+for (var r = 0; r < 3; r = r + 1) {
+  var row = [];
+  for (var c = 0; c < 3; c = c + 1) push(row, r * 3 + c);
+  push(grid, row);
+}
+print grid;
+print grid[1][2];

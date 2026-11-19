@@ -1,0 +1,61 @@
+{
+  "name": "fs",
+  "table": "idiomatic",
+  "algorithm": "std.fs's tree operations against each standard library's own, on a tree of 1,110 entries (10 directories d<i>, each with 10 directories s<j> of 10 one-byte files f<k>) made under the temporary directory (tests/bench-lanes/std-fs2/README.md; this row is its copy without the copy variant, the tree named mkbench-sd8-<language>). Variant walk: the tree listed reps times (Mk fs.Walk, Go filepath.WalkDir, Rust recursion over fs::read_dir and DirEntry::file_type, Zig Dir.walk, C FindFirstFileExW or opendir/readdir recursion), the root not counted; prints reps, directories, files and name bytes; the run also makes and removes the tree once (tools/bench subtracts a baseline only in a GB/s row, BS-3), which fs-mkrm measures alone. Variant mkrm: reps times the tree made (Mk fs.MakeDirAll and fs.WriteAll, Go os.MkdirAll and os.WriteFile, Rust fs::create_dir_all and fs::write, Zig Dir.createDirPath and Dir.writeFile, C mkdir and open/write) and removed (Mk fs.RemoveAll, Go os.RemoveAll, Rust fs::remove_dir_all, Zig Dir.deleteTree, C recursion with DeleteFileW and RemoveDirectoryW or unlinkat); prints reps, entries made and removals that left the root.",
+  "overflow": "never",
+  "args": [
+    "walk",
+    "1000"
+  ],
+  "quick": [
+    "walk",
+    "2"
+  ],
+  "checksum": "1000 110000 1000000 2220000",
+  "quick_checksum": "2 220 2000 4440",
+  "sources": {
+    "mk": "mk",
+    "c": "fs.c",
+    "rust": "fs.rs",
+    "zig": "fs.zig",
+    "go": "testdata/fs.go"
+  },
+  "skip": {
+    "mk-wrap": "the counts cannot overflow; the task has no arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "walk",
+      "args": [
+        "walk",
+        "1000"
+      ],
+      "quick": [
+        "walk",
+        "2"
+      ],
+      "checksum": "1000 110000 1000000 2220000",
+      "quick_checksum": "2 220 2000 4440"
+    },
+    {
+      "name": "mkrm",
+      "args": [
+        "mkrm",
+        "3"
+      ],
+      "quick": [
+        "mkrm",
+        "1"
+      ],
+      "checksum": "3 3330 0",
+      "quick_checksum": "1 1110 0"
+    }
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; each walk's counts, each tree's entries and each copy's bytes check the work",
+  "notes": [
+    "std-defects8's copy of std-fs2/fs (the sources std-fs2's but for the tree's name, mkbench-sd8-<language>, so the two rows never share a tree; the copy variant left out), for D8-32's two items std-fs2 handed over (status/std-fs2.md requests 14 and 19; SD8-R8): fs.Walk on Windows at about 3 times Rust and Zig, and RemoveAll at about 2.5 times Rust, both by std-fs2's hand and one-shot verify runs on a loaded machine.",
+    "The tree lives in each language's temporary directory (TMP on Windows, TMPDIR or /tmp on Linux), never beside a data file, so the Linux cells do not measure the drive's 9p mount.",
+    "Not published: no number here is a measurement until tools/bench publish runs it under the machine lock.",
+    "A duplicate of std-fs2's fs-walk and fs-mkrm by task: publish one of the two (bench8's choice), not both."
+  ]
+}

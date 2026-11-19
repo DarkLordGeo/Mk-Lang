@@ -1,0 +1,4 @@
+convert
+--to
+x-mac-cyrillic
+$CASES/data/whatwg/x-mac-cyrillic.txt

@@ -1,0 +1,10 @@
+// Generated from the gen lines of main for x86_64-windows. Not read by the compiler.
+
+// gen derive.Hash#1 for User
+impl Hash for User {
+    Hash(&self, h: mut Hasher) {
+        self.name.Hash(h)
+        self.age.Hash(h)
+    }
+}
+

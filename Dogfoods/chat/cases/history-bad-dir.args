@@ -1,0 +1,4 @@
+--history
+$WORK/no/such/dir/history.log
+replay
+$CASES/data/basic.chat

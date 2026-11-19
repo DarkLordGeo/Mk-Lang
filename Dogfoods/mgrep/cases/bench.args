@@ -1,0 +1,7 @@
+--stats
+-c
+-i
+n[aeiou]+dle|omega|s?igma
+$CASES/data
+--path-separator
+/

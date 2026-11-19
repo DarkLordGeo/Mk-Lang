@@ -1,0 +1,36 @@
+{
+  "name": "text-unicode",
+  "table": "idiomatic",
+  "algorithm": "One std.text function (graphemes, width, the four normalization forms, full case folding), reps passes over the generated text of ../utf16/README.md (splitmix64 from seed, mib MiB, 37.5 percent of the scalars outside ASCII); mode marks: Nfd of a then mib * 2^20 combining marks of four classes cycling; README.md.",
+  "overflow": "wraps",
+  "args": ["graphemes", "16", "20", "1"],
+  "quick": ["graphemes", "1", "2", "1"],
+  "checksum": "209706160",
+  "quick_checksum": "1309762",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std Unicode segmentation, normalization, case folding or width: C has none",
+    "rust": "no std Unicode segmentation, normalization, case folding or width: unicode-segmentation, unicode-normalization and unicode-width are crates; no crate stands in",
+    "zig": "no std Unicode segmentation, normalization, case folding or width: Zig's std.unicode has UTF-8 and UTF-16 only",
+    "go": "no std Unicode segmentation, normalization, full case folding or width: golang.org/x/text and rivo/uniseg are not std (Go's unicode.SimpleFold is simple folding only); no module stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the functions' arithmetic cannot overflow"
+  },
+  "variants": [
+    {"name": "graphemes", "args": ["graphemes", "16", "20", "1"], "quick": ["graphemes", "1", "2", "1"], "checksum": "209706160", "quick_checksum": "1309762"},
+    {"name": "width", "args": ["width", "16", "20", "1"], "quick": ["width", "1", "2", "1"], "checksum": "237665340", "quick_checksum": "1483914"},
+    {"name": "nfc", "args": ["nfc", "16", "20", "1"], "quick": ["nfc", "1", "2", "1"], "checksum": "335339886", "quick_checksum": "2096098"},
+    {"name": "nfd", "args": ["nfd", "16", "20", "1"], "quick": ["nfd", "1", "2", "1"], "checksum": "348250208", "quick_checksum": "2176842"},
+    {"name": "nfkc", "args": ["nfkc", "16", "20", "1"], "quick": ["nfkc", "1", "2", "1"], "checksum": "335339886", "quick_checksum": "2096098"},
+    {"name": "nfkd", "args": ["nfkd", "16", "20", "1"], "quick": ["nfkd", "1", "2", "1"], "checksum": "348250208", "quick_checksum": "2176842"},
+    {"name": "fold", "args": ["fold", "16", "20", "1"], "quick": ["fold", "1", "2", "1"], "checksum": "335547174", "quick_checksum": "2097378"},
+    {"name": "marks1", "args": ["marks", "1", "10", "1"], "quick": ["marks", "1", "1", "1"], "checksum": "20973315", "quick_checksum": "2097250", "notes": ["Nfd of \"a\" then 2^20 combining marks of four classes cycling (README.md): the worst case of canonical ordering (TEXT2-3)."]},
+    {"name": "marks4", "args": ["marks", "4", "10", "1"], "quick": ["marks", "1", "1", "1"], "checksum": "83887875", "quick_checksum": "2097250", "notes": ["As marks1 with 2^22 marks: a linear reorder takes about 4 times marks1."]}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, and this one has the Mk column only; the checksum (clusters, columns, or the result's length and one byte a pass) checks the run",
+  "notes": [
+    "Mk-only throughput rows: no standard library among C, Rust, Zig and Go has these facilities (skip), so there is no ratio; bytes per second = mib * 1048576 * reps / median.",
+    "Written by the std-text2 lane (status/std-text2.md)."
+  ]
+}

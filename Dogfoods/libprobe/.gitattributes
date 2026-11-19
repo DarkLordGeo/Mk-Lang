@@ -1,0 +1,2 @@
+# The fixtures are bytes: windows-ok.req keeps its CRLF lines, tiny.pe is binary.
+cases/** -text

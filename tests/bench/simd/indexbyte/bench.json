@@ -1,0 +1,165 @@
+{
+  "name": "indexbyte",
+  "table": "simd",
+  "algorithm": "Find the first 0xFF byte of a buffer of 7-bit bytes, the needle planted within the last 64 bytes and removed after each search; reps searches (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mkfix",
+    "c": "indexbyte.c",
+    "rust": "indexbyte.rs",
+    "zig": "indexbyte.zig",
+    "go": "testdata/indexbyte.go"
+  },
+  "skip": {
+    "mk-wrap": "no integer arithmetic to wrap in the kernel"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "8000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "130811982439",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 131072000000,
+      "sources": {
+        "mk": "mkfixv2"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "4000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "134217598462",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 134217728000,
+      "sources": {
+        "mk": "mkfixv2"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "36",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "38654704504",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 38654705664,
+      "sources": {
+        "mk": "mkfixv2"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "20000000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "327029884772",
+      "quick_checksum": "999700",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 327680000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "5000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "167771998448",
+      "quick_checksum": "999700",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 167772160000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "36",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "38654704504",
+      "quick_checksum": "999700",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 38654705664
+    }
+  ],
+  "notes": [
+    "GB/s counts size * reps bytes; each search reads all but at most 64 bytes of the buffer. The fill (one arithmetic pass) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is size * reps over the kernel time (BS-3). The buffer starts on a 64-byte boundary in the c, rust, zig and go columns (BS-4); the mk column's is an arena slice (labelled alignment exception, below).",
+    "mk: the width-fixed cells (review finding BF-1, B16), indexbyte.c's loop with Vec[u8, L], Mask.Any and Mask.FirstSet, no run-time dispatch, L chosen per package as mandelvec does: mkfixv2/ (L = 16, one xmm) in the v2 variants, mkfix/ (L = 32, one ymm) in the v3 variants. Every variant's quick and publish checksum was checked with the row's own mk line, untimed, by M9 item 11.7 (2026-11-15, mk built from ca6060e8; plan/09-deferred.md). mk/ is the std-simd lane's program (std.simd.IndexByte, which picks its form at run time, D-353) and is no cell of this table.",
+    "The Mk cells are labelled alignment exception: the Mk buffer is an arena slice, and Mk code cannot read or set an address without std.raw (banned in every table, BS-8) (status/std-simd.md R-5 (a)). But std's heap arenas start a slice of 4 KiB or more on a cache line, and a probe (2026-11-19, a scratch package with std.raw) finds the slice at 0 mod 64 at 16 KiB, 32 MiB and 1 GiB; TestArenaOffsetsAsLabelled rebuilds that probe with the tree's mk. Their loads do not align themselves, and need not: at v3 none of the 32-byte loads cross a cache line and at v2 none of the 16-byte loads does, as in the 64-byte-aligned columns."
+  ]
+}

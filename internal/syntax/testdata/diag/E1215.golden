@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1215","name":"pub-keyword","phase":"parse","root":1,"at":{"file":"t.mk","line":1,"col":1,"end_line":1,"end_col":4},"message":"Mk exports with `export`, not `pub`","facts":{"habits":["E1215"],"target":"export F() {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":1,"col":1,"end_line":1,"end_col":4,"text":"export"}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1215"}],"omitted":0}
+

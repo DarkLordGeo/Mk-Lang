@@ -1,0 +1,35 @@
+{
+  "name": "arena-reset",
+  "table": "idiomatic",
+  "std": ["std.core.Arena.Put", "std.core.Arena.Reset"],
+  "algorithm": "Per round put 2^20 nodes of 16 bytes (a splitmix64 u64 and a link to the previous node) into one arena, walk the list from its head, then reset the arena with its std's reset (Mk keeps some chunks and returns the rest to the heap; Zig's retain_capacity keeps all its capacity); the wrapping sum of val times position plus the length (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1048576",
+    "200",
+    "1"
+  ],
+  "quick": [
+    "1048576",
+    "4",
+    "1"
+  ],
+  "checksum": "3660506214396037261",
+  "quick_checksum": "9945580031688433794",
+  "sources": {
+    "mk": "mk",
+    "zig": "arena-reset.zig"
+  },
+  "skip": {
+    "c": "no std arena in C",
+    "rust": "no std arena in Rust (bumpalo is a crate; no crate stands in)",
+    "go": "no std arena in Go (the arena experiment was removed)",
+    "mk-wrap": "the checksum already uses the wrapping operators; allocation has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares arenas; both columns put the same nodes in the same order, and the walk reads each once",
+  "notes": [
+    "Arenas named: mk Arena.New(sys.heap), Arena.Put, Arena.Reset (keeps the first, current and largest chunks, returns every other chunk to the heap: std/core/mem_arena.mk's doc comment); zig std.heap.ArenaAllocator over std.heap.page_allocator, create, reset(.retain_capacity) (keeps all capacity: ArenaAllocator.zig's ResetMode doc). The policies differ; each is its std's (README Reset policies).",
+    "The Mk cell checks with main's checker (origin/main 2a817da); mk v1.1.0 and v1.2.0 refuse Build's Put with E0604, so a compare with a v1.2.0 base cannot build it (README Checker).",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

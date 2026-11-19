@@ -1,0 +1,9 @@
+convert
+--strict
+--from
+windows-1252
+--to
+iso-8859-15
+--dump
+hex
+$CASES/data/latin1.txt

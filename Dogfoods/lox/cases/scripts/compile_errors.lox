@@ -1,0 +1,16 @@
+// Errors the parser cannot see: scoping and closures.
+{
+  var a = a;
+}
+{
+  var b = 1;
+  var b = 2;
+}
+fun outer() {
+  var local = 1;
+  fun inner() {
+    return local;
+  }
+  return inner;
+}
+return 1;

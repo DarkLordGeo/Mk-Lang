@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1211","name":"arrow-return","phase":"parse","root":1,"at":{"file":"t.mk","line":1,"col":5,"end_line":1,"end_col":7},"message":"the result type follows `:`, not `->`","facts":{"habits":["E1211"],"target":"F(): int {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":1,"col":4,"end_line":1,"end_col":7,"text":":"}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1211"}],"omitted":0}
+

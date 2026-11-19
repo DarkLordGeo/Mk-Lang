@@ -1,0 +1,31 @@
+amy> !ws /rooms/lab/ws?nick=amy
+amy! connected
+amy! speaks chat.v1
+amy< MOTD Welcome to chat.
+amy< OK welcome
+amy< OK nick amy
+amy< OK join #lab members=1 topic=
+bea> !ws /rooms/lab/ws?nick=bea
+bea! connected
+bea! speaks chat.v1
+bea< MOTD Welcome to chat.
+bea< OK welcome
+bea< OK nick bea
+bea< OK join #lab members=2 topic=
+cid> !ws /ws?nick=cid
+cid! connect failed: Handshake(status: 503)
+bea> !hex ff
+bea< ERR 421 unknown command
+bea! hangs up
+amy< * bea joined #lab
+amy< * bea left #lab (connection closed)
+form> POST /rooms
+form< 405
+form< only GET is served
+amy> WHO #lab
+amy< MEMBERS #lab amy
+amy< OK who
+amy> QUIT
+amy< OK bye
+-- server: history=0
+-- endings: quit=1 eof=1 dropped=0 kicked=0 closing=0 broken=0 canceled=0

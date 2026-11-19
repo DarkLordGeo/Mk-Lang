@@ -1,0 +1,4 @@
+--procfile
+$CASES/data/gave-up.Procfile
+start
+--summary

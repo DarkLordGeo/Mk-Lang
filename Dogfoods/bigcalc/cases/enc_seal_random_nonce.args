@@ -1,0 +1,7 @@
+enc
+seal
+--key-from
+text:k
+--armor
+$CASES/data/pki/plain.txt
+$WORK/sealed.txt

@@ -1,0 +1,4 @@
+extract
+--dest
+$CASES/data/alice.key
+$CASES/data/plain.pk

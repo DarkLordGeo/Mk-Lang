@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0204","name":"not-exported","phase":"types","root":1,"at":{"file":"m/00.mk","line":4,"col":11,"end_line":4,"end_col":17},"message":"field `secret` of `P` is private to its module","facts":{"field":"secret","type":"P"},"fixes":[],"alternatives":[],"explain":"mk explain E0204"}],"omitted":0}

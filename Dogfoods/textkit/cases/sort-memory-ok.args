@@ -1,0 +1,4 @@
+sort
+--memory
+65536
+$CASES/data/runs.txt

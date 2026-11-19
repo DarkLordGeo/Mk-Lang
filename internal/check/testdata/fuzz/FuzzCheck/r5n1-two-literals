@@ -1,0 +1,2 @@
+go test fuzz v1
+string("Lane(const i: int): int {\n    return i * 10\n}\n\nexport Main(sys: &System): WriteError!void {\n    try sys.Print(\"{a}\\n\", (a: Lane(2 + 3)))\n}\n")

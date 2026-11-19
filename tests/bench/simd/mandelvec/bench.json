@@ -1,0 +1,50 @@
+{
+  "name": "mandelvec",
+  "table": "simd",
+  "algorithm": "same/mandelbrot's algorithm (an n by n grid, at most 50 iterations, the total iteration count) with L points per vector, each lane stopping at its escape (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "mandelvec.c",
+    "rust": "mandelvec.rs",
+    "zig": "mandelvec.zig",
+    "go": "testdata/mandelvec.go"
+  },
+  "skip": {
+    "mk-wrap": "a float kernel: its only integer arithmetic is the iteration counter"
+  },
+  "variants": [
+    {
+      "name": "v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "9000"
+      ],
+      "quick": [
+        "200"
+      ],
+      "checksum": "1928093833",
+      "quick_checksum": "952474",
+      "sources": {
+        "mk": "mkv2"
+      }
+    },
+    {
+      "name": "v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "9000"
+      ],
+      "quick": [
+        "200"
+      ],
+      "checksum": "1928093833",
+      "quick_checksum": "952474"
+    }
+  ],
+  "notes": [
+    "The counts are same/mandelbrot's for the same n (the quick checksum is that row's): the vector form does the same f64 operations per point, unfused. Publish size 9000 (not the scalar row's 5600) so the fastest v3 cell clears the 1 s floor; both targets run the same size. Compute-bound, so it reports time, not GB/s. Go is scalar (no SIMD layer).",
+    "mk (bench-final, 2026-11-09): std.simd's Vec[f64, L] and Mask[f64, L] with lane-wise operators, `active & !esc`, `Mask.Any` and `Select`, no dispatch: L = 4 in mk/ (the v3 variant) and L = 2 in mkv2/ (the v2 variant, by the variant's sources), the same text otherwise, since Mk has no compile-time CPU fact and C and Zig pick L from the build's target at compile time. The iteration counter of the scalar tail is checked (+), the vector counts are f64 as in C and Rust."
+  ]
+}

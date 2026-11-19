@@ -1,0 +1,4 @@
+# std.fs: options, seek, size, truncate, locks, a read-only mapping, a walk, copy, a temporary
+# file renamed into place, StatLink, SetModified, Cwd and Absolute, in the run directory.
+case ok
+stdout files.out

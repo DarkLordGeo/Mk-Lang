@@ -1,0 +1,40 @@
+{
+  "name": "csv-read",
+  "table": "idiomatic",
+  "algorithm": "Read one log file (the generated input, 50 MB of lines of seven space-separated unquoted fields) as CSV records with the delimiter space, through each standard library's CSV reader over a buffered file reader of 64 KiB, r times; prints the records, the fields and the field bytes (Mk std.csv Records over fs.File.Reader, Go encoding/csv over bufio.Reader).",
+  "overflow": "never",
+  "args": [
+    "{data}",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "2130516 14913612 185086540",
+  "quick_checksum": "532629 3728403 46271635",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/csv-read.go"
+  },
+  "skip": {
+    "mk-wrap": "the only arithmetic is the counts, which stay below 2^33",
+    "c": "no std CSV reader in C; the hand-written reader plan/08-m8.md 4.18 asks for, labelled, is a stand-in, which this table forbids (tests/bench/README.md 'No stand-ins'), so it is kept outside the row in ../standin/ for a labelled table (requested of bench8 in status/std-csv.md, review finding csv-4)",
+    "rust": "Rust std has no CSV reader; the csv crate (the plan's Rust peer) is not std, so it would be a stand-in here too, and it needs cargo and a crate, which tools/bench does not build (its Rust cells are single rustc files): requested of bench8 with the labelled table in status/std-csv.md",
+    "zig": "no std CSV reader in Zig"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the record, field and byte counts check that every reader split the file the same way",
+  "notes": [
+    "The input is std-regex's (same kind, size and seed), so tools/bench generates it once. It holds no quote, so the row measures the unquoted path: the search for the delimiter and the line break.",
+    "The ratio that counts is Mk against Go's encoding/csv, the only other standard library with a CSV reader. Mk's Record.Field checks each field's UTF-8 (a str); encoding/csv makes one string per record and checks nothing.",
+    "C left the row in review round 1 (finding csv-4): its cell was a hand-written reader that built no field value, unequal work in a table of standard libraries.",
+    "Written by std-csv, M8, 2026-11-12; checksums from the Go column's run.",
+    "Not published: no number here is a measurement."
+  ]
+}

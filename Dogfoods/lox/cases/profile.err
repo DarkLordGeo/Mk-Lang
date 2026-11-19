@@ -1,0 +1,4 @@
+profile: 3 functions called
+        7  native  random
+        5  lox     roll
+        1  native  seed

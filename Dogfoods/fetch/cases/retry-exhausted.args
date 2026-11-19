@@ -1,0 +1,8 @@
+--origin
+$CASES/data/site.origin
+-f
+--retry
+2
+--retry-delay
+10ms
+http://{origin}/fail

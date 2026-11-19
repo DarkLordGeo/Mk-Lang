@@ -1,0 +1,7 @@
+replay
+$CASES/data/basic.csv
+--book
+$CASES/data/book-large.csv
+--memory-limit
+3000
+--quiet

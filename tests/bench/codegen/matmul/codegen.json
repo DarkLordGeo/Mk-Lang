@@ -1,0 +1,11 @@
+{
+  "name": "matmul",
+  "algorithm": "One i-k-j product of two n * n f64 matrices with 8-bit inputs from splitmix64 (Fill, untimed, also zeroes c), then the exact sum of c as trunc(total * 2^16) (Run, timed); the algorithm of ../../same/matmul with rounds = 1.",
+  "measures": "the inner loop's vectorisation under Mk's bounds checks and checked index arithmetic, against C with none (both no FMA)",
+  "c": "matmul.c",
+  "args": ["512", "1"],
+  "quick": ["64", "1"],
+  "checksum": "2179172659708",
+  "quick_checksum": "4230094122",
+  "rounds": 21
+}

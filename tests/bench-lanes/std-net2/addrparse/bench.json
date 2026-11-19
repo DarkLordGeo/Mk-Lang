@@ -1,0 +1,26 @@
+{
+  "name": "addrparse",
+  "table": "idiomatic",
+  "algorithm": "n splitmix64 addresses (half IPv4, half IPv6 with zero runs), each formatted as ip:port text with the std facility into a reused buffer and parsed back with the std parser; sum over the parsed port and address bytes, wrapping (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "4000000"
+  ],
+  "quick": [
+    "10000"
+  ],
+  "checksum": "4000000 13159330886951760498",
+  "quick_checksum": "10000 6774280183409283927",
+  "sources": {
+    "mk": "mk",
+    "c": "addrparse.c",
+    "rust": "addrparse.rs",
+    "go": "testdata/addrparse.go",
+    "zig": "addrparse.zig"
+  },
+  "notes": [
+    "Measures std.net's ParseAddr and Addr's Format (std-net2 audit rows) against Go netip, Rust std::net and C inet_ntop/inet_pton.",
+    "C has no ip:port facility: inet_ntop and inet_pton do the addresses, hand loops the brackets and the port.",
+    "Zig 0.17: std.Io.net.IpAddress.format into a fixed std.Io.Writer, IpAddress.parseLiteral; its checksum agreed with the others (zig build-exe -O ReleaseFast -mcpu=x86_64_v2, std-net2 session 1)."
+  ]
+}

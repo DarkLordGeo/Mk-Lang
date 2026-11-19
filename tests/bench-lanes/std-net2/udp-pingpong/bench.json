@@ -1,0 +1,25 @@
+{
+  "name": "udp-pingpong",
+  "table": "idiomatic",
+  "algorithm": "two UDP sockets of one thread on 127.0.0.1; n rounds of 32 bytes sent a to b, received, sent back to the source and received; sum = 31 sum + byte 0 of each answer, wrapping (tests/bench-lanes/rt-io2/README.md, the row this one enables).",
+  "overflow": "wraps",
+  "args": [
+    "200000"
+  ],
+  "quick": [
+    "1000"
+  ],
+  "checksum": "200000 10201504416000394912 0",
+  "quick_checksum": "1000 2447299257384679924 0",
+  "sources": {
+    "mk": "mk",
+    "c": "udppingpong.c",
+    "rust": "udppingpong.rs",
+    "go": "testdata/udppingpong.go",
+    "zig": "udppingpong.zig"
+  },
+  "notes": [
+    "Enabled by std-net2 from rt-io2's parked row (tests/bench-lanes/rt-io2/pending/udp-pingpong): the Mk column is std.net's public API (net.Bind, Datagram.Send, Datagram.Recv); the C, Rust and Go baselines are rt-io2's, unchanged.",
+    "Go: net.UDPConn over the netpoller (WSARecvFrom with IOCP on Windows, epoll on Linux); Rust: std::net::UdpSocket, blocking calls; C: blocking sendto and recvfrom; Zig 0.17: std.Io.net IpAddress.bind (mode dgram), Socket.send and Socket.receive over the default std.Io (both checksums agreed, zig build-exe -O ReleaseFast -mcpu=x86_64_v2, std-net2 session 2). Mk: every call through the task scheduler's poller (IOCP on Windows)."
+  ]
+}

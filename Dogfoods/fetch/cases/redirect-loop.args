@@ -1,0 +1,4 @@
+--origin
+$CASES/data/site.origin
+-L
+http://{origin}/redirect/loop

@@ -1,0 +1,1 @@
+raft: $CASES/data/malformed.txt: BadLine(line: 4, column: 4)

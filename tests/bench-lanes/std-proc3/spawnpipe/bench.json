@@ -1,0 +1,26 @@
+{
+  "name": "spawnpipe",
+  "table": "idiomatic",
+  "algorithm": "n runs of the program itself with the argument child, which copies standard input to standard output; each run gets 64 bytes on a stdin pipe, which is then closed, its stdout read to the end from a pipe, stderr the null device, and its exit waited for (tests/bench-lanes/std-proc3/README.md).",
+  "overflow": "never",
+  "args": [
+    "1000"
+  ],
+  "quick": [
+    "20"
+  ],
+  "checksum": "1000 64000 0",
+  "quick_checksum": "20 1280 0",
+  "sources": {
+    "mk": "mk",
+    "rust": "spawnpipe.rs",
+    "go": "testdata/spawnpipe.go",
+    "zig": "spawnpipe.zig"
+  },
+  "notes": [
+    "Written by std-proc3 (status/std-proc3.md, M8 sessions 1 and 2; the Zig column in session 2) over the public proc.Spawn, the pipe ends it returns and Child.Wait. Every column starts the program by the path of its own executable, so no run searches PATH, and counts a failed call, a non-zero exit or an echo other than 64 bytes as a fail."
+  ],
+  "skip": {
+    "c": "no std facility: ISO C has no process creation or pipes (posix_spawn and CreateProcessW are OS APIs, not the C library), as std-proc2's run row says"
+  }
+}

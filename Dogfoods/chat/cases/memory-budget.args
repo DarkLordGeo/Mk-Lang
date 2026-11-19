@@ -1,0 +1,4 @@
+--client-memory
+64
+replay
+$CASES/data/budget.chat

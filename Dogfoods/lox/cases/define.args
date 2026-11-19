@@ -1,0 +1,4 @@
+--define
+greeting=hello there
+--eval
+print greeting + "!"; print num(greeting);

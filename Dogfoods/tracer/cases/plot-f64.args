@@ -1,0 +1,5 @@
+plot
+sin(x) * exp(-x^2 / 8)
+$WORK/plot.ppm
+--size
+64x40

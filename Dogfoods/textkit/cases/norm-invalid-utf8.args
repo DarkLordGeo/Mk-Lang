@@ -1,0 +1,3 @@
+norm
+$CASES/data/invalid.txt
+$CASES/data/forms.txt

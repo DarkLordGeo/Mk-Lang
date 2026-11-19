@@ -1,0 +1,34 @@
+{
+  "name": "sortstable",
+  "table": "idiomatic",
+  "std": ["std.core.Slice.SortStable"],
+  "exception": "sort-stable",
+  "algorithm": "Sort n u64 keys in four patterns per round (splitmix64-mixed random keys, reversed, a sawtooth of period 1000, 16 distinct keys), each sorted ascending by the language's std stable sort and checked; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000000",
+    "3",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "1",
+    "1"
+  ],
+  "checksum": "11849995660935857202",
+  "quick_checksum": "11489658657816517966",
+  "sources": {
+    "mk": "mk",
+    "rust": "sortstable.rs",
+    "zig": "sortstable.zig",
+    "go": "testdata/sortstable.go"
+  },
+  "skip": {
+    "c": "no std stable sort in C (qsort is the only std sort, and it is not stable)",
+    "mk-wrap": "the checksum already uses the wrapping operators; sorting has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own sort algorithm; the checksum (the weighted sum of each sorted pattern, 0xdead if out of order) checks every result",
+  "notes": [
+    "Stable sorts (B20): mk Slice.SortStable; rust sort (driftsort); zig std.sort.block (in place); go slices.SortStableFunc with cmp.Compare (Go has no stable sort without a comparator)."
+  ]
+}

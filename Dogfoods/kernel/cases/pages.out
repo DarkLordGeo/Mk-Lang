@@ -1,0 +1,23 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> alloc 4
+alloc: 4 pages at 0x1000000
+> alloc 2
+alloc: 2 pages at 0x1005000
+> pages
+pages: 28640 managed, 7 in use, 28633 free
+heap hooks: 1 runs taken, 0 given back
+> free 0x1000000
+free: 4 pages at 0x1000000
+> free all
+free: 2 pages given back from 1 runs
+> pages
+pages: 28640 managed, 1 in use, 28639 free
+heap hooks: 1 runs taken, 0 given back
+> exit
+bye: 0 commands failed, status 16

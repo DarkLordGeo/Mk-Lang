@@ -1,0 +1,6 @@
+convert
+--to
+UTF-16LE
+--dump
+hex
+$CASES/data/prose.txt

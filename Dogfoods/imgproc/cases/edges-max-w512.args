@@ -1,0 +1,7 @@
+--ascii
+--path
+w512
+run
+$CASES/data/wide.pgm
+-
+sobel=max

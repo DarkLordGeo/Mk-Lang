@@ -1,0 +1,4 @@
+sort
+--memory
+200
+$CASES/data/words.txt

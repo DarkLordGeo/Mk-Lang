@@ -1,0 +1,2 @@
+{"phase":"names","diagnostics":[{"code":"E0206","name":"duplicate-name","phase":"names","root":1,"at":{"file":"main/00.mk","line":4,"col":9,"end_line":4,"end_col":10},"message":"`y` shadows the local declared before it","facts":{"first":"main/00.mk:2:5"},"fixes":[{"class":"proven","edits":[{"file":"main/00.mk","line":4,"col":9,"end_line":4,"end_col":10,"text":"y2"},{"file":"main/00.mk","line":5,"col":13,"end_line":5,"end_col":14,"text":"y2"}],"why":"rename the later declaration"}],"alternatives":[],"explain":"mk explain E0206"}],"omitted":0}
+

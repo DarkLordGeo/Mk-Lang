@@ -1,0 +1,1 @@
+fetch: http://{origin}/flaky: attempt 1 failed: transfer closed after 70000 body bytes; retrying

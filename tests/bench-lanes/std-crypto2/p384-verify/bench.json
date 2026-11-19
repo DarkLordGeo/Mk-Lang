@@ -1,0 +1,29 @@
+{
+  "name": "crypto-p384-verify",
+  "table": "idiomatic",
+  "algorithm": "std ECDSA P-384 verification, DER form: 16 keys, 48-byte digests and RFC 6979 SHA-384 signatures as tables in each source (written by std/std-crypto_p384bench_test.go from splitmix64 seed 1, since std.crypto has no P-384 secrets), <reps> passes verify the first <keys>, the digest's first byte flipped on odd passes (mk/crypto-p384-verify.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "64"
+  ],
+  "quick": [
+    "4",
+    "1"
+  ],
+  "checksum": "512",
+  "quick_checksum": "4",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-p384-verify.zig",
+    "go": "testdata/crypto-p384-verify.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard elliptic-curve or RSA library",
+    "rust": "no std crypto: Rust std has no ECDSA, ECDH or RSA; the p384 and rsa crates are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Work per step: one ECDSA P-384 verification of a DER signature over a 48-byte digest: Mk crypto.EcdsaVerify(..., Curve.P384, SigFormat.Der, ...) (the DER read, the SEC 1 public key decoded and checked on the curve per call, Straus over width-6 and width-5 NAFs with G's odd multiples precomputed, complete formulas, fiat-crypto's 6-limb P-384 arithmetic, portable), Go ecdsa.VerifyASN1 (the DER read; the public key parsed once at start into an ecdsa.PublicKey, which each call converts with publicKeyToFIPS: an on-curve check and a point decode, no cache; crypto/internal/fips140/nistec's P-384 is fiat-generated Go with no amd64 assembly, so this row compares portable code with portable code), Zig std.crypto.sign.ecdsa.EcdsaP384Sha384 (PublicKey.fromSec1 and Signature.fromDer per pass, then verifyPrehashed; std.crypto.pcurves.p384, fiat-generated). Every column decodes the same hex tables at start; that setup is in the timed run for all.",
+    "Added 2026-11-13 for review finding CR2-7 (no P-384 row recorded the hot function's ratio). Checksums: the count of verified signatures, keys * ceil(reps / 2), from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-13); every column printed the same at both arg sets (tools/bench verify with and without -publish-size, 2026-11-13). Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

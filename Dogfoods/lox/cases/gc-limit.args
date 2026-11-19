@@ -1,0 +1,3 @@
+--max-objects
+100
+$CASES/scripts/grow.lox

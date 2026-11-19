@@ -1,0 +1,8 @@
+zlib
+--level
+9
+--sync-every
+20000
+--out
+$WORK/n.zz
+$CASES/data/tar/noise.bin

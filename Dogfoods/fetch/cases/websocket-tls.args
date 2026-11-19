@@ -1,0 +1,14 @@
+--origin
+$CASES/data/site.origin
+--tls-chain
+$CASES/data/tls/server.pem
+--tls-key
+$CASES/data/tls/server.key
+--cacert
+$CASES/data/tls/root.pem
+--ws-protocol
+chat.v2,chat.v1
+--ws-send
+secure
+wss://{tls}/ws
+wss://{tls2}/ws

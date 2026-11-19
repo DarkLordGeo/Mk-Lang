@@ -1,0 +1,10 @@
+FAIL main "prop Clamp": ensures
+    Clamp(1, 0, 0)  at tests/programs/prop/hole.mk:10:5
+    clause: requires lo <= hi
+    clause: ensures result >= lo && result <= hi
+    shrunk in 0 rounds; 1 cases, 0 discarded by requires or invariant
+FAIL main "prop Mid": panic: overflow
+    Mid(-2147483648, -1)  at tests/programs/prop/hole.mk:16:12
+    clause: requires lo <= hi
+    shrunk in 0 rounds; 10 cases, 8 discarded by requires or invariant
+0 passed, 2 failed (prop seed 30798615365709680)

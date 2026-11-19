@@ -1,0 +1,186 @@
+"""Generates tests/bench-lanes/std-rewrite/files.md: one row per .mk file of
+std-rewrite's write set, with the rewrite bar's searchable rules checked per
+file and the async-bar reading status from a hand-kept map (READ below), and
+regenerates lines-after.txt, the after line count of every file (`wc -l`:
+the newline count), from the same walk, so no row is patched by hand
+(a hand-patched row drifts from the tree).
+Run from the repository root with python -I. With --check it writes nothing: it compares
+every row of lines-after.txt with the tree and exits 1 on any mismatch, a
+missing row or a row whose file is gone; run it before relying on the counts
+(std/std-rewrite_rows_test.go's TestSRW_LinesAfterMatchesTree does the
+same in Go when MK_SRW_LINES=1)."""
+import os, re, sys
+
+CHECK = "--check" in sys.argv[1:]
+
+ROOT = "."
+DIRS = ["std/core", "std/fs", "std/net", "std/proc", "std/time", "std/sync", "std/atomic",
+        "std/math", "std/derive", "std/rt", "std/task", "std/sys", "std/corpus", "std/coll",
+        "std/hash", "std/mem", "std/cli", "std/log"]
+
+def counts(path):
+    d = {}
+    if not os.path.exists(path):
+        return d
+    for line in open(path, encoding="utf-8"):
+        m = re.match(r"\s*(\d+)\s+(std/\S+\.mk)$", line)
+        if m:
+            d[m.group(2)] = int(m.group(1))
+    return d
+
+before = counts("tests/bench-lanes/std-rewrite/lines-before.txt")
+after_old = counts("tests/bench-lanes/std-rewrite/lines-after.txt")
+
+# Files read line by line under the async bar, and by whom.
+READ = {}
+def mark(files, who):
+    for f in files:
+        READ[f] = who
+
+mark(["std/task/hooks.mk", "std/task/io_file.mk", "std/task/pool.mk", "std/sys/windows/resolve.mk",
+      "std/sys/windows/poll_iocp.mk"], "rerun s2-s3 (rt-io2 closures)")
+mark(["std/time/time.mk", "std/log/log.mk"], "rerun s2 (no change)")
+mark(["std/core/mem_arena.mk"], "rerun s3 (S-1)")
+mark(["std/core/sync_chan.mk", "std/core/mem_chan.mk", "std/core/sync_mutex.mk", "std/sync/select.mk"],
+     "s1-s3, fix round (D-361, D-365); rerun 2 s1 (R-9, S bit)")
+mark(["std/task/scope.mk", "std/task/runq.mk", "std/task/wait.mk", "std/task/iotable.mk",
+      "std/task/start.mk"], "rerun 2 s1 (R-9 paths)")
+mark(["std/task/timer.mk", "std/task/spawn.mk", "std/task/poll.mk", "std/task/sched.mk", "std/task/io_misc.mk",
+      "std/task/carrier.mk", "std/task/task.mk", "std/rt/lock.mk", "std/atomic/spin.mk", "std/atomic/atomic.mk"],
+     "rerun 2 s1 (no defect; notes in status)")
+mark(["std/rt/region.mk", "std/rt/heap.mk"], "rerun 2 s1, in part (TakeSlot, FreeSlot; the magazines)")
+mark(["std/task/io_net.mk"], "rerun 2 s1 (no defect)")
+mark(["std/sys/linux/poll_uring.mk"], "rerun 2 s1, in part (submit, cancel, Resubmit, Finish)")
+mark(["std/sys/linux/poll_epoll.mk"], "rerun 2 s1, in part (header, Try)")
+mark(["std/sys/linux/futex.mk", "std/sys/linux/thread.mk", "std/sys/linux/poll.mk", "std/task/io_m6.mk",
+      "std/sync/once.mk", "std/sync/mem_wait.mk", "std/sync/rwlock.mk", "std/sys/windows/hrtimer.mk",
+      "std/sys/windows/signal.mk", "std/mem/pool.mk", "std/rt/slot.mk", "std/rt/rt.mk"],
+     "rerun 2 s2 (no defect; notes in status)")
+mark(["std/rt/lock.mk"], "rerun 2 s1; s2 (release Unlock, its callers audited)")
+mark(["std/rt/trace.mk"], "rerun 2 s2 (TraceOn: a load before the store)")
+mark(["std/core/core_path.mk"], "rerun 2 s2, in part (the spin lock: release unlock, pause backoff)")
+mark(["std/task/io_dns.mk"], "rerun 2 s2, in part (DnsTimer to the end: exchanges, lookup)")
+mark(["std/rt/panic.mk"], "rerun 2 s2, in part (Keep, Kept, Reporting)")
+mark(["std/core/io_stream.mk"], "rerun 2 s2, in part (StreamLock, StreamPut, StreamTake)")
+mark(["std/sys/windows/file.mk"], "rerun 2 s2, in part (the console lock, the event pool)")
+mark(["std/sys/linux/testhook.mk", "std/sys/windows/testhook.mk", "std/sys/windows/clock.mk", "std/sys/windows/fault.mk",
+      "std/sys/linux/fault.mk", "std/sys/linux/signal.mk", "std/sync/mem_shared.mk", "std/sync/barrier.mk"],
+     "rerun 2 s2 (no defect)")
+mark(["std/proc/run.mk"], "rerun 2 s2, in part (Ctl, Stop, Pump, Feed)")
+mark(["std/atomic/atomic_t.mk", "std/core/core_iodecl.mk", "std/core/io_internal.mk", "std/core/io_system.mk",
+      "std/core/mem_internal.mk", "std/sync/notify.mk", "std/sys/windows/sys.mk", "std/sys/linux/sys.mk"],
+     "rerun 2 s2 (no defect; declarations and dispatch, notify N1 to N4)")
+mark(["std/sys/windows/ws2_32.mk"], "rerun 2 s2, in part (the loader states, TestSkipOff's Dekker pair)")
+
+mark(["std/sync/semaphore.mk", "std/sys/windows/proc.mk"], "rerun 2 s3 (no defect)")
+mark(["std/sys/windows/random.mk"], "rerun 2 s3 (comment fixed: the cache Store is the edge to callers)")
+mark(["std/sys/linux/poll.mk"], "rerun 2 s2; s3 (release SpinUnlock, its callers audited)")
+mark(["std/sys/linux/poll_epoll.mk", "std/sys/linux/poll_uring.mk", "std/rt/region.mk", "std/rt/heap.mk",
+      "std/rt/panic.mk", "std/core/io_stream.mk", "std/proc/run.mk", "std/sys/windows/ws2_32.mk",
+      "std/core/core_path.mk", "std/sys/windows/file.mk", "std/task/io_dns.mk"], "rerun 2 s1-s3, whole (no defect)")
+mark(["std/sys/linux/proc.mk", "std/sys/linux/file.mk", "std/core/mem_slots.mk", "std/coll/slots.mk",
+      "std/rt/directio.mk", "std/core/core_rw.mk"], "rerun 2 s3 (no atomics; no defect)")
+mark(["std/coll/btree.mk", "std/mem/mem.mk", "std/sys/windows/dir.mk", "std/sys/linux/dir.mk",
+      "std/sys/linux/args.mk", "std/sys/windows/thread.mk", "std/sys/windows/word.mk", "std/sys/linux/word.mk",
+      "std/sys/linux/mem.mk", "std/core/mem_table.mk", "std/core/coll_table.mk", "std/sys/windows/args.mk",
+      "std/coll/bitset.mk", "std/sys/windows/mem.mk", "std/sys/windows/console.mk", "std/rt/profile.mk",
+      "std/rt/decode.mk", "std/rt/fault.mk", "std/sys/linux/clock.mk", "std/task/cstack.mk",
+      "std/sys/windows/teb.mk", "std/core/core_cell.mk", "std/core/io_file.mk", "std/mem/counting.mk",
+      "std/core/core_utf8.mk"], "rerun 2 s3b (no atomics; no defect)")
+mark(["std/sys/windows/net.mk", "std/sys/linux/net.mk"], "rerun 2 s3b (no atomics; the resolve comments fixed)")
+mark(["std/net/udp.mk", "std/net/net.mk", "std/proc/supervise.mk", "std/fs/fs.mk", "std/fs/dir.mk",
+      "std/fs/file.mk", "std/coll/deque.mk", "std/coll/pqueue.mk", "std/core/coll_heap.mk", "std/core/coll_map.mk",
+      "std/core/coll_list.mk", "std/net/addr.mk", "std/core/core_parse.mk"], "rerun 2 s3b (no atomics; no defect)")
+mark(["std/core/core_sort.mk", "std/core/core_hash.mk", "std/cli/args.mk", "std/core/core_str.mk",
+      "std/core/text_text.mk"], "rerun 2 s3b (no atomics; no defect; ports checked against Go's and glibc's)")
+mark(["std/math/rng.mk", "std/math/io_rng.mk", "std/math/math.mk", "std/hash/crc32.mk"],
+     "rerun 2 s3b (no atomics; no defect; against the published references)")
+mark(["std/core/core_errors.mk", "std/net/errors.mk", "std/core/text_fmt.mk", "std/fs/errors.mk",
+      "std/sys/linux/syscall.mk", "std/task/context.mk", "std/core/core_layout.mk", "std/corpus/testprelude.mk",
+      "std/core/core_duration.mk", "std/core/core_iface.mk", "std/rt/leak.mk", "std/rt/str.mk",
+      "std/core/core_tables.mk", "std/core/core_target.mk", "std/sys/linux/random.mk"],
+     "rerun 2 s3b (declarations and small bodies; no defect)")
+mark(["std/atomic/order.mk", "std/core/mem_alloc.mk", "std/core/mem_box.mk", "std/rt/finish.mk",
+      "std/rt/heap_table.mk", "std/task/jitter.mk", "std/core/io_io.mk", "std/core/mem_path.mk",
+      "std/proc/proc.mk", "std/rt/intrinsics.mk"], "rerun 2 s3b (no defect)")
+mark(["std/core/core_slice.mk"], "rerun 2 s3b (no defect; Index's comment corrected)")
+mark(["std/sys/linux/nr.mk", "std/sys/windows/kernel32.mk"],
+     "rerun 2 s3b (every x86_64 and arm64 number and every signature checked; no defect)")
+mark(["std/hash/bytes.mk"], "rerun 2 s3b (no defect)")
+mark(["std/hash/sip.mk"], "rerun 2 s3b (no defect; SipHash-1-3 against the reference)")
+mark(["std/hash/sha256.mk", "std/hash/sha512.mk"], "rerun 2 s3b (no defect; against FIPS 180-4)")
+mark(["std/core/core_gen.mk"], "rerun 2 s3b (declarations; no defect)")
+mark(["std/core/core_iter.mk"], "rerun 2 s3b (no defect; the SWAR masks checked)")
+mark(["std/derive/derive.mk"], "rerun 2 s3b (no defect; binding names checked for capture)")
+mark(["std/core/core_impls.mk"], "rerun 2 s3b (no defect)")
+mark(["std/core/text_case.mk"], "rerun 2 s3b (no defect; against Go's unicode.to)")
+mark(["std/core/core_fmt.mk"], "rerun 2 s3b (no defect; uscale and ftoa against Go 1.27; the generated table not re-derived)")
+mark(["std/hash/xx.mk"], "rerun 2 s3b (no defect; every secret offset against xxhash.h)")
+mark(["std/hash/blake3.mk"], "rerun 2 s3b (no defect; the schedule and the subtree split against reference_impl.rs)")
+SKIPWORDS = ("StartsWith(", "EndsWith(", "ScopeWith(")
+
+rows = []
+for d in DIRS:
+    for dp, _, fs in os.walk(d):
+        if ".mk-cache" in dp:
+            continue
+        for f in sorted(fs):
+            if not f.endswith(".mk"):
+                continue
+            p = os.path.join(dp, f).replace("\\", "/")
+            text = open(p, encoding="utf-8").read()
+            n = text.count("\n")
+            r1 = len(re.findall(r"const [a-z_]+\s*:\s*fn\(", text))
+            r2 = sum(1 for m in re.finditer(r"^export [\w\[\], .]*?(\w+With)\(", text, re.M) if not m.group(1) + "(" in SKIPWORDS)
+            r3 = text.count('", ())')
+            conc = bool(re.search(r"raw\.Atomic|rt\.Lock|\.Cas\(|WaitWord|IoWait|Park\(", text))
+            test = os.path.basename(p).startswith("tests_")
+            rows.append((p, before.get(p), n, r1, r2, r3, conc, test, READ.get(p, "")))
+
+rows.sort()
+
+AFTER = "tests/bench-lanes/std-rewrite/lines-after.txt"
+if CHECK:
+    now = {r[0]: r[2] for r in rows}
+    bad = []
+    for p, n in sorted(after_old.items()):
+        if p not in now:
+            bad.append("%s: in lines-after.txt (%d), not in the tree" % (p, n))
+        elif now[p] != n:
+            bad.append("%s: lines-after.txt %d, tree %d" % (p, n, now[p]))
+    for p in sorted(set(now) - set(after_old)):
+        bad.append("%s: in the tree (%d), no row in lines-after.txt" % (p, now[p]))
+    for b in bad:
+        print(b)
+    print("lines-after.txt: %d rows, %d mismatches" % (len(after_old), len(bad)))
+    sys.exit(1 if bad else 0)
+
+la = ["# Line counts of every .mk file in std-rewrite's write set (the same directories as lines-before.txt), "
+      "wc -l (the newline count) of the working tree, generated whole by files_table.py.txt, never patched by "
+      "hand (review SRW-RV-5); `python -I tests/bench-lanes/std-rewrite/files_table.py.txt --check` compares "
+      "it with the tree. Last generated by the rerun 2 fix round, 2026-11-08; earlier versions are in git "
+      "history; compare lines-before.txt, same command"]
+for r in rows:
+    la.append("%7d %s" % (r[2], r[0]))
+open(AFTER, "w", encoding="utf-8", newline="\n").write("\n".join(la) + "\n")
+
+out = []
+out.append("# std-rewrite: the write set, file by file (rewrite bar, plan/06-m6.md section 5)")
+out.append("")
+out.append("Generated by std-rewrite (rerun 2, session 1, 2026-11-08) from the tree by tests/bench-lanes/std-rewrite/files_table.py.txt, which also regenerates lines-after.txt (last run: rerun 2 fix round, SRW-RV-5); regenerate the counts before relying on them. Columns: lines before (lines-before.txt, 65ba5ca; blank: the file is newer) and now (`wc -l`); R1 `const` fn parameters declared (rule 1 can apply only at their call sites; every call site in std was checked in rerun session 2: none carries a capture-only context struct); R2 exported `...With(` declarations other than StartsWith, EndsWith and ScopeWith (DD-2: 0 everywhere; internal helpers such as std/sys's `FailWith` are not DD-2's forms); R3 `\", ())` (the short Print form; the 2 in tests_fmt.mk test the explicit empty record on purpose); C: atomics, locks or waits in the file (the async bar applies); read: who read the file line by line under the async bar (blank: not yet).")
+out.append("")
+out.append("| File | Before | Now | R1 | R2 | R3 | C | Test | Read under the async bar |")
+out.append("|---|---|---|---|---|---|---|---|---|")
+tot_b = tot_a = 0
+for p, b, a, r1, r2, r3, conc, test, who in rows:
+    tot_a += a
+    tot_b += b or 0
+    out.append("| %s | %s | %d | %s | %s | %s | %s | %s | %s |" % (
+        p, "" if b is None else b, a, r1 or "", r2 or "", r3 or "", "C" if conc else "", "t" if test else "", who))
+out.append("")
+nread = sum(1 for r in rows if r[8])
+nconc = sum(1 for r in rows if r[6] and not r[7])
+nconc_read = sum(1 for r in rows if r[6] and not r[7] and r[8])
+out.append("%d files, %d lines now (%d in the files that existed at 65ba5ca). Read line by line under the async bar: %d files; non-test files with atomics, locks or waits: %d, of them read: %d." % (len(rows), tot_a, tot_b, nread, nconc, nconc_read))
+open("tests/bench-lanes/std-rewrite/files.md", "w", encoding="utf-8", newline="\n").write("\n".join(out) + "\n")
+print(len(rows), tot_a, nread, nconc, nconc_read)

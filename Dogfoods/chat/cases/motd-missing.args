@@ -1,0 +1,4 @@
+--motd
+$CASES/data/no-motd.txt
+replay
+$CASES/data/basic.chat

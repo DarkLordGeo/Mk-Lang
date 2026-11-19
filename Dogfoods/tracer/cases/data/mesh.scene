@@ -1,0 +1,15 @@
+# A textured pyramid mesh behind a sphere, with depth of field: the lens is
+# focused on the sphere, so the pyramid blurs.
+size 40 30
+samples 6
+depth 2
+seed 3
+background 0.2 0.2 0.25
+camera 0 2 -5  0 0.6 0  50  0.3 4.2
+light -3 6 -3  1.5  40 40 40
+material ground diffuse 0.5 0.5 0.5
+material paint texture tex.ppm
+material ball diffuse 0.2 0.6 0.9
+plane 0 0 0  0 1 0 ground
+mesh pyramid.obj paint  1.2 30  0.5 0 2
+sphere -0.8 0.5 -0.5  0.5 ball

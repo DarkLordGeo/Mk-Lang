@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1204","name":"async-syntax","phase":"parse","root":1,"at":{"file":"t.mk","line":1,"col":1,"end_line":1,"end_col":6},"message":"Mk has no `async`: every function may suspend through `Io`","facts":{"habits":["E1204"],"target":"F() {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":1,"col":1,"end_line":1,"end_col":7,"text":""}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1204"}],"omitted":0}
+

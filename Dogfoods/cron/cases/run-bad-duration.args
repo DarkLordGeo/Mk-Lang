@@ -1,0 +1,4 @@
+run
+$CASES/data/jobs.tab
+--stop-after
+soon

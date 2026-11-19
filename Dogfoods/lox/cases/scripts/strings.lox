@@ -1,0 +1,21 @@
+// Strings and the text natives.
+var s = "héllo, wörld";
+print s;
+print len(s);
+print substr(s, 0, 6);
+print substr("abcdef", 2, 3);
+print str(12.5) + "!";
+print str(nil) + str(true);
+print str([1, "two"]);
+print num("3.25") + 1;
+print num("  42  ");
+print num("forty");
+print int("123") + 1;
+print int("12.5");
+print chr(65) + chr(955) + chr(128512);
+print ord("A");
+print ord("λ");
+print ord("");
+var acc = "";
+for (var i = 0; i < 5; i = i + 1) acc = acc + chr(ord("a") + i);
+print acc;

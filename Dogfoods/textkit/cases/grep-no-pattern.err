@@ -1,0 +1,14 @@
+textkit grep: no pattern
+Options:
+  --ignore-case    Match without regard to case
+  --invert         Print the lines that do not match
+  --count          Print only how many lines matched, per input
+  --line-number    Put the line number before each line
+  --only           Print each match on a line of its own
+  --fixed          Take the pattern as text, not as a regular expression
+  --group <int>    Print the text of this group of the first match, from 1
+  --replace <str>  Print each matching line with every match replaced by this
+  --flush          Write each line out as soon as it is found
+  --buffer <int>   The read buffer, in bytes, which also bounds a line (default 16384)
+Arguments:
+  <args>...        The pattern, then the files to read; no file, or -, is standard input

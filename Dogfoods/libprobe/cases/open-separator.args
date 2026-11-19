@@ -1,0 +1,4 @@
+open
+--search
+system
+sub/kernel32.dll

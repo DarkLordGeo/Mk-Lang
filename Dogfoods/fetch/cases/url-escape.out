@@ -1,0 +1,3 @@
+escaped   a%20b%26c%2F%C3%BC
+unescaped hex 4120ff
+unescaped café

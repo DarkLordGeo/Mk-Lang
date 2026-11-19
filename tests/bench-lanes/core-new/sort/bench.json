@@ -1,0 +1,24 @@
+{
+  "name": "sort",
+  "table": "idiomatic",
+  "algorithm": "Each standard library's unstable sort of n u64 values: per round r the values are splitmix64 from seed + r * 0x5555555555555555, sorted ascending, and every 1,024th value times its index plus the last value is added to the checksum with wrapping (README.md).",
+  "overflow": "wraps",
+  "args": ["1000000", "10", "1"],
+  "quick": ["100000", "3", "1"],
+  "checksum": "2194390077444048333",
+  "quick_checksum": "13767744764125270723",
+  "sources": {
+    "mk": "mk",
+    "c": "sort.c",
+    "rust": "sort.rs",
+    "zig": "sort.zig",
+    "go": "testdata/sort.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the sorted order of distinct keys is unique, so the sampled checksum checks every column sorted",
+  "notes": [
+    "Algorithms: Mk Slice.Sort is Go's pdqsort_func (plan/19-std.md S-7) with the comparator inlined; Rust slice::sort_unstable is ipnsort; Zig std.mem.sortUnstable is pdqsort; Go slices.Sort is pdqsort; C qsort is the C runtime's (UCRT on Windows), with an indirect comparison call per compare."
+  ]
+}

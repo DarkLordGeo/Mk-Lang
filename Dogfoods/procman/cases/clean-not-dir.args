@@ -1,0 +1,3 @@
+--run-dir
+$CASES/data/check.Procfile
+clean

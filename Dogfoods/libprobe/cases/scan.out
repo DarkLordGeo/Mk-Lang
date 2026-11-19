@@ -1,0 +1,4 @@
+LIBRARY                  SYSTEM        APPLICATION   PATH
+kernel32.dll             loaded        loaded        bad name
+version.dll              loaded        loaded        bad name
+no-such-library.dll      not found     not found     bad name

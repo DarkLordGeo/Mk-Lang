@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--fault
+read-reset
+http://{origin}/hello

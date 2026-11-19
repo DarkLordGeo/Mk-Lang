@@ -1,0 +1,80 @@
+# Why: every change to main must build and pass its tests on both supported
+# hosts before anyone builds on top of it.
+#
+# What: build, vet, gofmt, the Go tests (std's long suite runs nightly) and
+# the documentation tests, on the Windows and Linux self-hosted runners.
+#
+# How: runs on pushes to main, on pull requests from branches of this
+# repository, and by hand. The job skips pull requests from forks, but a
+# fork can change this file, so the guard is the repository's approval
+# setting: a fork's run waits for a maintainer, and approving it runs the
+# fork's workflow files on the self-hosted runners, which run on a
+# maintainer's machine. Never approve one; see .github/runners/README.md.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows
+            shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
+          - os: linux
+            shell: bash
+    runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
+    timeout-minutes: 120
+    defaults:
+      run:
+        # Git Bash by its short path: a plain `bash` on a Windows runner can
+        # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
+        # run the step's script, and CI must never start wsl.exe here.
+        shell: ${{ matrix.shell }}
+    env:
+      MK_GATE: "1"
+      MK_CACHE: ${{ github.workspace }}/../.mkcache
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain
+        run: |
+          go version
+          go run ./cmd/mk version
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Format
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "gofmt would change:"
+            echo "$out"
+            exit 1
+          fi
+
+      - name: Test
+        run: go test -timeout 3600s $(go list ./... | grep -v '^mk/std$')
+
+      - name: Documentation tests
+        run: go run ./cmd/mk corpus

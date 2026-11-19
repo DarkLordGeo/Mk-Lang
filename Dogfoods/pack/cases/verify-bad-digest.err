@@ -1,0 +1,1 @@
+pack: $CASES/data/bad-digest.pk: README.txt: the contents do not match the manifest's digest

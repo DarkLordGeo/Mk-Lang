@@ -1,0 +1,28 @@
+1: 2026-11-07 10:01:02 svc=api status=200 took=12ms
+  [28, 38) status=200
+    1: status
+  [39, 46) took=12
+    1: took
+2: 2026-11-07 10:01:03 svc=db status=500 took=1200ms
+  [27, 37) status=500
+    1: status
+  [38, 47) took=1200
+    1: took
+3: 2026-11-07 10:01:04 svc=api status=404 took=3ms
+  [28, 38) status=404
+    1: status
+  [39, 45) took=3
+    1: took
+4: naïve café: Größe=7 ÉLAN=9
+  [14, 23) Größe=7
+    1: Größe
+  [24, 31) ÉLAN=9
+    1: ÉLAN
+6: 2026-11-07 10:01:05 req=7f3a status=503 took=88ms
+  [20, 25) req=7
+    1: req
+  [29, 39) status=503
+    1: status
+  [40, 47) took=88
+    1: took
+5 lines

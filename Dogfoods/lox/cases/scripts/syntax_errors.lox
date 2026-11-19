@@ -1,0 +1,9 @@
+// Every independent syntax error is reported, each with its line.
+print 1 +;
+var = 3;
+fun f(a, b {
+  return a;
+}
+print "fine";
+1 = 2;
+print "unterminated;

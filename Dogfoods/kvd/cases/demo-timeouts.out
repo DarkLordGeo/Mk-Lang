@@ -1,0 +1,136 @@
+=== round 1
+WARN client 1: request timed out
+--- waiter 0
+> NAME waiter
++OK
+> WAIT waiter:never
+-ERR TimedOut
+> SET waiter:flag up
++OK
+> WAIT waiter:flag
+$up
+(idle)
+-ERR IdleTimeout
+(closed)
+--- client 1
+> NAME client0
++OK
+> SET u0:name Ada Lovelace
++OK
+> GET u0:name
+$Ada Lovelace
+> INCR u0:visits
+:1
+> INCR u0:visits
+:2
+> INCR u0:visits
+:3
+> APPEND u0:log started
+:7
+> APPEND u0:log ,stopped
+:15
+> GETSET u0:name Grace Hopper
+$Ada Lovelace
+> GET u0:name
+$Grace Hopper
+> INCR u0:name
+-ERR NotAnInteger
+> DEL u0:missing
+:0
+> GET u0:missing
+_
+> HASH u0:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u0:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u0:
+*3
+$u0:log
+$u0:name
+$u0:visits
+> QUIT
++BYE
+--- operator 2
+> NAME operator
++OK
+> DBSIZE
+:4
+> COMPACT
++OK
+> NAME -
++OK
+> SHUTDOWN
++BYE
+--- the log holds 4 keys, digest fd6c7673e4715dff
+u0:log = started,stopped
+u0:name = Grace Hopper
+u0:visits = 3
+waiter:flag = up
+=== round 2
+WARN client 1: request timed out
+--- waiter 0
+> NAME waiter
++OK
+> WAIT waiter:never
+-ERR TimedOut
+> SET waiter:flag up
++OK
+> WAIT waiter:flag
+$up
+(idle)
+-ERR IdleTimeout
+(closed)
+--- client 1
+> NAME client0
++OK
+> SET u0:name Ada Lovelace
++OK
+> GET u0:name
+$Ada Lovelace
+> INCR u0:visits
+:4
+> INCR u0:visits
+:5
+> INCR u0:visits
+:6
+> APPEND u0:log started
+:22
+> APPEND u0:log ,stopped
+:30
+> GETSET u0:name Grace Hopper
+$Ada Lovelace
+> GET u0:name
+$Grace Hopper
+> INCR u0:name
+-ERR NotAnInteger
+> DEL u0:missing
+:0
+> GET u0:missing
+_
+> HASH u0:log
+$xx=ca1b9899a362728f sip=43ae29e67db60ec3
+> SET u0:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u0:
+*3
+$u0:log
+$u0:name
+$u0:visits
+> QUIT
++BYE
+--- operator 2
+> NAME operator
++OK
+> DBSIZE
+:4
+> COMPACT
++OK
+> NAME -
++OK
+> SHUTDOWN
++BYE
+--- the log holds 4 keys, digest d7a0b926920d21bb
+u0:log = started,stoppedstarted,stopped
+u0:name = Grace Hopper
+u0:visits = 6
+waiter:flag = up

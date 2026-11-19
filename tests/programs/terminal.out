@@ -1,0 +1,11 @@
+parent's stdout is a terminal false, uses color false
+styled bytes: ESC[0;1;32mESC[3;5Hbell� and escape�[2J kept	line
+child ended with code 0
+stdin is a terminal true, size 80x24
+key char a, ctrl false, alt false
+key char B, ctrl false, alt false
+key char a, ctrl true, alt false
+key tab, ctrl false, alt false
+key up, ctrl false, alt false
+key left, ctrl false, alt false
+key enter, ctrl false, alt false

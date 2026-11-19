@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E0102","name":"reserved-word","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":5,"end_line":2,"end_col":9},"message":"`type` is a keyword","facts":{"name":"type"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":5,"end_line":2,"end_col":9,"text":"type_"}],"why":"rename `type` to `type_`"}],"alternatives":[],"explain":"mk explain E0102"}],"omitted":0}
+

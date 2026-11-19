@@ -1,0 +1,13 @@
+info
+synth:2048x1536
+blur
+sharpen
+equalize
+sobel
+resize=1024x0
+gamma=2.2
+swap=bgr
+posterize=5
+gray
+dilate
+threshold

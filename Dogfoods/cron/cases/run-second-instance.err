@@ -1,0 +1,6 @@
+INFO second: started
+INFO second| cron: another instance holds {tmp}/cron.lock
+WARN second: exited with status 3
+INFO waiter: started
+INFO waiter| cron: another instance holds {tmp}/cron.lock
+WARN waiter: exited with status 3

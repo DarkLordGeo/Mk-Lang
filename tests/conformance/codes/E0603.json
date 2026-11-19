@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0603","name":"returns-local-borrow","phase":"flow","root":1,"at":{"file":"E0603.mk","line":9,"col":5,"end_line":9,"end_col":14},"message":"the result borrows p, which ends when the function returns","facts":{"loan":{"place":"p","kind":"shared","at":"E0603.mk:9:12"}},"fixes":[],"alternatives":[],"explain":"mk explain E0603"}],"omitted":0}

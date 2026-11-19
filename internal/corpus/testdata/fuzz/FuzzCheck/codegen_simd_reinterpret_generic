@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("import std.simd\n\nR[T: simd.Lane, U: simd.Lane](v: simd.Vec[T, 4]): simd.Vec[U, 4] {\n    return v.Reinterpret[U, 4]()\n}\n\nexport Main(sys: &System): int {\n    w := R[u8, u64](simd.Vec[u8, 4].Splat(7))\n    return Cast[int](w.Lane(0))\n}\n")

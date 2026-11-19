@@ -1,0 +1,18 @@
+# Two people meet in #general; the bots answer in #bots.
+alice: NICK alice
+bob: NICK bob
+alice: JOIN #general
+bob: JOIN #general
+alice: MSG #general hello bob
+bob: MSG #general hi alice
+alice: WHO #general
+bob: JOIN #bots
+bob: MSG #bots !echo is anyone there
+bob: !read
+bob: MSG #bots !stats
+bob: !read
+alice: ROOMS
+alice: HISTORY #general 5
+bob: PART #general
+alice: WHOAMI
+alice: PING done

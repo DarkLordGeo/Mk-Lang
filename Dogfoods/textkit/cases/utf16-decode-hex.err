@@ -1,0 +1,4 @@
+textkit: $CASES/data/units.txt:2: Unpaired(unit: 1)
+textkit: $CASES/data/units.txt:3: Unpaired(unit: 1)
+textkit: $CASES/data/units.txt:4: BadScalar(token: 2)
+textkit: $CASES/data/units.txt:5: BadScalar(token: 1)

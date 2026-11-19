@@ -1,0 +1,267 @@
+// Why: ParseAddr reads untrusted address text, and a hand-written parser
+// needs a reference to be compared with on many inputs.
+// What: TestRtSched_ParseAddrDiff, std/task/io_net.mk ParseAddr against a Go
+// model (rtsRefParse).
+// How: the model is net/netip's parser for the IPv4 and IPv6 text forms, with
+// the documented differences of the runtime (an empty host is 0.0.0.0
+// for listen and 127.0.0.1 for dial; "localhost" in any ASCII case is
+// 127.0.0.1; a zone must be numeric, 1 to 10 digits, at most 2^32 - 1;
+// the port is 1 to 5 decimal digits, at most 65535). The cases are random
+// strings over the address alphabet, valid addresses of every form, and
+// single-character mutations of them; the generated block, planted in
+// std/task, checks ParseAddr's verdict and every output field for each.
+
+package std
+
+import (
+	"fmt"
+	"math/rand"
+	"net/netip"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+)
+
+// rtsAddr is the model's answer for one input.
+type rtsAddr struct {
+	ok    bool
+	fam   uint16
+	port  uint16
+	addr  [16]byte
+	scope uint32
+}
+
+// rtsRefParse is the reference model.
+func rtsRefParse(s string, listen bool) rtsAddr {
+	var r rtsAddr
+	var host, port string
+	if strings.HasPrefix(s, "[") {
+		rb := strings.IndexByte(s, ']')
+		if rb < 0 || rb+1 >= len(s) || s[rb+1] != ':' {
+			return r
+		}
+		h := s[1:rb]
+		a, err := netip.ParseAddr(h)
+		if err != nil || !a.Is6() {
+			return r
+		}
+		if z := a.Zone(); z != "" || strings.Contains(h, "%") {
+			if len(z) == 0 || len(z) > 10 || strings.Trim(z, "0123456789") != "" {
+				return r
+			}
+			v, err := strconv.ParseUint(z, 10, 64)
+			if err != nil || v > 0xFFFF_FFFF {
+				return r
+			}
+			r.scope = uint32(v)
+		}
+		r.addr = a.As16()
+		r.fam = 6
+		port = s[rb+2:]
+	} else {
+		colon := strings.LastIndexByte(s, ':')
+		if colon < 0 || strings.Count(s, ":") > 1 {
+			return r
+		}
+		host, port = s[:colon], s[colon+1:]
+		r.fam = 4
+		switch {
+		case host == "":
+			if !listen {
+				r.addr[0], r.addr[3] = 127, 1
+			}
+		case strings.EqualFold(host, "localhost"):
+			r.addr[0], r.addr[3] = 127, 1
+		default:
+			a, err := netip.ParseAddr(host)
+			if err != nil || !a.Is4() {
+				return r
+			}
+			b := a.As4()
+			copy(r.addr[:4], b[:])
+		}
+	}
+	if len(port) == 0 || len(port) > 5 || strings.Trim(port, "0123456789") != "" {
+		return rtsAddr{}
+	}
+	v, _ := strconv.Atoi(port)
+	if v > 65535 {
+		return rtsAddr{}
+	}
+	r.port = uint16(v)
+	r.ok = true
+	return r
+}
+
+// rtsAddrCases makes n inputs from seed.
+func rtsAddrCases(seed int64, n int) []string {
+	rng := rand.New(rand.NewSource(seed))
+	const alpha = "0123456789abcdefABCDEF:.[]%x Llocahst"
+	port := func() string {
+		switch rng.Intn(6) {
+		case 0:
+			return ""
+		case 1:
+			return strconv.Itoa(65530 + rng.Intn(10))
+		case 2:
+			return "0" + strconv.Itoa(rng.Intn(100))
+		case 3:
+			return strconv.Itoa(100000 + rng.Intn(10))
+		}
+		return strconv.Itoa(rng.Intn(65536))
+	}
+	valid := func() string {
+		var b [16]byte
+		rng.Read(b[:])
+		switch rng.Intn(9) {
+		case 0:
+			return netip.AddrFrom4([4]byte{b[0], b[1], b[2], b[3]}).String() + ":" + port()
+		case 1:
+			// Zero groups, so "::" compression appears at every place.
+			for i := range b {
+				if rng.Intn(3) == 0 {
+					b[i] = 0
+				}
+			}
+			return "[" + netip.AddrFrom16(b).String() + "]:" + port()
+		case 2:
+			return "[" + netip.AddrFrom16(b).StringExpanded() + "]:" + port()
+		case 3:
+			z := strconv.FormatUint(uint64(rng.Uint32()), 10)
+			if rng.Intn(4) == 0 {
+				z = "4294967296"
+			}
+			return "[fe80::" + strconv.FormatUint(uint64(b[0]), 16) + "%" + z + "]:" + port()
+		case 4:
+			return "[::ffff:" + netip.AddrFrom4([4]byte{b[0], b[1], b[2], b[3]}).String() + "]:" + port()
+		case 5:
+			return "localhost:" + port()
+		case 6:
+			return ":" + port()
+		case 7:
+			return "[" + strings.ToUpper(netip.AddrFrom16(b).String()) + "]:" + port()
+		}
+		return fmt.Sprintf("%d.%d.%d.%d:%s", rng.Intn(300), rng.Intn(300), b[2], b[3], port())
+	}
+	mutate := func(s string) string {
+		bs := []byte(s)
+		for k := 1 + rng.Intn(2); k > 0; k-- {
+			c := alpha[rng.Intn(len(alpha))]
+			i := 0
+			if len(bs) > 0 {
+				i = rng.Intn(len(bs))
+			}
+			switch rng.Intn(3) {
+			case 0:
+				bs = append(bs[:i], append([]byte{c}, bs[i:]...)...)
+			case 1:
+				if len(bs) > 0 {
+					bs = append(bs[:i], bs[i+1:]...)
+				}
+			default:
+				if len(bs) > 0 {
+					bs[i] = c
+				}
+			}
+		}
+		return string(bs)
+	}
+	var out []string
+	for len(out) < n {
+		switch rng.Intn(3) {
+		case 0:
+			out = append(out, valid())
+		case 1:
+			out = append(out, mutate(valid()))
+		default:
+			var b strings.Builder
+			for k := rng.Intn(24); k > 0; k-- {
+				b.WriteByte(alpha[rng.Intn(len(alpha))])
+			}
+			out = append(out, b.String())
+		}
+	}
+	return out
+}
+
+// rtsAddrPlant is the generated test file: one block, the checks split
+// into functions of 100.
+func rtsAddrPlant(cases []string) (string, int) {
+	var b strings.Builder
+	b.WriteString("// Generated by std/rt-sched_net_test.go.\n\nimport std.rt\nimport std.sys\n\n")
+	b.WriteString(`DCheck(s: str, listen: bool, ok: bool, fam: u16, port: u16, want: [16]u8, zone: u32) {
+    var a := sys.SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
+    got := rt.ParseAddr(s, listen, mut a)
+    Assert(got == ok)
+    if ok {
+        Assert(a.family == fam && a.port == port && a.scope_id == zone)
+        for i in 0..16 {
+            Assert(a.addr[i] == want[i])
+        }
+    }
+}
+
+`)
+	n := 0
+	fns := 0
+	for i, s := range cases {
+		if i%100 == 0 {
+			if i > 0 {
+				b.WriteString("}\n\n")
+			}
+			fmt.Fprintf(&b, "D%d() {\n", fns)
+			fns++
+		}
+		for _, listen := range []bool{false, true} {
+			r := rtsRefParse(s, listen)
+			var bytes []string
+			for _, x := range r.addr {
+				bytes = append(bytes, strconv.Itoa(int(x)))
+			}
+			fmt.Fprintf(&b, "    DCheck(%q, %v, %v, %d, %d, [%s], %d)\n", s, listen, r.ok, r.fam, r.port, strings.Join(bytes, ", "), r.scope)
+			n++
+		}
+	}
+	b.WriteString("}\n\ntest \"RT-Net-ParseAddrDiff ParseAddr agrees with the netip model\" (sys: &System) {\n")
+	for k := 0; k < fns; k++ {
+		fmt.Fprintf(&b, "    D%d()\n", k)
+	}
+	b.WriteString("}\n")
+	return b.String(), n
+}
+
+// TestRtSched_ParseAddrDiff runs 1,500 inputs (3,000 checks, listen and
+// dial) through ParseAddr natively and compares them with the model.
+func TestRtSched_ParseAddrDiff(t *testing.T) {
+	rtsNative(t)
+	cases := rtsAddrCases(20261104, 1500)
+	plant, n := rtsAddrPlant(cases)
+	accepted := 0
+	for _, s := range cases {
+		if rtsRefParse(s, false).ok {
+			accepted++
+		}
+	}
+	t.Logf("%d checks, %d of %d inputs accepted by the model", n, accepted, len(cases))
+	if accepted < 300 || accepted > 1200 {
+		t.Fatalf("the generator is unbalanced: %d of %d accepted", accepted, len(cases))
+	}
+	exe, blocks := rtsBuildWith(t, "dev", plant)
+	for _, b := range blocks {
+		if strings.HasPrefix(b.name, "RT-Net-ParseAddrDiff") {
+			r := rtsRun(t, exe, b.index, 60*time.Second)
+			// An assert names a line of the planted file: show that check.
+			if m := regexp.MustCompile(`tests_zzplant.mk:([0-9]+)`).FindStringSubmatch(r.stderr); m != nil {
+				lines := strings.Split(plant, "\n")
+				if k, _ := strconv.Atoi(m[1]); k >= 1 && k <= len(lines) {
+					t.Errorf("failing check: %s", strings.TrimSpace(lines[k-1]))
+				}
+			}
+			rtsJudge(t, b, r, "")
+			return
+		}
+	}
+	t.Fatal("the planted block was not found")
+}

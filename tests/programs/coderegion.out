@@ -1,0 +1,5 @@
+code region: written code returned 42
+guard page: the write resumed after the filter; the page holds 6
+code-region fault: the filter resumed past the load; the code returned 42
+illegal instruction: the filter saw FaultKind.Illegal and resumed past it; the code returned 42
+filters resumed 3 faults

@@ -1,0 +1,107 @@
+{
+  "name": "digits",
+  "table": "idiomatic",
+  "algorithm": "A float's decimal digits and exponent: the shortest round-trip digits (variant shortest) 17 significant digits of the exact value (variant exact17), or 6 digits after the point (variant fixed, binary exponents -20 to 60) of 4,096 positive f64 inputs from splitmix64 bits, binary exponents -300 to 300, reps passes; each result folds its length, exponent and the sum of its digits but the last, trailing zeros dropped (README.md).",
+  "overflow": "wraps",
+  "std": [
+    "std.math.ShortestDigits",
+    "std.math.ExactDigits"
+  ],
+  "args": [
+    "shortest",
+    "10000",
+    "1"
+  ],
+  "quick": [
+    "shortest",
+    "100",
+    "1"
+  ],
+  "checksum": "688445946730000",
+  "quick_checksum": "6884459467300",
+  "sources": {
+    "mk": "mk",
+    "c": "digits.c",
+    "rust": "digits.rs",
+    "zig": "digits.zig",
+    "go": "testdata/digits.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other integer arithmetic"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the digits' correctness is std/std-math_digits_test.go's (strconv over 10,485,760 values and the edge set)",
+  "variants": [
+    {
+      "name": "shortest",
+      "args": [
+        "shortest",
+        "10000",
+        "1"
+      ],
+      "quick": [
+        "shortest",
+        "100",
+        "1"
+      ],
+      "checksum": "688445946730000",
+      "quick_checksum": "6884459467300",
+      "baseline": [
+        "shortest",
+        "0",
+        "1"
+      ],
+      "skip": {
+        "c": "no shortest round-trip form in C's std: printf's %e and %g take a precision, and C23's strfromd is printf's"
+      }
+    },
+    {
+      "name": "exact17",
+      "args": [
+        "exact17",
+        "10000",
+        "1"
+      ],
+      "quick": [
+        "exact17",
+        "100",
+        "1"
+      ],
+      "checksum": "708206095510000",
+      "quick_checksum": "7082060955100",
+      "baseline": [
+        "exact17",
+        "0",
+        "1"
+      ],
+      "skip": {
+        "zig": "std.fmt's precision form ({e:.16}) rounds the shortest digits, not the exact value: it gives the shortest row's checksum (6884459467300 at the quick args), so it does another task"
+      }
+    },
+    {
+      "name": "fixed",
+      "args": [
+        "fixed",
+        "10000",
+        "1"
+      ],
+      "quick": [
+        "fixed",
+        "100",
+        "1"
+      ],
+      "checksum": "489625290430000",
+      "quick_checksum": "4896252904300",
+      "baseline": [
+        "fixed",
+        "0",
+        "1"
+      ],
+      "skip": {
+        "zig": "std.fmt's {d:.6} rounds the shortest digits, not the exact value: 1e15 + 0.3 prints .200000 where the exact value is ...0.25 (probed 2026-11-18), so it does another task"
+      }
+    }
+  ],
+  "notes": [
+    "The text columns format the digits into text and the program reads them back; Mk's column produces the digits alone, which is the function LuxJS calls (its layouts are its own). So the columns do more work than Mk's for the same answer (std10 review N8)."
+  ]
+}

@@ -1,0 +1,6 @@
+$CASES/data/tree/a.txt:alpha needle
+$CASES/data/tree/a.txt:this line is longer than sixteen bytes and ends with needle
+$CASES/data/tree/a.txt:NEEDLE in caps
+$CASES/data/tree/a.txt:needles are not a word needle
+$CASES/data/tree/a.txt:last line without newline needle
+$CASES/data/tree/b.md:A needle in a haystack.

@@ -1,0 +1,75 @@
+--- a/std/sys/windows/term.mk
++++ b/std/sys/windows/term.mk
+@@ -3,6 +3,8 @@
+ // saved console modes as a process ends. No lock and no allocation, so the
+ // console control handler's thread may call it.
+ 
++import std.raw
++
+ /// TermKindTermios: a Linux termios; skipped here.
+ export const TermKindTermios: u32 = 1
+ /// TermKindConsole: mode holds the console input handle's mode (bytes 0
+@@ -35,5 +37,63 @@
+         }
+     } else if kind == TermKindTest {
+         _ = WriteSync(h, mode, -1)
++    } else if kind == 98 {
++        RvCountAdd(h)
++        if alt {
++            _ = RvAlts[Trunc[int](h & 15)].Add(1)
++        }
++    } else if kind == 97 {
++        // The first restorer of a kind-97 record stalls until RvSlow is 2.
++        RvCountAdd(h)
++        if RvSlow.Cas(0, 1) {
++            for RvSlow.Load() != 2 {
++                ThreadYield()
++            }
++        }
++    }
++}
++
++var RvSlow: raw.Atomic[u32] = raw.Atomic[u32].New(0)
++
++/// RvSlowGet is the stall state: 0 armed, 1 a restorer stalls, 2 released.
++export RvSlowGet(): u32 {
++    return RvSlow.Load()
++}
++
++/// RvSlowSet sets the stall state.
++export RvSlowSet(v: u32) {
++    RvSlow.Store(v)
++}
++
++// Test instrumentation: kind 98 counts its restores by h.
++var RvCounts: [16]raw.Atomic[u32] = [raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0)]
++
++RvCountAdd(h: uint) {
++    _ = RvCounts[Trunc[int](h & 15)].Add(1)
++}
++
++/// RvCount is kind 98's restore count for tag i.
++export RvCount(i: int): u32 {
++    return RvCounts[i & 15].Load()
++}
++
++var RvAlts: [16]raw.Atomic[u32] = [raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0), raw.Atomic[u32].New(0),
++    raw.Atomic[u32].New(0), raw.Atomic[u32].New(0)]
++
++/// RvAltCount is how many of kind 98's restores of tag i had alt set.
++export RvAltCount(i: int): u32 {
++    return RvAlts[i & 15].Load()
++}
++
++/// RvCountReset zeroes every tag's counts.
++export RvCountReset() {
++    for i in 0..16 {
++        RvCounts[i].Store(0)
++        RvAlts[i].Store(0)
+     }
+ }

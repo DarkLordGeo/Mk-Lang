@@ -1,0 +1,9 @@
+case entry-check
+profile dev
+stderr simd_narrow_restated_closed.err
+exit 101
+
+case guard-at-call
+profile release
+stderr simd_narrow_restated_closed_release.err
+exit 101

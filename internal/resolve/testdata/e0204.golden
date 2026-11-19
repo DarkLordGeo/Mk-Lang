@@ -1,0 +1,2 @@
+{"phase":"names","diagnostics":[{"code":"E0204","name":"not-exported","phase":"names","root":1,"at":{"file":"main/00.mk","line":3,"col":10,"end_line":3,"end_col":16},"message":"`Hidden` is not exported by `lib`","facts":{"item":"Hidden","declared_at":"lib/00.mk:1:8","module":"lib"},"fixes":[],"alternatives":["export `Hidden` from `lib`","use an exported function of `lib`"],"explain":"mk explain E0204"}],"omitted":0}
+

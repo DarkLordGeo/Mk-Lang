@@ -1,0 +1,22 @@
+# The copy is read back and printed, so stdout equals the input byte for byte.
+case ok
+args copy.in out.txt
+files copy.in
+stdout copy.in
+
+# The source does not exist: fs.Open fails before anything is created.
+case missing-source
+profile release
+args missing.txt out.txt
+stderr notfound.err
+exit 1
+
+# The target cannot be created: its directory does not exist (ENOENT on Linux,
+# ERROR_PATH_NOT_FOUND on Windows, both fs.NotFound in std.fs's error
+# mapping). The onerr closes the source with Abandon.
+case no-target-dir
+profile release
+args copy.in nodir/out.txt
+files copy.in
+stderr notfound.err
+exit 1

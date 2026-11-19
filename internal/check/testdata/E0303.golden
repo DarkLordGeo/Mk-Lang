@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0303","name":"lossy-conversion","phase":"types","root":1,"at":{"file":"m/00.mk","line":2,"col":10,"end_line":2,"end_col":13},"message":"`300` does not fit `u8`","facts":{"value":"300","type":"u8"},"fixes":[],"alternatives":[],"explain":"mk explain E0303"}],"omitted":0}

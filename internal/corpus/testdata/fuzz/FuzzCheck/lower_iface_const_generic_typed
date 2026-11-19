@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("enum Mode {\n    A\n    B\n}\n\nconst MB: Mode = Mode.B\n\ninterface I {\n    M[T, const V: T](&self): T\n}\n\nstruct S {\n    a: int\n}\n\nimpl I for S {\n    M[T, const V: T](&self): T {\n        return V\n    }\n}\n\nH[X: I](x: &X): Mode {\n    return x.M[Mode, MB]()\n}\n\nG[X: I](x: &X): int {\n    return x.M[int, 5]()\n}\n")

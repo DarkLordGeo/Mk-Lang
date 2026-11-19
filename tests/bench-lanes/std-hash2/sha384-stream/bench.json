@@ -1,0 +1,32 @@
+{
+  "name": "hash-sha384-stream",
+  "table": "idiomatic",
+  "algorithm": "std SHA-384 through the streaming state, fed 1,500-byte pieces (the last piece is the remainder) of splitmix64 bytes, one fresh state per pass, reps passes with a one-byte write-back (mk/hash-sha384-stream.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "20",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "15113696700075292019",
+  "quick_checksum": "11791735842731480461",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-sha384-stream.zig",
+    "go": "testdata/hash-sha384-stream.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-384; OpenSSL's portable C is a third-party library, and no third-party code stands in (plan/06-m6.md 4.1)",
+    "rust": "no std SHA-384: Rust std has none (only SipHash-1-3 in DefaultHasher); the sha2 crate is third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Idiomatic standard library, the streaming case (D8-12 (a): the TLS transcript hash and HMAC-SHA-384 feed the state piece by piece): Mk Sha384State.New/Bytes/Sum, Go crypto/sha512.New384, Write per piece, Sum, Zig init/update/final. 1,500 is not a multiple of the 128-byte block, so the partial-block path of Bytes runs on every piece. Bytes per second = mib * 1048576 * reps / median. The quick checksum equals hash-sha384's (the same digests).",
+    "Go: crypto/sha512 computes the message schedule with AVX2 on amd64 when the CPU has it, whatever GOAMD64 says (run-time dispatch in the library); Mk's Sha384 does too since M9 item 11.24a (D-775): an AVX2 message schedule beside rounds compiled with bmi2 when the CPU has avx2 and bmi2 (run-time dispatch), else Sha512's scalar loop. Zig at x86_64_v2 is scalar. Labelled: on a CPU with avx2 and bmi2 the zig cell compares instruction sets as well as libraries; before D-775 the go cell did (status/std-hash2.md, H2-6).",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27.3, owner's machine, 2026-11-12); the Mk (mk build --release) and Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) columns printed the same in `go run ./tools/bench verify -publish-size` (status/std-hash2.md, fix round). Written by the std-hash2 lane for review finding H2-8. Not published: no number here is a measurement."
+  ]
+}

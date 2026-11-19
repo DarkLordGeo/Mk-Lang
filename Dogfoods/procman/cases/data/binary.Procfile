@@ -1,0 +1,1 @@
+bin: $PROCMAN demo binary

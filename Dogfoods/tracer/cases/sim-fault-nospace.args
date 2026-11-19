@@ -1,0 +1,9 @@
+render
+$CASES/data/mesh.scene
+out.ppm
+--samples
+1
+--seed
+3
+--fault
+nospace

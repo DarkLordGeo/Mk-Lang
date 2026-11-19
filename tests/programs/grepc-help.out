@@ -1,0 +1,8 @@
+Options:
+  --pattern <str>  The text a line must hold. (required)
+  --invert         Keep the lines that do not hold it.
+  --max <int>      Stop after this many lines.
+  --verbose        Log each kept line's number to stderr.
+  --help           Print this help.
+Arguments:
+  <labels>...      Words printed before the count.

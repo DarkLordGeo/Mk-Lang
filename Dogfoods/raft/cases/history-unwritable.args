@@ -1,0 +1,5 @@
+sim
+--seed
+1
+--history
+$WORK/no/such/dir/h.txt

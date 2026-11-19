@@ -1,0 +1,28 @@
+{
+  "name": "simfiles",
+  "table": "idiomatic",
+  "algorithm": "the simulated namespace's lookups: one std.sim Sim, n files created, each statted and renamed, and each new name statted (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "20000",
+    "1"
+  ],
+  "quick": [
+    "4000",
+    "1"
+  ],
+  "checksum": "files 20000 sum 159994 bad 0",
+  "quick_checksum": "files 4000 sum 31988 bad 0",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std simulated Io",
+    "rust": "no std simulated Io",
+    "zig": "no std simulated Io",
+    "go": "no std simulated Io (testing/fstest.MapFS is a read-only file tree with no crash model)"
+  },
+  "notes": [
+    "Written by std-sim for SIM-R21 (status/std-sim.md): FindNode scans the node table, so this row is quadratic in n until the planned path index lands; it is here to measure that, not to publish a ratio."
+  ]
+}

@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1213","name":"double-colon","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":11,"end_line":2,"end_col":13},"message":"paths use `.`, not `::`","facts":{"habits":["E1213"],"target":"    x := a.b()"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":11,"end_line":2,"end_col":13,"text":"."}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1213"}],"omitted":0}
+

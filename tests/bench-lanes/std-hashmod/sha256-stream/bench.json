@@ -1,0 +1,32 @@
+{
+  "name": "hash-sha256-stream",
+  "table": "idiomatic",
+  "algorithm": "std SHA-256 through the streaming state, fed 1,500-byte pieces (the last piece is the remainder) of splitmix64 bytes, one fresh state per pass, reps passes with a one-byte write-back (mk/hash-sha256-stream.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "40",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "12156730336955905863",
+  "quick_checksum": "14769186975632789524",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-sha256-stream.zig",
+    "go": "testdata/hash-sha256-stream.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-256",
+    "rust": "no std SHA-256: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in"
+  },
+  "notes": [
+    "Idiomatic standard library, the streaming case (review finding HMR-3): Mk Sha256State.New/Bytes/Sum, Go crypto/sha256.New, Write per piece, Sum, Zig init/update/final. 1,500 is not a multiple of the block, so the partial-block path of Bytes runs on every piece. Bytes per second = mib * 1048576 * reps / median.",
+    "Go: crypto/sha256 uses the SHA extensions (SHA-NI) or AVX2 on amd64 when the CPU has them; Mk is scalar. Zig at -mcpu=x86_64_v2 is scalar.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2 -pgo=off) printed the same quick values on the owner's machine, 2026-11-07 (std-hashmod session 9, HMR-3); the publish-size checksum was agreed by every column in `go run ./tools/bench verify -publish-size`. Not published: no number here is a measurement."
+  ]
+}

@@ -1,0 +1,10 @@
+--ascii
+--path
+v512
+--tile-rows
+4
+run
+$CASES/data/gradient.pgm
+-
+sobel=l1
+levels

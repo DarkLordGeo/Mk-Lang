@@ -1,0 +1,4 @@
+// A native that is given the wrong arguments fails with its name and the argument.
+var s = "abc";
+print substr(s, 1, 1);
+print substr(s, 1, 9);

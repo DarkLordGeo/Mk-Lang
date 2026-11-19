@@ -1,0 +1,10 @@
+{"Time":"2026-11-15T00:23:59.5304142+04:00","Action":"start","Package":"mk/logfatal"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"run","Package":"mk/logfatal","Test":"TestPar"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"output","Package":"mk/logfatal","Test":"TestPar","Output":"=== RUN   TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"output","Package":"mk/logfatal","Test":"TestPar","Output":"=== PAUSE TestPar\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"pause","Package":"mk/logfatal","Test":"TestPar"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"run","Package":"mk/logfatal","Test":"TestFatal"}
+{"Time":"2026-11-15T00:23:59.5413022+04:00","Action":"output","Package":"mk/logfatal","Test":"TestFatal","Output":"=== RUN   TestFatal\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.5418104+04:00","Action":"output","Package":"mk/logfatal","Test":"TestFatal","Output":"2026/11/15 00:23:59 cannot open the fixture: denied\n"}
+{"Time":"2026-11-15T00:23:59.5423357+04:00","Action":"output","Package":"mk/logfatal","Output":"FAIL\tmk/logfatal\t0.012s\n","OutputType":"frame"}
+{"Time":"2026-11-15T00:23:59.542863+04:00","Action":"fail","Package":"mk/logfatal","Elapsed":0.012}

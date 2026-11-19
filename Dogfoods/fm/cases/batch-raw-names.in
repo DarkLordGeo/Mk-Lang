@@ -1,0 +1,7 @@
+mkdir raw
+touch 2026-01-02T03:04:05Z raw/plain.txt
+touch --bytes 2026-01-02T03:04:05Z raw/caf\xed\xa0\x80.txt
+ls .
+rm --yes raw
+ls .
+touch --bytes 2026-01-02T03:04:05Z bad\xzz

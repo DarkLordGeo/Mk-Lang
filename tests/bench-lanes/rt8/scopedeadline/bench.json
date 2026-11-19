@@ -1,0 +1,33 @@
+{
+  "name": "scopedeadline",
+  "table": "idiomatic",
+  "algorithm": "n rounds of the library's per-operation deadline of one second, which never fires, split evenly over t tasks or goroutines (Mk: a scope with Scope.CancelAfter, then the scope's exit, whose Join disarms it, D8-3; Go: context.WithTimeout, ctx.Err() and cancel). Task k runs rounds i = k m .. k m + m - 1 (m = n / t) and updates x = x * 31 + i, wrapping; prints n, t, the wrapping sum of the tasks' x and the rounds that expired (0). Variants t1 to t16 set t to 1, 2, 4, 8 and 16 on 16 threads. M9 item 7.16 (G-RT8-R5, D-817): the aggregate throughput of Mk's t16 cell is at least that of its t1 cell, that is t16's time is at most t1's for the same n (README.md).",
+  "overflow": "wraps",
+  "args": ["16000000", "1"],
+  "quick": ["16000", "1"],
+  "checksum": "16000000 1 12840768697313661440 0",
+  "quick_checksum": "16000 1 12723968583238000448 0",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/scopedeadline.go"
+  },
+  "skip": {
+    "c": "not written: C has no scopes or per-operation deadlines; its form would be a timer wheel or heap the program writes itself, not a library call as the other cells are",
+    "rust": "not written: Rust's std has no per-operation deadline outside a socket's set_read_timeout, which is a system call and not a timer; tokio::time::timeout is a third-party crate",
+    "zig": "not written: Zig 0.17's std.Io has no deadline attached to a group of operations; its form would be a select over the work and a sleep future, which is not one library call as the other cells are"
+  },
+  "concurrency": {"mask": "0xffff", "threads": 16, "models": {"mk": "tasks", "go": "goroutines"}},
+  "variants": [
+    {"name": "t1", "args": ["16000000", "1"], "quick": ["16000", "1"], "checksum": "16000000 1 12840768697313661440 0", "quick_checksum": "16000 1 12723968583238000448 0"},
+    {"name": "t2", "args": ["16000000", "2"], "quick": ["16000", "2"], "checksum": "16000000 2 1204445165592646144 0", "quick_checksum": "16000 2 5013796487217979200 0"},
+    {"name": "t4", "args": ["16000000", "4"], "quick": ["16000", "4"], "checksum": "16000000 4 12841475749935714816 0", "quick_checksum": "16000 4 4964674106466705216 0"},
+    {"name": "t8", "args": ["16000000", "8"], "quick": ["16000", "8"], "checksum": "16000000 8 8958897959798706688 0", "quick_checksum": "16000 8 7095224778594541376 0"},
+    {"name": "t16", "args": ["16000000", "16"], "quick": ["16000", "16"], "checksum": "16000000 16 8167049306680726016 0", "quick_checksum": "16000 16 2314309535196544832 0"}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the sum checks that every task ran all of its rounds in order",
+  "notes": [
+    "M9 item 7.16's row (G-RT8-R5, D-817): before D-817 every deadline in the process went through one timer heap behind one lock (std/task/timer.mk's tlock), so tasks arming deadlines on different carriers contended on it; with D-817 each carrier has its own heap and lock. No number is recorded here: the throughput bar (t16 at least t1) is owed to a tools/bench publish on a quiet machine, on both targets.",
+    "Checksums from a Go model (x = 31 x + i over each task's rounds, wrapping, summed over the tasks) and each column's quick verify run (lane K, 2026-11-15). The publish size is a guess until tools/bench publish times the row on a quiet machine.",
+    "Written by M9 lane K (item 7.16); plan/09-deferred.md 7.16 records what was checked."
+  ]
+}

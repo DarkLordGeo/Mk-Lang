@@ -1,0 +1,4 @@
+open
+--keep
+kernel32.dll
+GetTickCount

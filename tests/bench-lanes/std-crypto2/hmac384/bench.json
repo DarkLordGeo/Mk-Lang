@@ -1,0 +1,32 @@
+{
+  "name": "crypto-hmac384",
+  "table": "idiomatic",
+  "algorithm": "std HMAC-SHA384 (RFC 2104) of every 64-byte message of splitmix64 bytes under a 48-byte key, the key's first byte xored with each tag's, reps passes (mk/crypto-hmac384.mk).",
+  "overflow": "wraps",
+  "args": [
+    "8",
+    "4",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "1",
+    "1"
+  ],
+  "checksum": "9574427738624161304",
+  "quick_checksum": "8801342337969009976",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-hmac384.zig",
+    "go": "testdata/crypto-hmac384.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard MAC",
+    "rust": "no std crypto: Rust std has no HMAC; the hmac crate is third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Work per step: one HMAC-SHA384 of a 64-byte message under a 48-byte key, the one-shot form each library offers: Mk crypto.Hmac384, Go hmac.New(sha512.New384, key) then Write and Sum, Zig HmacSha384.create. Four SHA-512 compressions per message (the two pad blocks, the message with its padding, the outer hash); no column keeps the pads' states across messages. Messages per second = mib * 16384 * reps / median.",
+    "Go: crypto/sha512 computes the message schedule with AVX2 on amd64 when the CPU has it, whatever GOAMD64 says; Mk's SHA-512 is scalar (std-hash2's hash-sha384 notes).",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27, owner's machine, 2026-11-12); the Mk column (mk build --release, mk from the tree) printed the same at both arg sets. Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

@@ -1,0 +1,6 @@
+verify
+--key
+$CASES/data/dave.key
+--signer
+$CASES/data/alice.pub
+$CASES/data/sealed-aes.pk

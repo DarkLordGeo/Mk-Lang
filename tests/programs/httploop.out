@@ -1,0 +1,9 @@
+fetch with a query: 200, body as sent true
+fetch with a body: 200, echoed true
+redirect followed: 200, body of the target true
+streamed through an exchange: 200, 20000 bytes
+missing path: 404
+a task sharing the client: 200, body as sent true
+a task sharing the client: 200, body as sent true
+head over the limit: 431
+server: ended

@@ -1,0 +1,60 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> help
+mk kernel shell. Commands:
+  help               this list (also --help, -h)
+  mem                the boot memory map and the frame allocator's share
+  pages              frame allocator and heap hook counters
+  alloc N            take N contiguous pages, 1 to 4096
+  free ADDR | all    give back what alloc took
+  heap N             sum 0 to N-1 in a HeapList on free.Heap()
+  ticks N            wait for N local APIC timer interrupts, 1 to 100
+  apic               the local APIC's id and version
+  break              raise a breakpoint and count it
+  echo WORDS...      print the words, one space apart
+  stat [reset]       serial line counters
+  crash KIND         panic on purpose: must, bounds, overflow, divide, opcode, page
+  bench N            page, heap and lock churn for N rounds, 1 to 100000
+  exit [CODE]        stop the kernel; CODE 0 to 127, else 16, or 17 after a failure
+
+> --help
+mk kernel shell. Commands:
+  help               this list (also --help, -h)
+  mem                the boot memory map and the frame allocator's share
+  pages              frame allocator and heap hook counters
+  alloc N            take N contiguous pages, 1 to 4096
+  free ADDR | all    give back what alloc took
+  heap N             sum 0 to N-1 in a HeapList on free.Heap()
+  ticks N            wait for N local APIC timer interrupts, 1 to 100
+  apic               the local APIC's id and version
+  break              raise a breakpoint and count it
+  echo WORDS...      print the words, one space apart
+  stat [reset]       serial line counters
+  crash KIND         panic on purpose: must, bounds, overflow, divide, opcode, page
+  bench N            page, heap and lock churn for N rounds, 1 to 100000
+  exit [CODE]        stop the kernel; CODE 0 to 127, else 16, or 17 after a failure
+
+> -h
+mk kernel shell. Commands:
+  help               this list (also --help, -h)
+  mem                the boot memory map and the frame allocator's share
+  pages              frame allocator and heap hook counters
+  alloc N            take N contiguous pages, 1 to 4096
+  free ADDR | all    give back what alloc took
+  heap N             sum 0 to N-1 in a HeapList on free.Heap()
+  ticks N            wait for N local APIC timer interrupts, 1 to 100
+  apic               the local APIC's id and version
+  break              raise a breakpoint and count it
+  echo WORDS...      print the words, one space apart
+  stat [reset]       serial line counters
+  crash KIND         panic on purpose: must, bounds, overflow, divide, opcode, page
+  bench N            page, heap and lock churn for N rounds, 1 to 100000
+  exit [CODE]        stop the kernel; CODE 0 to 127, else 16, or 17 after a failure
+
+> exit
+bye: 0 commands failed, status 16

@@ -1,0 +1,33 @@
+{
+  "name": "barrier",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Rust: OS threads) wait r rounds at one barrier of t and count the rounds each led. Prints the leaders (r) and r (README.md).",
+  "overflow": "never",
+  "args": ["100000", "8"],
+  "quick": ["1000", "8"],
+  "checksum": "100000 100000",
+  "quick_checksum": "1000 1000",
+  "sources": {
+    "mk": "mk",
+    "rust": "barrier.rs"
+  },
+  "skip": {
+    "c": "no barrier in standard C (pthread_barrier_t is POSIX, SynchronizationBarrier is Win32)",
+    "go": "no barrier in Go's std (a sync.WaitGroup serves one round, not a reusable barrier)",
+    "zig": "no barrier in Zig 0.17's std",
+    "mk-wrap": "the only arithmetic is the counters, which stay below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), sync.Barrier",
+      "rust": "OS threads, std::sync::Barrier"
+    }
+  },
+  "no_counts": "B24 does not apply: one leader per round, r in all, shows every round completed once",
+  "notes": [
+    "Concurrency row (B19): mask 0x5555, 8 threads. Rust uses OS threads, labelled so.",
+    "Written by std-sync2 (status/std-sync2.md, M6 session 1); checksums from the workload's arithmetic."
+  ]
+}

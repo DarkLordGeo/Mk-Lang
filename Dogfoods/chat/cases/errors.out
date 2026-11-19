@@ -1,0 +1,47 @@
+alice! connected
+alice< MOTD Welcome to chat.
+alice< OK welcome
+alice> FROB
+alice< ERR 421 unknown command
+alice> JOIN #early
+alice< ERR 451 set a nick first
+alice> NICK al ice
+alice< ERR 432 bad name
+alice> NICK alice
+alice< OK nick alice
+bob! connected
+bob< MOTD Welcome to chat.
+bob< OK welcome
+bob> NICK alice
+bob< ERR 433 nick in use
+bob> NICK bob
+bob< OK nick bob
+bob> JOIN lobby
+bob< ERR 432 bad name
+bob> MSG #nowhere hi
+bob< ERR 403 no such room
+bob> JOIN #lobby
+bob< OK join #lobby members=1 topic=
+bob> JOIN #lobby
+bob< ERR 443 already in room
+alice> MSG #lobby hi
+alice< ERR 404 not in room
+alice> PART #lobby
+alice< ERR 442 not in room
+alice> TOPIC #lobby mine
+alice< ERR 404 not in room
+alice> HISTORY #lobby 0
+alice< ERR 461 bad arguments
+alice> WHO #nowhere
+alice< ERR 403 no such room
+bob> MSG #lobby
+bob< ERR 412 bad arguments
+bob> PING
+bob< OK pong 
+bob! hangs up
+alice> PING after bob
+alice< OK pong after bob
+alice> QUIT
+alice< OK bye
+-- server: history=0
+-- endings: quit=1 eof=1 dropped=0 kicked=0 closing=0 broken=0 canceled=0

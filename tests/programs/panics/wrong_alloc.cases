@@ -1,0 +1,3 @@
+case panic
+stderr wrong_alloc.err
+exit 101

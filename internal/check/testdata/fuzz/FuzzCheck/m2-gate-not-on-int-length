@@ -1,0 +1,2 @@
+go test fuzz v1
+string("struct Buf{data:[!0]u8\na00:int}\nBuf.A000(mut self){return self.data}")

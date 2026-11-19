@@ -1,0 +1,5 @@
+tcp: addresses true, reply HALF-CLOSED HELLO
+unix: reply OVER A UNIX SOCKET
+accept under a deadline: Canceled, expired true; called again: AGAIN
+dial a closed port: Refused
+parse 127.0.0.256:80: InvalidAddress

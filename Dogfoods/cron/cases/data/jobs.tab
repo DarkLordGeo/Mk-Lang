@@ -1,0 +1,14 @@
+# Jobs that end in each way a job ends, run one at a time
+GREETING=hello from cron
+USER_NAME=nobody
+CRON_TZ=Europe/Berlin
+@reboot   hello                      --  $CRON_DIR/jobkit print "$GREETING" to ${USER_NAME}
+@reboot   env                        --  $CRON_DIR/jobkit env GREETING
+@reboot   numbers                    --  $CRON_DIR/jobkit lines 3 line
+@reboot   shout     input=a\nb\nc    --  $CRON_DIR/jobkit cat | $CRON_DIR/jobkit upper
+@reboot   one-line  input=hi         --  $CRON_DIR/jobkit upper
+@reboot   fails                      --  $CRON_DIR/jobkit exit 3
+@reboot   missing                    --  $CRON_DIR/no-such-program
+@reboot   long                       --  $CRON_DIR/jobkit long 9000
+@reboot   stamp                      --  $CRON_DIR/jobkit marker stamp.txt 200
+@reboot   later                      --  $CRON_DIR/jobkit exists stamp.txt

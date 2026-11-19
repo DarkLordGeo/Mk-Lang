@@ -1,0 +1,2 @@
+bigcalc: $CASES/data/forever.rpn:2: Canceled
+bigcalc: $CASES/data/forever.rpn: stopped after --max-time 100 ms

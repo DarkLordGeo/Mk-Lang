@@ -1,0 +1,5 @@
+--ascii
+run
+$CASES/data/ramp.pgm
+-
+gain=1.5

@@ -1,0 +1,41 @@
+{
+  "name": "compress-gzip-stream",
+  "table": "idiomatic",
+  "algorithm": "Streaming gzip: the std's streaming compressor at its default level takes a 50 MB log text in 64 KiB writes and finishes the stream (final block and trailer) into the std's buffered file writer (64 KiB) over the null device, rounds times; the checksum adds every input byte and the input length per round, so it is the same for every compressor; the output is checked outside the checksum (CMP2-4): TestCompress_GzipStreamOutputs reads every cell's output back with Go's compress/gzip, and the notes give each cell's compressed size.",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "NUL",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "NUL",
+    "1"
+  ],
+  "checksum": "14910045248",
+  "quick_checksum": "3727511312",
+  "sources": {
+    "mk": "mk",
+    "zig": "compress-gzip-stream.zig",
+    "go": "testdata/compress-gzip-stream.go"
+  },
+  "skip": {
+    "c": "no std gzip in C (zlib is not std); ref/compress-gzip-stream.c (zlib 1.3.1's deflate from Mk-evidence/vendor) is the reference C implementation's cell for tools/bench's reference-library table (D-588), which bench8 builds",
+    "rust": "no std gzip in Rust (flate2 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "data": {
+    "kind": "log",
+    "file": "regex-50mb.log",
+    "bytes": 50000000,
+    "seed": 5
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum is the input's, and every cell's output is read back by Go's compress/gzip in the lane's test TestCompress_GzipStreamOutputs (Mk, Go and Zig cells over the real text, 2 rounds)",
+  "notes": [
+    "The output path NUL is Windows' null device; a Linux run passes /dev/null. Bytes per second = 50,000,038 * rounds / median.",
+    "Mk: compress.Encoder (gzip, level 6: its one compressing level, Go 1.27's level 6 matcher run per 64 KiB chunk over a 32 KiB history), made per round in one arena reset after each round, Write in 64 KiB pieces and Finish; one fs.File.Writer for all rounds. Go: one gzip.Writer at the default level, Reset per round onto one bufio.Writer of 64 KiB over os.File, Write in 64 KiB pieces and Close. Zig: flate.Compress (gzip, .default = level_6) per round over one std.Io.File.Writer, its window buffer made once, writeAll in 64 KiB pieces and finish.",
+    "Compressed size of one round of the 50,000,038-byte log (CMP2-4; out of tree on the owner's machine, 2026-11-13, std-compress2 lane: each cell run once with rounds 1 into a file, read back by gzip -d and compared with the input): Mk 11,915,233 bytes (0.2383), Go 11,914,127 (0.2383), Zig 11,768,138 (0.2354), zlib 1.3.1 level 6 (ref/, zig cc -O3 -mcpu=x86_64_v2) 11,086,467 (0.2217). The cells run different matchers at their default level (Mk and Go: Go's fastEncL6; Zig: flate .default; zlib: lazy matching), so a time ratio here prices speed at these sizes, not equal work: zlib's output is 7 percent smaller. tools/bench cannot check a size today (request 14).",
+    "Not published: no number here is a measurement."
+  ]
+}

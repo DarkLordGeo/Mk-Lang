@@ -1,0 +1,8 @@
+--token
+sesame
+--motd
+$CASES/data/motd.txt
+--history
+$WORK/history.log
+replay
+$CASES/data/operator.chat

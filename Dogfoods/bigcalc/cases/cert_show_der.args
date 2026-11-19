@@ -1,0 +1,4 @@
+cert
+show
+$CASES/data/pki/leaf.der
+$CASES/data/pki/ed_chain.pem

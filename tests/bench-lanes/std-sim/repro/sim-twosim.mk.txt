@@ -1,0 +1,176 @@
+// Two Sims joined across each other, which neither can see. Modes 1 and 3 fail; with
+// the HoldSet note mode 3 passes in most runs, but a run's outcome follows real time (a documented limit of std.sim).
+// A Sim inside a Sim, and two Sims at once. The server task of the run
+// (of Sim A) is blocked reading what its client sends after the Joins.
+// 0 Sim inside a Sim: a task T of Sim A makes Sim B and runs the Join
+//   shape under B (B's server, T joins a B scope of a napping task, then
+//   sends); main joins A's scope of T. Result: B's server's.
+// 1 two Sims at once, main the client of A's server: main joins ga (A, a
+//   napping task), then gb (B, a quick task), then sends.
+// 2 the same with gb first, then ga.
+// 3 main joins ga (A) whose body joins gb (B): main's note at ga's Join
+//   is owed to B (it reaches the wait owing A no note).
+import std.net
+import std.sim
+import std.time
+
+Srv(io: Io, l: &net.Listener, got: mut int, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        return
+    }
+    c := s.Conn()
+    var b: [64]u8 = [0; 64]
+    for {
+        k := c.Read(io, mut b[..]) else e {
+            *code = match e {
+                Canceled { 5 }
+                net.Reset { 6 }
+                _ { 9 }
+            }
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            break
+        }
+        *got += k
+    }
+    *code = 0
+    c.Abandon()
+}
+
+Quick(io: Io) {}
+
+Nap(io: Io) {
+    io.Sleep(time.Millis(1)) else {}
+}
+
+Addr(b: mut [32]u8, port: int): str from b {
+    pre := "127.0.0.1:".AsBytes()
+    (mut b[0..pre.Len()]).CopyFrom(pre)
+    var d: [8]u8 = [0; 8]
+    var n := 0
+    var x := port
+    for {
+        d[n] = Trunc[u8](48 + x % 10)
+        n += 1
+        x = x / 10
+        if x == 0 {
+            break
+        }
+    }
+    for i in 0..n {
+        b[pre.Len() + i] = d[n - 1 - i]
+    }
+    return str.From(b[0..pre.Len() + n]).Must()
+}
+
+// Run: the server under io (A's); main's Joins under io and bio (B's).
+Run(io: Io, bio: Io, mode: int): net.Error!int {
+    l := try net.Listen(io, "127.0.0.1:0")
+    defer l.Close()
+    var ab: [32]u8 = [0; 32]
+    addr := Addr(mut ab, l.Port())
+    var got := 0
+    var code := -1
+    scope outer := io.Scope() {
+        outer.go Srv(io, &l, mut got, mut code)
+        stream := try net.Dial(io, addr)
+        c := stream.Conn()
+        if mode == 0 {
+            scope g := io.Scope() {
+                g.go Nap(io)
+            }
+        } else if mode == 1 {
+            scope ga := io.Scope() {
+                ga.go Nap(io)
+            }
+            scope gb := bio.Scope() {
+                gb.go Quick(bio)
+            }
+        } else if mode == 2 {
+            scope gb := bio.Scope() {
+                gb.go Quick(bio)
+            }
+            scope ga := io.Scope() {
+                ga.go Nap(io)
+            }
+        } else if mode == 3 {
+            scope ga := io.Scope() {
+                ga.go Nap(io)
+                scope gb := bio.Scope() {
+                    gb.go Quick(bio)
+                }
+            }
+        }
+        hello: [5]u8 = [104, 101, 108, 108, 111]
+        c.WriteAll(io, hello[..]) else {}
+        c.Close(io) else {
+            c.Abandon()
+        }
+    }
+    return got * 16 + code
+}
+
+// Inner: task T of Sim A runs mode 0's shape in a fresh Sim B.
+Inner(h: &Heap, seed: u64, out: mut int) {
+    var ia := Arena.New(h) else {
+        *out = -99
+        return
+    }
+    var sb := sim.Sim.New(&ia, seed +% 1000) else {
+        ia.Free()
+        *out = -100
+        return
+    }
+    *out = Run(sb.Io(), sb.Io(), 0) else {
+        -101
+    }
+    sb.Free()
+    ia.Free()
+}
+
+One(a: &Arena, h: &Heap, seed: u64, mode: int): int {
+    var sa := sim.Sim.New(a, seed) else {
+        return -100
+    }
+    if mode == 0 {
+        io := sa.Io()
+        var out := -3
+        scope g := io.Scope() {
+            g.go Inner(h, seed, mut out)
+        }
+        sa.Free()
+        return out
+    }
+    var sb := sim.Sim.New(a, seed +% 77) else {
+        sa.Free()
+        return -100
+    }
+    r := Run(sa.Io(), sb.Io(), mode) else {
+        -101
+    }
+    sb.Free()
+    sa.Free()
+    return r
+}
+
+test "twosim" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    defer ar.Free()
+    for mode in 0..4 {
+        var good := 0
+        var differ := 0
+        var last := 0
+        for seed in 1..51 {
+            a := One(&ar, sys.heap, Trunc[u64](seed), mode)
+            b := One(&ar, sys.heap, Trunc[u64](seed), mode)
+            if a == 80 { good += 1 } else { last = a }
+            if b == 80 { good += 1 } else { last = b }
+            if a != b { differ += 1 }
+        }
+        sys.Print("mode={m}: good={g}/100 differ={d} lastbad={l}\n", (m: mode, g: good, d: differ, l: last)) else {}
+    }
+    Assert(false)
+}

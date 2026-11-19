@@ -1,0 +1,11 @@
+--origin
+$CASES/data/site.origin
+-C
+--retry
+2
+--retry-delay
+0
+-o
+part.bin
+http://{origin}/flaky
+http://{origin}/flaky

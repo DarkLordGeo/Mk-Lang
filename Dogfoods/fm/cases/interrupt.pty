@@ -1,0 +1,5 @@
+# Ctrl+C ends fm with 130 from any mode; NO_COLOR draws without colour
+expect 1
+keys n
+expect 2
+key ctrl-c

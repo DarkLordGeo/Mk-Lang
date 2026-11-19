@@ -1,0 +1,7 @@
+plot
+log(x) + sqrt(x - 1)
+$WORK/plot.ppm
+--from=-2
+--to=4
+--size
+48x32

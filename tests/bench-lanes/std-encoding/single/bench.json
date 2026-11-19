@@ -1,0 +1,33 @@
+{
+  "name": "encoding-single",
+  "table": "idiomatic",
+  "algorithm": "windows-1252 to UTF-8 of a French line with curly quotes, a dash and a euro sign repeated n times, rounds times, by Mk's std decoder; the checksum adds per round the output length and one output byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "1240022599",
+  "quick_checksum": "631621",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std single-byte decoder: C's standard library has none (iconv is POSIX, not ISO C); no library stands in",
+    "rust": "no std single-byte decoder: encoding_rs is a crate; no crate stands in",
+    "zig": "no std single-byte decoder: Zig's std.unicode has UTF-8 and UTF-16 only",
+    "go": "no std single-byte decoder: golang.org/x/text/encoding/charmap is not std; no module stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, and this one has the Mk column only; the decoder is tested by the lane's Go tests (TestStdEncoding_SingleByteIndexRoundTrip, TestStdEncoding_DecodeAdversarial, TestStdEncoding_LongInputs)",
+  "notes": [
+    "An Mk-only throughput row: no standard library among C, Rust, Zig and Go has a legacy single-byte decoder (skip), so there is no ratio. Until the std-encoding fix round (2026-11-12) the row held hand-written table loops in C, Rust and Go; plan/06-m6.md section 4.1 keeps the two tables apart and fills a cell with no standard facility with its reason, so they were removed.",
+    "Mk: encoding.Windows1252.Decode into an arena reset each round (sized in one pass, written in a second: Mk's API).",
+    "Checksums: Go's at both sizes on the owner's machine (std-encoding session 2, 2026-11-12, from the former Go column, which wrote what the WHATWG decoder writes); tools/bench checks the Mk column against them.",
+    "Not published: no number here is a measurement."
+  ]
+}

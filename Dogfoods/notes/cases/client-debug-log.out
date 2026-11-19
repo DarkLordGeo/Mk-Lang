@@ -1,0 +1,9 @@
+created #1 Debug me (rev 1)
+  body
+updated #1 Debugged (rev 2)
+  body
+422 {"message":"a patch is a JSON object","offset":null}
+422 {"message":"a patch member has the wrong type","offset":0}
+422 {"message":"title is empty","offset":null}
+404 {"message":"no such note","offset":null}
+400 {"message":"a note id is a number","offset":null}

@@ -1,0 +1,8 @@
+enc
+seal
+--key-from
+text:x
+--bits
+192
+a
+b

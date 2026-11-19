@@ -1,0 +1,2 @@
+# Entries before any CRON_TZ line run in the host's zone
+@reboot   here   --  $CRON_DIR/jobkit print in the host zone

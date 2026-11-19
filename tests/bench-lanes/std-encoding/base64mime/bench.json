@@ -1,0 +1,30 @@
+{
+  "name": "encoding-base64mime",
+  "table": "idiomatic",
+  "algorithm": "Base64 decode that skips line breaks: n splitmix64 bytes (seed 1) encoded once with the standard padded alphabet and broken into lines of cols characters ending in CRLF (cols 0: no break), decoded rounds times by each language's standard decoder that skips whitespace; the checksum adds per round the decoded length and one decoded byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": ["1000000", "2000", "76"],
+  "quick": ["10000", "100", "76"],
+  "checksum": "2000253596",
+  "quick_checksum": "1013323",
+  "sources": {
+    "mk": "mk",
+    "zig": "base64mime.zig",
+    "go": "testdata/base64mime.go"
+  },
+  "skip": {
+    "c": "no base64 in C's standard library",
+    "rust": "no base64 in Rust's std (base64 is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "variants": [
+    {"name": "mime76", "args": ["1000000", "2000", "76"], "quick": ["10000", "100", "76"], "checksum": "2000253596", "quick_checksum": "1013323", "notes": ["76-column lines ending in CRLF (RFC 2045's MIME form)."]},
+    {"name": "clean", "args": ["1000000", "2000", "0"], "quick": ["10000", "100", "0"], "checksum": "2000253596", "quick_checksum": "1013323", "notes": ["One line, no break: a data: URL's payload."]}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the decoder is tested by the lane's Go tests (TestStdEncoding_Base64Adversarial, TestStdEncoding_ForgivingVector)",
+  "notes": [
+    "Mk: Base64DecodeTo with Base64Forgiving (WHATWG forgiving-base64: skips TAB, LF, FF, CR and SPACE) into one buffer; a vector-counted shape pass, then 16-character vector blocks between line breaks (Mula and Lemire, SSSE3 at the hosted baseline). Go: encoding/base64.StdEncoding.Decode, which skips CR and LF, into one buffer. Zig: std.base64.standard.decoderWithIgnore, ignoring CR and LF, decode into one buffer.",
+    "Checksums: Go's at both sizes on the owner's machine (std-encoding fix round, 2026-11-12); Mk and Zig printed the quick checksum for both variants.",
+    "Not published: no number here is a measurement."
+  ]
+}

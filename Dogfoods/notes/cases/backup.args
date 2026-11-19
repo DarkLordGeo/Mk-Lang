@@ -1,0 +1,5 @@
+backup
+--db
+$CASES/data/sample.db
+--to
+$WORK/copy.db

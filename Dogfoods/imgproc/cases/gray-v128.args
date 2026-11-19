@@ -1,0 +1,8 @@
+--ascii
+--path
+v128
+run
+$CASES/data/photo.ppm
+-
+gray
+half

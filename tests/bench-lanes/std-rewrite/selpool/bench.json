@@ -1,0 +1,34 @@
+{
+  "name": "selpool",
+  "table": "idiomatic",
+  "algorithm": "A worker pool over sync.Select (std-rewrite review RW-3): w workers each loop on Select over (jobs, quit) and then Recv from jobs; one producer sends 0..n-1 on jobs (capacity c) and closes jobs, and a worker ends when it finds jobs closed and drained; quit is closed only after every worker has ended, so no cell ever takes it and both cells run the same program whatever their select picks among ready cases (review SRW-RV-1); prints the sum received, n * (n - 1) / 2. Go's peer selects with the receive in the case. Measures the wakes a Send costs when many Selects watch one channel.",
+  "overflow": "never",
+  "args": ["1000", "1000000", "64"],
+  "quick": ["100", "2000", "64"],
+  "checksum": "499999500000",
+  "quick_checksum": "1999000",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/selpool.go"
+  },
+  "skip": {
+    "c": "no std channel in C",
+    "zig": "no select over queues in Zig's std: std.Io.Queue is a channel (chan8 has a Zig cell), but std.Io.Select waits on task completions (futures), not on queue operations",
+    "rust": "Rust's std has no select over channels (crossbeam's select is not std)",
+    "mk-wrap": "the only arithmetic is the sum, which stays below 2^39"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), Chan and sync.Select",
+      "go": "goroutines (GOMAXPROCS 8), chan and select"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the sum of every value sent, shows each value was received exactly once",
+  "notes": [
+    "Concurrency row (B19): logical CPUs 0, 2, ..., 14 (mask 0x5555, eight physical cores), 8 threads, as std-rewrite/chan8.",
+    "Written by std-rewrite, M6 fix round, 2026-11-08; checksums from the arithmetic.",
+    "SRW-RV-1 (2026-11-08, std-rewrite rerun 2 fix round): the Go cell closed quit beside jobs, and Go's select picks at random among ready cases, so a worker could take quit while jobs still held values and drop them (selpool.exe 1 64 64 printed 0 in 18 of 20 runs, expected 2016). Both cells now close quit after the workers are joined; std/std-rewrite_rows_test.go's TestSRW_SelpoolDeterministic runs each cell at 1 64 64 and at the quick args. Numbers of this row from before the change are of the old program."
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "atomicadd",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; C, Rust and Zig: OS threads) each add 1 to one shared atomic 64-bit counter n times: Mk atomic.AtomicInt.Add (lock xadd, then the overflow check), Rust AtomicI64::fetch_add, Go atomic.Int64.Add, Zig std.atomic.Value(i64).fetchAdd, C11 atomic_fetch_add, every one sequentially consistent. Prints the counter, t * n (README.md).",
+  "overflow": "never",
+  "args": ["5000000", "8"],
+  "quick": ["10000", "8"],
+  "checksum": "40000000",
+  "quick_checksum": "80000",
+  "sources": {
+    "mk": "mk",
+    "c": "atomicadd.c",
+    "rust": "atomicadd.rs",
+    "zig": "atomicadd.zig",
+    "go": "testdata/atomicadd.go"
+  },
+  "skip": {
+    "mk-wrap": "the counter stays below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), atomic.AtomicInt.Add",
+      "c": "OS threads, C11 <threads.h> and <stdatomic.h> atomic_fetch_add",
+      "go": "goroutines (GOMAXPROCS 8), sync/atomic.Int64.Add",
+      "rust": "OS threads, std::sync::atomic::AtomicI64::fetch_add",
+      "zig": "OS threads, std.atomic.Value(i64).fetchAdd"
+    }
+  },
+  "no_counts": "B24 does not apply: the counter, t * n, shows every add happened",
+  "notes": [
+    "Concurrency row (B19): mask 0x5555, 8 threads.",
+    "Written by std-sync2 for review finding SYNC2-R6 (status/std-sync2.md, M6 fix round): the AtomicInt rows of the audit table had no bench. Every column is the same lock-prefixed RMW on one contended cache line; Mk's Add adds the overflow check and returns the new value, so it is a lock xadd where a column whose result is unused may compile to lock add."
+  ]
+}

@@ -1,0 +1,4 @@
+create
+--out
+$WORK/t.pk
+$CASES/data/nope

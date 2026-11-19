@@ -1,0 +1,4 @@
+utf16
+decode
+$CASES/data/unpaired.bin
+$CASES/data/be.bin

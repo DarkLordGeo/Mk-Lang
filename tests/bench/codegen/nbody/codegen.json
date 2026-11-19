@@ -1,0 +1,11 @@
+{
+  "name": "nbody",
+  "algorithm": "Five-body leapfrog in seven [5]f64 arrays (Fill, untimed, sets the stated initial state), steps steps with dt = 2^-7, then trunc(energy * 1e9) (Run, timed); the algorithm of ../../same/nbody.",
+  "measures": "scalar f64 code with a sqrt and a division per pair under Mk's bounds checks on fixed-size arrays, against C (both no FMA)",
+  "c": "nbody.c",
+  "args": ["1000000"],
+  "quick": ["10000"],
+  "checksum": "-109773887",
+  "quick_checksum": "-112142077",
+  "rounds": 21
+}

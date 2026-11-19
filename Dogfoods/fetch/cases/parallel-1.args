@@ -1,0 +1,10 @@
+--origin
+$CASES/data/site.origin
+-L
+--parallel
+http://{origin}/hello
+http://{origin}/echo
+http://{origin}/missing
+http://{origin}/chunked
+http://{origin}/redirect/302
+http://{origin}/cut

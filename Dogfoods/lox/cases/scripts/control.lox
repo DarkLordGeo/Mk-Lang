@@ -1,0 +1,40 @@
+// Blocks, scopes, if, while, for, and, or.
+var a = "global";
+{
+  var a = "outer";
+  {
+    var a = "inner";
+    print a;
+  }
+  print a;
+}
+print a;
+
+if (1 > 2) print "no"; else print "else branch";
+if (nil) print "no";
+if ("") print "empty string is true";
+
+var i = 0;
+while (i < 3) {
+  print "while " + str(i);
+  i = i + 1;
+}
+
+for (var j = 0; j < 3; j = j + 1) print j * j;
+
+var total = 0;
+for (var k = 1; k <= 100; k = k + 1) {
+  if (k % 2 == 0) total = total + k;
+}
+print total;
+
+// A for loop with no clauses but the condition.
+var n = 5;
+for (; n > 0;) n = n - 2;
+print n;
+
+var x;
+print x;
+var y;
+x = y = 3;
+print x + y;

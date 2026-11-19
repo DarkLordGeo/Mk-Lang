@@ -1,0 +1,7 @@
+$CASES/data/dirty.wal: generation 3, not shut down cleanly
+      24 SET    alpha one
+      43 SET    beta two
+      61 APPEND alpha +more
+      82 DEL    beta
+      97 SET    gamma three
+end: clean

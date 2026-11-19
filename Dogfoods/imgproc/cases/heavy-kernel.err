@@ -1,0 +1,1 @@
+imgproc: conv=1:1:1:1:30000:1:1:1:40000: the weights' magnitudes add up past 65793, so a sum could lose precision

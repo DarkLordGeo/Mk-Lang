@@ -1,0 +1,61 @@
+> mkdir docs/old
+made docs/old
+> touch 2026-01-02T03:04:05Z docs/a.txt
+touched docs/a.txt at 2026-01-02 04:04:05 +01:00
+> touch 2025-07-01T12:00:00Z docs/old/b.txt
+touched docs/old/b.txt at 2025-07-01 13:00:00 +01:00
+> touch 2025-07-02T00:00:00Z docs/old
+touched docs/old at 2025-07-02 01:00:00 +01:00
+> ls --times docs
+.
+  a.txt  0  2026-01-02 04:04:05 +01:00
+  old/  2025-07-02 01:00:00 +01:00
+    b.txt  0  2025-07-01 13:00:00 +01:00
+> stat docs/a.txt
+name: a.txt
+kind: file
+size: 0
+writable: yes
+modified: 2026-01-02 04:04:05 +01:00
+> cp docs/a.txt docs/c.txt
+copied docs/a.txt: 1 files, 0 directories, 0 bytes
+> cp docs/a.txt docs/c.txt
+overwrite docs/c.txt? [y/N] 
+kept
+> cp --yes docs/a.txt docs/c.txt
+copied docs/a.txt: 1 files, 0 directories, 0 bytes
+> cp docs copy
+copied docs: 3 files, 2 directories, 0 bytes
+> mv copy/c.txt copy/moved.txt
+moved copy/c.txt to copy/moved.txt
+> link a.txt docs/a-link
+linked docs/a-link -> a.txt
+> ls --depth 1 docs
+.
+  a-link@ -> a.txt
+  a.txt  0
+  c.txt  0
+  old/
+> ls --skip old copy
+.
+  a.txt  0
+  moved.txt  0
+  old/
+> du docs copy
+0 bytes  4 files  2 dirs  docs
+0 bytes  3 files  2 dirs  copy
+> rm copy
+remove directory copy? [y/N] 
+removed copy
+> rm docs/a-link
+remove file docs/a-link? [y/N] 
+kept
+> rm --yes docs/a-link
+removed docs/a-link
+> ls .
+.
+  docs/
+    a.txt  0
+    c.txt  0
+    old/
+      b.txt  0

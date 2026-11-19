@@ -1,0 +1,7 @@
+sim
+--seed
+7
+--partitions
+--loss
+5
+--verbose

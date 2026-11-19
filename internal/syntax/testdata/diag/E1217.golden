@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1217","name":"if-let","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":8,"end_line":2,"end_col":11},"message":"Mk tests an optional with `if x := e`","facts":{"habits":["E1217"],"target":"    if x := e {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":8,"end_line":2,"end_col":21,"text":"x :="}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1217"}],"omitted":0}
+

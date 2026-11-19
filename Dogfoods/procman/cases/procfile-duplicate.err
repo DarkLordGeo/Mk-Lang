@@ -1,0 +1,1 @@
+procman: $CASES/data/duplicate.Procfile:3: this name is already declared on line 1

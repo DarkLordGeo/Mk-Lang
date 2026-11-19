@@ -1,0 +1,9 @@
+# step counts of the evaluator; go test ./internal/eval -run StepGolden -update
+loop 100: 813 steps
+calls fib 10: 2651 steps
+aggregate struct: 9 steps
+slice len: 20 steps
+vector add u8x16: 11 steps
+fill 1000 bytes: 192 steps
+generic Max[int] instance: 23 steps
+fields loop unrolled, 3 fields: 62 steps

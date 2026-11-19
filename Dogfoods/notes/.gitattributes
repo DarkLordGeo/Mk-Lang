@@ -1,0 +1,5 @@
+# Raw HTTP requests and responses keep their CRLF line ends byte for byte.
+cases/*.in -text
+cases/*.out -text
+cases/*.err -text
+cases/data/*.db binary

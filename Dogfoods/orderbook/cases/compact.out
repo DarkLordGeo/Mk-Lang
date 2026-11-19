@@ -1,0 +1,48 @@
+commands                    24
+orders                      13
+fills                        1
+cancels                     11
+busts                        0
+live orders                  1
+stop queue entries           0
+volume                       5
+vwap                    100.00
+vwap, buyers            100.00
+vwap, sellers                -
+median fill             100.00
+90th percentile         100.00
+99th percentile         100.00
+fills <= vwap                1
+last                    100.00
+traded prices                1
+
+   bid qty orders          bid | ask             ask qty orders
+                               | 100.00                5      1
+
+largest fills
+          40  Buy        5 @     100.00  taker 2/1       maker 1/12
+recent fills, newest first
+          40  Buy        5 @     100.00  taker 2/1       maker 1/12
+most traded prices
+        100.00          5
+oldest resting orders (1 live)
+  1/12      Sell Limit           5 @     100.00
+bars, newest first
+    #       open       high        low      close     volume
+    1     100.00     100.00     100.00     100.00          5
+fill sizes
+  <=10           1
+  <=50           0
+  <=100          0
+  <=500          0
+  <=1000         0
+  <=5000         0
+  >5000          0
+accounts by volume
+rank  account     bought       sold   fills
+   1        1          0          5       1
+   2        2          5          0       1
+checksum bf995fcda3943283
+last snapshot at command 0: 0 live orders, 0 fills
+expired at close: 0 bids (0), 1 asks (5)
+engine heap: peak 1352 bytes, 0 bytes in 0 allocations left after release

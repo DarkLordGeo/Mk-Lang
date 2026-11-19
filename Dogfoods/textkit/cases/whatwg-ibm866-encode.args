@@ -1,0 +1,4 @@
+convert
+--to
+ibm866
+$CASES/data/whatwg/ibm866.txt

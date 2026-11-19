@@ -1,0 +1,18 @@
+// Generated from the gen lines of main for x86_64-windows. Not read by the compiler.
+
+// gen derive.Format#1 for User
+impl Format for User {
+    Format(&self, w: mut Writer): WriteError!void {
+        try w.Str("User")
+        try w.Str("(")
+        try w.Str("name")
+        try w.Str(": ")
+        try self.name.Format(w)
+        try w.Str(", ")
+        try w.Str("age")
+        try w.Str(": ")
+        try self.age.Format(w)
+        try w.Str(")")
+    }
+}
+

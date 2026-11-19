@@ -1,0 +1,6 @@
+# runtime.Dedicated, Thread and Joined.Join: a dedicated Io's tasks share one
+# carrier thread and never overlap, a Thread's f and its tasks end before Join returns, and a Join
+# in a cancelled scope is Canceled with the Joined kept. Both profiles, both targets; the output
+# is the same at MK_CARRIERS=1 and 16 (linux.sh runs both on Linux).
+case ok
+stdout threads.out

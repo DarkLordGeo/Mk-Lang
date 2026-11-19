@@ -1,0 +1,5 @@
+# what the installer needs
+kernel32.dll system GetTickCount GetCurrentProcessId
+version.dll application GetFileVersionInfoSizeW GetFileVersionInfoW  # tabs and comments
+
+user32.dll	system	GetSystemMetrics

@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+-c
+jar.txt
+http://{origin}/cookies/set
+http://{origin}/echo
+http://{origin}/cookies/echo

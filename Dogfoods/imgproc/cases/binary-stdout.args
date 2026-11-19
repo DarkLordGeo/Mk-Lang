@@ -1,0 +1,4 @@
+run
+$CASES/data/gradient.pgm
+-
+levels

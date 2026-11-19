@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0302","name":"no-conversion","phase":"types","root":1,"at":{"file":"E0302.mk","line":3,"col":12,"end_line":3,"end_col":19},"message":"no conversion from `i32` to `bool`","facts":{"from":"i32","to":"bool"},"fixes":[],"alternatives":[],"explain":"mk explain E0302"}],"omitted":0}

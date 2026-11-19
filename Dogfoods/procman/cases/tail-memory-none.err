@@ -1,0 +1,5 @@
+WARN --tail-memory of 0 bytes holds no output; the summary will show none
+WARN noisy: exited with code 1
+WARN noisy: restarting in 1ms (restart 1 of 1)
+WARN noisy: exited with code 1
+ERROR noisy: gave up after 2 runs

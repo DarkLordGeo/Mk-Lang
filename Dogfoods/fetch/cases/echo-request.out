@@ -1,0 +1,7 @@
+HTTP/1.1 200
+Content-Length: 96
+
+GET /echo
+query x=1&q=a+b%26c&lang=%C3%BC
+Authorization: Basic Ym9iOnNlY3JldA==
+X-Fetch-Test: 1

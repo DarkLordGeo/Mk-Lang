@@ -1,0 +1,1 @@
+pack: $CASES/data/tar/cut.tar: the tar archive ends early, at byte 2348

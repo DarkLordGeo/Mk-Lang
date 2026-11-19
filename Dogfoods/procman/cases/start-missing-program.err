@@ -1,0 +1,3 @@
+INFO ghost: started (run 1)
+ERROR ghost: run 1 failed: no program `procman-no-such-program`
+INFO every process has ended

@@ -1,0 +1,5 @@
+# `become` and range patterns: 10,000,000 tail calls through a direct call and
+# through a table of fn values, each without growing the stack, and matches over u8 and char by
+# ranges. Both profiles, both targets.
+case ok
+stdout tailchain.out

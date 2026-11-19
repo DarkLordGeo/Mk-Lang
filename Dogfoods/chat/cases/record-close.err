@@ -1,0 +1,12 @@
+INFO conn 1 accepted from 127.0.0.1 on 127.0.0.1
+INFO client 0 connected from 127.0.0.1
+INFO conn 1 > MOTD Welcome to chat.\nOK welcome\n
+INFO conn 1 < NICK dan\n
+INFO conn 1 > OK nick dan\n
+INFO conn 1 < JOIN #log\n
+INFO conn 1 > OK join #log members=1 topic=\n
+INFO conn 1 < MSG #log this line is long enough that the record shows its first one hundred and twenty bytes and counts the rest, as a (+15 bytes)
+INFO conn 1 > OK msg 0\n
+INFO conn 1 < end of stream
+INFO conn 1 closed
+INFO client 0 left: connection closed

@@ -1,0 +1,5 @@
+hash
+--alg
+sha1
+$CASES/data/pki/big.bin
+$CASES/data/pki/msg.txt

@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0406","name":"reserved-by-defer","phase":"flow","root":1,"at":{"file":"m/00.mk","line":6,"col":2,"end_line":6,"end_col":13},"message":"the `defer` before this `become` would run after its callee","facts":{"reason":"defer"},"fixes":[],"alternatives":["`return` the call"],"explain":"mk explain E0406"}],"omitted":0}

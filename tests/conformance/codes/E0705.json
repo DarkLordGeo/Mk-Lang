@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0705","name":"not-const","phase":"types","root":1,"at":{"file":"E0705.mk","line":7,"col":19,"end_line":7,"end_col":20},"message":"`n` is a const parameter; the parameter `k` is not a compile-time constant","facts":{"param":"n"},"fixes":[],"alternatives":[],"explain":"mk explain E0705"}],"omitted":0}

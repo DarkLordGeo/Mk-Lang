@@ -1,0 +1,10 @@
+--web
+127.0.0.1:0
+--bots
+0
+--max-clients
+3
+--deadline
+1
+replay
+$CASES/data/web-wait.chat

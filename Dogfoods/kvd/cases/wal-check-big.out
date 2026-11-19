@@ -1,0 +1,3 @@
+$CASES/data/big.wal: 102 records, 102 keys, 1190 bytes of keys and values
+generation 2, clean shutdown, end: clean
+digest 3432d8cde0894e5f, peak heap 10230 bytes

@@ -1,0 +1,14 @@
+evil> !ws /ws http://evil.example
+evil! connect failed: Handshake(status: 403)
+good> !ws /ws?nick=good http://localhost:8080
+good! connected
+good! speaks chat.v1
+good< MOTD Welcome to chat.
+good< OK welcome
+good< OK nick good
+good> ROOMS
+good< OK rooms 0
+good> QUIT
+good< OK bye
+-- server: history=0
+-- endings: quit=1 eof=0 dropped=0 kicked=0 closing=0 broken=0 canceled=0

@@ -1,0 +1,34 @@
+{
+  "name": "search",
+  "table": "idiomatic",
+  "std": ["std.core.Slice.Search"],
+  "algorithm": "Look up splitmix64 keys in a sorted slice of 2^20 distinct u64 (2i+1) with each language's std binary search; a found key adds its index plus 1 and a miss adds 1, wrapping (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "1048576",
+    "20000000",
+    "1"
+  ],
+  "quick": [
+    "1048576",
+    "1000000",
+    "1"
+  ],
+  "checksum": "5244508679848",
+  "quick_checksum": "262877311328",
+  "sources": {
+    "mk": "mk",
+    "c": "search.c",
+    "rust": "search.rs",
+    "zig": "search.zig",
+    "go": "testdata/search.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; a search has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own search loop; the keys are distinct, so every correct search gives the one checksum",
+  "notes": [
+    "Binary searches (B20's naming): mk Slice.Search (lower bound, comparator a const fn argument); c bsearch, exact match only, an indirect comparator through a function pointer (labelled); rust binary_search; zig std.sort.lowerBound; go slices.BinarySearch.",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

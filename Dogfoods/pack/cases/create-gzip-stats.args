@@ -1,0 +1,6 @@
+create
+--gzip
+--stats
+--out
+$WORK/t.pk
+$CASES/data/tree

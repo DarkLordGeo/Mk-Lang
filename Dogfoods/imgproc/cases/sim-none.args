@@ -1,0 +1,6 @@
+--sim-fault
+none
+run
+$CASES/data/small.pgm
+out.pgm
+invert

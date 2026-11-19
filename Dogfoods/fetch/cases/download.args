@@ -1,0 +1,7 @@
+--origin
+$CASES/data/site.origin
+--fetch-limit
+100000
+-o
+big.bin
+http://{origin}/big

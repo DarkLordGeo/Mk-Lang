@@ -1,0 +1,1 @@
+textkit: $CASES/data/invalid.txt: malformed UTF-8 at byte 25

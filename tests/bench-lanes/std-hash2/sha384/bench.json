@@ -1,0 +1,33 @@
+{
+  "name": "hash-sha384",
+  "table": "idiomatic",
+  "algorithm": "std SHA-384 over splitmix64 bytes, reps passes with a one-byte write-back (mk/hash-sha384.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "24",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "16245644541727617021",
+  "quick_checksum": "11791735842731480461",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-sha384.zig",
+    "go": "testdata/hash-sha384.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-384; OpenSSL's portable C is a third-party library, and no third-party code stands in (plan/06-m6.md 4.1)",
+    "rust": "no std SHA-384: Rust std has none (only SipHash-1-3 in DefaultHasher); the sha2 and sha1 crates are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Idiomatic standard library: one call of each language's std function per pass (plan/06-m6.md 4.1). Bytes per second = mib * 1048576 * reps / median.",
+    "Go: crypto/sha512 uses AVX2 for the message schedule on amd64 when the CPU has it (run-time dispatch). Mk's Sha384 does too since M9 item 11.24a (D-775): Sha512's blocks take an AVX2 message schedule beside rounds compiled with bmi2 when the CPU has avx2 and bmi2 (run-time dispatch), else the scalar loop.",
+    "Zig: std.crypto.hash at -mcpu=x86_64_v2 is scalar, so on a CPU with avx2 and bmi2 the zig cell compares instruction sets as well as libraries.",
+    "Checksums from the go column (GOAMD64=v2, Go 1.27, owner's machine, 2026-11-12), and the Mk column (mk build --release) printed the same args checksum; written by the std-hash2 lane (status/std-hash2.md). Not published: no number here is a measurement."
+  ]
+}

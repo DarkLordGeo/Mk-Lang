@@ -1,0 +1,8 @@
+broken | cannot reach the database
+broken | cannot reach the database
+broken | cannot reach the database
+NAME         STATE    RUNS RESTARTS  LAST
+broken       gave-up     3        2  exit 3
+
+last output of broken:
+  cannot reach the database

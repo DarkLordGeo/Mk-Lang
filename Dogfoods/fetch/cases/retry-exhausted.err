@@ -1,0 +1,3 @@
+fetch: http://{origin}/fail: attempt 1 failed: the server answered 503; retrying
+fetch: http://{origin}/fail: attempt 2 failed: the server answered 503; retrying
+fetch: http://{origin}/fail: the server answered 503

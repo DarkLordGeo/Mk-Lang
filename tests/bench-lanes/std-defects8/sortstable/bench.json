@@ -1,0 +1,25 @@
+{
+  "name": "sortstable",
+  "table": "idiomatic",
+  "algorithm": "Each standard library's stable sort of n (key, id) records of two u32, key splitmix64 % 1000 and id the index, by key: per round r the keys come from seed + r * 0x5555555555555555; every 1,024th id times its index plus the last record is added to the checksum with wrapping (README.md). Equal keys keep id order, so the result is unique.",
+  "overflow": "wraps",
+  "args": ["1000000", "10", "1"],
+  "quick": ["100000", "3", "1"],
+  "checksum": "2440905276202704",
+  "quick_checksum": "730243003728",
+  "sources": {
+    "mk": "mk",
+    "rust": "sortstable.rs",
+    "zig": "sortstable.zig",
+    "go": "testdata/sortstable.go"
+  },
+  "skip": {
+    "c": "no stable sort in C's standard library",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; a stable order is unique, so the sampled ids check every column",
+  "notes": [
+    "Algorithms and memory: Mk Slice.SortStable is Go's stable_func (insertion sort of 20-element blocks, then SymMerge; in place, no allocation, O(n log^2 n) moves); Go slices.SortStableFunc is the same algorithm; Zig std.mem.sort is an in-place block sort (WikiSort), O(n log n); Rust slice::sort_by_key is driftsort, which allocates a scratch buffer of up to n elements.",
+    "D8-32's one stated exception (D-639): SortStable stays in place with no allocation (D-242), so its ratio to Rust's driftsort, which merges through a scratch buffer, stays above 2; a SortStableIn with an allocator is a roadmap item (design/09-roadmap.md). The same task, sources and checksums as core-new/sortstable (M7's row)."
+  ]
+}

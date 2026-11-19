@@ -1,0 +1,11 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> crash bounds
+
+panic: bounds (code 2)
+  at src/shell/crash.mk:23:47

@@ -1,0 +1,58 @@
+{"Time":"2026-11-14T20:20:08.6107494+04:00","Action":"start","Package":"mk/std"}
+{"Time":"2026-11-14T20:20:08.6637594+04:00","Action":"run","Package":"mk/std","Test":"TestProcessStateMatchesRuntimeContract"}
+{"Time":"2026-11-14T20:20:08.6637594+04:00","Action":"output","Package":"mk/std","Test":"TestProcessStateMatchesRuntimeContract","Output":"=== RUN   TestProcessStateMatchesRuntimeContract\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.670238+04:00","Action":"output","Package":"mk/std","Test":"TestProcessStateMatchesRuntimeContract","Output":"--- PASS: TestProcessStateMatchesRuntimeContract (0.01s)\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.6707486+04:00","Action":"pass","Package":"mk/std","Test":"TestProcessStateMatchesRuntimeContract","Elapsed":0.01}
+{"Time":"2026-11-14T20:20:08.6707486+04:00","Action":"run","Package":"mk/std","Test":"TestArenaMakesNoAddresses"}
+{"Time":"2026-11-14T20:20:08.6707486+04:00","Action":"output","Package":"mk/std","Test":"TestArenaMakesNoAddresses","Output":"=== RUN   TestArenaMakesNoAddresses\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"output","Package":"mk/std","Test":"TestArenaMakesNoAddresses","Output":"--- PASS: TestArenaMakesNoAddresses (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"pass","Package":"mk/std","Test":"TestArenaMakesNoAddresses","Elapsed":0}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"run","Package":"mk/std","Test":"TestCoreNew_BitsMatchGo"}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"output","Package":"mk/std","Test":"TestCoreNew_BitsMatchGo","Output":"=== RUN   TestCoreNew_BitsMatchGo\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"output","Package":"mk/std","Test":"TestCoreNew_BitsMatchGo","Output":"=== PAUSE TestCoreNew_BitsMatchGo\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:08.6776471+04:00","Action":"pause","Package":"mk/std","Test":"TestCoreNew_BitsMatchGo"}
+{"Time":"2026-11-14T20:20:36.4982725+04:00","Action":"run","Package":"mk/std","Test":"TestCore_LinuxBlocks"}
+{"Time":"2026-11-14T20:20:36.4982725+04:00","Action":"output","Package":"mk/std","Test":"TestCore_LinuxBlocks","Output":"=== RUN   TestCore_LinuxBlocks\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:36.4982725+04:00","Action":"output","Package":"mk/std","Test":"TestCore_LinuxBlocks","Output":"    core_erasure_test.go:814: MK_LINUX=1 not set\n"}
+{"Time":"2026-11-14T20:20:36.4982725+04:00","Action":"output","Package":"mk/std","Test":"TestCore_LinuxBlocks","Output":"--- SKIP: TestCore_LinuxBlocks (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-11-14T20:20:36.4982725+04:00","Action":"skip","Package":"mk/std","Test":"TestCore_LinuxBlocks","Elapsed":0}
+{"Time":"2026-11-14T21:19:25.4484502+04:00","Action":"run","Package":"mk/std","Test":"TestProc_SpawnBlocks"}
+{"Time":"2026-11-14T21:19:25.4484502+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks","Output":"=== RUN   TestProc_SpawnBlocks\n","OutputType":"frame"}
+{"Time":"2026-11-14T21:19:25.448963+04:00","Action":"run","Package":"mk/std","Test":"TestProc_SpawnBlocks/dev"}
+{"Time":"2026-11-14T21:19:25.448963+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/dev","Output":"=== RUN   TestProc_SpawnBlocks/dev\n","OutputType":"frame"}
+{"Time":"2026-11-14T21:19:51.1475403+04:00","Action":"pass","Package":"mk/std","Test":"TestProc_SpawnBlocks/dev","Elapsed":25.7}
+{"Time":"2026-11-14T21:19:51.1475403+04:00","Action":"run","Package":"mk/std","Test":"TestProc_SpawnBlocks/release"}
+{"Time":"2026-11-14T21:19:51.1475403+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"=== RUN   TestProc_SpawnBlocks/release\n","OutputType":"frame"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"panic: test timed out after 1h0m0s\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\trunning tests:\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\t\tTestProc_SpawnBlocks (43s)\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\t\tTestProc_SpawnBlocks/release (17s)\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"goroutine 56311 [running]:\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.(*M).startAlarm.func1()\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2961 +0x34a\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"created by time.goFunc\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/time/sleep.go:182 +0x2d\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"goroutine 1 [chan receive]:\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.(*T).Run(0x1e12446c6400, {0x7ff7cb2e4ef8?, 0x1e1244585a78?}, 0x7ff7cc3ccdb0)\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2268 +0x4d2\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.runTests.func1(0x1e12446c6400)\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2744 +0x37\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.tRunner(0x1e12446c6400, 0x1e1244585b98)\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2195 +0xc3\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.runTests({0x7ff7cb2d200e, 0x2}, {0x7ff7cb2d4c12, 0x6}, 0x1e1244614240, {0x7ff7cc44a790, 0x426, 0x426}, {0xc2b643f22782c8c4, 0x346316769b5, ...})\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2742 +0x505\n"}
+{"Time":"2026-11-14T21:20:08.5905394+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.(*M).Run(0x1e12448ab180)\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"goroutine 54481 [chan receive, 8 minutes]:\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.(*T).Parallel(0x1e1244930800)\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:1959 +0x225\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"mk/std.TestSTDMEM_ArenaSliceResetSteadySeesOldPolicy(0x1e1244930800)\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tD:/src/mk/std/std-mem_arenagrow_test.go:166 +0x2a\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"testing.tRunner(0x1e1244930800, 0x7ff7cc3cda28)\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2195 +0xc3\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-11-14T21:20:08.6167426+04:00","Action":"output","Package":"mk/std","Test":"TestProc_SpawnBlocks/release","Output":"\tC:/Program Files/Go/src/testing/testing.go:2260 +0x4b4\n"}
+{"Time":"2026-11-14T21:20:08.6248327+04:00","Action":"output","Package":"mk/std","Output":"FAIL\tmk/std\t3600.089s\n","OutputType":"frame"}
+{"Time":"2026-11-14T21:20:08.6248327+04:00","Action":"fail","Package":"mk/std","Elapsed":3600.09}

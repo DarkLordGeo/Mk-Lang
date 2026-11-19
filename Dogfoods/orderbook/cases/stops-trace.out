@@ -1,0 +1,12 @@
+fill Fill(taker: 5/1, maker: 1/1, taker_seq: 12, maker_seq: 0, side: Buy, price: 5000, qty: 10, ts: 15)
+fill Fill(taker: 6/1, maker: 1/2, taker_seq: 13, maker_seq: 1, side: Buy, price: 5010, qty: 5, ts: 16)
+fill Fill(taker: 3/1, maker: 1/2, taker_seq: 6, maker_seq: 1, side: Buy, price: 5010, qty: 5, ts: 16)
+fill Fill(taker: 3/1, maker: 1/3, taker_seq: 6, maker_seq: 2, side: Buy, price: 5020, qty: 5, ts: 16)
+fill Fill(taker: 3/2, maker: 1/3, taker_seq: 7, maker_seq: 2, side: Buy, price: 5020, qty: 5, ts: 16)
+fill Fill(taker: 3/2, maker: 1/4, taker_seq: 7, maker_seq: 3, side: Buy, price: 5030, qty: 5, ts: 16)
+fill Fill(taker: 3/3, maker: 1/4, taker_seq: 8, maker_seq: 3, side: Buy, price: 5030, qty: 5, ts: 16)
+fill Fill(taker: 7/1, maker: 3/3, taker_seq: 14, maker_seq: 8, side: Sell, price: 5030, qty: 10, ts: 17)
+fill Fill(taker: 7/1, maker: 2/1, taker_seq: 14, maker_seq: 5, side: Sell, price: 4980, qty: 30, ts: 17)
+fill Fill(taker: 9/1, maker: 8/1, taker_seq: 16, maker_seq: 15, side: Sell, price: 4960, qty: 5, ts: 19)
+fill Fill(taker: 4/1, maker: 8/1, taker_seq: 11, maker_seq: 15, side: Sell, price: 4960, qty: 10, ts: 19)
+commands 19 fills 11 checksum f659093feb9a3177

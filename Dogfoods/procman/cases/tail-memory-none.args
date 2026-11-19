@@ -1,0 +1,8 @@
+--procfile
+$CASES/data/tail.Procfile
+--tail-memory
+0
+--log-level
+warn
+start
+--summary

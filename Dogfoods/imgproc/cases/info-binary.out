@@ -1,0 +1,5 @@
+$CASES/data/binary.pgm: P5 37x23, 1 channel(s), maxval 255
+samples: min 0 max 255 mean 166.005 deviation 121.547
+brightest: 554 samples, the first at x 20 y 0
+bits used 11111111, always set 00000000; xor 00, sum32 000227d6
+binary: every sample is 0 or 255

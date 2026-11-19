@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0901","name":"const-failed","phase":"types","root":1,"at":{"file":"m/00.mk","line":4,"col":6,"end_line":4,"end_col":13},"message":"compile-time evaluation panicked: overflow","facts":{"panic":"overflow","trace":[]},"fixes":[],"alternatives":[],"explain":"mk explain E0901"}],"omitted":0}

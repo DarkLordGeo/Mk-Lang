@@ -1,0 +1,3 @@
+--gc-stress
+--stats
+$CASES/scripts/gc.lox

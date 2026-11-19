@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("Say(w: mut Writer, const f: str): WriteError!void {\n    try Print(w, f)\n}\n\nR(a: &Arena): int {\n    var t := Text.New(a)\n    var w := t.Writer()\n    Say(mut w, \"hi\") else {\n        return -1\n    }\n    return t.Len()\n}\n\nconst C: int = R(EvalArena())\n")

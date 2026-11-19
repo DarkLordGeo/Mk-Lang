@@ -1,0 +1,278 @@
+// Why: std's own test blocks are the main check that std works, on every
+// target and build mode.
+// What: TestStdMkTests and BenchmarkStdCheck.
+// How: runs every std module's test blocks under mk test, natively on Windows
+// and through WSL on Linux, at dev and release, with no leak; the benchmark
+// times checking std, which every cold build pays.
+
+package stdtest
+
+import (
+	"context"
+	"io/fs"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"mk/internal/driver"
+	"mk/internal/types"
+)
+
+// stdExpect is a block's expected end, from a name ending in "[exit <code>:
+// <text>]" (the runtime tests' convention, std/rt-sched_harness_test.go and
+// internal/driver stdtests_test.go): that exit status and output containing
+// the text. A block without it must pass.
+var stdExpect = regexp.MustCompile(`\[exit ([0-9]+): ([^\]]*)\]$`)
+
+// stdEnvTag is a block's environment, from "[env K=V ...]" in its name: the
+// block runs again alone with it.
+var stdEnvTag = regexp.MustCompile(`\[env ([^\]]*)\]`)
+
+// runtimeModules are tested by internal/driver's TestStdRuntimeTests, which
+// knows their tags and their environment, so this test leaves them out rather
+// than run them twice in the gate.
+var runtimeModules = []string{"std.rt", "std.task"}
+
+// stdRoot is the live std directory of this repository, or MK_STDTEST_STD
+// when set (a planted copy, to see that a test sees a planted bug).
+func stdRoot(t testing.TB) string {
+	t.Helper()
+	dir := os.Getenv("MK_STDTEST_STD")
+	if dir == "" {
+		dir = filepath.Join("..", "..", "std")
+	}
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "core")); err != nil {
+		t.Fatalf("no std at %s: %v", dir, err)
+	}
+	return dir
+}
+
+// targetModuleDirs are std/pkg.mk's target-selected module directories that
+// hold test blocks, by directory, with the module they form; a module that
+// exists for one target only is in targetOnlyModules.
+var targetModuleDirs = map[string]string{"linux/linux": "std.linux"}
+
+// targetOnlyModules are the std modules whose blocks run on one target only.
+var targetOnlyModules = map[string]string{"std.linux": "x86_64-linux"}
+
+// stdTestModules are the std modules that hold test blocks (a tests_*.mk
+// file), by import path, sorted; the runtime's modules and the
+// per-target std.sys directories are left out.
+func stdTestModules(t *testing.T, root string) []string {
+	t.Helper()
+	seen := map[string]bool{}
+	err := fs.WalkDir(os.DirFS(root), ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		name := path.Base(p)
+		if !strings.HasPrefix(name, "tests_") || !strings.HasSuffix(name, ".mk") {
+			return nil
+		}
+		dir := path.Dir(p)
+		if dir == "." || strings.HasPrefix(dir, "sys/") {
+			return nil
+		}
+		mod := "std." + strings.ReplaceAll(dir, "/", ".")
+		if sel, ok := targetModuleDirs[dir]; ok {
+			mod = sel
+		}
+		if !slices.Contains(runtimeModules, mod) {
+			seen[mod] = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mods []string
+	for m := range seen {
+		mods = append(mods, m)
+	}
+	slices.Sort(mods)
+	return mods
+}
+
+// linuxOff is the skip reason of a leaf that would start wsl.exe while
+// MK_LINUX=1 is not set. It is a plain skip, also under MK_GATE=1: the gate
+// runs the Linux leaves in their own pass, under the WSL lock.
+const linuxOff = "MK_LINUX=1 not set"
+
+// linuxRun reports whether this run may start wsl.exe, MK_LINUX=1.
+func linuxRun() bool { return os.Getenv("MK_LINUX") == "1" }
+
+// wslGuard panics when a wsl.exe is about to start without MK_LINUX=1: a
+// leaf that reaches it missed its linuxRun check.
+//
+// With MK_LINUX=1 it also panics unless the run holds the WSL lock
+// (tools/wsl-lock.ps1 sets MK_WSL_LOCKED=1), so a Linux run outside the
+// lock cannot happen by accident; MK_WSL_UNLOCKED_OK=1 allows one on
+// purpose.
+func wslGuard() {
+	if !linuxRun() {
+		panic("wsl.exe started without MK_LINUX=1; the leaf must skip with " + linuxOff)
+	}
+	if os.Getenv("MK_WSL_LOCKED") != "1" && os.Getenv("MK_WSL_UNLOCKED_OK") != "1" {
+		panic("wsl.exe started with MK_LINUX=1 outside the WSL lock (MK_WSL_LOCKED is not 1): run under pwsh -NoProfile -File tools/wsl-lock.ps1, or set MK_WSL_UNLOCKED_OK=1")
+	}
+}
+
+// wslAnswers stops t unless `wsl.exe -e true` answers within 30 s (the WSL
+// rule: a WSL that does not answer is reported, not retried).
+func wslAnswers(t *testing.T) {
+	t.Helper()
+	if !linuxRun() {
+		t.Skip(linuxOff)
+	}
+	wslGuard()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := exec.CommandContext(ctx, "wsl.exe", "-e", "true").Run(); err != nil {
+		t.Fatalf("not verified: wsl.exe -e true did not answer within 30 s (%v)", err)
+	}
+}
+
+// stdMkTest runs mk test over std module mod's own blocks and returns the
+// report; a std that does not build fails t with its diagnostics.
+func stdMkTest(t *testing.T, cfg driver.Config, opt driver.TestOptions) *driver.TestReport {
+	t.Helper()
+	s, err := driver.NewSession(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, rep, err := s.Test(opt)
+	if err != nil {
+		if strings.Contains(err.Error(), "LLVM") {
+			t.Skipf("needs the LLVM toolchain (the gate fails on this skip): %v", err)
+		}
+		t.Fatal(err)
+	}
+	if len(r.Report.Diags) > 0 || rep == nil {
+		t.Fatalf("mk test --std=%s did not build:\n%s", cfg.StdTests, r.Report.Text(r.Sources))
+	}
+	return rep
+}
+
+// judgeStdTest fails t unless tc ended as its name asks.
+func judgeStdTest(t *testing.T, tc driver.TestCase) {
+	t.Helper()
+	code, text := 0, ""
+	if m := stdExpect.FindStringSubmatch(tc.Name); m != nil {
+		code, _ = strconv.Atoi(m[1])
+		text = m[2]
+	}
+	if tc.Status != code || !strings.Contains(tc.Output, text) {
+		t.Errorf("%s %q: %s, status %d, want %d with %q in the output\n%s", tc.Module, tc.Name, tc.Result, tc.Status, code, text, tc.Output)
+	}
+}
+
+// TestStdMkTests: every test block of every std module outside
+// the runtime ends as its name asks, under mk test --std=<module>, for
+// x86_64-windows natively and x86_64-linux through WSL, at dev and release.
+// The subtest names the module, so a failure points at its tests_<topic>.mk
+// file.
+func TestStdMkTests(t *testing.T) {
+	root := stdRoot(t)
+	mods := stdTestModules(t, root)
+	if !slices.Contains(mods, "std.core") {
+		t.Fatalf("no test blocks in std.core: modules %v", mods)
+	}
+	for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
+		t.Run(target.Name, func(t *testing.T) {
+			linux := target.Name == types.X86_64Linux.Name
+			if linux {
+				wslAnswers(t)
+			}
+			for _, prof := range []types.Profile{types.TestProfile, types.Release} {
+				name := "dev"
+				if prof == types.Release {
+					name = "release"
+				}
+				t.Run(name, func(t *testing.T) {
+					cache := t.TempDir()
+					for _, mod := range mods {
+						if only, ok := targetOnlyModules[mod]; ok && only != target.Name {
+							continue
+						}
+						t.Run(mod, func(t *testing.T) {
+							cfg := driver.Config{StdTests: mod, StdDir: root, Target: target, Profile: prof, CacheDir: cache, TestTimeout: 2 * time.Minute}
+							rep := stdMkTest(t, cfg, driver.TestOptions{})
+							if len(rep.Tests) == 0 {
+								t.Errorf("%s: no test blocks ran", mod)
+							}
+							for _, tc := range rep.Tests {
+								if tc.Module != mod {
+									// --std=std.encoding also runs the blocks of
+									// std.encoding.cjk, which its own subtest judges.
+									if strings.HasPrefix(tc.Module, mod+".") {
+										continue
+									}
+									t.Errorf("--std=%s ran %s %q", mod, tc.Module, tc.Name)
+								}
+								m := stdEnvTag.FindStringSubmatch(tc.Name)
+								if m == nil {
+									judgeStdTest(t, tc)
+									continue
+								}
+								// Run it again, alone, with its environment.
+								var keys []string
+								for _, kv := range strings.Fields(m[1]) {
+									k, v, _ := strings.Cut(kv, "=")
+									t.Setenv(k, v)
+									keys = append(keys, k)
+								}
+								if linux {
+									wslenv := strings.Join(keys, ":")
+									if old := os.Getenv("WSLENV"); old != "" {
+										wslenv = old + ":" + wslenv
+									}
+									t.Setenv("WSLENV", wslenv)
+								}
+								one := stdMkTest(t, cfg, driver.TestOptions{Run: tc.Name})
+								if len(one.Tests) != 1 {
+									t.Errorf("-run %q selected %d tests", tc.Name, len(one.Tests))
+									continue
+								}
+								judgeStdTest(t, one.Tests[0])
+							}
+						})
+					}
+				})
+			}
+		})
+	}
+}
+
+// BenchmarkStdCheck: mk check of an empty program over the live
+// std, with no cache, so every iteration checks every std module through
+// every stage check runs. The time per op is the cost std adds to a cold
+// build.
+func BenchmarkStdCheck(b *testing.B) {
+	root := stdRoot(b)
+	pkg := b.TempDir()
+	if err := os.WriteFile(filepath.Join(pkg, "main.mk"), []byte("export Main(sys: &System) {\n}\n"), 0o644); err != nil {
+		b.Fatal(err)
+	}
+	cfg := driver.Config{Root: filepath.Join(pkg, "main.mk"), StdDir: root, NoCache: true}
+	for b.Loop() {
+		s, err := driver.NewSession(cfg)
+		if err != nil {
+			b.Fatal(err)
+		}
+		r := s.Check()
+		if len(r.Report.Diags) > 0 {
+			b.Fatalf("std does not check clean:\n%s", r.Report.Text(r.Sources))
+		}
+	}
+}

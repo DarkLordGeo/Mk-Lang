@@ -1,0 +1,5 @@
+uniq
+--global
+--fold
+--repeated
+$CASES/data/runs.txt

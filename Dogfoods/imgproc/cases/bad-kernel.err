@@ -1,0 +1,1 @@
+imgproc: conv=1:2:3:4: a kernel is an odd square of integer weights, at most 15 by 15

@@ -1,0 +1,31 @@
+{
+  "name": "crypto-x25519",
+  "table": "idiomatic",
+  "algorithm": "std X25519 (RFC 7748) key exchange chained as RFC 7748 5.2's iteration: from k = 32 splitmix64 bytes and u = 9, n steps of pub = X25519(k, 9), acc ^= pub's low 8 bytes, (k, u) = (X25519(k, u), k); prints k's low 8 bytes xor acc (mk/crypto-x25519.mk).",
+  "overflow": "wraps",
+  "args": [
+    "30000",
+    "1"
+  ],
+  "quick": [
+    "100",
+    "1"
+  ],
+  "checksum": "1804112339147661962",
+  "quick_checksum": "6397511474888970556",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-x25519.zig",
+    "go": "testdata/crypto-x25519.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard X25519",
+    "rust": "no std crypto: Rust std has no X25519; no crate stands in"
+  },
+  "notes": [
+    "Work per step: two X25519 ladders on every side, the public key of k and the shared secret of k and u. Mk crypto.X25519(k, 9) and crypto.X25519(k, u); Zig dh.X25519.recoverPublicKey(k) and dh.X25519.scalarmult(k, u); Go crypto/ecdh NewPrivateKey(k) (which runs the ladder on the base point: Go 1.27.3 crypto/ecdh/x25519.go) with PublicKey().Bytes(), then NewPublicKey(u) and ECDH. Go's std has no single-ladder X25519, so the row measures the exchange step on every side (CRY-1; the row before session 3 ran one ladder in Mk and Zig and two in Go). Ladders per second = 2 n / median.",
+    "The public key is folded into the checksum, so a column that skipped the base-point ladder would print another value.",
+    "Go: crypto/ecdh's field multiplication is assembly on amd64. Zig marks its field multiply callconv(bloaty_inline).",
+    "Checksums: recorded from `go run ./tools/bench verify` and `verify -publish-size` (status/std-crypto.md, session 3). Not published: no number here is a measurement."
+  ]
+}

@@ -1,0 +1,3 @@
+y = x^3 in f64 over [-5, 5]: y in [-92.1142578125, 92.1142578125], grid step 50, 0 samples not finite
+8x8 (1:1), 203 bytes, fnv1a b4514a56a26b4128
+tracer: plot.ppm: Denied on the simulated disk

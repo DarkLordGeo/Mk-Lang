@@ -1,0 +1,3 @@
+$CASES/data/torn.wal: 5 records, 2 keys, 23 bytes of keys and values
+generation 3, not shut down cleanly, end: torn record at 118 (13 bytes dropped)
+digest 2141d945bbf92768, peak heap 423 bytes

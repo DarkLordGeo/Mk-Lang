@@ -1,0 +1,31 @@
+{
+  "name": "http-parse",
+  "table": "idiomatic",
+  "algorithm": "Build n HTTP/1.1 requests from a splitmix64 stream (seed 1; three quarters GET, a quarter POST with a 16 to 255 byte body, browser-like fields, about 450 bytes each), then reps times write them in batches of at most 32,768 bytes to a loopback TCP stream and read each back with the language's std request parser over a 4,096-byte buffered reader, every body read to its end, and sum the lengths of method, path, query, body and fields plus the field count (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "10000",
+    "100"
+  ],
+  "quick": [
+    "1000",
+    "2"
+  ],
+  "checksum": "405048700",
+  "quick_checksum": "809738",
+  "sources": {
+    "mk": "mk",
+    "go": "testdata/http-parse.go"
+  },
+  "skip": {
+    "c": "no std HTTP (C's std has no sockets and no HTTP parser)",
+    "rust": "no std HTTP (std has no HTTP parser; httparse and hyper are crates)",
+    "zig": "not written yet: std.http.Server's head parser reads from its own connection reader; left to bench-final",
+    "mk-wrap": "the checksum already uses the wrapping operators; the parse has no arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (lengths of every part of every request) checks that both parsers read the same requests",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.http.ReadRequest over net.Stream.Reader with a 4,096-byte inline buffer, into an arena Reset after each request; Go net/http.ReadRequest over bufio.NewReaderSize(conn, 4096), the body read with io.ReadFull into one reused buffer, the garbage collector. One task or goroutine writes a batch and then parses it, so the row is single-threaded; each batch fits the loopback socket's buffer. Requests per second = n * reps / median.",
+    "Written by the std-http lane (status/std-http.md). Checksums from the Go column, which the Mk column matched at both sizes (owner's machine, 2026-11-07)."
+  ]
+}

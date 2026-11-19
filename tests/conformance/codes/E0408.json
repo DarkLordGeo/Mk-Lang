@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0408","name":"not-plain","phase":"flow","root":1,"at":{"file":"E0408.mk","line":4,"col":12,"end_line":4,"end_col":14},"message":"`[e; n]` copies e, so `mut []i32` must be Plain","facts":{"reason":"repeat","type":"mut []i32"},"fixes":[],"alternatives":[],"explain":"mk explain E0408"}],"omitted":0}

@@ -1,0 +1,27 @@
+usage: procman [options] COMMAND [ARGS...]
+
+Commands:
+  start [NAME...]   run the Procfile's processes (or the ones named) until they end or a signal comes
+  run TASK [ARG...] run one task or process once, with ARGs added, and exit with its code
+  check             read the Procfile and list its entries
+  status [PATH...]  ask the status port of a running procman (paths: health, status)
+  ps                print the state of each process from the run directory
+  logs NAME         print the output of NAME's last run
+  clean             remove the run directory
+  demo PROGRAM ...  run a small demo program; `procman demo help` lists them
+  help              show this help
+
+Options:
+  --help               Show this help
+  --procfile <str>     The Procfile to read (default $PROCMAN_PROCFILE, else Procfile)
+  --run-dir <str>      The run directory (default $PROCMAN_RUN_DIR, else .procman)
+  --log-level <str>    debug, info, warn or error (default $PROCMAN_LOG, else info)
+  --stop-after <int>   Stop every process after this many milliseconds
+  --status <str>       Serve the status port at this address, such as 127.0.0.1:0 (default $PROCMAN_STATUS)
+  --workers <int>      Status workers to run (default 2)
+  --status-debug       Let a request for /panic stop a status worker
+  --summary            Print a table of every process when procman stops
+  --tail-memory <int>  Bytes of output kept in memory for the summary (default 65536)
+  --clean              Remove the run directory when start ends
+Arguments:
+  <command>...         The command and its arguments

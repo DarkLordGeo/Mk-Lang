@@ -1,0 +1,7 @@
+1: 2026-11-07 10:01:02 api:svc status=200 took=12ms
+2: 2026-11-07 10:01:03 db:svc status=500 took=1200ms
+3: 2026-11-07 10:01:04 api:svc status=404 took=3ms
+4: naïve café: Größe=7 ÉLAN=9
+5: no fields here
+6: 2026-11-07 10:01:05 7f3a:req status=503 took=88ms
+4 lines

@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0401","name":"use-after-move","phase":"flow","root":1,"at":{"file":"E0401.mk","line":6,"col":5,"end_line":6,"end_col":14},"message":"r is used after it was moved","facts":{"place":"r","moved_at":"E0401.mk:5:5"},"fixes":[],"alternatives":[],"explain":"mk explain E0401"}],"omitted":0}

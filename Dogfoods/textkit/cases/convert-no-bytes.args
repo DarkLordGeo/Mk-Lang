@@ -1,0 +1,5 @@
+convert
+--to
+windows-1252
+$CASES/data/cjk-mixed.txt
+$CASES/data/latin1.txt

@@ -1,0 +1,2 @@
+# Recorded and synthetic replies are byte-exact wire data: never convert them.
+*.pkt binary

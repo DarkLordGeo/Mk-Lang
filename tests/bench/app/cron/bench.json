@@ -1,0 +1,33 @@
+{
+  "name": "cron",
+  "table": "app",
+  "algorithm": "Run the cron dogfood's scheduler over its bench crontab (four jobs in three time zones) under std.sim's simulated clock for a number of days, with its lock and log on the simulation's disk, then print the fires a time-zone transition moved and the summary by job (README.md).",
+  "args": [
+    "sim",
+    "{pkg}/cases/data/busy.tab",
+    "--days",
+    "3660"
+  ],
+  "quick": [
+    "sim",
+    "{pkg}/cases/data/busy.tab"
+  ],
+  "checksum": "sha256:a7b62d7ea9d35f6bd6a355980e9b5b88bf2c63e3358358dc7b642c16b3789961",
+  "quick_checksum": "sha256:3984be749369992305cae03048c91fcf6a47aed00e2299fd06326d8b7e6fdcc5",
+  "package": {
+    "path": "Dogfoods/cron",
+    "bin": "cron"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the cron dogfood unchanged (its bin cron), compared across mk binaries; no twin, no peer, no defect line (README.md).",
+    "The crontab is the dogfood's own (Dogfoods/cron/cases/data/busy.tab), named through {pkg}. The quick arguments are the dogfood's bench case (365 days, sim's default); the publish arguments run 3,660 days, sim's largest.",
+    "The size is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

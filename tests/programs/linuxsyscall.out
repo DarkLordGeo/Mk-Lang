@@ -1,0 +1,6 @@
+written by write(2) through linux.Syscall
+write: r 42 (the message's length 42), errno 0
+getpid: positive true, errno 0
+close of a bad fd: errno 9, r is -9's bits true
+an unknown call: errno 38
+getpid on the blocking pool: positive true

@@ -1,0 +1,4 @@
+café needle in latin-1
+plain needle line
+ÿþ
+ok

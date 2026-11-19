@@ -1,0 +1,27 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> alloc
+error: alloc: a number from 1 to 4096 is needed
+> alloc 0
+error: alloc: 0 is outside 1 to 4096
+> alloc x
+error: alloc: 'x' is not a number
+> alloc 0x
+error: alloc: '0x' is not a number
+> alloc 99999
+error: alloc: 99999 is outside 1 to 4096
+> alloc 1 2
+error: alloc: one number is expected, not 2 words
+> free 0x1234
+error: free: nothing was allocated at 0x1234
+> free zz
+error: free: 'zz' is not a number
+> alloc 3
+alloc: 3 pages at 0x1000000
+> exit
+bye: 8 commands failed, status 17

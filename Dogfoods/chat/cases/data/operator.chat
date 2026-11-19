@@ -1,0 +1,24 @@
+# --token sesame: operator commands, a kick, and a shutdown with clients connected.
+# bob reads the message before the kick: a kick ends a connection at once,
+# and may drop what was queued for it but not yet written.
+alice: NICK alice
+bob: NICK bob
+alice: JOIN #ops
+bob: JOIN #ops
+bob: KICK alice
+alice: OPER open-sesame
+alice: OPER sesame
+alice: MOTD Mind the gap.
+bob: MOTD
+alice: TOPIC #ops staff only
+bob: WHO #ops
+alice: MSG #ops this goes to the history file
+bob: !read
+alice: KICK nobody
+alice: KICK bob
+bob: !eof
+alice: WHO #ops
+carol: NICK carol
+alice: SHUTDOWN sesame
+carol: !eof
+alice: !eof

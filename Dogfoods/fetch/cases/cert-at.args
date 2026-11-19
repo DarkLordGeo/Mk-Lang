@@ -1,0 +1,8 @@
+cert
+$CASES/data/tls/expired.pem
+--cacert
+$CASES/data/tls/root.pem
+--host
+localhost
+--at
+Fri, 01 May 2020 00:00:00 GMT

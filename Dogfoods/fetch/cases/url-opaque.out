@@ -1,0 +1,12 @@
+href      mailto:x@y
+shown     mailto:x@y
+scheme    mailto
+username  
+password  
+host      empty
+hostname  
+port      default
+path      x@y
+query     
+fragment  
+origin    null

@@ -1,0 +1,6 @@
+usage: ucdcases [--every n] [--whatwg dir] <ucd-dir> <cases-dir>
+Options:
+  --every <int>   Keep every n-th line of NormalizationTest's part 1, the per-character part (default 16)
+  --whatwg <str>  A directory holding the Encoding Standard's encodings.json and index-*.txt files
+Arguments:
+  <dirs>...       The UCD directory (holding NormalizationTest.txt and auxiliary/), then the cases directory

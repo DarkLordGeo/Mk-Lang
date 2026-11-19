@@ -1,0 +1,39 @@
+{
+  "name": "strops-find",
+  "table": "idiomatic",
+  "std": ["std.core.str.Find"],
+  "algorithm": "Find every non-overlapping occurrence of 8 fixed needles (3 to 16 bytes) in each line of a 50 MB text with each language's std substring search; add each match's offset in its line plus 1, wrapping; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "10"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "11112660",
+  "quick_checksum": "1111266",
+  "sources": {
+    "mk": "mk",
+    "c": "strops-find.c",
+    "rust": "strops-find.rs",
+    "zig": "strops-find.zig",
+    "go": "testdata/strops-find.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; a search has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "words",
+    "file": "wordfreq-50mb.txt",
+    "bytes": 50000000,
+    "seed": 3
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own search algorithm; every library returns the first match at or after p, so the sum of the offsets checks every result",
+  "notes": [
+    "Searches named: mk str.Find; c strstr over NUL-terminated lines (labelled: each newline of the buffer is overwritten with NUL once, before the rounds, since strstr needs C strings); rust str::find (Two-Way); zig std.mem.findPos; go strings.Index. Lines: mk str.Lines, rust str::lines, zig std.mem.splitScalar, go strings.SplitSeq; c walks the NULs.",
+    "The input is wordfreq's file (the same data spec, so one generated file serves both rows).",
+    "Written by lane L4b of M9 item 11.22, the Mk side from doc/reference.md and the twins by the same agent (programme section 16 asked for different agents; the coordinator's question). Publish size unsized until the coordinator's verify -publish-size."
+  ]
+}

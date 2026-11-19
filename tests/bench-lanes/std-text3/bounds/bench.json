@@ -1,0 +1,32 @@
+{
+  "name": "text-bounds",
+  "table": "idiomatic",
+  "algorithm": "text.WordBounds or text.SentenceBounds (UAX 29) walked to the end, reps passes over a generated text of mib MiB: the mixed text of ../../std-text2/utf16/README.md (splitmix64 from seed, 5 of 16 scalars outside ASCII) or ASCII prose; mode closes: the sentence look-ahead's worst shape; README.md.",
+  "overflow": "wraps",
+  "args": ["prosewords", "16", "30", "1"],
+  "quick": ["prosewords", "1", "2", "1"],
+  "checksum": "1409099895938100",
+  "quick_checksum": "367080017414",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std Unicode word or sentence segmentation: C has none (ICU's BreakIterator is a library, not std)",
+    "rust": "no std Unicode word or sentence segmentation: unicode-segmentation is a crate; no crate stands in",
+    "zig": "no std Unicode word or sentence segmentation: Zig's std.unicode has UTF-8 and UTF-16 only",
+    "go": "no std Unicode word or sentence segmentation: rivo/uniseg and golang.org/x/text are not std; no module stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the iterators' arithmetic cannot overflow"
+  },
+  "variants": [
+    {"name": "prosewords", "args": ["prosewords", "16", "30", "1"], "quick": ["prosewords", "1", "2", "1"], "checksum": "1409099895938100", "quick_checksum": "367080017414", "baseline": ["prosewords", "16", "0", "1"], "bytes": 503316570},
+    {"name": "prosesentences", "args": ["prosesentences", "16", "100", "1"], "quick": ["prosesentences", "1", "2", "1"], "checksum": "266375829884100", "quick_checksum": "21043388146", "baseline": ["prosesentences", "16", "0", "1"], "bytes": 1677721900},
+    {"name": "words", "args": ["words", "16", "20", "1"], "quick": ["words", "1", "2", "1"], "checksum": "631372934045640", "quick_checksum": "245919271040", "baseline": ["words", "16", "0", "1"], "bytes": 335544320},
+    {"name": "sentences", "args": ["sentences", "16", "30", "1"], "quick": ["sentences", "1", "2", "1"], "checksum": "503316540", "quick_checksum": "2097156", "baseline": ["sentences", "16", "0", "1"], "bytes": 503316480},
+    {"name": "closes", "args": ["closes", "16", "50", "1"], "quick": ["closes", "1", "2", "1"], "checksum": "838861100", "quick_checksum": "2097164", "baseline": ["closes", "16", "0", "1"], "bytes": 838861000, "notes": ["\"a.\" then 2^23 closing brackets, a space, 2^23 digits and \"x\": one sentence, which SB8 decides by reading ahead to the x. A scan that read ahead again at each bracket would be quadratic; this one reads ahead once."]}
+  ],
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, and this one has the Mk column only; the checksum (the boundaries' count and sum) checks the run, and std/std-textwords_bench_test.go requires the quick checksums to be the Go models' sums",
+  "notes": [
+    "Mk-only throughput rows: no standard library among C, Rust, Zig and Go has UAX 29 word or sentence boundaries (skip), so there is no ratio. Each variant's baseline (reps 0) times the program's start and the text's generation, which tools/bench publish subtracts (BS-3), so the median and GB/s are the iterator's alone; bytes is the generated text's exact length times reps (std/std-textwords_fix_test.go, TestSTDTEXT_BenchRowSizes). Reps are set so the kernel runs at least 1.2 s at the fastest pass measured (status/std-text3.md, Measured), above the contract's 1 s floor.",
+    "Written by the std-text3 lane (status/std-text3.md)."
+  ]
+}

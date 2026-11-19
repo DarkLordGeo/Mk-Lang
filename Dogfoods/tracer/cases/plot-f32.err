@@ -1,0 +1,2 @@
+y = tan(x) in f32 over [-5, 5]: y in [-4, 4], grid step 2, 0 samples not finite
+64x40 (8:5), 7693 bytes, fnv1a 7ebd9b3cedfbfe6d

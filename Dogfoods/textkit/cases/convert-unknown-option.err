@@ -1,0 +1,11 @@
+textkit convert: unknown option --iconv
+Options:
+  --from <str>    The input's encoding, by any label of the Encoding Standard (default utf-8)
+  --to <str>      The output's encoding, by any label of the Encoding Standard (default utf-8)
+  --strict        Stop at the first malformed byte instead of writing U+FFFD; reads each input whole
+  --dump <str>    Write the output bytes as raw, hex or base64 (default raw)
+  --labels        Print the encoding each line of the input names, instead of converting
+  --buffer <int>  The read buffer, in bytes (default 16384)
+  --limit <int>   With --strict, the most bytes to read, all inputs together (default 8388608)
+Arguments:
+  <files>...      Files to read; none, or -, is standard input

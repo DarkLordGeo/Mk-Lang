@@ -1,0 +1,2 @@
+pthread_create@GLIBC_2.34
+pthread_join@GLIBC_2.34

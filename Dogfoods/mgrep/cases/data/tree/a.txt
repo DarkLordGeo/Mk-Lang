@@ -1,0 +1,8 @@
+alpha needle
+short
+this line is longer than sixteen bytes and ends with needle
+NEEDLE in caps
+id=42 name=one; id=7 name=two
+needles are not a word needle
+
+last line without newline needle

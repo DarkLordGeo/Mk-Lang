@@ -1,0 +1,3 @@
+run
+$CASES/data/nothere.pgm
+$WORK/out.pgm

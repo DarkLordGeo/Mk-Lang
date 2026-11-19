@@ -1,0 +1,4 @@
+utf16
+decode
+--hex
+$CASES/data/units.txt

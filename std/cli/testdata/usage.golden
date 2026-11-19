@@ -1,0 +1,10 @@
+Options:
+  --verbose      Print each file as it is read.
+  --count <int>  How many times to run.
+                 At least one. (required)
+  --name <str>
+  --dry-run      Show what would change, and change nothing.
+  --limit <int>  Stop after this many.
+  --label <str>  (required)
+Arguments:
+  <files>...     The files to read.

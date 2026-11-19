@@ -1,0 +1,6 @@
+# WordBreakTest excerpt for the ucdcases case
+÷ 000D ÷ 000D ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) ÷ [3.1] <CARRIAGE RETURN (CR)> (CR) ÷ [2.0]
+÷ 000D ÷ 0308 ÷ 000D ÷	#  ÷ [1.0] <CARRIAGE RETURN (CR)> (CR) ÷ [3.1] COMBINING DIAERESIS (Extend) ÷ [3.2] <CARRIAGE RETURN (CR)> (CR) ÷ [2.0]
+÷ 0061 ÷ 002C ÷ 002C ÷ 0061 ÷	#  ÷ [1.0] LATIN SMALL LETTER A (ALettermExtPict) ÷ [999.0] COMMA (MidNum) ÷ [999.0] COMMA (MidNum) ÷ [999.0] LATIN SMALL LETTER A (ALettermExtPict) ÷ [2.0]
+÷ 0061 × 005F × 0031 ÷ 002C ÷ 002C ÷ 0061 ÷	#  ÷ [1.0] LATIN SMALL LETTER A (ALettermExtPict) × [13.1] LOW LINE (ExtendNumLet) × [13.2] DIGIT ONE (Numeric) ÷ [999.0] COMMA (MidNum) ÷ [999.0] COMMA (MidNum) ÷ [999.0] LATIN SMALL LETTER A (ALettermExtPict) ÷ [2.0]
+÷ 0061 × 005F × 0061 ÷ 002C ÷ 002C ÷ 0061 ÷	#  ÷ [1.0] LATIN SMALL LETTER A (ALettermExtPict) × [13.1] LOW LINE (ExtendNumLet) × [13.2] LATIN SMALL LETTER A (ALettermExtPict) ÷ [999.0] COMMA (MidNum) ÷ [999.0] COMMA (MidNum) ÷ [999.0] LATIN SMALL LETTER A (ALettermExtPict) ÷ [2.0]

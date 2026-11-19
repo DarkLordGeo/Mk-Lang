@@ -1,0 +1,9 @@
+$CASES/data/gzip.pk: 5 files, 361278 bytes, gzip, unsigned, manifest f5ecc7edc7fda27d
+f         15  e3bf1c6bd0a9a39b689d16c7e574c2e4a437e17efd5fb70541fb7b540397730a  README.txt
+d          -  docs/
+f         49  51b626f2ce4f6d7b09332afcc53e65855927a9131639e717308a671b69260a63  docs/guide.txt
+d          -  docs/notes/
+f         17  169dac797e95df920ff8ae9468c49e62e719f5dd10753fc44a961aa04dee7d9a  docs/notes/todo.txt
+d          -  src/
+f     262893  1d24edf970bfd15e4a612aa8f0a1efc5d3627205cdca00b0676240132b82dfeb  src/big.txt
+f      98304  6694356ca09a43cd4afb0bd7d208eaaad2627060081655573ca941705a117b11  src/noise.bin

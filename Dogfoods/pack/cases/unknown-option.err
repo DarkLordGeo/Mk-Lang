@@ -1,0 +1,2 @@
+pack create: unknown option --bogus
+run pack create --help for its options

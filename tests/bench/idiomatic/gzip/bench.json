@@ -1,0 +1,38 @@
+{
+  "name": "gzip",
+  "table": "idiomatic",
+  "std": ["std.compress.Inflater.NewGzip"],
+  "algorithm": "Inflate a gzip file of 100 MB of text with the std's decompressor, reading the output in 64 KiB chunks; the checksum adds every decompressed byte and the length; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "4"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "39949381712",
+  "quick_checksum": "9987345428",
+  "sources": {
+    "mk": "mk",
+    "zig": "gzip.zig",
+    "go": "testdata/gzip.go"
+  },
+  "skip": {
+    "c": "no std gzip in C (zlib is not std)",
+    "rust": "no std gzip in Rust (flate2 is a crate; no crate stands in)",
+    "mk-wrap": "no checked arithmetic in the task"
+  },
+  "data": {
+    "kind": "gzip",
+    "file": "gzip-100mb.txt.gz",
+    "bytes": 100000000,
+    "seed": 6
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; every column checks the gzip trailer's CRC-32 and length (Go's gzip.Reader inside the decompressor; the Zig program with std's flate.Container.Hasher, because Zig 0.17's Decompress reads the trailer without comparing it, BS-1; Mk's Inflater inside the decompressor, which TestGzipTrailerChecked runs too), and the checksum (the sum of the decompressed bytes plus the length) checks the output",
+  "notes": [
+    "The input is wordfreq's kind of text (tools/bench gen kind words, seed 6, 100,000,000 bytes) compressed once by Go's compress/gzip at the default level (tools/bench gen kind gzip).",
+    "mk: std.compress.Inflater.NewGzip over a Reader.Of of the file's bytes (D-779), read once with fs.ReadBytes, as Go and Zig inflate from one in-memory copy; Read into a 64 KiB buffer, the window and input buffer from one arena reset after each round. The cell was held out until std had a Reader over a byte slice (review finding BF-4); it returned with M9 item 11.23 part 1, its quick_checksum shown by an untimed verify. Its trailer check is tested by TestGzipTrailerChecked."
+  ]
+}

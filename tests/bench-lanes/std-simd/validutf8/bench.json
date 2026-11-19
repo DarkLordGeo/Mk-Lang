@@ -1,0 +1,180 @@
+{
+  "name": "validutf8",
+  "table": "simd",
+  "algorithm": "Validate a buffer of mixed 1- to 4-byte UTF-8 (16 encodings drawn by splitmix64, a 64 KiB block repeated), one random byte planted within the last 64 bytes on half the searches; reps validations, the results folded into a checksum (README.md).",
+  "overflow": "wraps",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "../../../bench/simd/validutf8/validutf8.c",
+    "rust": "../../../bench/simd/validutf8/validutf8.rs",
+    "zig": "../../../bench/simd/validutf8/validutf8.zig",
+    "go": "../../../bench/simd/validutf8/testdata/validutf8.go"
+  },
+  "skip": {
+    "mk-wrap": "the checksum already uses the wrapping operators; validation has no arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "16384",
+        "900000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "17847553385475178960",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 14745600000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "33554432",
+        "400",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "4126210834813151499",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 13421772800,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)",
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "1073741824",
+        "12",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "26228985616620608",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 12884901888,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form (on an AVX-512 machine its 64-lane avx512bw form, D-353); this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)",
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "16384",
+        "1750000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "16670461197503712794",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "16384",
+        "0",
+        "1"
+      ],
+      "bytes": 28672000000,
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "33554432",
+        "1000",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "1597775540998367779",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "33554432",
+        "0",
+        "1"
+      ],
+      "bytes": 33554432000,
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "1073741824",
+        "23",
+        "1"
+      ],
+      "quick": [
+        "100000",
+        "10",
+        "1"
+      ],
+      "checksum": "1619291358942268734",
+      "quick_checksum": "27320942869538",
+      "baseline": [
+        "1073741824",
+        "0",
+        "1"
+      ],
+      "bytes": 24696061952,
+      "skip": {
+        "go": "scalar utf8.Valid, measured in validutf8-l1v2 only"
+      }
+    }
+  ],
+  "no_counts": "B24 does not apply: a SIMD row compares each language's vector layer, each cell states its algorithm; the checksum folds every validation's result",
+  "notes": [
+    "On a CPU with AVX-512 (the owner's Ryzen 7 9800X3D has it) the mk column of the v3 variants runs std.simd's 64-lane `cpu \"avx512bw\"` form from 256 bytes up (D-353), while c, rust and zig are fixed at x86-64-v3: the Mk cell is then not at the same width. bench-final labels it or adds a v4 variant (status/bench.md, from std-simd).",
+    "GB/s counts size * reps bytes; each validation reads the whole buffer. The fill (one 64 KiB block generated, then copied) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is size * reps over the kernel time (BS-3). The buffer starts on a 64-byte boundary in the c, rust, zig and go columns (BS-4); the mk column reads an arena slice whose alignment Mk code cannot set without std.raw (BS-4's labelled exception).",
+    "mk is std.simd.ValidUtf8: Keiser-Lemire's lookup algorithm (three 16-entry nibble tables, a four-vector ASCII fast path), its 32-lane form compiled with avx2, or its 64-lane form compiled with avx512bw (D-353), chosen at run time by simd.Cpu(), so it is skipped in the fixed-v2 variants and measured in the v3 variants (status/std-simd.md, request R-3). go is the scalar std validator utf8.Valid, labelled. c and rust are Keiser-Lemire in intrinsics; zig is Keiser-Lemire in @Vector with compare-and-select lookups.",
+    "The scalar go cell runs in validutf8-l1v2 only: elsewhere it would run 10 to 30 times the fastest cell, and it has no vector path that v3 would enable. The 16 KiB buffer repeats, and branch predictors partly learn it: in a size check by bench-std session 2 (2026-11-07, shared machine, single runs, not a published number) Go's utf8.Valid ran about 1.2 GB/s at 16 KiB and about 0.5 GB/s at 32 MiB, so the L1 rate flatters a branchy validator.",
+    "std-simd lane row: bench-std's row validutf8 (tests/bench/simd/validutf8) with its C, Rust, Zig and Go sources by relative path, unchanged, and an Mk column calling std.simd. The Mk buffers are arena slices, whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md), until std's aligned allocation reaches Arena (plan/29-sys.md S-1). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

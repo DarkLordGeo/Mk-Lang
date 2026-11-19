@@ -1,0 +1,4 @@
+# NoCancel's boundary: scopes opened before, after and below the mask, the scope tree for the unmasked Io, and the bounded shutdown.
+case ok
+stdout nocancel.out
+timeout 60

@@ -1,0 +1,38 @@
+{
+  "name": "chan",
+  "table": "idiomatic",
+  "std": ["std.core.Chan"],
+  "algorithm": "Channel ping-pong: one side sends 0..n-1 on a channel of capacity 1 and waits for each value to come back on a second one; the checksum is the sum of the values received (README.md).",
+  "overflow": "never",
+  "args": [
+    "4000000"
+  ],
+  "quick": [
+    "20000"
+  ],
+  "checksum": "7999998000000",
+  "quick_checksum": "199990000",
+  "sources": {
+    "mk": "mk",
+    "rust": "chan.rs",
+    "go": "testdata/chan.go"
+  },
+  "skip": {
+    "c": "no std channel in C (C11 threads.h has mutexes and condition variables, no channel)",
+    "zig": "no std channel in Zig (std.Thread has Mutex and Condition, no channel)",
+    "mk-wrap": "the only arithmetic is the sum, which stays below 2^62"
+  },
+  "concurrency": {
+    "mask": "0x5",
+    "threads": 2,
+    "models": {
+      "mk": "tasks (M:N on 2 carriers), Chan",
+      "go": "goroutines (GOMAXPROCS 2), chan",
+      "rust": "OS threads, mpsc::sync_channel"
+    }
+  },
+  "no_counts": "B24 does not apply: the checksum, the sum of the n values, shows that every value made the round trip",
+  "notes": [
+    "Concurrency row (B19): every column runs on logical CPUs 0 and 2 (mask 0x5, two physical cores) with 2 threads (MK_CARRIERS=2, GOMAXPROCS=2). Rust uses OS threads (its std has no tasks), labelled so."
+  ]
+}

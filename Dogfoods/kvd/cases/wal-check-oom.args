@@ -1,0 +1,5 @@
+wal
+check
+$CASES/data/big.wal
+--max-memory
+4096

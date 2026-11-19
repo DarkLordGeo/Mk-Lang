@@ -1,0 +1,164 @@
+{
+  "name": "dot",
+  "table": "simd",
+  "algorithm": "f32 dot product of two n-element vectors with 16 partial sums in a stated order, reduced as a pairwise tree, then the tail in order; one element of x changed before each of reps products; the checksum sums the result's bits (README.md).",
+  "args": [],
+  "quick": [],
+  "sources": {
+    "mk": "mk",
+    "c": "../../../bench/simd/dot/dot.c",
+    "rust": "../../../bench/simd/dot/dot.rs",
+    "zig": "../../../bench/simd/dot/dot.zig",
+    "go": "../../../bench/simd/dot/testdata/dot.go"
+  },
+  "skip": {
+    "mk-wrap": "a float kernel: no integer arithmetic to wrap"
+  },
+  "variants": [
+    {
+      "name": "l1v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "2048",
+        "12000000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "39788195464738905",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "2048",
+        "0",
+        "1"
+      ],
+      "bytes": 196608000000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l3v2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "4194304",
+        "5000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "16158184274508",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "4194304",
+        "0",
+        "1"
+      ],
+      "bytes": 167772160000,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "dramv2",
+      "cpu": "x86-64-v2",
+      "args": [
+        "134217728",
+        "40",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "43739233076",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "134217728",
+        "0",
+        "1"
+      ],
+      "bytes": 42949672960,
+      "skip": {
+        "mk": "std.simd dispatches at run time (simd.Cpu()), so on an avx2 machine the Mk column runs its 32-lane form; this fixed-v2 variant would compare it with 16-byte vectors. Mk is compared in the v3 variants (status/std-simd.md, request R-3)"
+      }
+    },
+    {
+      "name": "l1v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "2048",
+        "20000000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "66441433244828897",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "2048",
+        "0",
+        "1"
+      ],
+      "bytes": 327680000000
+    },
+    {
+      "name": "l3v3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "4194304",
+        "6000",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "19388914708349",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "4194304",
+        "0",
+        "1"
+      ],
+      "bytes": 201326592000
+    },
+    {
+      "name": "dramv3",
+      "cpu": "x86-64-v3",
+      "args": [
+        "134217728",
+        "40",
+        "1"
+      ],
+      "quick": [
+        "10007",
+        "20",
+        "1"
+      ],
+      "checksum": "43739233076",
+      "quick_checksum": "23306420570",
+      "baseline": [
+        "134217728",
+        "0",
+        "1"
+      ],
+      "bytes": 42949672960
+    }
+  ],
+  "notes": [
+    "GB/s counts the 8 * n bytes of x and y per product. The fill (one pass) and its first-touch page faults are timed by each variant's baseline (reps 0) and subtracted: GB/s is over the kernel time (BS-3). Both buffers start on a 64-byte boundary (BS-4). Go is scalar (Go has no SIMD layer), with the same 16 sums in the same order.",
+    "std-simd lane row: bench-std's row dot (tests/bench/simd/dot) with its C, Rust, Zig and Go sources by relative path, unchanged, and an Mk column calling std.simd. The Mk buffers are arena slices, whose alignment Mk code cannot set without std.raw (BS-4's labelled exception, tests/bench/README.md), until std's aligned allocation reaches Arena (plan/29-sys.md S-1). Nothing here is published: bench-final publishes (status/bench.md)."
+  ]
+}

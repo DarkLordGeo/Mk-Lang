@@ -1,0 +1,32 @@
+{
+  "name": "hash-sha512",
+  "table": "idiomatic",
+  "algorithm": "std SHA-512 over splitmix64 bytes, reps passes with a one-byte write-back (mk/hash-sha512.mk).",
+  "overflow": "wraps",
+  "args": [
+    "64",
+    "24",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "8",
+    "1"
+  ],
+  "checksum": "794222783774523369",
+  "quick_checksum": "6429066257254225499",
+  "sources": {
+    "mk": "mk",
+    "zig": "hash-sha512.zig",
+    "go": "testdata/hash-sha512.go"
+  },
+  "skip": {
+    "c": "no std hash: C has no standard SHA-512",
+    "rust": "no std SHA-512: Rust std has none (only SipHash-1-3 in DefaultHasher); no crate stands in"
+  },
+  "notes": [
+    "Idiomatic standard library: one call of each language's std function per pass (plan/06-m6.md 4.1). Bytes per second = mib * 1048576 * reps / median.",
+    "Go: crypto/sha512 uses AVX2 on amd64 when the CPU has it. Mk does too since M9 item 11.24a (D-775): an AVX2 message schedule beside rounds compiled with bmi2 when the CPU has avx2 and bmi2 (run-time dispatch, whatever -mcpu says), else the scalar loop. Zig at -mcpu=x86_64_v2 is scalar, so on such a CPU the zig cell compares instruction sets as well as libraries.",
+    "Checksums: Mk (mk build -release), Zig 0.17.0 (-O ReleaseFast -mcpu=x86_64_v2) and, where it has the function, Go 1.27.3 (GOAMD64=v2) printed the same values for args and quick on the owner's machine, 2026-11-06 (std-hashmod session 1). The publish-size checksum was re-agreed by every column in `go run ./tools/bench verify -publish-size` on the owner's machine, 2026-11-07 (std-hashmod session 5, after the reps were raised). Not published: no number here is a measurement."
+  ]
+}

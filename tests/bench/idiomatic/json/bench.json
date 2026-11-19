@@ -1,0 +1,37 @@
+{
+  "name": "json",
+  "table": "idiomatic",
+  "std": ["std.json.Parse", "std.json.Value.Format"],
+  "algorithm": "Parse a 50 MB JSON document into the std's tree, serialise the tree to compact JSON, parse that text again and walk the second tree; rounds times (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "3"
+  ],
+  "quick": [
+    "{data}",
+    "1"
+  ],
+  "checksum": "621179967593328",
+  "quick_checksum": "207059989197776",
+  "sources": {
+    "mk": "mk",
+    "zig": "json.zig",
+    "go": "testdata/json.go"
+  },
+  "skip": {
+    "c": "no std JSON in C",
+    "rust": "no std JSON in Rust (serde_json is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; parsing has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "json",
+    "file": "json-50mb.json",
+    "bytes": 50000000,
+    "seed": 4
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum is taken over the reparsed values (B18), not the serialised bytes, which differ by library (key order, escapes, number spelling)",
+  "notes": [
+    "B18: the serialised text differs by library (Go sorts map keys and escapes <, > and &; Zig writes its f64 numbers in its own spelling; Mk keeps member order and number text), so the checksum walks the reparsed tree: per value 1 plus the integer part of a number, the decoded length of a string, 3 for true, 5 for false, 7 for null, and per object member 1 plus the key's length."
+  ]
+}

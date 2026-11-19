@@ -1,0 +1,5 @@
+sort
+--numeric
+--key
+2
+$CASES/data/words.txt

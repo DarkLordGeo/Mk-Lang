@@ -1,0 +1,5 @@
+# Scope deadlines on the native runtime and under std.sim; every bound is checked by the program,
+# so the output is the same on every machine.
+case ok
+stdout deadline.out
+timeout 60

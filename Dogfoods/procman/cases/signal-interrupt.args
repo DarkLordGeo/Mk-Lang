@@ -1,0 +1,6 @@
+--procfile
+$CASES/data/signal.Procfile
+--log-level
+warn
+start
+--summary

@@ -1,0 +1,32 @@
+{
+  "name": "big-conv",
+  "table": "idiomatic",
+  "algorithm": "std.big Text and Parse in an accumulation loop: x0 is 2000 splitmix64 words of the seed (about 38,500 decimal digits); n times s = x in decimal, x = Parse(s) + 1, x copied out through Words into a HeapList[u64] and the work arena reset each step (mk/big-conv.mk); prints x's low word xor the sum of the texts' lengths.",
+  "overflow": "wraps",
+  "args": [
+    "200",
+    "1"
+  ],
+  "quick": [
+    "3",
+    "1"
+  ],
+  "checksum": "10451216379208518313",
+  "quick_checksum": "10451216379200905032",
+  "sources": {
+    "mk": "mk",
+    "zig": "big-conv.zig",
+    "go": "testdata/big-conv.go"
+  },
+  "skip": {
+    "c": "no std big integers: C has none, and GMP is a library, not installed on this machine (tests/bench README: no stand-ins)",
+    "rust": "no std big integers: Rust std has none; num-bigint is a crate (no stand-ins) and is not in the offline cargo cache"
+  },
+  "notes": [
+    "Work per step: one conversion of a 2000-word value to decimal and one back. Mk: Text by divide and conquer over Burnikel-Ziegler division from 60 divisor words (std/big/textdc.mk), Parse by divide and conquer above 20,000 digits over Karatsuba and Toom-3 products, Toom-3 from 300 words (std/big/parsedc.mk); Go: nat.utoa divide and conquer, SetString word chunks (quadratic); Zig: toString and setString (std.math.big.int) over init.gpa, its default-selected general purpose allocator (review finding stdbig-r1).",
+    "Squares (Mul of a value by itself, as in the power tables of Text and Parse) take std/big/sqr.mk: the schoolbook square from 8 words, Karatsuba's square from 80 words and Toom-3's square from 300 words (review finding stdbig-r4).",
+    "Checksums: from the Mk, Go and Zig programs run by hand on 2026-11-12 (all three agree at both sizes). Not published: no number here is a measurement.",
+    "Copy-out (CopyOut in the Mk source, 2026-11-12): the HeapList's held slots are overwritten through ItemsMut in one CopyFrom and only the words past them pushed, since HeapList has no bulk append (status/std-big.md, Request 6).",
+    "Go cell and x86-64-v2 (review finding stdbig-r2): Go 1.27's math/big picks its amd64 assembly at run time, and on a CPU with ADX and BMI2, as this machine's, its multiply-add kernel addMulVVWW runs MULX/ADCX/ADOX (src/math/big/arith_amd64.go, hasADX), outside the contract's single target x86-64-v2, although the cell is built with GOAMD64=v2. That kernel is the inner loop of Go's basicMul (under karatsuba and divRecursive) and of its Montgomery product. GODEBUG=cpu.adx=off cannot hold the cell to v2 on Windows: Go's runtime reads GODEBUG's cpu options only on Unix systems (runtime/proc.go, getGodebugEarly). Measured by the std-big lane under WSL on the publish machine (lane-internal, 2026-11-12, not a tools/bench number): with cpu.adx=off Go's Mul took 1.6 to 1.8 times as long at 64 to 4,096 words and Exp at 2048 bits 1.84 times. Read this row's Go cell as Go with ADX/BMI2 assembly (status/std-big.md, Request 7)."
+  ]
+}

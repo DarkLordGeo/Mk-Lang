@@ -1,0 +1,10 @@
+enc
+open
+--prk
+hex:90c6389e005d4d84f89c9bac9d768374dc80773bf381d3ddac5fb93f6a540ca8
+--info
+bigcalc file
+--bits
+128
+$CASES/data/pki/sealed128.bin
+-

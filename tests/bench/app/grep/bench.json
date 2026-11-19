@@ -1,0 +1,92 @@
+{
+  "name": "grep",
+  "table": "app",
+  "algorithm": "Walk a generated source tree in mgrep's order (each directory's entries sorted bytewise, depth first, names starting with a dot skipped), skip each file with a NUL byte in its first 1,024 bytes, and print every other file's path and its count of matching lines, for one pattern: an alternation with classes, case-folded (re), a literal (lit) or an ASCII-folded literal (ci) (README.md).",
+  "args": [],
+  "quick": [],
+  "checksum": "",
+  "quick_checksum": "",
+  "package": {
+    "path": "Dogfoods/mgrep"
+  },
+  "sources": {
+    "c": "grep.c",
+    "rust": "rs",
+    "zig": "grep.zig",
+    "go": "testdata/grep.go"
+  },
+  "skip": {},
+  "kinds": {
+    "mk": "std",
+    "c": "hand",
+    "rust": "eco",
+    "zig": "std",
+    "go": "std"
+  },
+  "hand": {
+    "c": "the directory walk, on the platform API, not ISO C (Win32 FindFirstFileExW and FindNextFileW, or POSIX opendir and readdir), about 90 lines, with FIND_FIRST_EX_LARGE_FETCH, a performance flag Rust std's read_dir leaves out; a UTF-8 validator, 30 lines; a literal search (memchr and memcmp, 17 lines, as ISO C has no memmem); and a line splitter for files that are not valid UTF-8, 13 lines (line counts by the 11.34 review, awk over grep.c)"
+  },
+  "libs": {
+    "rust": [
+      {
+        "name": "regex",
+        "version": "1.12.3",
+        "lang": "Rust",
+        "inside": "regex-automata 0.4.14 (unsafe code), aho-corasick 1.1.4 and memchr 2.8.0 (unsafe code and SIMD: SSE2 and AVX2 byte and substring searches, Teddy, chosen at run time), regex-syntax 0.8.10 (forbids unsafe code)"
+      },
+      {
+        "name": "walkdir",
+        "version": "2.5.0",
+        "lang": "Rust",
+        "inside": "no unsafe code of its own; same-file 1.0.6 and winapi-util 0.1.11 (unsafe Win32 calls through windows-sys 0.61.2 and windows-link 0.2.1) on Windows"
+      }
+    ]
+  },
+  "crates": "crates/regex-1.12.3-walkdir-2.5.0",
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "data": {
+    "kind": "tree",
+    "file": "grep-tree-100mb",
+    "bytes": 100000000,
+    "seed": 5
+  },
+  "variants": [
+    {
+      "name": "re",
+      "args": ["-c", "-j", "1", "--path-separator", "/", "-i", "n[aeiou]+dle|omega|s?igma", "{data}"],
+      "quick": ["-c", "-j", "1", "--path-separator", "/", "-i", "n[aeiou]+dle|omega|s?igma", "{data}"],
+      "checksum": "sha256:8f87f533390d0af2d98ebc68f077a9a97d8eb4549050b611c2d17a8db5c4fd2d",
+      "quick_checksum": "sha256:8f87f533390d0af2d98ebc68f077a9a97d8eb4549050b611c2d17a8db5c4fd2d",
+      "skip": {
+        "c": "no regex in C's std (the C cell is lit only)",
+        "zig": "no regex in Zig's std"
+      }
+    },
+    {
+      "name": "lit",
+      "args": ["-c", "-j", "1", "--path-separator", "/", "-F", "needle", "{data}"],
+      "quick": ["-c", "-j", "1", "--path-separator", "/", "-F", "needle", "{data}"],
+      "checksum": "sha256:936c4a5468fb45bd1bc897a16d0e49608112c30030a6b2cdcfcac1b2b01ea4a3",
+      "quick_checksum": "sha256:936c4a5468fb45bd1bc897a16d0e49608112c30030a6b2cdcfcac1b2b01ea4a3"
+    },
+    {
+      "name": "ci",
+      "args": ["-c", "-j", "1", "--path-separator", "/", "-i", "needle", "{data}"],
+      "quick": ["-c", "-j", "1", "--path-separator", "/", "-i", "needle", "{data}"],
+      "checksum": "sha256:636cb500f41cfb742e8af33a2492930c7bd5cba59d922029c871478248d7009c",
+      "quick_checksum": "sha256:636cb500f41cfb742e8af33a2492930c7bd5cba59d922029c871478248d7009c",
+      "skip": {
+        "c": "no case-insensitive search in C's std (the C cell is lit only)"
+      }
+    }
+  ],
+  "notes": [
+    "The Mk side is the mgrep dogfood, unchanged (package Dogfoods/mgrep), run with -j 1 and MK_CARRIERS=1: one search task on one carrier. Its parallel form is the grep-j8 row.",
+    "The input is tools/bench gen kind tree, seed 5, bytes 100,000,000 (18,228 files in 2,399 directories; 15,201 files outside hidden names, 234 of them binary; 14,967 lines of output). The size is provisional: verify -publish-size in the coordinator's window fixes it. The tree has no .mgrepignore file and no line that is not UTF-8, so neither path of mgrep's is exercised (mgrep --stats printed nothing on standard error).",
+    "The checksum is the SHA-256 of the output with the tree's path written back as $DATA: each cell prints the same paths in the same order with the same counts.",
+    "C: a hand cell, lit only; its walk is the platform's API, not ISO C (ruling Q6 allows it). Rust: regex 1.12.3 and walkdir 2.5.0 from a cargo vendor tree in Mk-evidence (crates), by directory source replacement (D-835). Zig: lit and ci; its std has no regex."
+  ]
+}

@@ -1,0 +1,13 @@
+href      http://h:81/c?k=v%20w#top
+shown     http://h:81/c?k=v%20w#top
+scheme    http
+username  
+password  
+host      domain h
+hostname  h
+port      81
+path      /c
+query     k=v%20w
+fragment  top
+origin    http://h:81
+pair      k = v w

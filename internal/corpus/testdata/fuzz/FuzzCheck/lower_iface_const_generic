@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("interface I {\n    M[const K: int](&self): int\n}\n\nstruct S {\n    a: int\n}\n\nimpl I for S {\n    M[const K: int](&self): int {\n        return K\n    }\n}\n\nH[T: I](x: &T): int {\n    return x.M[0]()\n}\n")

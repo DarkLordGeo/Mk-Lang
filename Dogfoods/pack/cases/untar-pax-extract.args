@@ -1,0 +1,4 @@
+untar
+--dest
+{tmp}/out
+$CASES/data/tar/pax.tar

@@ -1,0 +1,9 @@
+replay
+--synth
+3000
+--seed
+5
+--bars
+250
+--depth
+4

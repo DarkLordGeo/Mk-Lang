@@ -1,0 +1,16 @@
+# Three spheres on a checkered floor under one soft light.
+size 48 32
+samples 4
+depth 3
+seed 7
+background 0.6 0.7 0.9
+camera 0 1.2 -4  0 0.8 0  45
+light 2 5 -2  1.0  30 30 30
+material floor checker 0.9 0.9 0.9  0.2 0.2 0.2  1
+material red diffuse 0.8 0.2 0.2
+material chrome mirror 0.9 0.9 0.9 0.1
+material earth texture tex.ppm
+plane 0 0 0  0 1 0 floor
+sphere -1.2 0.6 0  0.6 red
+sphere 0 0.8 0.5  0.8 chrome
+sphere 1.3 0.5 -0.3  0.5 earth

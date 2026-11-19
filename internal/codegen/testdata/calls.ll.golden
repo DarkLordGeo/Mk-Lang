@@ -1,0 +1,193 @@
+source_filename = "mk.main.Use"
+target triple = "x86_64-unknown-linux-gnu"
+
+@mk.s.1 = private unnamed_addr constant [9 x i8] c"main/t.mk", align 1
+@mk.pos.mk.main.Use.0 = private unnamed_addr constant { ptr, i64, i32, i32 } { ptr @mk.s.1, i64 9, i32 3, i32 10 }, align 8
+@mk.pos.mk.main.MustGet.0 = private unnamed_addr constant { ptr, i64, i32, i32 } { ptr @mk.s.1, i64 9, i32 5, i32 10 }, align 8
+@mk.c.2 = private unnamed_addr constant <{ [4 x i8] }> <{ [4 x i8] c"boom" }>, align 1
+@mk.c.3 = private unnamed_addr constant <{ ptr, [8 x i8] }> <{ ptr @mk.c.2, [8 x i8] c"\04\00\00\00\00\00\00\00" }>, align 8
+@mk.pos.mk.main.Boom.0 = private unnamed_addr constant { ptr, i64, i32, i32 } { ptr @mk.s.1, i64 9, i32 9, i32 3 }, align 8
+@mk.fr.mk.main.Use = private constant { ptr, ptr, i32 } { ptr @mk.main.Use, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !24
+@mk.fr.mk.main.MustGet = private constant { ptr, ptr, i32 } { ptr @mk.main.MustGet, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !25
+@mk.fr.mk.main.Twice = private constant { ptr, ptr, i32 } { ptr @mk.main.Twice, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !26
+@mk.fr.mk.main.Boom = private constant { ptr, ptr, i32 } { ptr @mk.main.Boom, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !27
+@llvm.compiler.used = appending global [4 x ptr] [ptr @mk.fr.mk.main.Use, ptr @mk.fr.mk.main.MustGet, ptr @mk.fr.mk.main.Twice, ptr @mk.fr.mk.main.Boom], section "llvm.metadata"
+
+define hidden noundef i64 @mk.main.Use(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !7 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !8
+  %v1 = alloca [8 x i8], align 8, !dbg !8
+  %v2 = alloca [8 x i8], align 8, !dbg !8
+  %v3 = alloca [16 x i8], align 8, !dbg !8
+  store i64 %p0, ptr %v1, align 8, !dbg !8
+  %v5 = alloca [16 x i8], align 8, !dbg !8
+  br label %b0, !dbg !8
+
+b0:
+  %v4 = load i64, ptr %v1, align 8, !noundef !5, !dbg !9
+  %v6 = call { i32, i64 } @mk.main.Get(i64 noundef %v4) nounwind, !dbg !9
+  %v7 = extractvalue { i32, i64 } %v6, 0, !dbg !9
+  %v8 = extractvalue { i32, i64 } %v6, 1, !dbg !9
+  store i32 %v7, ptr %v5, align 8, !dbg !9
+  %v9 = getelementptr inbounds i8, ptr %v5, i64 8, !dbg !9
+  store i64 %v8, ptr %v9, align 8, !dbg !9
+  %v10 = load i32, ptr %v5, align 8, !noundef !5, !dbg !9
+  %v11 = icmp eq i32 %v10, 0, !dbg !9
+  br i1 %v11, label %x1, label %x2, !dbg !9
+
+b1:
+  %v14 = load i64, ptr %v2, align 8, !noundef !5, !dbg !10
+  %v15 = call { i64, i1 } @llvm.sadd.with.overflow.i64(i64 %v14, i64 1), !dbg !10
+  %v16 = extractvalue { i64, i1 } %v15, 1, !dbg !10
+  br i1 %v16, label %x3, label %x4, !prof !11, !dbg !10
+
+b2:
+  store i64 -1, ptr %v0, align 8, !dbg !13
+  %v19 = load i64, ptr %v0, align 8, !noundef !5, !dbg !13
+  ret i64 %v19, !dbg !13
+
+x1:
+  %v12 = getelementptr inbounds i8, ptr %v5, i64 8, !dbg !9
+  %v13 = load i64, ptr %v12, align 8, !noundef !5, !dbg !9
+  store i64 %v13, ptr %v2, align 8, !dbg !9
+  br label %b1, !dbg !9
+
+x2:
+  call void @llvm.memcpy.p0.p0.i64(ptr %v3, ptr %v5, i64 16, i1 false), !dbg !9
+  br label %b2, !dbg !9
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 1, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.Use.0) nounwind noreturn cold, !dbg !10
+  unreachable, !dbg !10
+
+x4:
+  %v17 = extractvalue { i64, i1 } %v15, 0, !dbg !10
+  store i64 %v17, ptr %v0, align 8, !dbg !10
+  %v18 = load i64, ptr %v0, align 8, !noundef !5, !dbg !12
+  ret i64 %v18, !dbg !12
+}
+
+define hidden noundef i64 @mk.main.MustGet(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !14 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !15
+  %v1 = alloca [8 x i8], align 8, !dbg !15
+  %v2 = alloca [16 x i8], align 8, !dbg !15
+  store i64 %p0, ptr %v1, align 8, !dbg !15
+  %v4 = alloca [16 x i8], align 8, !dbg !15
+  br label %b0, !dbg !15
+
+b0:
+  %v3 = load i64, ptr %v1, align 8, !noundef !5, !dbg !16
+  %v5 = call { i32, i64 } @mk.main.Get(i64 noundef %v3) nounwind, !dbg !16
+  %v6 = extractvalue { i32, i64 } %v5, 0, !dbg !16
+  %v7 = extractvalue { i32, i64 } %v5, 1, !dbg !16
+  store i32 %v6, ptr %v4, align 8, !dbg !16
+  %v8 = getelementptr inbounds i8, ptr %v4, i64 8, !dbg !16
+  store i64 %v7, ptr %v8, align 8, !dbg !16
+  %v9 = load i32, ptr %v4, align 8, !noundef !5, !dbg !16
+  %v10 = icmp eq i32 %v9, 0, !dbg !16
+  br i1 %v10, label %x1, label %x2, !dbg !16
+
+b1:
+  %v13 = load i64, ptr %v0, align 8, !noundef !5, !dbg !17
+  ret i64 %v13, !dbg !17
+
+b2:
+  %v14 = load i32, ptr %v2, align 8, !noundef !5, !dbg !16
+  call void @mk.std.rt.PanicErr(i32 noundef 6, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.MustGet.0, i32 noundef %v14) nounwind noreturn cold, !dbg !16
+  unreachable, !dbg !16
+
+x1:
+  %v11 = getelementptr inbounds i8, ptr %v4, i64 8, !dbg !16
+  %v12 = load i64, ptr %v11, align 8, !noundef !5, !dbg !16
+  store i64 %v12, ptr %v0, align 8, !dbg !16
+  br label %b1, !dbg !16
+
+x2:
+  call void @llvm.memcpy.p0.p0.i64(ptr %v2, ptr %v4, i64 16, i1 false), !dbg !16
+  br label %b2, !dbg !16
+}
+
+define hidden noundef i64 @mk.main.Twice(ptr noundef %p0, i64 noundef %p1) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !18 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !19
+  %v1 = alloca [8 x i8], align 8, !dbg !19
+  %v2 = alloca [8 x i8], align 8, !dbg !19
+  %v3 = alloca [8 x i8], align 8, !dbg !19
+  store ptr %p0, ptr %v1, align 8, !dbg !19
+  store i64 %p1, ptr %v2, align 8, !dbg !19
+  br label %b0, !dbg !19
+
+b0:
+  %v4 = load i64, ptr %v2, align 8, !noundef !5, !dbg !20
+  %v5 = load ptr, ptr %v1, align 8, !dbg !20
+  %v6 = call noundef i64 %v5(i64 noundef %v4) nounwind, !dbg !20
+  store i64 %v6, ptr %v3, align 8, !dbg !20
+  br label %b1, !dbg !20
+
+b1:
+  %v7 = load i64, ptr %v3, align 8, !noundef !5, !dbg !20
+  %v8 = load ptr, ptr %v1, align 8, !dbg !20
+  %v9 = call noundef i64 %v8(i64 noundef %v7) nounwind, !dbg !20
+  store i64 %v9, ptr %v0, align 8, !dbg !20
+  br label %b2, !dbg !20
+
+b2:
+  %v10 = load i64, ptr %v0, align 8, !noundef !5, !dbg !20
+  ret i64 %v10, !dbg !20
+}
+
+define hidden void @mk.main.Boom() nounwind uwtable noreturn "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !21 {
+entry:
+  br label %b0, !dbg !22
+
+b0:
+  %v0 = load ptr, ptr @mk.c.3, align 8, !dbg !23
+  %v1 = getelementptr inbounds i8, ptr @mk.c.3, i64 8, !dbg !23
+  %v2 = load i64, ptr %v1, align 8, !dbg !23
+  call void @mk.std.rt.PanicMsg(i32 noundef 8, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.Boom.0, ptr noundef nonnull noalias readonly %v0, i64 noundef range(i64 0, 72057594037927937) %v2) nounwind noreturn cold, !dbg !23
+  unreachable, !dbg !23
+}
+
+declare hidden { i32, i64 } @mk.main.Get(i64 noundef) nounwind
+
+declare void @llvm.memcpy.p0.p0.i64(ptr, ptr, i64, i1 immarg)
+
+declare { i64, i1 } @llvm.sadd.with.overflow.i64(i64, i64)
+
+declare hidden void @mk.std.rt.PanicAt(i32 noundef, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly) nounwind noreturn cold
+
+declare hidden void @mk.std.rt.PanicErr(i32 noundef, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly, i32 noundef) nounwind noreturn cold
+
+declare hidden void @mk.std.rt.PanicMsg(i32 noundef, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly, ptr noundef nonnull noalias readonly, i64 noundef range(i64 0, 72057594037927937)) nounwind noreturn cold
+
+!llvm.dbg.cu = !{!3}
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 7, !"Dwarf Version", i32 4}
+!1 = !{i32 2, !"Debug Info Version", i32 3}
+!2 = !DIFile(filename: "mk.main.Use", directory: ".")
+!3 = distinct !DICompileUnit(language: DW_LANG_C99, file: !2, producer: "mk", isOptimized: false, runtimeVersion: 0, emissionKind: LineTablesOnly)
+!4 = !DIFile(filename: "main/t.mk", directory: ".")
+!5 = !{}
+!6 = !DISubroutineType(types: !5)
+!7 = distinct !DISubprogram(name: "main.Use", linkageName: "mk.main.Use", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!8 = !DILocation(line: 1, column: 1, scope: !7)
+!9 = !DILocation(line: 2, column: 8, scope: !7)
+!10 = !DILocation(line: 3, column: 10, scope: !7)
+!11 = !{!"branch_weights", i32 1, i32 1048575}
+!12 = !DILocation(line: 3, column: 3, scope: !7)
+!13 = !DILocation(line: 2, column: 30, scope: !7)
+!14 = distinct !DISubprogram(name: "main.MustGet", linkageName: "mk.main.MustGet", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!15 = !DILocation(line: 1, column: 1, scope: !14)
+!16 = !DILocation(line: 5, column: 10, scope: !14)
+!17 = !DILocation(line: 5, column: 3, scope: !14)
+!18 = distinct !DISubprogram(name: "main.Twice", linkageName: "mk.main.Twice", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!19 = !DILocation(line: 1, column: 1, scope: !18)
+!20 = !DILocation(line: 7, column: 3, scope: !18)
+!21 = distinct !DISubprogram(name: "main.Boom", linkageName: "mk.main.Boom", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!22 = !DILocation(line: 1, column: 1, scope: !21)
+!23 = !DILocation(line: 9, column: 3, scope: !21)
+!24 = !{ptr @mk.main.Use}
+!25 = !{ptr @mk.main.MustGet}
+!26 = !{ptr @mk.main.Twice}
+!27 = !{ptr @mk.main.Boom}

@@ -1,0 +1,8 @@
+enc
+seal
+--ecdh-peer
+$CASES/data/pki/p256_pub.pem
+--info
+ecies
+$CASES/data/pki/plain.txt
+$WORK/sealed.bin

@@ -1,0 +1,10 @@
+# 10,000 seeds, each three lives with two seeded crashes; "bad 0" is the property, and the crash
+# count is fixed by the seeds (one seed, one run, on every target and profile).
+case seeds-10000
+args 10000 1
+stdout simkv.out
+timeout 60
+
+case seeds-from-50000
+args 1000 50000
+stdout simkv-50000.out

@@ -1,0 +1,4 @@
+convert
+--to
+iso-8859-8-i
+$CASES/data/whatwg/iso-8859-8-i.txt

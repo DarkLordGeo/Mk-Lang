@@ -1,0 +1,33 @@
+{
+  "name": "kvd",
+  "table": "app",
+  "algorithm": "Run the kvd dogfood's crash-and-recovery simulation over a range of seeds under std.sim: per seed, a server and three clients of 16 steps on a simulated disk and network, crashed at a log write, faulted or shut down, recovered from its log and checked, then the summary of every run (README.md).",
+  "args": [
+    "sim",
+    "--seeds",
+    "0..4999"
+  ],
+  "quick": [
+    "sim",
+    "--seeds",
+    "0..999"
+  ],
+  "checksum": "sha256:3a65de4ba9d1c000e1358780896f418b63750680bcb84f8ddd62ca9708aac39f",
+  "quick_checksum": "sha256:7c0e5c4f243c90da650cd196c275080775f3a091549b065f77b084e8a6793a87",
+  "package": {
+    "path": "Dogfoods/kvd"
+  },
+  "kinds": {
+    "mk": "std"
+  },
+  "env": {
+    "MK_CARRIERS": "1"
+  },
+  "digest": true,
+  "notes": [
+    "Tier A (M9 item 11.32): an Mk-only row, the kvd dogfood unchanged, compared across mk binaries; no twin, no peer, no defect line (README.md).",
+    "kvd declares one unsafe module, src/snap (its snapshot recovery through fs.Map), which keeps it out of a twinned bench.json row unchanged (D-781); an Mk-only row may keep it, labelled.",
+    "The mode is sim, not the bench case the programme named: kvd bench syncs its log on every write (SyncPolicy.Always, fixed in src/main/bench.mk), so every write waits for a sync, and it needs a fresh data directory per run, which an output file does not give (README.md, Why sim).",
+    "The size (the seed range) is provisional; tools/bench verify -publish-size fixes it in the quiet window, and the checksum changes with it."
+  ]
+}

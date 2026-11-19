@@ -1,0 +1,28 @@
+{
+  "name": "x509-parse-chain",
+  "table": "idiomatic",
+  "algorithm": "std.x509 Parse alone of three DER certificates (std/x509/testdata's chain and root, decoded from hex at run time), <reps> passes, the checksum the sum of (NotBefore + NotAfter) mod 1000 in Unix seconds (mk/x509-parse-chain.mk). No signature is checked: the row measures std.x509's own share, which x509-verify-chain's two ECDSA verifications hide.",
+  "overflow": "wraps",
+  "args": [
+    "200000"
+  ],
+  "quick": [
+    "3"
+  ],
+  "checksum": "120000000",
+  "quick_checksum": "1800",
+  "sources": {
+    "mk": "mk",
+    "zig": "x509-parse-chain.zig",
+    "go": "testdata/x509-parse-chain.go"
+  },
+  "skip": {
+    "c": "no std X.509: C has no standard certificate library (OpenSSL is third-party)",
+    "rust": "no std X.509: Rust std has none; x509-parser and rustls-webpki are third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Work per certificate: Mk x509.Parse (one pass over std.encoding's DER reader, every extension std.x509 uses validated as Go validates it, no allocation, the arena reset per pass); Go crypto/x509 ParseCertificate (allocating, every extension and the public key parsed); Zig 0.17.0 std.crypto.Certificate.parse (the TBS fields' places, the validity, the subjectAltName's place; no extension validation and no key parse, so it does less than the other two).",
+    "Checksums computed from the fixtures' validity (2000-01-01 and 2200-01-01 for all three). Written by the std-x509 lane; publish is the bench lane's.",
+    "Causes of Mk's ratio against Zig (D-673, D-798): the call into std.encoding's DerRead per element, which D8-7's one DER reader keeps, then the name and extension validation Zig's parse does not do (std-x509's smoke cuts, D-798; not a tools/bench measurement)."
+  ]
+}

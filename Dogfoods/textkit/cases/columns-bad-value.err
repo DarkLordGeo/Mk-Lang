@@ -1,0 +1,8 @@
+textkit columns: invalid argument many
+Options:
+  --separator <str>  The field separator (default a tab)
+  --gap <int>        Spaces between columns (default 2)
+  --right            Align every column but the first to the right
+  --limit <int>      The most bytes to read, all inputs together (default 8388608)
+Arguments:
+  <files>...         Files to read; none, or -, is standard input

@@ -1,0 +1,6 @@
+# A run test of the scoped alias facts' scope declarations: loops whose calls
+# pass disjoint views and carry a dependence to the next call. Without the callee's
+# llvm.experimental.noalias.scope.decl, release vectorizes the chains and prints other sums. Both
+# profiles, both targets: the same line everywhere.
+case ok
+stdout aliaschain.out

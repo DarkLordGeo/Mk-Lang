@@ -1,0 +1,2 @@
+GET /echo
+Cookie: live=yes; session=s1

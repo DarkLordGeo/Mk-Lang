@@ -1,0 +1,7 @@
+sort
+--numeric
+--key
+3
+--separator
+;
+$CASES/data/fruit.csv

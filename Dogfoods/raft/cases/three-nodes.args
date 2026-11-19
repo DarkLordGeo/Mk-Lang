@@ -1,0 +1,12 @@
+sim
+--seeds
+1..100
+--nodes
+3
+--clients
+2
+--ops
+20
+--partitions
+--loss
+5

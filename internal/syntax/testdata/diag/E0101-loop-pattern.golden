@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E0101","name":"syntax","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":9,"end_line":2,"end_col":15},"message":"a destructured loop variable copies each element; write `for x in &xs` and read `x.a`","facts":{},"fixes":[],"alternatives":[],"explain":"mk explain E0101"}],"omitted":0}
+

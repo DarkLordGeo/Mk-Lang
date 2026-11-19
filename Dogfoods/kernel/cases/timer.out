@@ -1,0 +1,21 @@
+mk kernel: booting
+boot: 7 memory regions, 28640 pages managed from 0x1000000
+boot: local APIC 0 version 0x14 takes the interrupts
+boot: timer: 3 interrupts taken
+boot: breakpoint: handled, 1 so far
+boot: frame allocator: took 8 pages at 0x1000000 and gave them back
+type help for the commands
+> ticks 3
+timer: 3 interrupts taken
+> apic
+apic: id 0, version 0x14
+> break
+breakpoint: handled, 2 since boot
+> break
+breakpoint: handled, 3 since boot
+> ticks 0
+error: ticks: 0 is outside 1 to 100
+> ticks 101
+error: ticks: 101 is outside 1 to 100
+> exit
+bye: 2 commands failed, status 17

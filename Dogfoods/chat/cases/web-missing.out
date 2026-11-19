@@ -1,0 +1,6 @@
+web> !ws /ws
+web! connect failed: no web front end; start it with --web
+list> GET /rooms
+list! GET failed: no web front end; start it with --web
+-- server: history=0
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=0 broken=0 canceled=0

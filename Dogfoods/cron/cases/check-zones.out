@@ -1,0 +1,9 @@
+$CASES/data/zones.tab: entries 5, zones 3
+zone Europe/Berlin (named)
+zone America/New_York (named)
+zone Australia/Lord_Howe (named)
+nightly: 30 2 * * * in Europe/Berlin, timeout 5m0s -- jobkit print nightly
+hourly: 0 * 29 3 * in Europe/Berlin -- jobkit print hourly
+early: 30 1 * * sun in America/New_York -- jobkit print early
+howe-back: 45 1 * * * in Australia/Lord_Howe -- jobkit print howe
+howe-fwd: 15 2 * * * in Australia/Lord_Howe -- jobkit print howe

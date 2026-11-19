@@ -1,0 +1,6 @@
+id,side,kind,qty,price,stop,ts,tag
+21/1,S,limit,30,101.00,,900,"desk 4, hedge"
+22/1,B,limit,25,100.00,,901,"two-line note:
+call before 10:00"
+23/1,S,stop,15,,99.50,902,
+24/1,B,stop-limit,10,101.60,101.50,903,"says ""urgent"""

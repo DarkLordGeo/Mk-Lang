@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+-i
+http://{origin}/redirect/301
+http://{origin}/redirect/307

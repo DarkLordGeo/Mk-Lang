@@ -1,0 +1,6 @@
+zlib
+--level
+0
+--out
+$WORK/t.zz
+$CASES/data/tar/site.tar

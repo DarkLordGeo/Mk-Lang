@@ -1,0 +1,7 @@
+# Consts and vars aligned over a page sit at their alignment. Windows only: there
+# the compiler places them in sections of their own in an image of that section alignment, so both
+# profiles keep them on it; ELF keeps each section's alignment (std/core/tests_arena.mk runs
+# the evaluated tables on both targets).
+case ok
+target x86_64-windows
+stdout staticalign.out

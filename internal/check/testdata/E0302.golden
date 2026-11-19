@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0302","name":"no-conversion","phase":"types","root":1,"at":{"file":"m/00.mk","line":2,"col":9,"end_line":2,"end_col":16},"message":"no conversion from `int` to `bool`","facts":{"from":"int","to":"bool"},"fixes":[],"alternatives":[],"explain":"mk explain E0302"}],"omitted":0}

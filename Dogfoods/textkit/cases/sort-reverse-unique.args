@@ -1,0 +1,7 @@
+sort
+--reverse
+--unique
+--fold
+--key
+1
+$CASES/data/words.txt

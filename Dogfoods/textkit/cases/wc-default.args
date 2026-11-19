@@ -1,0 +1,4 @@
+wc
+$CASES/data/mixed.txt
+$CASES/data/wide.txt
+$CASES/data/truncated.txt

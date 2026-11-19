@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E0101","name":"syntax","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":6,"end_line":2,"end_col":8},"message":"Mk has no `++`: write `x += 1`","facts":{},"fixes":[],"alternatives":["x += 1"],"explain":"mk explain E0101"}],"omitted":0}
+

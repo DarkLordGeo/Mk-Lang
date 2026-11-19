@@ -1,0 +1,64 @@
+{
+  "name": "grep-j8",
+  "table": "app",
+  "algorithm": "app/grep's re variant searched in parallel: walk a generated source tree in mgrep's order, search its files with 8 threads of control, and print every file's path and its count of lines matching an alternation with classes, case-folded, in walk order (README.md).",
+  "args": ["-c", "-j", "8", "--path-separator", "/", "-i", "n[aeiou]+dle|omega|s?igma", "{data}"],
+  "quick": ["-c", "-j", "8", "--path-separator", "/", "-i", "n[aeiou]+dle|omega|s?igma", "{data}"],
+  "checksum": "sha256:8f87f533390d0af2d98ebc68f077a9a97d8eb4549050b611c2d17a8db5c4fd2d",
+  "quick_checksum": "sha256:8f87f533390d0af2d98ebc68f077a9a97d8eb4549050b611c2d17a8db5c4fd2d",
+  "package": {
+    "path": "Dogfoods/mgrep"
+  },
+  "sources": {
+    "rust": "rs",
+    "go": "testdata/grepj8.go"
+  },
+  "skip": {
+    "c": "no regex in C's std (app/grep's C cell is lit only)",
+    "zig": "no regex in Zig's std"
+  },
+  "kinds": {
+    "mk": "std",
+    "rust": "eco",
+    "go": "std"
+  },
+  "libs": {
+    "rust": [
+      {
+        "name": "regex",
+        "version": "1.12.3",
+        "lang": "Rust",
+        "inside": "regex-automata 0.4.14 (unsafe code), aho-corasick 1.1.4 and memchr 2.8.0 (unsafe code and SIMD: SSE2 and AVX2 byte and substring searches, Teddy, chosen at run time), regex-syntax 0.8.10 (forbids unsafe code)"
+      },
+      {
+        "name": "walkdir",
+        "version": "2.5.0",
+        "lang": "Rust",
+        "inside": "no unsafe code of its own; same-file 1.0.6 and winapi-util 0.1.11 (unsafe Win32 calls through windows-sys 0.61.2 and windows-link 0.2.1) on Windows"
+      }
+    ]
+  },
+  "crates": "crates/regex-1.12.3-walkdir-2.5.0",
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers): mgrep -j 8, a feeder task and 8 search tasks over a Chan, a Semaphore of 8 open files, reports printed in file order",
+      "rust": "OS threads: 8 std::thread::scope workers taking file indexes from an AtomicUsize",
+      "go": "goroutines (GOMAXPROCS 8): 8 workers taking file indexes from a channel"
+    }
+  },
+  "digest": true,
+  "data": {
+    "kind": "tree",
+    "file": "grep-tree-100mb",
+    "bytes": 100000000,
+    "seed": 5
+  },
+  "notes": [
+    "The Mk side is the mgrep dogfood, unchanged (package Dogfoods/mgrep), at -j 8 with MK_CARRIERS=8 (the concurrency row's thread count, B19). Its single-threaded form is app/grep.",
+    "The input is app/grep's tree (tools/bench gen kind tree, seed 5, bytes 100,000,000; the same directory). The size is provisional: verify -publish-size in the coordinator's window fixes it.",
+    "The checksum is the SHA-256 of the output with the tree's path written back as $DATA; it equals app/grep's re variant's, since the output does not depend on the number of threads.",
+    "Rust: regex 1.12.3 and walkdir 2.5.0 from the same cargo vendor tree in Mk-evidence as app/grep (crates), by directory source replacement (D-835)."
+  ]
+}

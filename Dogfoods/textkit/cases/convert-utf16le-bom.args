@@ -1,0 +1,4 @@
+convert
+--from
+utf-16le
+$CASES/data/le-bom.bin

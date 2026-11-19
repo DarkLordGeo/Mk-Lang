@@ -1,0 +1,32 @@
+{
+  "name": "crypto-aesgcm128",
+  "table": "idiomatic",
+  "algorithm": "std AES-128-GCM (NIST SP 800-38D, 96-bit nonce) seal then open of every 16,384-byte record of splitmix64 bytes, one key object for the run, a fresh nonce per record, a 13-byte aad, reps passes (mk/crypto-aesgcm128.mk).",
+  "overflow": "wraps",
+  "args": [
+    "16",
+    "32",
+    "1"
+  ],
+  "quick": [
+    "1",
+    "2",
+    "1"
+  ],
+  "checksum": "13129728189855484742",
+  "quick_checksum": "13200187803079733405",
+  "sources": {
+    "mk": "mk",
+    "zig": "crypto-aesgcm128.zig",
+    "go": "testdata/crypto-aesgcm128.go"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard AEAD",
+    "rust": "no std crypto: Rust std has no AEAD; the aes-gcm crate is third-party, and no crate stands in (plan/06-m6.md 4.1)"
+  },
+  "notes": [
+    "Work per step: one seal and one open of one 16,384-byte record with a 13-byte aad, the tag checked before decryption on every side. Mk AesGcm.New once, then Seal and Open; Go aes.NewCipher and cipher.NewGCM once, then Seal and Open; Zig aead.aes_gcm.Aes128Gcm.encrypt and decrypt, which take the key on every call and expand it each time (Zig's std has no key object for AES-GCM), a cost of one key schedule per 16 KiB record. Bytes per second = 2 * mib * 1048576 * reps / median.",
+    "Every column runs the CPU's AES and carry-less multiply instructions when it has them: Mk through std.simd.kernel's AesCtr and GhashBlocks behind simd.Cpu() (D8-17), Go through its amd64 assembly (run-time dispatch in the library), Zig through @Vector code it compiles for the target CPU (x86_64_v2 has no AES-NI, so Zig's column is its portable code unless -mcpu names aes). Labelled: the cells compare instruction paths, not one algorithm.",
+    "Checksums from the go column (GOAMD64=v2 -pgo=off, Go 1.27, owner's machine, 2026-11-12); the Mk column (mk build --release, mk from the tree) printed the same at both arg sets. Written by the std-crypto2 lane. Not published: no number here is a measurement."
+  ]
+}

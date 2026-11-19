@@ -1,0 +1,2 @@
+panic: demo panic at src/demo/demo.mk:84:9
+WARN crash: exited with code 101

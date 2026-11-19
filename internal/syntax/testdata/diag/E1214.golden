@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1214","name":"fat-arrow","phase":"parse","root":1,"at":{"file":"t.mk","line":3,"col":12,"end_line":3,"end_col":14},"message":"an arm is `Pattern { body }`, not `Pattern => body`","facts":{"habits":["E1214"],"target":"        .A { 1 }"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":3,"col":11,"end_line":3,"end_col":14,"text":" {"},{"file":"t.mk","line":3,"col":16,"end_line":3,"end_col":17,"text":" }"}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1214"}],"omitted":0}
+

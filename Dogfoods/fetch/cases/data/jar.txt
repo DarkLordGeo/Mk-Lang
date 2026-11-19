@@ -1,0 +1,5 @@
+# Netscape HTTP Cookie File
+127.0.0.1	FALSE	/	FALSE	4102444800	live	yes
+127.0.0.1	FALSE	/	FALSE	784111777	old	no
+#HttpOnly_127.0.0.1	FALSE	/	FALSE	0	session	s1
+127.0.0.1	FALSE	/other	FALSE	0	elsewhere	no

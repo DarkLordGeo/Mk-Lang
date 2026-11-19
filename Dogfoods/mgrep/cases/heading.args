@@ -1,0 +1,7 @@
+--heading
+-A
+1
+needle (two|eight)
+$CASES/data/tree/sub
+--path-separator
+/

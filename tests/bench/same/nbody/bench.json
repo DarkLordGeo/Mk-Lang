@@ -1,0 +1,26 @@
+{
+  "name": "nbody",
+  "table": "same",
+  "algorithm": "Five-body leapfrog in f64, structure of arrays, steps of 0.0078125; the checksum is the final energy times 1e9 truncated to an integer (README.md).",
+  "overflow": "never",
+  "args": [
+    "50000000"
+  ],
+  "quick": [
+    "10000"
+  ],
+  "checksum": "-110176510",
+  "quick_checksum": "-112142077",
+  "sources": {
+    "mk": "mk",
+    "c": "nbody.c",
+    "rust": "nbody.rs",
+    "zig": "nbody.zig",
+    "go": "testdata/nbody.go"
+  },
+  "skip": {
+    "mk-wrap": "the hot loop has no integer arithmetic beyond loop counters, so a wrapping column would equal mk"
+  },
+  "no_counts": "B24: no data-dependent control flow; steps * 10 pair updates, and the energy checksum is sensitive to every operation order",
+  "notes": []
+}

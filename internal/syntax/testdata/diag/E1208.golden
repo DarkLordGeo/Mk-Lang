@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1208","name":"postfix-question","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":13,"end_line":2,"end_col":14},"message":"Mk propagates errors with prefix `try`, not postfix `?`","facts":{"habits":["E1208"],"target":"    x := try f()"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":2,"col":10,"end_line":2,"end_col":10,"text":"try "},{"file":"t.mk","line":2,"col":13,"end_line":2,"end_col":14,"text":""}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1208"}],"omitted":0}
+

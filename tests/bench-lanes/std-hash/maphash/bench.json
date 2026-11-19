@@ -1,0 +1,33 @@
+{
+  "name": "maphash",
+  "table": "idiomatic",
+  "algorithm": "Hash map churn with each language's standard map and its default hash: n splitmix64-mixed u64 keys inserted, each looked up once with a hit and once with a miss, every other key removed, all n looked up again; rounds times with a fresh map (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "3000000",
+    "3",
+    "1"
+  ],
+  "quick": [
+    "100000",
+    "3",
+    "1"
+  ],
+  "checksum": "13500013500000",
+  "quick_checksum": "15000450000",
+  "sources": {
+    "mk": "mk",
+    "rust": "maphash.rs",
+    "zig": "maphash.zig",
+    "go": "testdata/maphash.go"
+  },
+  "skip": {
+    "c": "no standard hash map in C",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "notes": [
+    "Default hashes: Mk the fold hash (DD-5), Rust SipHash-1-3 under a random key (RandomState), Zig std.hash.autoHash (wyhash, seed 0), Go the runtime map hash (AES-based with AES-NI, seeded per map).",
+    "Publish size 3000000 3 1 (SH-4): at 1000000 3 1 the fastest cell (Zig) ran about 0.4 s in the lane's informal runs, under the 1 s floor; three times n projects it to about 1.2 s until a tools/bench publish times it.",
+    "Written by the std-hash lane (status/std-hash.md); checksums agree across all four columns at both sizes on the owner's machine, 2026-11-06."
+  ]
+}

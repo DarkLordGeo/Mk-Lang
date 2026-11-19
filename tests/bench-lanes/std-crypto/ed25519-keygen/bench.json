@@ -1,0 +1,29 @@
+{
+  "name": "crypto-ed25519-keygen",
+  "table": "idiomatic",
+  "algorithm": "std Ed25519 (RFC 8032 5.1.5) key derivation from n 32-byte seeds of splitmix64 bytes (mk/crypto-ed25519-keygen.mk).",
+  "overflow": "wraps",
+  "args": [
+    "80000",
+    "1"
+  ],
+  "quick": [
+    "100",
+    "1"
+  ],
+  "checksum": "12904670078294347271",
+  "quick_checksum": "183841874100923072",
+  "sources": {
+    "go": "testdata/crypto-ed25519-keygen.go",
+    "mk": "mk",
+    "zig": "crypto-ed25519-keygen.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard Ed25519",
+    "rust": "no std crypto: Rust std has no Ed25519; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one key per seed, one SHA-512 and one fixed-base multiplication on every side. Mk crypto.Ed25519.FromSeed, Zig KeyPair.generateDeterministic, Go ed25519.NewKeyFromSeed. Keys per second = n / median.",
+    "Checksums: from the Go column first (2026-11-07, std-crypto session 2), then every column in `go run ./tools/bench verify` and `verify -publish-size` (see status/std-crypto.md). Not published: no number here is a measurement."
+  ]
+}

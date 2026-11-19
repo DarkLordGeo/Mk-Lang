@@ -1,0 +1,4 @@
+convert
+--from
+iso-2022-kr
+$CASES/data/replacement.txt

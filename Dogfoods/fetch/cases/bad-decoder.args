@@ -1,0 +1,5 @@
+--origin
+$CASES/data/site.origin
+--decode
+brotli
+http://{origin}/gzip

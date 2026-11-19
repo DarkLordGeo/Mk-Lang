@@ -1,0 +1,26 @@
+{
+  "name": "inmem-conn",
+  "table": "idiomatic",
+  "algorithm": "a connection over an in-memory transport that keeps one 32-byte message under its own mutex; n rounds, each a WriteAll of 32 bytes then a Read of them, through a connection type that takes a read or a write mutex of its own and calls the transport through one indirect call (Mk net.NewConn; Go an io.ReadWriter over an interface value; Rust a Box<dyn Trait>; C a function-pointer table; Zig a type-erased pointer and vtable); sum = 31 sum + byte 0 of each read, wrapping. Mk mode direct calls the transport itself, so conn minus direct is what net.Conn adds. README.md.",
+  "overflow": "wraps",
+  "args": ["10000000", "conn"],
+  "quick": ["100000", "conn"],
+  "checksum": "10000000 7588359129097685824 0",
+  "quick_checksum": "100000 4307385197953819472 0",
+  "sources": {
+    "mk": "mk",
+    "c": "inmemconn.c",
+    "rust": "inmemconn.rs",
+    "zig": "inmemconn.zig",
+    "go": "testdata/inmemconn.go"
+  },
+  "variants": [
+    {"name": "conn", "args": ["10000000", "conn"], "quick": ["100000", "conn"], "checksum": "10000000 7588359129097685824 0", "quick_checksum": "100000 4307385197953819472 0"},
+    {"name": "direct", "args": ["10000000", "direct"], "quick": ["100000", "direct"], "checksum": "10000000 7588359129097685824 0", "quick_checksum": "100000 4307385197953819472 0"}
+  ],
+  "notes": [
+    "Written by std-net3 (status/std-net3.md): the row of the layer net.Conn adds over a transport made by net.NewConn (the lock of its direction, one indirect call, the box's some branch). Checksums from a Python model (sum = 31 sum + (i mod 256) over i = 0..n-1, mod 2^64) and each column's run.",
+    "Every cell picks its connection's transport at run time from the mode argument, as a server makes a connection from what it accepted: the loop transport, or for mode null one that reads the end of the stream (no variant runs it). So no cell's optimiser sees one transport type at the loop, and none uses an opacity device (no black_box, volatile or doNotOptimizeAway; NET3-R1, the tuning bans). Copies are each language's memcpy form (Mk CopyFrom, NET3-R7). Ratios measured before 2026-11-13's fix round compared unequal cells and are void.",
+    "Locks: Mk Mutex (std.core), Go sync.Mutex, Rust std::sync::Mutex, C SRWLOCK (Windows) or pthread_mutex_t (Linux), Zig std.Io.Mutex (lock, the cancelable form, as Mk's Lock is). One thread, so every lock is uncontended."
+  ]
+}

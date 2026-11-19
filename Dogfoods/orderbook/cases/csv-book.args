@@ -1,0 +1,9 @@
+replay
+$CASES/data/basic.csv
+--book
+$CASES/data/open-book.csv
+--quiet
+--book-out
+-
+--fills
+-

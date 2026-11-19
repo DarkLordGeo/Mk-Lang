@@ -1,0 +1,2 @@
+pack verify: bad value lots
+run pack verify --help for its options

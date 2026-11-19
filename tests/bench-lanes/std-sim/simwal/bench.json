@@ -1,0 +1,28 @@
+{
+  "name": "simwal",
+  "table": "idiomatic",
+  "algorithm": "an append-and-sync write-ahead log on std.sim's simulated disk: one Sim, n records of 20 bytes each written at the log's end and synced, then a Restart and a read of the whole log (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "4000000",
+    "1"
+  ],
+  "quick": [
+    "400000",
+    "1"
+  ],
+  "checksum": "records 4000000 sum 10200000000",
+  "quick_checksum": "records 400000 sum 1019860480",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std simulated Io",
+    "rust": "no std simulated Io",
+    "zig": "no std simulated Io",
+    "go": "no std simulated Io (testing/fstest.MapFS is a read-only file tree with no crash model)"
+  },
+  "notes": [
+    "Written by std-sim for SIM-R8 (status/std-sim.md): a sync touches only the pages written since the last one, so the row is linear in n. A row with no baseline: it tracks std.sim's own cost, and no ratio is published from it."
+  ]
+}

@@ -1,0 +1,3 @@
+case panic
+stderr simd_widen_class_unjudged.err
+exit 101

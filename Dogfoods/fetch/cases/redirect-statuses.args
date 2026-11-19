@@ -1,0 +1,10 @@
+--origin
+$CASES/data/site.origin
+-L
+-d
+payload
+http://{origin}/redirect/301
+http://{origin}/redirect/302
+http://{origin}/redirect/303
+http://{origin}/redirect/307
+http://{origin}/redirect/308

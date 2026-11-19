@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0701","name":"bound-unmet","phase":"types","root":1,"at":{"file":"E0701.mk","line":15,"col":12,"end_line":15,"end_col":22},"message":"`Rock` does not satisfy `T: Weighed`","facts":{"param":"T","bound":"Weighed","type":"Rock"},"fixes":[],"alternatives":[],"explain":"mk explain E0701"}],"omitted":0}

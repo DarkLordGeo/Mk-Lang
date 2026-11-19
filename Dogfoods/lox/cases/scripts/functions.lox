@@ -1,0 +1,54 @@
+// Functions: recursion, first-class values, natives, implicit nil.
+fun fib(n) {
+  if (n < 2) return n;
+  return fib(n - 2) + fib(n - 1);
+}
+print fib(20);
+
+fun noReturn() {
+  var unused = 1;
+}
+print noReturn();
+
+fun apply(f, x) {
+  return f(f(x));
+}
+fun double(n) {
+  return n * 2;
+}
+print apply(double, 5);
+
+var alias = double;
+print alias(21);
+print double;
+print len;
+print alias == double;
+
+fun countdown(n) {
+  while (true) {
+    if (n == 0) return "liftoff";
+    n = n - 1;
+  }
+}
+print countdown(3);
+
+// Mutual recursion through globals.
+fun isEven(n) {
+  if (n == 0) return true;
+  return isOdd(n - 1);
+}
+fun isOdd(n) {
+  if (n == 0) return false;
+  return isEven(n - 1);
+}
+print isEven(10);
+print isOdd(7);
+
+// A function declared inside a function sees its own locals and the globals.
+fun outer() {
+  fun inner(v) {
+    return v + 1;
+  }
+  return inner(41);
+}
+print outer();

@@ -1,0 +1,36 @@
+{
+  "name": "json-codec",
+  "table": "idiomatic",
+  "algorithm": "Decode a 1 MB JSON document (tools/bench gen kind json, seed 2), an array of records, into each language's structs through its std's typed decoder, reps times, and sum the records (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "{data}",
+    "200"
+  ],
+  "quick": [
+    "{data}",
+    "2"
+  ],
+  "checksum": "822252052071000",
+  "quick_checksum": "8222520520710",
+  "sources": {
+    "mk": "mk",
+    "zig": "json-codec.zig",
+    "go": "testdata/json-codec.go"
+  },
+  "skip": {
+    "c": "no std JSON: C has no standard JSON decoder; no library stands in",
+    "rust": "no std JSON: Rust std has none (serde_json is a crate); no crate stands in",
+    "mk-wrap": "the checksum already uses the wrapping operators; the decode has no arithmetic to wrap"
+  },
+  "data": {
+    "kind": "json",
+    "file": "std-json-1mb.json",
+    "bytes": 1000000,
+    "seed": 2
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries, each with its own algorithm; the checksum (ids, name and tag lengths, tag counts, truncated scores, ok flags, records at every level) checks that every decoder read the same records",
+  "notes": [
+    "Idiomatic standard library (plan/06-m6.md 4.1): Mk std.json.Parse into a Value, then the FromJson that gen json.Codec emits per record, pushed into a List, all in an arena Reset per rep; Go encoding/json Unmarshal into []R0; Zig std.json.parseFromSliceLeaky([]R0) with ignore_unknown_fields into an ArenaAllocator reset per rep. Four struct levels R0 to R3 in every language, since the records nest through next at most three deep. Bytes per second = 1000000 * reps / median."
+  ]
+}

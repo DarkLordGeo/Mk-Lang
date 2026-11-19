@@ -1,0 +1,500 @@
+source_filename = "mk.main.I32ToU8"
+target triple = "x86_64-unknown-linux-gnu"
+
+@mk.s.1 = private unnamed_addr constant [9 x i8] c"main/t.mk", align 1
+@mk.pos.mk.main.I32ToU8.0 = private unnamed_addr constant { ptr, i64, i32, i32 } { ptr @mk.s.1, i64 9, i32 4, i32 9 }, align 8
+@mk.fr.mk.main.I32ToU8 = private constant { ptr, ptr, i32 } { ptr @mk.main.I32ToU8, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !68
+@mk.fr.mk.main.U64ToI64 = private constant { ptr, ptr, i32 } { ptr @mk.main.U64ToI64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !69
+@mk.fr.mk.main.I8ToU16 = private constant { ptr, ptr, i32 } { ptr @mk.main.I8ToU16, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !70
+@mk.fr.mk.main.F64ToI32 = private constant { ptr, ptr, i32 } { ptr @mk.main.F64ToI32, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !71
+@mk.fr.mk.main.F64ToU32 = private constant { ptr, ptr, i32 } { ptr @mk.main.F64ToU32, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !72
+@mk.fr.mk.main.F64ToI64 = private constant { ptr, ptr, i32 } { ptr @mk.main.F64ToI64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !73
+@mk.fr.mk.main.F64ToF32 = private constant { ptr, ptr, i32 } { ptr @mk.main.F64ToF32, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !74
+@mk.fr.mk.main.U32ToChar = private constant { ptr, ptr, i32 } { ptr @mk.main.U32ToChar, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !75
+@mk.fr.mk.main.IntToAB = private constant { ptr, ptr, i32 } { ptr @mk.main.IntToAB, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !76
+@mk.fr.mk.main.I16ToI64 = private constant { ptr, ptr, i32 } { ptr @mk.main.I16ToI64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !77
+@mk.fr.mk.main.U8ToF64 = private constant { ptr, ptr, i32 } { ptr @mk.main.U8ToF64, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !78
+@mk.fr.mk.main.I64ToU8 = private constant { ptr, ptr, i32 } { ptr @mk.main.I64ToU8, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !79
+@mk.fr.mk.main.SEToInt = private constant { ptr, ptr, i32 } { ptr @mk.main.SEToInt, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !80
+@mk.fr.mk.main.IntToSE = private constant { ptr, ptr, i32 } { ptr @mk.main.IntToSE, ptr null, i32 0 }, section "mk_funcs", align 8, !associated !81
+@llvm.compiler.used = appending global [14 x ptr] [ptr @mk.fr.mk.main.I32ToU8, ptr @mk.fr.mk.main.U64ToI64, ptr @mk.fr.mk.main.I8ToU16, ptr @mk.fr.mk.main.F64ToI32, ptr @mk.fr.mk.main.F64ToU32, ptr @mk.fr.mk.main.F64ToI64, ptr @mk.fr.mk.main.F64ToF32, ptr @mk.fr.mk.main.U32ToChar, ptr @mk.fr.mk.main.IntToAB, ptr @mk.fr.mk.main.I16ToI64, ptr @mk.fr.mk.main.U8ToF64, ptr @mk.fr.mk.main.I64ToU8, ptr @mk.fr.mk.main.SEToInt, ptr @mk.fr.mk.main.IntToSE], section "llvm.metadata"
+
+define hidden noundef zeroext i8 @mk.main.I32ToU8(i32 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !7 {
+entry:
+  %v0 = alloca [1 x i8], align 1, !dbg !8
+  %v1 = alloca [4 x i8], align 4, !dbg !8
+  store i32 %p0, ptr %v1, align 4, !dbg !8
+  br label %b0, !dbg !8
+
+b0:
+  %v2 = load i32, ptr %v1, align 4, !noundef !5, !dbg !9
+  %v3 = icmp sgt i32 %v2, 255, !dbg !9
+  br i1 %v3, label %x1, label %x2, !prof !10, !dbg !9
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !9
+  unreachable, !dbg !9
+
+x2:
+  %v4 = icmp slt i32 %v2, 0, !dbg !9
+  br i1 %v4, label %x3, label %x4, !prof !10, !dbg !9
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !9
+  unreachable, !dbg !9
+
+x4:
+  %v5 = trunc i32 %v2 to i8, !dbg !9
+  store i8 %v5, ptr %v0, align 1, !dbg !9
+  %v6 = load i8, ptr %v0, align 1, !noundef !5, !dbg !11
+  ret i8 %v6, !dbg !11
+}
+
+define hidden noundef i64 @mk.main.U64ToI64(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !12 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !13
+  %v1 = alloca [8 x i8], align 8, !dbg !13
+  store i64 %p0, ptr %v1, align 8, !dbg !13
+  br label %b0, !dbg !13
+
+b0:
+  %v2 = load i64, ptr %v1, align 8, !noundef !5, !dbg !14
+  %v3 = icmp ugt i64 %v2, 9223372036854775807, !dbg !14
+  br i1 %v3, label %x1, label %x2, !prof !10, !dbg !14
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !14
+  unreachable, !dbg !14
+
+x2:
+  store i64 %v2, ptr %v0, align 8, !dbg !14
+  %v4 = load i64, ptr %v0, align 8, !noundef !5, !dbg !15
+  ret i64 %v4, !dbg !15
+}
+
+define hidden noundef zeroext i16 @mk.main.I8ToU16(i8 noundef signext %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !16 {
+entry:
+  %v0 = alloca [2 x i8], align 2, !dbg !17
+  %v1 = alloca [1 x i8], align 1, !dbg !17
+  store i8 %p0, ptr %v1, align 1, !dbg !17
+  br label %b0, !dbg !17
+
+b0:
+  %v2 = load i8, ptr %v1, align 1, !noundef !5, !dbg !18
+  %v3 = icmp slt i8 %v2, 0, !dbg !18
+  br i1 %v3, label %x1, label %x2, !prof !10, !dbg !18
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !18
+  unreachable, !dbg !18
+
+x2:
+  %v4 = sext i8 %v2 to i16, !dbg !18
+  store i16 %v4, ptr %v0, align 2, !dbg !18
+  %v5 = load i16, ptr %v0, align 2, !noundef !5, !dbg !19
+  ret i16 %v5, !dbg !19
+}
+
+define hidden noundef i32 @mk.main.F64ToI32(double noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !20 {
+entry:
+  %v0 = alloca [4 x i8], align 4, !dbg !21
+  %v1 = alloca [8 x i8], align 8, !dbg !21
+  store double %p0, ptr %v1, align 8, !dbg !21
+  br label %b0, !dbg !21
+
+b0:
+  %v2 = load double, ptr %v1, align 8, !noundef !5, !dbg !22
+  %v3 = call double @llvm.fabs.f64(double %v2), !dbg !22
+  %v4 = fcmp uge double %v3, 0x41E0000000000000, !dbg !22
+  br i1 %v4, label %x1, label %x2, !prof !10, !dbg !22
+
+x1:
+  %v5 = fcmp uge double %v2, 0x41E0000000000000, !dbg !22
+  br i1 %v5, label %x3, label %x4, !prof !10, !dbg !22
+
+x2:
+  %v7 = fptosi double %v2 to i32, !dbg !22
+  store i32 %v7, ptr %v0, align 4, !dbg !22
+  %v8 = load i32, ptr %v0, align 4, !noundef !5, !dbg !23
+  ret i32 %v8, !dbg !23
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !22
+  unreachable, !dbg !22
+
+x4:
+  %v6 = fcmp ule double %v2, 0xC1E0000000200000, !dbg !22
+  br i1 %v6, label %x5, label %x6, !prof !10, !dbg !22
+
+x5:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !22
+  unreachable, !dbg !22
+
+x6:
+  br label %x2, !dbg !22
+}
+
+define hidden noundef i32 @mk.main.F64ToU32(double noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !24 {
+entry:
+  %v0 = alloca [4 x i8], align 4, !dbg !25
+  %v1 = alloca [8 x i8], align 8, !dbg !25
+  store double %p0, ptr %v1, align 8, !dbg !25
+  br label %b0, !dbg !25
+
+b0:
+  %v2 = load double, ptr %v1, align 8, !noundef !5, !dbg !26
+  %v3 = bitcast double %v2 to i64, !dbg !26
+  %v4 = icmp uge i64 %v3, 4751297606875873280, !dbg !26
+  br i1 %v4, label %x1, label %x2, !prof !10, !dbg !26
+
+x1:
+  %v5 = fcmp uge double %v2, 0x41F0000000000000, !dbg !26
+  br i1 %v5, label %x3, label %x4, !prof !10, !dbg !26
+
+x2:
+  %v7 = fptoui double %v2 to i32, !dbg !26
+  store i32 %v7, ptr %v0, align 4, !dbg !26
+  %v8 = load i32, ptr %v0, align 4, !noundef !5, !dbg !27
+  ret i32 %v8, !dbg !27
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !26
+  unreachable, !dbg !26
+
+x4:
+  %v6 = fcmp ule double %v2, 0xBFF0000000000000, !dbg !26
+  br i1 %v6, label %x5, label %x6, !prof !10, !dbg !26
+
+x5:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !26
+  unreachable, !dbg !26
+
+x6:
+  br label %x2, !dbg !26
+}
+
+define hidden noundef i64 @mk.main.F64ToI64(double noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !28 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !29
+  %v1 = alloca [8 x i8], align 8, !dbg !29
+  store double %p0, ptr %v1, align 8, !dbg !29
+  br label %b0, !dbg !29
+
+b0:
+  %v2 = load double, ptr %v1, align 8, !noundef !5, !dbg !30
+  %v3 = call double @llvm.fabs.f64(double %v2), !dbg !30
+  %v4 = fcmp uge double %v3, 0x43E0000000000000, !dbg !30
+  br i1 %v4, label %x1, label %x2, !prof !10, !dbg !30
+
+x1:
+  %v5 = fcmp uge double %v2, 0x43E0000000000000, !dbg !30
+  br i1 %v5, label %x3, label %x4, !prof !10, !dbg !30
+
+x2:
+  %v7 = fptosi double %v2 to i64, !dbg !30
+  store i64 %v7, ptr %v0, align 8, !dbg !30
+  %v8 = load i64, ptr %v0, align 8, !noundef !5, !dbg !31
+  ret i64 %v8, !dbg !31
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !30
+  unreachable, !dbg !30
+
+x4:
+  %v6 = fcmp ult double %v2, 0xC3E0000000000000, !dbg !30
+  br i1 %v6, label %x5, label %x6, !prof !10, !dbg !30
+
+x5:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !30
+  unreachable, !dbg !30
+
+x6:
+  br label %x2, !dbg !30
+}
+
+define hidden noundef float @mk.main.F64ToF32(double noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !32 {
+entry:
+  %v0 = alloca [4 x i8], align 4, !dbg !33
+  %v1 = alloca [8 x i8], align 8, !dbg !33
+  store double %p0, ptr %v1, align 8, !dbg !33
+  br label %b0, !dbg !33
+
+b0:
+  %v2 = load double, ptr %v1, align 8, !noundef !5, !dbg !34
+  %v3 = call double @llvm.fabs.f64(double %v2), !dbg !34
+  %v4 = fcmp oge double %v3, 0x47EFFFFFF0000000, !dbg !34
+  br i1 %v4, label %x1, label %x2, !prof !10, !dbg !34
+
+x1:
+  %v5 = fcmp one double %v3, 0x7FF0000000000000, !dbg !34
+  br i1 %v5, label %x3, label %x4, !prof !10, !dbg !34
+
+x2:
+  %v6 = fptrunc double %v2 to float, !dbg !34
+  store float %v6, ptr %v0, align 4, !dbg !34
+  %v7 = load float, ptr %v0, align 4, !noundef !5, !dbg !35
+  ret float %v7, !dbg !35
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !34
+  unreachable, !dbg !34
+
+x4:
+  br label %x2, !dbg !34
+}
+
+define hidden noundef i32 @mk.main.U32ToChar(i32 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !36 {
+entry:
+  %v0 = alloca [4 x i8], align 4, !dbg !37
+  %v1 = alloca [4 x i8], align 4, !dbg !37
+  store i32 %p0, ptr %v1, align 4, !dbg !37
+  br label %b0, !dbg !37
+
+b0:
+  %v2 = load i32, ptr %v1, align 4, !noundef !5, !dbg !38
+  %v3 = icmp ugt i32 %v2, 1114111, !dbg !38
+  %v4 = sub i32 %v2, 55296, !dbg !38
+  %v5 = icmp ult i32 %v4, 2048, !dbg !38
+  %v6 = or i1 %v3, %v5, !dbg !38
+  br i1 %v6, label %x1, label %x2, !prof !10, !dbg !38
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !38
+  unreachable, !dbg !38
+
+x2:
+  store i32 %v2, ptr %v0, align 4, !dbg !38
+  %v7 = load i32, ptr %v0, align 4, !range !40, !noundef !5, !dbg !39
+  ret i32 %v7, !dbg !39
+}
+
+define hidden noundef zeroext i8 @mk.main.IntToAB(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !41 {
+entry:
+  %v0 = alloca [1 x i8], align 1, !dbg !42
+  %v1 = alloca [8 x i8], align 8, !dbg !42
+  store i64 %p0, ptr %v1, align 8, !dbg !42
+  br label %b0, !dbg !42
+
+b0:
+  %v2 = load i64, ptr %v1, align 8, !noundef !5, !dbg !43
+  %v3 = icmp sgt i64 %v2, 255, !dbg !43
+  br i1 %v3, label %x1, label %x2, !prof !10, !dbg !43
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !43
+  unreachable, !dbg !43
+
+x2:
+  %v4 = icmp slt i64 %v2, 0, !dbg !43
+  br i1 %v4, label %x3, label %x4, !prof !10, !dbg !43
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !43
+  unreachable, !dbg !43
+
+x4:
+  %v5 = trunc i64 %v2 to i8, !dbg !43
+  switch i8 %v5, label %x5 [
+    i8 0, label %x6
+    i8 1, label %x6
+  ], !prof !44, !dbg !43
+
+x5:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !43
+  unreachable, !dbg !43
+
+x6:
+  store i8 %v5, ptr %v0, align 1, !dbg !43
+  %v6 = load i8, ptr %v0, align 1, !range !46, !noundef !5, !dbg !45
+  ret i8 %v6, !dbg !45
+}
+
+define hidden noundef i64 @mk.main.I16ToI64(i16 noundef signext %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !47 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !48
+  %v1 = alloca [2 x i8], align 2, !dbg !48
+  store i16 %p0, ptr %v1, align 2, !dbg !48
+  br label %b0, !dbg !48
+
+b0:
+  %v2 = load i16, ptr %v1, align 2, !noundef !5, !dbg !49
+  %v3 = sext i16 %v2 to i64, !dbg !49
+  store i64 %v3, ptr %v0, align 8, !dbg !49
+  %v4 = load i64, ptr %v0, align 8, !noundef !5, !dbg !50
+  ret i64 %v4, !dbg !50
+}
+
+define hidden noundef double @mk.main.U8ToF64(i8 noundef zeroext %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !51 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !52
+  %v1 = alloca [1 x i8], align 1, !dbg !52
+  store i8 %p0, ptr %v1, align 1, !dbg !52
+  br label %b0, !dbg !52
+
+b0:
+  %v2 = load i8, ptr %v1, align 1, !noundef !5, !dbg !53
+  %v3 = uitofp i8 %v2 to double, !dbg !53
+  store double %v3, ptr %v0, align 8, !dbg !53
+  %v4 = load double, ptr %v0, align 8, !noundef !5, !dbg !54
+  ret double %v4, !dbg !54
+}
+
+define hidden noundef zeroext i8 @mk.main.I64ToU8(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !55 {
+entry:
+  %v0 = alloca [1 x i8], align 1, !dbg !56
+  %v1 = alloca [8 x i8], align 8, !dbg !56
+  store i64 %p0, ptr %v1, align 8, !dbg !56
+  br label %b0, !dbg !56
+
+b0:
+  %v2 = load i64, ptr %v1, align 8, !noundef !5, !dbg !57
+  %v3 = trunc i64 %v2 to i8, !dbg !57
+  store i8 %v3, ptr %v0, align 1, !dbg !57
+  %v4 = load i8, ptr %v0, align 1, !noundef !5, !dbg !58
+  ret i8 %v4, !dbg !58
+}
+
+define hidden noundef i64 @mk.main.SEToInt(i8 noundef signext %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !59 {
+entry:
+  %v0 = alloca [8 x i8], align 8, !dbg !60
+  %v1 = alloca [1 x i8], align 1, !dbg !60
+  store i8 %p0, ptr %v1, align 1, !dbg !60
+  br label %b0, !dbg !60
+
+b0:
+  %v2 = load i8, ptr %v1, align 1, !range !62, !noundef !5, !dbg !61
+  %v3 = sext i8 %v2 to i64, !dbg !61
+  store i64 %v3, ptr %v0, align 8, !dbg !61
+  %v4 = load i64, ptr %v0, align 8, !noundef !5, !dbg !63
+  ret i64 %v4, !dbg !63
+}
+
+define hidden noundef signext i8 @mk.main.IntToSE(i64 noundef %p0) nounwind uwtable "probe-stack"="inline-asm" "stack-probe-size"="4096" !dbg !64 {
+entry:
+  %v0 = alloca [1 x i8], align 1, !dbg !65
+  %v1 = alloca [8 x i8], align 8, !dbg !65
+  store i64 %p0, ptr %v1, align 8, !dbg !65
+  br label %b0, !dbg !65
+
+b0:
+  %v2 = load i64, ptr %v1, align 8, !noundef !5, !dbg !66
+  %v3 = icmp sgt i64 %v2, 127, !dbg !66
+  br i1 %v3, label %x1, label %x2, !prof !10, !dbg !66
+
+x1:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !66
+  unreachable, !dbg !66
+
+x2:
+  %v4 = icmp slt i64 %v2, -128, !dbg !66
+  br i1 %v4, label %x3, label %x4, !prof !10, !dbg !66
+
+x3:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !66
+  unreachable, !dbg !66
+
+x4:
+  %v5 = trunc i64 %v2 to i8, !dbg !66
+  switch i8 %v5, label %x5 [
+    i8 -1, label %x6
+    i8 0, label %x6
+  ], !prof !44, !dbg !66
+
+x5:
+  call void @mk.std.rt.PanicAt(i32 noundef 5, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly @mk.pos.mk.main.I32ToU8.0) nounwind noreturn cold, !dbg !66
+  unreachable, !dbg !66
+
+x6:
+  store i8 %v5, ptr %v0, align 1, !dbg !66
+  %v6 = load i8, ptr %v0, align 1, !range !62, !noundef !5, !dbg !67
+  ret i8 %v6, !dbg !67
+}
+
+declare hidden void @mk.std.rt.PanicAt(i32 noundef, ptr noundef nonnull align 1 dereferenceable(1) noalias readonly) nounwind noreturn cold
+
+declare double @llvm.fabs.f64(double)
+
+!llvm.dbg.cu = !{!3}
+!llvm.module.flags = !{!0, !1}
+!0 = !{i32 7, !"Dwarf Version", i32 4}
+!1 = !{i32 2, !"Debug Info Version", i32 3}
+!2 = !DIFile(filename: "mk.main.I32ToU8", directory: ".")
+!3 = distinct !DICompileUnit(language: DW_LANG_C99, file: !2, producer: "mk", isOptimized: false, runtimeVersion: 0, emissionKind: LineTablesOnly)
+!4 = !DIFile(filename: "main/t.mk", directory: ".")
+!5 = !{}
+!6 = !DISubroutineType(types: !5)
+!7 = distinct !DISubprogram(name: "main.I32ToU8", linkageName: "mk.main.I32ToU8", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!8 = !DILocation(line: 1, column: 1, scope: !7)
+!9 = !DILocation(line: 4, column: 9, scope: !7)
+!10 = !{!"branch_weights", i32 1, i32 1048575}
+!11 = !DILocation(line: 5, column: 1, scope: !7)
+!12 = distinct !DISubprogram(name: "main.U64ToI64", linkageName: "mk.main.U64ToI64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!13 = !DILocation(line: 1, column: 1, scope: !12)
+!14 = !DILocation(line: 4, column: 9, scope: !12)
+!15 = !DILocation(line: 5, column: 1, scope: !12)
+!16 = distinct !DISubprogram(name: "main.I8ToU16", linkageName: "mk.main.I8ToU16", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!17 = !DILocation(line: 1, column: 1, scope: !16)
+!18 = !DILocation(line: 4, column: 9, scope: !16)
+!19 = !DILocation(line: 5, column: 1, scope: !16)
+!20 = distinct !DISubprogram(name: "main.F64ToI32", linkageName: "mk.main.F64ToI32", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!21 = !DILocation(line: 1, column: 1, scope: !20)
+!22 = !DILocation(line: 4, column: 9, scope: !20)
+!23 = !DILocation(line: 5, column: 1, scope: !20)
+!24 = distinct !DISubprogram(name: "main.F64ToU32", linkageName: "mk.main.F64ToU32", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!25 = !DILocation(line: 1, column: 1, scope: !24)
+!26 = !DILocation(line: 4, column: 9, scope: !24)
+!27 = !DILocation(line: 5, column: 1, scope: !24)
+!28 = distinct !DISubprogram(name: "main.F64ToI64", linkageName: "mk.main.F64ToI64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!29 = !DILocation(line: 1, column: 1, scope: !28)
+!30 = !DILocation(line: 4, column: 9, scope: !28)
+!31 = !DILocation(line: 5, column: 1, scope: !28)
+!32 = distinct !DISubprogram(name: "main.F64ToF32", linkageName: "mk.main.F64ToF32", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!33 = !DILocation(line: 1, column: 1, scope: !32)
+!34 = !DILocation(line: 4, column: 9, scope: !32)
+!35 = !DILocation(line: 5, column: 1, scope: !32)
+!36 = distinct !DISubprogram(name: "main.U32ToChar", linkageName: "mk.main.U32ToChar", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!37 = !DILocation(line: 1, column: 1, scope: !36)
+!38 = !DILocation(line: 4, column: 9, scope: !36)
+!39 = !DILocation(line: 5, column: 1, scope: !36)
+!40 = !{i32 0, i32 55296, i32 57344, i32 1114112}
+!41 = distinct !DISubprogram(name: "main.IntToAB", linkageName: "mk.main.IntToAB", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!42 = !DILocation(line: 1, column: 1, scope: !41)
+!43 = !DILocation(line: 4, column: 9, scope: !41)
+!44 = !{!"branch_weights", i32 1, i32 1048575, i32 1048575}
+!45 = !DILocation(line: 5, column: 1, scope: !41)
+!46 = !{i8 0, i8 2}
+!47 = distinct !DISubprogram(name: "main.I16ToI64", linkageName: "mk.main.I16ToI64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!48 = !DILocation(line: 1, column: 1, scope: !47)
+!49 = !DILocation(line: 4, column: 9, scope: !47)
+!50 = !DILocation(line: 5, column: 1, scope: !47)
+!51 = distinct !DISubprogram(name: "main.U8ToF64", linkageName: "mk.main.U8ToF64", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!52 = !DILocation(line: 1, column: 1, scope: !51)
+!53 = !DILocation(line: 4, column: 9, scope: !51)
+!54 = !DILocation(line: 5, column: 1, scope: !51)
+!55 = distinct !DISubprogram(name: "main.I64ToU8", linkageName: "mk.main.I64ToU8", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!56 = !DILocation(line: 1, column: 1, scope: !55)
+!57 = !DILocation(line: 4, column: 9, scope: !55)
+!58 = !DILocation(line: 5, column: 1, scope: !55)
+!59 = distinct !DISubprogram(name: "main.SEToInt", linkageName: "mk.main.SEToInt", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!60 = !DILocation(line: 1, column: 1, scope: !59)
+!61 = !DILocation(line: 4, column: 9, scope: !59)
+!62 = !{i8 -1, i8 1}
+!63 = !DILocation(line: 5, column: 1, scope: !59)
+!64 = distinct !DISubprogram(name: "main.IntToSE", linkageName: "mk.main.IntToSE", scope: !4, file: !4, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !3)
+!65 = !DILocation(line: 1, column: 1, scope: !64)
+!66 = !DILocation(line: 4, column: 9, scope: !64)
+!67 = !DILocation(line: 5, column: 1, scope: !64)
+!68 = !{ptr @mk.main.I32ToU8}
+!69 = !{ptr @mk.main.U64ToI64}
+!70 = !{ptr @mk.main.I8ToU16}
+!71 = !{ptr @mk.main.F64ToI32}
+!72 = !{ptr @mk.main.F64ToU32}
+!73 = !{ptr @mk.main.F64ToI64}
+!74 = !{ptr @mk.main.F64ToF32}
+!75 = !{ptr @mk.main.U32ToChar}
+!76 = !{ptr @mk.main.IntToAB}
+!77 = !{ptr @mk.main.I16ToI64}
+!78 = !{ptr @mk.main.U8ToF64}
+!79 = !{ptr @mk.main.I64ToU8}
+!80 = !{ptr @mk.main.SEToInt}
+!81 = !{ptr @mk.main.IntToSE}

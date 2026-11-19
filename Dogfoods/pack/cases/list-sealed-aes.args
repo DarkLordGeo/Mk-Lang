@@ -1,0 +1,4 @@
+list
+--key
+$CASES/data/dave.key
+$CASES/data/sealed-aes.pk

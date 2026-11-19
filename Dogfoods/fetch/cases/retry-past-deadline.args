@@ -1,0 +1,10 @@
+--origin
+$CASES/data/site.origin
+-f
+--max-time
+5
+--retry
+3
+--retry-delay
+30s
+http://{origin}/fail

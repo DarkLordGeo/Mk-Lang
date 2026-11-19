@@ -1,0 +1,1 @@
+{"phase":"parse","diagnostics":[{"code":"E0102","name":"reserved-word","phase":"parse","root":1,"at":{"file":"E0102.mk","line":3,"col":6,"end_line":3,"end_col":9},"message":"`str` is a predeclared type name","facts":{"name":"str"},"fixes":[],"alternatives":["rename it to `str_`"],"explain":"mk explain E0102"}],"omitted":0}

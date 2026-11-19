@@ -1,0 +1,8 @@
+textkit norm: unknown option --frm
+Options:
+  --form <str>    The form: nfc, nfd, nfkc or nfkd (default nfc)
+  --hex           Read and write lines of code points in hex, as the UCD's test files do
+  --check         Print where lines are not already in the form; exit 1 if any are
+  --buffer <int>  The read buffer, in bytes (default 16384)
+Arguments:
+  <files>...      Files to read; none, or -, is standard input

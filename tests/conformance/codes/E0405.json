@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0405","name":"moved-in-loop","phase":"flow","root":1,"at":{"file":"E0405.mk","line":8,"col":9,"end_line":8,"end_col":16},"message":"r was moved in an earlier iteration of this loop","facts":{"place":"r","moved_at":"E0405.mk:8:9","loop":"E0405.mk:7:5"},"fixes":[],"alternatives":[],"explain":"mk explain E0405"}],"omitted":0}

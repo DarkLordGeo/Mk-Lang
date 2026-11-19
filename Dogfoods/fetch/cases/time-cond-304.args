@@ -1,0 +1,6 @@
+--origin
+$CASES/data/site.origin
+-i
+--time-cond
+Sun, 01 Jan 2023 00:00:00 GMT
+http://{origin}/dated

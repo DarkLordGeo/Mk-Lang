@@ -1,0 +1,630 @@
+// Why: every gen line of a module must run its generator at compile time,
+// in parallel where possible, and produce the same output and the same
+// diagnostics whatever the scheduling.
+//
+// What: Context (a session's generator state), Line, Arg, Output, LineResult,
+// and Run, which binds each line, runs it on the evaluator and merges the
+// results in Index order; the gen-line diagnostics E0301, E0304, E0705,
+// E0901, E0902, E0903, E0908 and E0000.
+//
+// How: bind folds each argument against the generator's parameter types on
+// one goroutine; runLine then runs the bound lines on a worker pool, each
+// under source.Guard so an ICE becomes E0000 at its line. Sorting by the n
+// of GenKey keeps merge order and Fresh names deterministic.
+
+package gen
+
+import (
+	"cmp"
+	"math"
+	"runtime"
+	"slices"
+	"sync"
+
+	"mk/internal/ast"
+	"mk/internal/diag"
+	"mk/internal/eval"
+	"mk/internal/source"
+	"mk/internal/syntax"
+	"mk/internal/types"
+)
+
+// Context is a session's generator state; one per session, safe for
+// concurrent use by modules of equal import depth. gen writes Items only as
+// a KindGen item's Decl, and Types only by interning the
+// substituted field types of an instantiated generic argument,
+// through Table.Intern's own lock.
+type Context struct {
+	Types    *types.Table
+	Items    *types.Items
+	Consts   *types.ConstTable
+	Interner *source.Interner
+	Sources  *source.SourceMap
+	Eval     *eval.Evaluator
+	World    World
+	Known    types.KnownItems
+	Target   types.Target
+	// Workers bounds the parallel runs of one module; 0 means NumCPU.
+	Workers int
+	// DataFiles reads Gen.Input's files; nil refuses them.
+	DataFiles types.DataFiles
+}
+
+// Line is one gen line, resolved by resolve as if gen/ were empty. The
+// driver builds it from the ast.GenItem and resolve's answers for its path,
+// arguments and fuel name; types of type arguments come from check's
+// declaration-level translation (the same one World uses). Literals stay
+// AST: gen folds them against the generator's parameter types.
+type Line struct {
+	Item  types.ItemID // the KindGen item
+	Node  *ast.GenItem
+	Index int         // n of types.GenKey(module, n): file path, then source order
+	Span  source.Span // the whole gen line
+	Path  string      // the generator path as written, "derive.Eq"
+	// Generator is the item the path names, NoItem when it did not resolve
+	// (resolve reported it).
+	Generator types.ItemID
+	Args      []Arg
+	// The fuel operand: absent (both zero: types.DefaultFuel), a literal
+	// (FuelLit), a name (FuelItem, a const), or anything else (FuelOther:
+	// E0705, as for a const's fuel operand).
+	FuelLit   *ast.BasicLit
+	FuelItem  types.ItemID
+	FuelOther bool
+	FuelSpan  source.Span
+}
+
+// ArgKind tags an Arg.
+type ArgKind uint8
+
+const (
+	ArgType ArgKind = iota // a handwritten or imported type
+	ArgInterface
+	ArgLiteral
+	// ArgDeferred: a name that does not resolve with gen/ empty; the line
+	// waits for the rerun (E0906 or resolve's E0201).
+	ArgDeferred
+	// ArgOther: any other expression (a call, a named const, arithmetic):
+	// E0301.
+	ArgOther
+	// ArgFunction: a function item; Item is the function. gen
+	// binds it as a Method when it is a free non-generic function, else
+	// E0301.
+	ArgFunction
+)
+
+// Arg is one gen line argument.
+type Arg struct {
+	Kind ArgKind
+	Type types.TypeID  // ArgType
+	Item types.ItemID  // ArgInterface, ArgFunction
+	Lit  *ast.BasicLit // ArgLiteral (true and false included), folded by gen
+	// Neg marks a negated literal, -3 (resolve reads `-` Lit as a literal).
+	Neg  bool
+	Name source.Symbol // ArgDeferred
+	Span source.Span
+}
+
+// Output is the result of a module's gen lines.
+type Output struct {
+	Module types.ModuleID
+	// File is the generated file in Sources at the virtual path
+	// "<module dir>/gen/<target>/gen.mk", nil when no line
+	// produced output.
+	File *source.File
+	AST  *ast.File
+	// Origins is sorted by Offset: one entry per name token of File,
+	// for resolve.
+	Origins []TokenOrigin
+	// Items is one entry per top-level item of File, in file order.
+	Items []ItemOrigin
+	// Lines is per gen line, in Index order: its checked declaration (also
+	// stored as the KindGen item's Decl), its reads and whether it ran.
+	Lines []LineResult
+	// Diags are the diagnostics of stage 4, unsorted (the driver orders).
+	Diags []*diag.Diagnostic
+
+	// pending are the tentative E0906s Finish decides.
+	pending []pending
+	text    string
+}
+
+// e0906 is a tentative E0906 (facts input and generator, fix class
+// Alternatives).
+func e0906(at source.Span, msg, input, generator string) *diag.Diagnostic {
+	d := diag.New(diag.E0906, at, msg).Text("input", input).Text("generator", generator)
+	d.Alternatives = append(d.Alternatives,
+		"pass the generator a handwritten or imported type: a generator sees its module as if the generated code were absent")
+	return d
+}
+
+// pending is one tentative E0906: the name, and the diagnostic to emit when
+// the name turns out to be generated by this module.
+type pending struct {
+	name source.Symbol
+	d    *diag.Diagnostic
+}
+
+// ItemOrigin is one generated item: where it is, which Emit produced it, and
+// its gen line. resolve copies it into types.Item.Origin.
+type ItemOrigin struct {
+	Output  source.Span // the item, comment excluded, in Output.File
+	Emitter source.Span // the g.Emit call in the generator
+	Gen     source.Span // the gen line
+	Line    int         // Line.Index
+	Ordinal int         // 1-based Emit ordinal within the run
+}
+
+// LineResult is one gen line's outcome.
+type LineResult struct {
+	Decl  *types.GenDecl
+	Ran   bool
+	Steps uint64
+	Reads types.ReadSet
+	// Poisoned is set when an evaluation of the line (its fuel const, or
+	// its EvalGen run) returned poison, or the run read a method signature
+	// type that failed to check: the cause has its own diagnostic
+	// elsewhere and the line emitted nothing. gen calls the Evaluator
+	// itself, so the driver reads this, not its own Eval shim, to keep
+	// the module out of the cache.
+	Poisoned bool
+}
+
+// slot is one line's work: bound arguments, then the run's outcome.
+type slot struct {
+	run   *run
+	args  []types.ConstID
+	fuel  uint64
+	emits []emit
+	diags []*diag.Diagnostic
+	wait  []pending
+	res   LineResult
+}
+
+// Run runs the gen lines of one module (lines in Index order) and returns
+// its output. Lines run in parallel; the output is merged in Index order and
+// is byte-identical for every Workers value and schedule.
+func (c *Context) Run(module types.ModuleID, lines []Line) *Output {
+	out := &Output{Module: module}
+	// Index order is the n of GenKey, not the order of the caller's slice:
+	// resolve.Info.Gens is sorted by key text, so "#gen(10)" comes before
+	// "#gen(2)". Sorting here keeps the merge order, the Fresh names and
+	// Output.Lines the same however the driver lists the lines.
+	if !slices.IsSortedFunc(lines, func(a, b Line) int { return cmp.Compare(a.Index, b.Index) }) {
+		lines = slices.Clone(lines)
+		slices.SortStableFunc(lines, func(a, b Line) int { return cmp.Compare(a.Index, b.Index) })
+	}
+	slots := make([]slot, len(lines))
+	var todo []int
+	for i := range lines {
+		// Binding runs on this goroutine, each line under source.Guard, so
+		// an ICE is E0000 at that line and never reaches the user.
+		l, s := &lines[i], &slots[i]
+		runs := false
+		if ie := source.Guard("gen bind "+c.Items.Get(l.Item).Key.String(), l.Span, func() { runs = c.bind(l, s) }); ie != nil {
+			s.diags = append(s.diags, diag.FromInternal(ie))
+			runs = false
+		}
+		if runs {
+			todo = append(todo, i)
+		}
+	}
+	workers := c.Workers
+	if workers <= 0 {
+		workers = runtime.NumCPU()
+	}
+	sem := make(chan struct{}, workers)
+	var wg sync.WaitGroup
+	for _, i := range todo {
+		wg.Add(1)
+		sem <- struct{}{}
+		go c.guardedLine(&wg, sem, &lines[i], &slots[i])
+	}
+	wg.Wait()
+	for i := range slots {
+		out.Lines = append(out.Lines, slots[i].res)
+		out.Diags = append(out.Diags, slots[i].diags...)
+		out.pending = append(out.pending, slots[i].wait...)
+	}
+	if ie := source.Guard("gen output "+c.Items.Module(module).Path, source.Span{}, func() { c.merge(out, lines, slots) }); ie != nil {
+		out.Diags = append(out.Diags, diag.FromInternal(ie))
+	}
+	return out
+}
+
+// bind binds one line, on one goroutine: it reports the line's binding
+// diagnostics, stores its GenDecl, and says whether the line runs.
+func (c *Context) bind(l *Line, s *slot) bool {
+	s.res.Decl = &types.GenDecl{Generator: l.Generator, Fuel: types.DefaultFuel}
+	defer func() { c.Items.Get(l.Item).Decl = s.res.Decl }()
+	if l.Generator == types.NoItem {
+		return false // resolve reported E0201 or E0204
+	}
+	module := c.Items.Get(l.Item).Module
+	g := c.Items.Get(l.Generator)
+	pathAt := l.Span
+	if l.Node != nil && l.Node.Generator != nil {
+		pathAt = l.Node.Generator.Span()
+	}
+	fd, ok := g.Decl.(*types.FuncDecl)
+	if g.Kind != types.KindFunc || !ok {
+		s.diags = append(s.diags, diag.New(diag.E0301, pathAt, "`"+l.Path+"` is not a function, so it cannot be a generator").
+			Text("expected", "a generator function").Text("found", g.Kind.String()))
+		return false
+	}
+	if g.Module == module {
+		req := c.request(l, module, nil, 0)
+		err := &types.EvalError{Kind: types.EvalStage, Items: []types.ItemID{l.Generator}, Trace: []source.Span{l.Span}, At: l.Span}
+		s.diags = append(s.diags, eval.Render(err, req, c.Items, c.Interner))
+		return false
+	}
+	sig := &fd.Sig
+	if len(sig.Generics) > 0 {
+		s.diags = append(s.diags, diag.New(diag.E0301, l.Span, "a generator cannot be generic").
+			Text("expected", "a non-generic generator").Text("found", c.sigText(sig)))
+		return false
+	}
+	genT := c.Types.Mut(c.Types.Named(c.Known.Gen, nil))
+	if len(sig.Params) == 0 || sig.Params[0].Type != genT || sig.Result != types.Void || sig.Errors != types.EmptyErrors ||
+		sig.Receiver != types.NoReceiver {
+		s.diags = append(s.diags, diag.New(diag.E0301, l.Span, "a generator takes `g: mut Gen` first and returns `void`").
+			Text("expected", "(g: mut Gen, ...)").Text("found", c.sigText(sig)))
+		return false
+	}
+	if len(sig.Params) != 1+len(l.Args) {
+		s.diags = append(s.diags, diag.New(diag.E0304, l.Span, "the gen line passes "+itoa(len(l.Args))+
+			" arguments to a generator that takes "+itoa(len(sig.Params)-1)).Text("signature", c.sigText(sig)))
+		return false
+	}
+	r := newRun(c, l)
+	s.run = r
+	s.args = []types.ConstID{c.genArg()}
+	typeInfo := c.Types.Named(c.Known.TypeInfo, nil)
+	runs := true
+	for i, a := range l.Args {
+		p := sig.Params[i+1]
+		switch a.Kind {
+		case ArgType, ArgInterface:
+			if p.Type != typeInfo {
+				s.diags = append(s.diags, c.mismatch(a.Span, p.Type, "a type"))
+				runs = false
+				continue
+			}
+			bare := types.NoItem
+			if a.Kind == ArgType {
+				bare = c.bareGeneric(a.Type, module)
+			} else if v, ok := c.World.Decl(a.Item, module); ok && v != nil && len(v.Generics) > 0 {
+				// An interface argument is an item with no arguments, so a
+				// generic one (interface Slice[T]) is bare too: its methods'
+				// T would reach the host unsubstituted.
+				bare = a.Item
+			}
+			if bare != types.NoItem {
+				name := c.Items.Get(bare).Key.String()
+				s.diags = append(s.diags, diag.New(diag.E0301, a.Span, "`"+name+"` is generic, so a gen argument names it with its arguments").
+					Text("expected", "a concrete type, such as `"+name+"[int]`").Text("found", "the generic `"+name+"`").
+					Alt("generate at a concrete site: name the type with its arguments"))
+				runs = false
+				continue
+			}
+			h := hostType{id: a.Type}
+			ga := types.GenArg{Kind: types.GenType, Type: a.Type}
+			if a.Kind == ArgInterface {
+				h = hostType{iface: a.Item}
+				ga = types.GenArg{Kind: types.GenInterface, Item: a.Item}
+			}
+			s.res.Decl.Args = append(s.res.Decl.Args, ga)
+			s.args = append(s.args, c.handleConst(typeInfo, r.newType(h)))
+			r.argTypes++
+		case ArgLiteral:
+			v, found := c.fold(a, p.Type)
+			if v == types.NoConst {
+				s.diags = append(s.diags, c.mismatch(a.Span, p.Type, found))
+				runs = false
+				continue
+			}
+			s.res.Decl.Args = append(s.res.Decl.Args, types.GenArg{Kind: types.GenLiteral, Value: v})
+			s.args = append(s.args, v)
+		case ArgFunction:
+			h, d := c.bindFunction(r, a, p.Type)
+			if d != nil {
+				s.diags = append(s.diags, d)
+				runs = false
+				continue
+			}
+			s.res.Decl.Args = append(s.res.Decl.Args, types.GenArg{Kind: types.GenFunction, Item: a.Item})
+			// The line reads the function's signature, never its body
+			// (a public fact never depends on a function body): a signature
+			// edit reruns it, a body edit does not.
+			s.res.Reads.Add(types.Read{Kind: types.ReadSignature, Key: c.Items.Get(a.Item).Key,
+				Hash: c.World.Hash(a.Item, types.ReadSignature, "")})
+			s.args = append(s.args, c.handleConst(p.Type, h))
+		case ArgDeferred:
+			s.wait = append(s.wait, pending{name: a.Name, d: e0906(a.Span,
+				"`"+c.Interner.Str(a.Name)+"` is a type only generated code of this module declares",
+				c.Interner.Str(a.Name), l.Path)})
+			runs = false
+		default:
+			s.diags = append(s.diags, diag.New(diag.E0301, a.Span, "a gen argument is a type, an interface, a literal or a function").
+				Text("expected", "a type, an interface, a literal or a function").Text("found", "an expression"))
+			runs = false
+		}
+	}
+	fuel, ok := c.fuel(l, module, s)
+	if !ok {
+		return false
+	}
+	s.fuel = fuel
+	s.res.Decl.Fuel = fuel
+	return runs
+}
+
+// bareGeneric finds a generic struct or enum named without all its
+// arguments anywhere in a gen argument's type (`Pair` for `struct Pair[T]`,
+// also inside `[]Pair`), NoItem when there is none. Such a name is not a type
+// without its arguments; the stage-4 type translation
+// gives it as a KNamed with no arguments, so gen checks it here rather than
+// trusting the driver to build an ArgOther, and a run never meets the
+// item's KParam field types unsubstituted.
+func (c *Context) bareGeneric(t types.TypeID, from types.ModuleID) types.ItemID {
+	if t == types.NoType || t == types.Poison {
+		return types.NoItem
+	}
+	ty := c.Types.Get(t)
+	switch ty.Kind {
+	case types.KNamed:
+		if v, ok := c.World.Decl(ty.Item, from); ok && len(v.Generics) != len(ty.Args) {
+			return ty.Item
+		}
+		for _, a := range ty.Args {
+			if !a.IsConst {
+				if it := c.bareGeneric(a.Type, from); it != types.NoItem {
+					return it
+				}
+			}
+		}
+	case types.KFn:
+		for _, p := range ty.Fn.Params {
+			if it := c.bareGeneric(p.Type, from); it != types.NoItem {
+				return it
+			}
+		}
+		return c.bareGeneric(ty.Fn.Result, from)
+	case types.KRecord:
+		for _, f := range ty.Fields {
+			if it := c.bareGeneric(f.Type, from); it != types.NoItem {
+				return it
+			}
+		}
+	default:
+		if ty.Elem != types.NoType {
+			return c.bareGeneric(ty.Elem, from)
+		}
+	}
+	return types.NoItem
+}
+
+// fuel is the line's fuel operand.
+func (c *Context) fuel(l *Line, module types.ModuleID, s *slot) (uint64, bool) {
+	switch {
+	case l.FuelOther:
+		s.diags = append(s.diags, diag.New(diag.E0705, l.FuelSpan, "a gen line's fuel is a literal or a named const").
+			Text("param", "fuel"))
+		return 0, false
+	case l.FuelLit != nil:
+		v, ok := syntax.IntValue(l.FuelLit.Raw)
+		if !ok || l.FuelLit.Kind != ast.TokInt {
+			s.diags = append(s.diags, diag.New(diag.E0301, l.FuelSpan, "fuel is a non-negative integer").
+				Text("expected", "u64").Text("found", l.FuelLit.Raw))
+			return 0, false
+		}
+		return v, true
+	case l.FuelItem != types.NoItem:
+		it := c.Items.Get(l.FuelItem)
+		if it.Module == module {
+			req := c.request(l, module, nil, 0)
+			req.Site = l.FuelSpan
+			err := &types.EvalError{Kind: types.EvalStage, Items: []types.ItemID{l.FuelItem}, Trace: []source.Span{l.FuelSpan},
+				At: l.FuelSpan}
+			s.diags = append(s.diags, eval.Render(err, req, c.Items, c.Interner))
+			return 0, false
+		}
+		req := &types.EvalRequest{What: types.EvalConst, Item: l.FuelItem, Stage: types.StageSignatures, Module: module,
+			Site: l.FuelSpan, Target: c.Target}
+		res := c.Eval.Eval(req)
+		s.res.Reads.Merge(&res.Reads)
+		if res.Err != nil {
+			s.diags = append(s.diags, eval.Render(res.Err, req, c.Items, c.Interner))
+			return 0, false
+		}
+		if res.Value == types.NoConst {
+			s.res.Poisoned = true
+			return 0, false // poison: the const's own diagnostic stands
+		}
+		v := c.Consts.Get(res.Value)
+		t := c.Types.Get(v.Type)
+		x := types.LoadUint(v.Bytes, len(v.Bytes))
+		if !t.IsInteger() || (t.Signed && len(v.Bytes) > 0 && v.Bytes[len(v.Bytes)-1]&0x80 != 0) {
+			s.diags = append(s.diags, diag.New(diag.E0301, l.FuelSpan, "fuel is a non-negative integer").
+				Text("expected", "u64").Text("found", c.Types.ConstString(res.Value)))
+			return 0, false
+		}
+		return x, true
+	}
+	return types.DefaultFuel, true
+}
+
+// request is the line's EvalGen request.
+func (c *Context) request(l *Line, module types.ModuleID, args []types.ConstID, fuel uint64) *types.EvalRequest {
+	return &types.EvalRequest{What: types.EvalGen, Item: l.Generator, Args: args, Fuel: fuel,
+		Stage: types.StageSignatures, Module: module, Site: l.Span, Target: c.Target}
+}
+
+// runLine evaluates one bound line and stores its results; guardedLine runs it
+// under source.Guard.
+func (c *Context) runLine(l *Line, s *slot) {
+	r := s.run
+	req := c.request(l, r.module, s.args, s.fuel)
+	res := c.Eval.Run(req, r)
+	s.res.Ran, s.res.Steps = true, res.Steps
+	s.res.Reads.Merge(&res.Reads)
+	s.diags = append(s.diags, r.fails...)
+	switch {
+	case res.Err != nil && res.Err.Kind == types.EvalPanic && r.poisoned:
+		// A reflection call met a type that failed to check: the checker's
+		// diagnostic stands; the run is poison and its Emits are discarded.
+		s.res.Poisoned = true
+	case res.Err != nil && res.Err.Kind == types.EvalPanic && r.opaque != source.NoSymbol:
+		name := c.Interner.Str(r.opaque)
+		s.wait = append(s.wait, pending{name: r.opaque, d: e0906(l.Span,
+			"the generator reads the structure of `"+name+"`, which only generated code of this module declares",
+			name, l.Path)})
+	case res.Err != nil:
+		s.diags = append(s.diags, eval.Render(res.Err, req, c.Items, c.Interner))
+	case res.Value == types.NoConst:
+		// Poison: an input has its own diagnostic; the Emits are discarded.
+		s.res.Poisoned = true
+	case len(r.fails) == 0:
+		s.emits = r.emits
+	}
+}
+
+// genArg is the run's first argument: a mut Gen to the run's one Gen
+// handle (1).
+func (c *Context) genArg() types.ConstID {
+	gt := c.Types.Named(c.Known.Gen, nil)
+	g := c.handleConst(gt, 1)
+	v := types.ConstValue{Type: c.Types.Mut(gt), Align: 8, Bytes: make([]byte, 8),
+		Relocs: []types.Reloc{{Offset: 0, Kind: types.RelocData, Data: g}}}
+	return c.Consts.Intern(v)
+}
+
+// handleConst is a handle struct value {h: u32}.
+func (c *Context) handleConst(t types.TypeID, h uint32) types.ConstID {
+	b := make([]byte, 4)
+	types.StoreUint(b, 4, uint64(h))
+	return c.Consts.Intern(types.ConstValue{Type: t, Align: 4, Bytes: b})
+}
+
+func (c *Context) sigText(s *types.Signature) string {
+	ps := make([]types.FnParam, len(s.Params))
+	for i, p := range s.Params {
+		ps[i] = types.FnParam{Type: p.Type, Into: types.NoParam}
+	}
+	return c.Types.TypeString(c.Types.Fn(types.FnType{Params: ps, Result: s.Result, Errors: s.Errors}), s.Generics)
+}
+
+func (c *Context) mismatch(at source.Span, want types.TypeID, found string) *diag.Diagnostic {
+	return diag.New(diag.E0301, at, "this gen argument is "+found+"; the generator's parameter is `"+
+		c.Types.TypeString(want, nil)+"`").Text("expected", c.Types.TypeString(want, nil)).Text("found", found)
+}
+
+// fold folds a literal argument into a ConstID of the parameter type
+// (an untyped literal adapts to it), or NoConst and what the literal is.
+func (c *Context) fold(a Arg, pt types.TypeID) (types.ConstID, string) {
+	lit := a.Lit
+	t := c.Types.Get(pt)
+	switch {
+	case lit == nil:
+		return types.NoConst, "no literal"
+	case lit.Kind == ast.TokInt:
+		v, ok := syntax.IntValue(lit.Raw)
+		if !ok || !t.IsInteger() {
+			return types.NoConst, "an integer literal"
+		}
+		bits := uint(t.Bits)
+		if t.Kind == types.KIntPtr || bits == 0 {
+			bits = 64
+		}
+		var x uint64
+		switch {
+		case a.Neg && !t.Signed:
+			return types.NoConst, "a negative integer literal"
+		case a.Neg:
+			if v > uint64(1)<<(bits-1) {
+				return types.NoConst, "an integer literal out of range"
+			}
+			x = -v
+		case t.Signed && v > uint64(1)<<(bits-1)-1, !t.Signed && bits < 64 && v > uint64(1)<<bits-1:
+			return types.NoConst, "an integer literal out of range"
+		default:
+			x = v
+		}
+		n := int(bits / 8)
+		b := make([]byte, n)
+		types.StoreUint(b, n, x)
+		return c.Consts.Intern(types.ConstValue{Type: pt, Align: uint32(n), Bytes: b}), ""
+	case lit.Kind == ast.TokFloat:
+		if t.Kind != types.KFloat {
+			return types.NoConst, "a float literal"
+		}
+		f, ok := syntax.FloatValue(lit.Raw, int(t.Bits))
+		if !ok {
+			return types.NoConst, "a float literal out of range"
+		}
+		if a.Neg {
+			f = -f
+		}
+		n := int(t.Bits / 8)
+		b := make([]byte, n)
+		if n == 4 {
+			types.StoreUint(b, 4, uint64(math.Float32bits(float32(f))))
+		} else {
+			types.StoreUint(b, 8, math.Float64bits(f))
+		}
+		return c.Consts.Intern(types.ConstValue{Type: pt, Align: uint32(n), Bytes: b}), ""
+	case lit.Kind == ast.TokStr || lit.Kind == ast.TokRawStr || lit.Kind == ast.TokMultiStr:
+		bs, ok := syntax.StringValue(lit.Kind, lit.Raw)
+		if !ok || t.Kind != types.KStr || a.Neg {
+			return types.NoConst, "a str literal"
+		}
+		return c.strConst(bs), ""
+	case lit.Kind == ast.TokChar:
+		r, ok := syntax.CharValue(lit.Raw)
+		if !ok || t.Kind != types.KChar || a.Neg {
+			return types.NoConst, "a char literal"
+		}
+		b := make([]byte, 4)
+		types.StoreUint(b, 4, uint64(r))
+		return c.Consts.Intern(types.ConstValue{Type: pt, Align: 4, Bytes: b}), ""
+	case lit.Raw == "true" || lit.Raw == "false":
+		if t.Kind != types.KBool || a.Neg {
+			return types.NoConst, "a bool literal"
+		}
+		b := []byte{0}
+		if lit.Raw == "true" {
+			b[0] = 1
+		}
+		return c.Consts.Intern(types.ConstValue{Type: pt, Align: 1, Bytes: b}), ""
+	}
+	return types.NoConst, "a literal"
+}
+
+// strConst is a str value in the evaluator's form: {ptr, len}, the
+// pointer a RelocData to a [N]u8 const of the bytes, none when empty.
+func (c *Context) strConst(bs []byte) types.ConstID {
+	v := types.ConstValue{Type: types.Str, Align: 8, Bytes: make([]byte, 16)}
+	types.StoreUint(v.Bytes[8:], 8, uint64(len(bs)))
+	if len(bs) > 0 {
+		n := make([]byte, 8)
+		types.StoreUint(n, 8, uint64(len(bs)))
+		nc := c.Consts.Intern(types.ConstValue{Type: types.Int, Align: 8, Bytes: n})
+		arr := c.Types.Array(types.ConstArg{Kind: types.CAValue, Value: nc}, types.U8)
+		data := c.Consts.Intern(types.ConstValue{Type: arr, Align: 1, Bytes: append([]byte(nil), bs...)})
+		v.Relocs = []types.Reloc{{Offset: 0, Kind: types.RelocData, Data: data}}
+	}
+	return c.Consts.Intern(v)
+}
+
+// guardedLine runs one line under source.Guard: an ICE becomes E0000
+// naming the gen line.
+func (c *Context) guardedLine(wg *sync.WaitGroup, sem chan struct{}, l *Line, s *slot) {
+	defer wg.Done()
+	defer func() { <-sem }()
+	ie := source.Guard("gen "+c.Items.Get(l.Item).Key.String(), l.Span, func() { c.runLine(l, s) })
+	if ie != nil {
+		s.res.Ran = true
+		s.emits = nil
+		s.diags = append(s.diags, diag.FromInternal(ie))
+	}
+}

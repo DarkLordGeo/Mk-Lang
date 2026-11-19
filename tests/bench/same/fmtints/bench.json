@@ -1,0 +1,30 @@
+{
+  "name": "fmtints",
+  "table": "same",
+  "algorithm": "Integers in [-1e9, 1e9] to decimal text with the textbook digit loop, then the byte sum, rounds times (README.md).",
+  "overflow": "never",
+  "args": [
+    "1000000",
+    "100",
+    "1"
+  ],
+  "quick": [
+    "10000",
+    "2",
+    "1"
+  ],
+  "checksum": "49968808800",
+  "quick_checksum": "9989108",
+  "sources": {
+    "mk": "mk",
+    "c": "fmtints.c",
+    "rust": "fmtints.rs",
+    "zig": "fmtints.zig",
+    "go": "testdata/fmtints.go"
+  },
+  "skip": {
+    "mk-wrap": "not needed for the budgets; written if the checked column shows an overflow-check cost"
+  },
+  "no_counts": "B24: the digit loop runs once per decimal digit of each value, fixed by the inputs; the byte-sum checksum covers every digit written",
+  "notes": []
+}

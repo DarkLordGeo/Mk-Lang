@@ -1,0 +1,4 @@
+unzlib
+--out
+$WORK/noise.bin
+$CASES/data/tar/noise.zz

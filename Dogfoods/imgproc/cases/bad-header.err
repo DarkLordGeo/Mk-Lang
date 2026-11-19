@@ -1,0 +1,1 @@
+imgproc: $CASES/data/bad-header.pgm: bad header field at byte 5

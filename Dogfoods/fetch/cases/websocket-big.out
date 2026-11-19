@@ -1,0 +1,4 @@
+> big
+< text of 70000 bytes
+> after
+< echo: after

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E1101","name":"needs-unsafe","phase":"types","root":1,"at":{"file":"E1101.mk","line":5,"col":12,"end_line":5,"end_col":20},"message":"the call of a bodiless extern needs an `unsafe \"reason\" { }` block","facts":{"operation":"call of a bodiless extern"},"fixes":[],"alternatives":[],"explain":"mk explain E1101"}],"omitted":0}

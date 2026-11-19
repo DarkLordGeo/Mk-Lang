@@ -1,0 +1,1 @@
+imgproc: $CASES/data/wide-samples.pgm: maxval 65535 needs 16-bit samples, which imgproc does not read

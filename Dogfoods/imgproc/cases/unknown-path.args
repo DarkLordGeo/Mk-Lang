@@ -1,0 +1,6 @@
+--path
+v1024
+run
+$CASES/data/small.pgm
+-
+invert

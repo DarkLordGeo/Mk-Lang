@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0304","name":"argument-count","phase":"types","root":1,"at":{"file":"E0304.mk","line":7,"col":12,"end_line":7,"end_col":18},"message":"wrong number of arguments","facts":{"signature":"Add(a: int, b: int): int","expected":2,"found":1},"fixes":[],"alternatives":[],"explain":"mk explain E0304"}],"omitted":0}

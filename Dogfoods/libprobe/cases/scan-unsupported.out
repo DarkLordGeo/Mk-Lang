@@ -1,0 +1,2 @@
+LIBRARY                  SYSTEM        APPLICATION   PATH
+libm.so.6                unsupported   unsupported   unsupported

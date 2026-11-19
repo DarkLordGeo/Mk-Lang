@@ -1,0 +1,8 @@
+case long
+stderr long.err
+exit 101
+
+case short
+args short
+stderr long100.err
+exit 101

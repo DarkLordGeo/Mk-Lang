@@ -1,0 +1,30 @@
+{
+  "name": "textascii",
+  "table": "idiomatic",
+  "algorithm": "One std.text function (graphemes, width, Nfc normalization, full case folding), reps passes over mostly-ASCII text generated in the program from splitmix64(seed), mib MiB, 6 of 256 scalars outside ASCII (README.md). Mk only: no std among C, Rust, Zig and Go has grapheme segmentation, width, normalization or full case folding; the row also serves tools/bench compare of the ASCII fast paths before and after.",
+  "overflow": "wraps",
+  "args": ["width", "16", "100", "1"],
+  "quick": ["width", "1", "2", "1"],
+  "checksum": "1601743300",
+  "quick_checksum": "2001344",
+  "sources": {
+    "mk": "mk"
+  },
+  "skip": {
+    "c": "no std Unicode segmentation, normalization, case folding or width: C has none",
+    "rust": "no std Unicode segmentation, normalization, case folding or width in Rust (unicode-segmentation, unicode-normalization and unicode-width are crates; no crate stands in)",
+    "zig": "no std Unicode segmentation, normalization, case folding or width in Zig (std.unicode has UTF-8 and UTF-16 only)",
+    "go": "no std Unicode segmentation, normalization, full case folding or width in Go (golang.org/x/text and rivo/uniseg are not std)",
+    "mk-wrap": "the checksum already uses the wrapping operators"
+  },
+  "variants": [
+    {"name": "graphemes", "args": ["graphemes", "16", "100", "1"], "quick": ["graphemes", "1", "2", "1"], "checksum": "1614476900", "quick_checksum": "2017232"},
+    {"name": "width", "args": ["width", "16", "100", "1"], "quick": ["width", "1", "2", "1"], "checksum": "1601743300", "quick_checksum": "2001344"},
+    {"name": "nfc", "args": ["nfc", "16", "100", "1"], "quick": ["nfc", "1", "2", "1"], "checksum": "1677641537", "quick_checksum": "2097115"},
+    {"name": "fold", "args": ["fold", "16", "100", "1"], "quick": ["fold", "1", "2", "1"], "checksum": "1677731021", "quick_checksum": "2097289"}
+  ],
+  "no_counts": "B24 does not apply: a Mk-only row (no other std has the facility)",
+  "notes": [
+    "The text is at least 16 MiB: of 256 draws, 180 a lower-case letter (an upper-case one in seven), 36 a space, 14 a digit, 16 ASCII punctuation, 4 a newline, and 6 one non-ASCII scalar each: a Latin-1 letter from U+00C0 (most decompose), Cyrillic, CJK, an emoji, a Latin-1 letter from U+00E0, a combining mark from U+0300. tests/bench-lanes/std-text2/unicode is the same functions on text with 6 of 16 scalars outside ASCII."
+  ]
+}

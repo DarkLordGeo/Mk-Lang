@@ -1,0 +1,5 @@
+run
+$CASES/data/trap.tab
+--stop-after
+3s
+--echo

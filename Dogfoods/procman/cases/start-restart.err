@@ -1,0 +1,9 @@
+INFO worker: started (run 1)
+WARN worker: exited with code 1
+WARN worker: restarting in 10ms (restart 1 of 3)
+INFO worker: started (run 2)
+WARN worker: exited with code 1
+WARN worker: restarting in 20ms (restart 2 of 3)
+INFO worker: started (run 3)
+INFO worker: exited with code 0
+INFO every process has ended

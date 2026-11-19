@@ -1,0 +1,3 @@
+open
+--search=nowhere
+kernel32.dll

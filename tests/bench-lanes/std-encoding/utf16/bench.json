@@ -1,0 +1,32 @@
+{
+  "name": "encoding-utf16",
+  "table": "idiomatic",
+  "algorithm": "UTF-16LE to UTF-8 of a mixed-script line (ASCII, Latin-1, Cyrillic, CJK, one astral scalar) repeated n times, rounds times, each language's standard decoder; the checksum adds per round the output length and one output byte at a moving index (README.md).",
+  "overflow": "wraps",
+  "args": [
+    "100000",
+    "200"
+  ],
+  "quick": [
+    "100",
+    "100"
+  ],
+  "checksum": "1140028911",
+  "quick_checksum": "584216",
+  "sources": {
+    "mk": "mk",
+    "rust": "utf16.rs",
+    "zig": "utf16.zig",
+    "go": "testdata/utf16.go"
+  },
+  "skip": {
+    "c": "no UTF-16 decoder in C's standard library (mbrtoc16 is the other direction and locale-bound)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the decoder is tested by the lane's Go tests (TestStdEncoding_WptCases, TestStdEncoding_DecodeAdversarial)",
+  "notes": [
+    "Mk: encoding.Utf16Le.Decode into an arena reset each round (sized in one pass, written in a second: Mk's API). Rust: char::decode_utf16 over units read from the bytes, into one String reused. Zig: std.unicode.utf16LeToUtf8 over an aligned []u16 made once, into one buffer. Go: utf16.DecodeRune and utf8.AppendRune into one buffer reused.",
+    "Checksums agree among Go, Mk, Rust and Zig at both sizes on the owner's machine (std-encoding session 1, 2026-11-12).",
+    "Not published: no number here is a measurement."
+  ]
+}

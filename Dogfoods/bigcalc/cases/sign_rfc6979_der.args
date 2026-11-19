@@ -1,0 +1,4 @@
+sign
+--key
+$CASES/data/pki/rfc6979.pem
+$CASES/data/pki/sample.txt

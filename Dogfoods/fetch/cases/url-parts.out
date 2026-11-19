@@ -1,0 +1,14 @@
+href      https://user:pw@example.com:8443/a/c?x=1&y=a+b#frag
+shown     https://user@example.com:8443/a/c?x=1&y=a+b#frag
+scheme    https
+username  user
+password  pw
+host      domain example.com
+hostname  example.com
+port      8443
+path      /a/c
+query     x=1&y=a+b
+fragment  frag
+origin    https://example.com:8443
+pair      x = 1
+pair      y = a b

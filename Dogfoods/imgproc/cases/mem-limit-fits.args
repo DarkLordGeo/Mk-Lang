@@ -1,0 +1,7 @@
+--ascii
+--mem-limit
+8192
+run
+$CASES/data/gradient.pgm
+-
+blur

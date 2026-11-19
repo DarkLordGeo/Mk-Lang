@@ -1,0 +1,37 @@
+{
+  "name": "mapstrlong",
+  "table": "idiomatic",
+  "algorithm": "Hash map churn with str keys of 24 to 200 bytes (paths and URLs, SH-2), otherwise the task of mapstr: the same programs (../mapstr/README.md) with longer keys.",
+  "overflow": "wraps",
+  "args": [
+    "300000",
+    "20",
+    "1",
+    "24",
+    "200"
+  ],
+  "quick": [
+    "30000",
+    "3",
+    "1",
+    "24",
+    "200"
+  ],
+  "checksum": "900066000000",
+  "quick_checksum": "1350225000",
+  "sources": {
+    "mk": "../mapstr/mk",
+    "rust": "../mapstr/mapstr.rs",
+    "zig": "../mapstr/mapstr.zig",
+    "go": "../mapstr/testdata/mapstr.go"
+  },
+  "skip": {
+    "c": "no standard hash map in C",
+    "mk-wrap": "the checksum already uses the wrapping operators; there is no checked arithmetic to remove"
+  },
+  "notes": [
+    "The sources are mapstr's; only the key lengths differ. Default string hashes as in mapstr: Mk the fold hash (two lanes from 32 bytes, SH-2), Rust SipHash-1-3 (RandomState), Zig Wyhash seed 0, Go the runtime AES hash.",
+    "Publish size 300000 20 1 24 200: at 10 rounds the fastest cell (Go) ran 0.59 s in the lane's informal hyperfine run (status/std-hash.md, session 2), so the rounds were doubled; about 1.2 s projected until a tools/bench publish times it.",
+    "Written by the std-hash lane (status/std-hash.md, session 2); checksums agree across all four columns at both sizes on the owner's machine, 2026-11-06."
+  ]
+}

@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1203","name":"lifetime-syntax","phase":"parse","root":1,"at":{"file":"t.mk","line":1,"col":7,"end_line":1,"end_col":9},"message":"Mk has no lifetimes","facts":{"habits":["E1203"],"target":"F(a: &T) {"},"fixes":[{"class":"proven","edits":[{"file":"t.mk","line":1,"col":7,"end_line":1,"end_col":10,"text":""}],"why":"rewrite the habit as Mk"}],"alternatives":[],"explain":"mk explain E1203"}],"omitted":0}
+

@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0411","name":"moved-before-failure","phase":"flow","root":1,"at":{"file":"E0411.mk","line":6,"col":5,"end_line":6,"end_col":12},"message":"r is changed here, but the function can still fail afterward","facts":{"moved_at":"E0411.mk:6:5","error_exit":"E0411.mk:8:9"},"fixes":[],"alternatives":[],"explain":"mk explain E0411"}],"omitted":0}

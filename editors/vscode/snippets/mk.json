@@ -1,0 +1,119 @@
+{
+  "Main": {
+    "prefix": "main",
+    "description": "The program's entry point",
+    "body": [
+      "export Main(sys: &System): WriteError!void {",
+      "\t${0:try sys.Print(\"hello {name}\\n\", (name: \"world\"))}",
+      "}"
+    ]
+  },
+  "Function": {
+    "prefix": "func",
+    "description": "A function: no keyword, the name and its parameters",
+    "body": [
+      "${1:Name}(${2}): ${3:int} {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Method": {
+    "prefix": "method",
+    "description": "A method T.M with its receiver",
+    "body": [
+      "${1:Type}.${2:Name}(${3|&self,mut self,self|}${4}) {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Struct": {
+    "prefix": "struct",
+    "body": [
+      "struct ${1:Name} {",
+      "\t${2:field}: ${3:int}",
+      "}"
+    ]
+  },
+  "Enum": {
+    "prefix": "enum",
+    "body": [
+      "enum ${1:Name} {",
+      "\t${2:Variant}",
+      "}"
+    ]
+  },
+  "Interface": {
+    "prefix": "interface",
+    "body": [
+      "interface ${1:Name} {",
+      "\t${2:Method}(&self${3}): ${4:int}",
+      "}"
+    ]
+  },
+  "Impl": {
+    "prefix": "impl",
+    "body": [
+      "impl ${1:Interface} for ${2:Type} {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Test": {
+    "prefix": "test",
+    "body": [
+      "test \"${1:what it checks}\" {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Match": {
+    "prefix": "match",
+    "description": "Arms are a pattern and a block, exhaustive (E0306)",
+    "body": [
+      "match ${1:e} {",
+      "\t${2:_} {",
+      "\t\t$0",
+      "\t}",
+      "}"
+    ]
+  },
+  "For in": {
+    "prefix": "forin",
+    "body": [
+      "for ${1:x} in ${2:xs} {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "For range": {
+    "prefix": "forr",
+    "body": [
+      "for ${1:i} in ${2:0}..${3:n} {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Scope": {
+    "prefix": "scope",
+    "description": "Structured concurrency: every task spawned in s ends with the block",
+    "body": [
+      "scope ${1:s} := ${2:sys.io}.Scope() {",
+      "\t${1:s}.go ${0:Work(sys.io)}",
+      "}"
+    ]
+  },
+  "Unsafe": {
+    "prefix": "unsafe",
+    "body": [
+      "unsafe \"${1:reason}\" {",
+      "\t$0",
+      "}"
+    ]
+  },
+  "Import std": {
+    "prefix": "import",
+    "body": [
+      "import std.${1:fs}"
+    ]
+  }
+}

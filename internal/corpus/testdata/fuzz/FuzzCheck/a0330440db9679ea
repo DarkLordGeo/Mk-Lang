@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("A(xs: mut []i32) {xs.Sort(fn(a: &i32,a0: &i32): bool {})} ")

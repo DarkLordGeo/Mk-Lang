@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0101","name":"syntax","phase":"types","root":1,"at":{"file":"m/00.mk","line":8,"col":11,"end_line":8,"end_col":14},"message":"a contract predicate cannot contain `try`: it must be a side-effect-free bool expression","facts":{"reason":"contract"},"fixes":[],"alternatives":[],"explain":"mk explain E0101"}],"omitted":0}

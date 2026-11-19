@@ -1,0 +1,10 @@
+INFO broken: started (run 1)
+WARN broken: exited with code 3
+WARN broken: restarting in 1ms (restart 1 of 2)
+INFO broken: started (run 2)
+WARN broken: exited with code 3
+WARN broken: restarting in 2ms (restart 2 of 2)
+INFO broken: started (run 3)
+WARN broken: exited with code 3
+ERROR broken: gave up after 3 runs
+INFO every process has ended

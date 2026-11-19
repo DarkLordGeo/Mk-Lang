@@ -1,0 +1,4 @@
+convert
+--from
+windows-1256
+$CASES/data/whatwg/windows-1256.bin

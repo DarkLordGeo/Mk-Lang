@@ -1,0 +1,2 @@
+{"phase":"parse","diagnostics":[{"code":"E1210","name":"exception-words","phase":"parse","root":1,"at":{"file":"t.mk","line":2,"col":5,"end_line":2,"end_col":10},"message":"Mk returns errors with `fail`, not `throw`","facts":{"habits":["E1210"]},"fixes":[],"alternatives":["fail E"],"explain":"mk explain E1210"}],"omitted":0}
+

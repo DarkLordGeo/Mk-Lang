@@ -1,0 +1,2 @@
+raft: invalid argument x
+run raft --help for usage

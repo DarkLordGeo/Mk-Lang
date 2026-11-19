@@ -1,0 +1,20 @@
+> PING
++PONG
+> SET greeting hello
++OK
+> APPEND greeting  world
+:11
+> GET greeting
+$hello world
+> INCR hits
+:1
+> INCR hits
+:2
+> HASH greeting
+$xx=d447b1ea40e6988b sip=f961a608c1f9a444
+> KEYS
+*2
+$greeting
+$hits
+> QUIT
++BYE

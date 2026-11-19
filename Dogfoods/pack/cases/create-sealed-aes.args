@@ -1,0 +1,10 @@
+create
+--sign
+$CASES/data/alice.key
+--to
+$CASES/data/dave.pub
+--cipher
+aes-256-gcm
+--out
+$WORK/a.pk
+$CASES/data/tree

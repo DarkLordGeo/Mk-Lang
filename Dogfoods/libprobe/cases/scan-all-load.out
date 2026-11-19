@@ -1,0 +1,3 @@
+LIBRARY                  SYSTEM        APPLICATION   PATH
+kernel32.dll             loaded        loaded        bad name
+user32.dll               loaded        loaded        bad name

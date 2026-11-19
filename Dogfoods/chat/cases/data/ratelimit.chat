@@ -1,0 +1,7 @@
+# --burst 2 --refill-ms 3600000: the third message in a row is refused
+alice: NICK alice
+alice: JOIN #flood
+alice: MSG #flood one
+alice: MSG #flood two
+alice: MSG #flood three
+alice: STATS

@@ -1,0 +1,29 @@
+{
+  "name": "crypto-ed25519-sign",
+  "table": "idiomatic",
+  "algorithm": "std Ed25519 (RFC 8032) Sign of n 64-byte messages of splitmix64 bytes under one key whose seed is the first 32 bytes (mk/crypto-ed25519-sign.mk).",
+  "overflow": "wraps",
+  "args": [
+    "80000",
+    "1"
+  ],
+  "quick": [
+    "100",
+    "1"
+  ],
+  "checksum": "6909029440561478039",
+  "quick_checksum": "14969950856576325470",
+  "sources": {
+    "go": "testdata/crypto-ed25519-sign.go",
+    "mk": "mk",
+    "zig": "crypto-ed25519-sign.zig"
+  },
+  "skip": {
+    "c": "no std crypto: C has no standard Ed25519",
+    "rust": "no std crypto: Rust std has no Ed25519; no crate stands in"
+  },
+  "notes": [
+    "Work per step: one signature of one 64-byte message (RFC 8032 5.1.6: SHA-512 of prefix and message, one fixed-base multiplication, SHA-512 of R, A and message, a mod-L multiply-add). Mk crypto.Ed25519.Sign and Zig KeyPair.sign (no noise) also hash the seed on every call; Go ed25519.Sign keeps the expanded key (SHA-512 of the seed) in a per-key cache (crypto/ed25519 privateKeyCache), so Go's column does one SHA-512 of 32 bytes less per signature, a single compression. Zig compares the stored public half with the key pair's (32 bytes), not recomputed. Signatures per second = n / median.",
+    "Checksums: every column printed the same value at the quick and the publish args in `go run ./tools/bench verify` and `verify -publish-size` (mk built from the tree, Zig 0.17.0, Go 1.27.3) on the owner's machine, 2026-11-07 (std-crypto session 1, with the public half as a third argument; session 2, after D-319, with the key from Ed25519.FromSeed: the same checksums). Not published: no number here is a measurement."
+  ]
+}

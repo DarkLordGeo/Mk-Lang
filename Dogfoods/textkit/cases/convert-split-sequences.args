@@ -1,0 +1,5 @@
+convert
+--buffer
+1
+$CASES/data/mixed.txt
+$CASES/data/prose.txt

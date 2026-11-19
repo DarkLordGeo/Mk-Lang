@@ -1,0 +1,28 @@
+# Expected output checked by hand against RE2 semantics (leftmost-first, byte offsets on
+# scalar boundaries, \pL as Go's regexp/syntax): line 4 has two-byte scalars before its matches.
+# The patterns and the template are files, so no shell on the way (wsl.exe) reads them.
+case server-errors
+args regexfilter-5xx.re
+files regexfilter-5xx.re
+stdin regexfilter.in
+stdout regexfilter-5xx.out
+
+case unicode-keys
+args regexfilter-unicode.re
+files regexfilter-unicode.re
+stdin regexfilter.in
+stdout regexfilter-unicode.out
+
+case replace
+args regexfilter-replace.re regexfilter-replace.tmpl
+files regexfilter-replace.re regexfilter-replace.tmpl
+stdin regexfilter.in
+stdout regexfilter-replace.out
+
+# An unclosed group: Syntax at the byte of the "(".
+case bad-pattern
+args regexfilter-bad.re
+files regexfilter-bad.re
+stdin regexfilter.in
+stderr regexfilter-bad.err
+exit 2

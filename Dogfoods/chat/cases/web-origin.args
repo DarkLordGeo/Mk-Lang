@@ -1,0 +1,6 @@
+--web
+127.0.0.1:0
+--bots
+0
+replay
+$CASES/data/origin.chat

@@ -1,0 +1,10 @@
+plot
+tan(x)
+$WORK/plot.ppm
+--f32
+--ymin
+-4
+--ymax
+4
+--size
+64x40

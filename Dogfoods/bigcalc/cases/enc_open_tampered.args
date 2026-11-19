@@ -1,0 +1,12 @@
+enc
+open
+--key-from
+text:correct horse battery staple
+--salt
+hex:000102030405060708090a0b0c
+--info
+bigcalc file
+--bits
+128
+$CASES/data/pki/sealed_tampered.bin
+-

@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0702","name":"no-impl","phase":"types","root":1,"at":{"file":"E0702.mk","line":12,"col":14,"end_line":12,"end_col":20},"message":"`Rock` has no impl of `Weighed`, which declares `Weight`","facts":{"interface":"Weighed","type":"Rock"},"fixes":[],"alternatives":["impl Weighed for Rock"],"explain":"mk explain E0702"}],"omitted":0}

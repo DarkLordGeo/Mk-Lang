@@ -1,0 +1,6 @@
+--transcript
+$WORK/transcript
+--zone
+utc
+$CASES/data/tree
+{tmp}

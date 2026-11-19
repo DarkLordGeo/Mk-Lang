@@ -1,0 +1,37 @@
+[
+  {
+    "encodings": [
+      {
+        "labels": [
+          "utf-8",
+          "utf8"
+        ],
+        "name": "UTF-8"
+      }
+    ],
+    "heading": "The Encoding"
+  },
+  {
+    "encodings": [
+      {
+        "labels": [
+          "koi8-ru",
+          "koi8-u"
+        ],
+        "name": "KOI8-U"
+      }
+    ],
+    "heading": "Legacy single-byte encodings"
+  },
+  {
+    "encodings": [
+      {
+        "labels": [
+          "euc-jp"
+        ],
+        "name": "EUC-JP"
+      }
+    ],
+    "heading": "Legacy multi-byte Japanese encodings"
+  }
+]

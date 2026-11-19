@@ -1,0 +1,7 @@
+plot
+x
+$WORK/plot.ppm
+--from
+3
+--to
+1

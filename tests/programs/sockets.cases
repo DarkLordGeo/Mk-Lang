@@ -1,0 +1,5 @@
+# std.net over loopback: listener options, stream options and addresses, a half-close, net.Conn,
+# a Unix-domain socket in the system temporary directory, an Accept cut by a deadline, refusals.
+case ok
+stdout sockets.out
+timeout 30

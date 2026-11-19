@@ -1,0 +1,1 @@
+{"phase":"parse","diagnostics":[{"code":"E0609","name":"literal-captures","phase":"parse","root":1,"at":{"file":"E0609.mk","line":8,"col":18,"end_line":8,"end_col":19},"message":"Mk has no closures","facts":{"habits":["E0609"]},"fixes":[],"alternatives":["a `fn` literal","a struct plus a `fn`"],"explain":"mk explain E0609"}],"omitted":0}

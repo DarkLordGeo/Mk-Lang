@@ -1,0 +1,33 @@
+{
+  "name": "compress-unzstd",
+  "table": "idiomatic",
+  "algorithm": "Decode a zstd frame (std/testdata/zstd/real-l19nc.zst: libzstd 1.5.7 level 19 with no content checksum, 134,955 bytes, 524,288 bytes of text) with the std's streaming zstd decoder at its default window limit, rounds times; each round opens the file and reads it through the std's file reader with a 64 KiB buffer, and reads the output in 64 KiB chunks; the checksum adds every decoded byte and each round's length.",
+  "overflow": "wraps",
+  "args": [
+    "std/testdata/zstd/real-l19nc.zst",
+    "2000"
+  ],
+  "quick": [
+    "std/testdata/zstd/real-l19nc.zst",
+    "20"
+  ],
+  "checksum": "94828076000",
+  "quick_checksum": "948280760",
+  "sources": {
+    "mk": "mk",
+    "zig": "compress-unzstd.zig"
+  },
+  "skip": {
+    "c": "no std zstd in C; ref/compress-unzstd.c (libzstd 1.5.7 from Mk-evidence/vendor) is the reference C implementation's cell for tools/bench's reference-library table (D-588), which bench8 builds; it never joins this table. Its flags (CMP2-6): the table's C flags (-O3 -march=x86-64-v2) plus -DDYNAMIC_BMI2=0, which turns off libzstd's run-time BMI2 dispatch, and with it ZSTD_ENABLE_ASM_X86_64_BMI2, so the cell runs the C code at the row's one CPU target (no ZSTD_DISABLE_ASM needed); -I lib -I lib/common, lib/common/*.c lib/decompress/*.c",
+    "go": "no public zstd in Go's std (internal/zstd is reachable only through debug/elf's compressed sections; no third-party module stands in)",
+    "rust": "no std zstd in Rust (zstd is a crate; no crate stands in)",
+    "mk-wrap": "the checksum already uses the wrapping operators; the task has no other arithmetic to wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; the checksum (the sum of the decoded bytes plus the length) checks the output",
+  "notes": [
+    "The file path is relative to the repository root, where tools/bench runs its programs; the frame is the lane's test corpus file (TestCompress_ZstdCorpus decodes it and Go's decoder agrees). It is a pinned file, not a tools/bench gen output (CMP2-7: request 13 in status/std-compress2.md asks bench8 for a gen kind or a decision line; until then the row should not publish). Bytes per second = 524,288 * rounds / median.",
+    "Every cell does the same work (CMP2-3): the frame has no content checksum, so no cell computes or checks one (Zig 0.17 panics with a TODO when verify_checksum is set, so a frame with a checksum would have charged Mk alone the XXH64).",
+    "Mk: a compress.ZstdDecoder per round (its end of stream is sticky) at the default window limit (window_limit 0, 8 MiB; CMP2-2: the idiomatic call, and ZstdContent's), in one arena reset after each round; New zero-fills the window and buffers (8.5 MiB) every round and Reset returns that chunk to the heap, a cost of Mk's API counted against Mk (status/std-compress2.md, request 5). Zig: std.compress.zstd.Decompress at its default 8 MiB window, initialised per round over a window buffer made once (Zig's init allocates nothing).",
+    "Not published: no number here is a measurement."
+  ]
+}

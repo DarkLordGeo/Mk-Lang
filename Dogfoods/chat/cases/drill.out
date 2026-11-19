@@ -1,0 +1,22 @@
+Semaphore.Acquire            canceled
+Mutex.Lock                   canceled
+RwLock.LockRead              canceled
+RwLock.Lock                  canceled
+Notify.Wait                  canceled
+Barrier.Wait                 canceled
+Chan.Recv                    canceled
+Chan.Send                    canceled
+sync.Select                  canceled
+Io.Sleep                     canceled
+Listener.Accept              canceled
+Stream.Read                  canceled
+history writer               stopped, wrote 0
+order relaxed  load=true store=true fence=false
+order acquire  load=true store=false fence=true
+order release  load=false store=true fence=true
+order acq_rel  load=false store=false fence=true
+order seq_cst  load=true store=true fence=true
+stats ids=1,2 conns=2 renumbered=0 frames=4 bytes=160 reset=4
+stats toggles=true,false drain=true,false flags=3 peak=11,11,11
+stats final frames=0
+drill: 12 of 12 waits cancelled

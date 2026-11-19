@@ -1,0 +1,1 @@
+{"phase":"types","diagnostics":[{"code":"E0703","name":"needs-bound","phase":"types","root":1,"at":{"file":"m/00.mk","line":2,"col":5,"end_line":2,"end_col":10},"message":"`T` has no bound that allows `>`","facts":{"param":"T","operation":"`>`"},"fixes":[],"alternatives":[],"explain":"mk explain E0703"}],"omitted":0}

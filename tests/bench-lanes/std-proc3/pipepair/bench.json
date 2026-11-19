@@ -1,0 +1,26 @@
+{
+  "name": "pipepair",
+  "table": "idiomatic",
+  "algorithm": "one process makes an anonymous pipe; a second task (thread, goroutine) writes n bytes to the write end in 64 KiB writes, one 64 KiB chunk of a splitmix64 stream (each word's 8 bytes little endian, from state 0) filled once and written again and again, then closes it; the main task reads the read end into a 64 KiB buffer, sums the bytes and prints the bytes read and their sum (tests/bench-lanes/std-proc3/README.md).",
+  "overflow": "never",
+  "args": [
+    "268435456"
+  ],
+  "quick": [
+    "1048576"
+  ],
+  "checksum": "268435456 34129735680",
+  "quick_checksum": "1048576 133319280",
+  "sources": {
+    "mk": "mk",
+    "rust": "pipepair.rs",
+    "go": "testdata/pipepair.go"
+  },
+  "notes": [
+    "Written by std-proc3 (status/std-proc3.md, review P3X-5) over the public proc.Pipe, PipeWriter.WriteAll and PipeReader.Read: both ends are proc.Pipe's, which the runtime reads and writes on its blocking pool (P3R-1, request 17). Go is os.Pipe with a goroutine, Rust std::io::pipe with a thread."
+  ],
+  "skip": {
+    "c": "no std facility: ISO C has no pipes or threads of this kind (pipe and CreatePipe are OS APIs, not the C library)",
+    "zig": "no anonymous pipe on Windows in Zig 0.17's standard library: std.Io has pipe2 for POSIX targets only, and a CreatePipe call would be the program's own Windows binding, not the library's"
+  }
+}

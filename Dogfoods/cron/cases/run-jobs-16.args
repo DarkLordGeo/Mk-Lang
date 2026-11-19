@@ -1,0 +1,7 @@
+run
+$CASES/data/jobs.tab
+--stop-after
+6s
+--echo
+--max-jobs
+1

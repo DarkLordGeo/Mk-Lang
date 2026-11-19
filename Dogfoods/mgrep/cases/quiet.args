@@ -1,0 +1,6 @@
+-q
+-j
+8
+needle
+$CASES/data/many
+$CASES/data/tree

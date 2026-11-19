@@ -1,0 +1,4 @@
+export struct Pair {
+    a: i32
+    b: i32
+}

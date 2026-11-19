@@ -1,0 +1,82 @@
+# Why: a release should come from a tagged commit that passed the checks,
+# with its notes and the editor extension attached, without hand work.
+#
+# What: on a v* tag, the CI checks on Windows, then a draft GitHub release
+# with the tag's CHANGELOG section as notes and the VS Code extension
+# (.vsix) attached. Mk itself is built from source (see README.md).
+#
+# How: the release stays a draft so a maintainer reads it before
+# publishing. Only tags pushed to this repository trigger it.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'zerodayokay/Mk-Lang'
+    runs-on: [self-hosted, windows, x64, mk]
+    timeout-minutes: 180
+    defaults:
+      run:
+        # Git Bash by its short path: a plain `bash` on a Windows runner can
+        # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
+        # run the step's script, and CI must never start wsl.exe here.
+        shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
+    env:
+      MK_GATE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Fresh caches in the job's own temporary directory, which the runner
+      # empties after each job: a release never reads entries another job
+      # wrote.
+      - name: Caches
+        run: |
+          echo "MK_CACHE=$RUNNER_TEMP/mkcache" >> "$GITHUB_ENV"
+          echo "GOCACHE=$RUNNER_TEMP/gocache" >> "$GITHUB_ENV"
+
+      - name: Build and vet
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Test
+        run: go test -timeout 3600s $(go list ./... | grep -v '^mk/std$')
+
+      - name: Documentation tests
+        run: go run ./cmd/mk corpus
+
+      - name: Package the VS Code extension
+        working-directory: editors/vscode
+        run: |
+          npm ci
+          # vsce runs npm through cmd.exe, which fails on a PATH longer than
+          # 8191 characters: give it a short one. This runs the lockfile's vsce.
+          PATH="$(dirname "$(command -v node)"):/c/Windows/System32" node node_modules/@vscode/vsce/vsce package -o "${{ runner.temp }}/mk-vscode-${GITHUB_REF_NAME}.vsix"
+
+      - name: Release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            /^## / { if (found) exit; if (index($0, v)) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > "${{ runner.temp }}/notes.md"
+          if [ ! -s "${{ runner.temp }}/notes.md" ]; then
+            echo "See CHANGELOG.md." > "${{ runner.temp }}/notes.md"
+          fi
+
+      - name: Draft the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+            --title "Mk ${GITHUB_REF_NAME}" \
+            --notes-file "${{ runner.temp }}/notes.md" \
+            "${{ runner.temp }}/mk-vscode-${GITHUB_REF_NAME}.vsix"

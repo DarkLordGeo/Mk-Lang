@@ -1,0 +1,4 @@
+--pbm
+run
+$CASES/data/small.ppm
+-

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// f22: SizeOf of a type parameter as a const value argument in a generic\n// (not a call of a function; must stay legal and be right).\nLane(const i: int): int {\n    return i * 10\n}\n\nG[T](): int {\n    return Lane(SizeOf[T]())\n}\n\nexport Main(sys: &System): WriteError!void {\n    try sys.Print(\"{a} {b}\\n\", (a: G[u32](), b: G[u8]()))\n}\n")

@@ -1,0 +1,3 @@
+case panic
+stderr index_receiver.err
+exit 101

@@ -1,0 +1,4 @@
+GET /echo
+GET /echo
+Authorization: Basic Ym9iOnNlY3JldA==
+Cookie: pref=dark

@@ -1,0 +1,98 @@
+--- a second server on the same directory: InUse
+--- client 0
+> NAME client0
++OK
+> SET u0:name Ada Lovelace
++OK
+> GET u0:name
+$Ada Lovelace
+> INCR u0:visits
+:1
+> INCR u0:visits
+:2
+> INCR u0:visits
+:3
+> APPEND u0:log started
+:7
+> APPEND u0:log ,stopped
+:15
+> GETSET u0:name Grace Hopper
+$Ada Lovelace
+> GET u0:name
+$Grace Hopper
+> INCR u0:name
+-ERR NotAnInteger
+> DEL u0:missing
+:0
+> GET u0:missing
+_
+> HASH u0:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u0:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u0:
+*3
+$u0:log
+$u0:name
+$u0:visits
+> QUIT
++BYE
+--- client 1
+> NAME client1
++OK
+> SET u1:name Ada Lovelace
++OK
+> GET u1:name
+$Ada Lovelace
+> INCR u1:visits
+:1
+> INCR u1:visits
+:2
+> INCR u1:visits
+:3
+> APPEND u1:log started
+:7
+> APPEND u1:log ,stopped
+:15
+> GETSET u1:name Grace Hopper
+$Ada Lovelace
+> GET u1:name
+$Grace Hopper
+> INCR u1:name
+-ERR NotAnInteger
+> DEL u1:missing
+:0
+> GET u1:missing
+_
+> HASH u1:log
+$xx=aa617a01372730c7 sip=173257f4144c85c6
+> SET u1:bad	key value
+-ERR BadByte(offset: 6)
+> KEYS u1:
+*3
+$u1:log
+$u1:name
+$u1:visits
+> QUIT
++BYE
+--- operator 2
+> NAME operator
++OK
+> DBSIZE
+:6
+> SHUTDOWN
+-ERR AdminOnly
+> QUIT
++BYE
+admin> COMPACT
++OK
++BYE
+admin> SHUTDOWN
++BYE
+--- the log holds 6 keys, digest a024cd4bf117f6ac
+u0:log = started,stopped
+u0:name = Grace Hopper
+u0:visits = 3
+u1:log = started,stopped
+u1:name = Grace Hopper
+u1:visits = 3

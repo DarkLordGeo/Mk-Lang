@@ -1,0 +1,57 @@
+{
+  "name": "kvserve",
+  "task": "A key-value server over TCP speaking kvd's line protocol (GET, SET, INCR, DEL), every change appended to a write-ahead log of CRC-32 framed records in kvd's format before it is answered, with no sync (`--sync never`), the store in memory behind a reader-writer lock and the log behind a mutex (README.md).",
+  "package": {
+    "path": "Dogfoods/kvd"
+  },
+  "args": ["serve", "--addr", "127.0.0.1:{port}", "--data", "{data}", "--sync", "never"],
+  "mk_args": ["--compact-after", "1000000000", "--max-clients", "10000"],
+  "sources": {
+    "go": "testdata/kvserve.go",
+    "rust": "kvserve.rs",
+    "zig": "kvserve.zig"
+  },
+  "kinds": {
+    "mk": "std",
+    "go": "std",
+    "rust": "hand",
+    "zig": "std"
+  },
+  "hand": {
+    "rust": "a CRC-32 (IEEE, the reflected polynomial 0xEDB88320) with its 256-entry table built at start, about 25 lines: Rust's std has no CRC; everything else is std's"
+  },
+  "skip": {
+    "c": "no std sockets (C's std has none), as the http row"
+  },
+  "models": {
+    "mk": "tasks (std.net, one task per connection, MK_CARRIERS=8)",
+    "go": "goroutines (net, one per connection, GOMAXPROCS=8)",
+    "rust": "OS threads (std::net, one std::thread per connection)",
+    "zig": "OS threads (std.Io.net, one Io.Group.concurrent thread per connection)"
+  },
+  "unsafe_modules": ["src/snap"],
+  "unsafe_why": "src/snap maps a snapshot with fs.Map in an unsafe block, at recovery only. The row never reaches it: every server starts on an empty data directory, so recovery finds no snapshot (snap.Load returns before MapOwn), and `--compact-after 1000000000` keeps the server from writing one during a run.",
+  "connections": 256,
+  "check_requests": 400,
+  "warmup_s": 5,
+  "measure_s": 30,
+  "server_mask": "0xff",
+  "client_mask": "0xff00",
+  "threads": 8,
+  "sweeps": 3,
+  "seed": 38,
+  "kv": {
+    "keys": 64,
+    "get": 50,
+    "set": 25,
+    "incr": 15,
+    "del": 10,
+    "value_min": 8,
+    "value_max": 64
+  },
+  "notes": [
+    "The Mk side is Dogfoods/kvd unchanged (D-844): `kvd serve`, with two of its own flags after the common command line: `--compact-after 1000000000`, so it never compacts during a run (its default compacts every 1,000 changes, which the twins do not do), and `--max-clients 10000`, above the row's connections and tools/bench's probe connection (its default is 1,000).",
+    "The load is tools/bench's kv generator (kvbench.go): each connection owns 64 keys, half text and half counters, and draws from splitmix(seed + i) GET 50%, SET 25% (8 to 64 bytes of letters, digits and inner spaces), INCR 15% and DEL 10%; every reply is checked against the connection's model. After each server stops, tools/bench reads its log: a fresh header, every record's CRC-32, one record per answered change, and the replayed store equal to the connections' models.",
+    "Connections close with a reset (linger 0), as the http row's; 256 connections hold 512 sockets at once, below the owner's 10,000 cap."
+  ]
+}

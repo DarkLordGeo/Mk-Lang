@@ -1,0 +1,2 @@
+y = log(x) + sqrt(x - 1) in f64 over [-2, 4]: y in [0.17193287019465597, 3.223151405873791], grid step 0.5, 24 samples not finite
+48x32 (3:2), 4621 bytes, fnv1a 50e5cd8407c81938

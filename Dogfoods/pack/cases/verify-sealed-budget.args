@@ -1,0 +1,7 @@
+verify
+--key
+$CASES/data/bob.key
+--mem-limit
+100000
+--stats
+$CASES/data/sealed.pk

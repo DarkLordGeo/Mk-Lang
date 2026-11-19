@@ -1,0 +1,4 @@
+convert
+--strict
+$CASES/data/invalid.txt
+$CASES/data/mixed.txt

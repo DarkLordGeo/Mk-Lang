@@ -1,0 +1,2 @@
+mgrep: $CASES/data/nope/missing.txt: NotFound
+mgrep: note: the directory $CASES/data/nope does not exist either

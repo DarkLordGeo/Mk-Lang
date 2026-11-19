@@ -1,0 +1,20 @@
+# A square pyramid: a quad base and four triangles, with texture
+# coordinates, an unused normal and negative indices on the sides.
+o pyramid
+v -1 0 -1
+v 1 0 -1
+v 1 0 1
+v -1 0 1
+v 0 1.5 0
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+vt 0.5 1
+vn 0 1 0
+s off
+f 1/1 2/2 3/3 4/4
+f -5/1 -4/2 -1/5
+f 2/1 3/2 5/5
+f 3/1 4/2 5/5
+f 4/1//1 1/2 5

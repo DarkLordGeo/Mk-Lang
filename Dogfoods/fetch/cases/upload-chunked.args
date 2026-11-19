@@ -1,0 +1,8 @@
+--origin
+$CASES/data/site.origin
+-L
+--chunked
+--data-file
+$CASES/data/upload.txt
+http://{origin}/echo
+http://{origin}/redirect/303

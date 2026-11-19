@@ -1,0 +1,3 @@
+$CASES/data/tree/a.txt:5:id=42 name=one; id=7 name=two
+$CASES/data/tree/b.md:1:# Notes
+$CASES/data/tree/b.md:4:; a comment line

@@ -1,0 +1,6 @@
+verify
+--key
+$CASES/data/pki/rsa_pub.pem
+--pss
+$CASES/data/pki/msg.txt
+$CASES/data/pki/msg.pssmax.sig

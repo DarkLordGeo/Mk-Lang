@@ -1,0 +1,1 @@
+{"phase":"flow","diagnostics":[{"code":"E0408","name":"not-plain","phase":"flow","root":1,"at":{"file":"m/00.mk","line":2,"col":9,"end_line":2,"end_col":10},"message":"`[e; n]` copies e, so `Cell[int]` must be Plain","facts":{"reason":"repeat","type":"Cell[int]"},"fixes":[],"alternatives":[],"explain":"mk explain E0408"}],"omitted":0}

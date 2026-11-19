@@ -1,0 +1,5 @@
+ERROR 12 disk full
+INFO started
+error 7 retry
+WARN Fehler: Übermaß
+ERROR 300 net down

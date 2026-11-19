@@ -1,0 +1,5 @@
+replay
+$CASES/data/quoted.csv
+--quiet
+--book-out
+-

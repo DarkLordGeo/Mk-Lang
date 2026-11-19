@@ -1,0 +1,4 @@
+sign
+--key
+$CASES/data/pki/p256_pub.pem
+$CASES/data/pki/msg.txt

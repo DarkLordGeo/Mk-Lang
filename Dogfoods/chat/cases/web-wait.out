@@ -1,0 +1,22 @@
+tom! connected
+tom< MOTD Welcome to chat.
+tom< OK welcome
+tom> NICK tom
+tom< OK nick tom
+tim! connected
+tim< MOTD Welcome to chat.
+tim< OK welcome
+tim> NICK tim
+tim< OK nick tim
+web> !ws /ws?nick=wendy
+web! connected
+web! speaks chat.v1
+web! read failed: Canceled
+web! read failed: Canceled
+web> WHO
+web! write failed: Canceled
+tom> QUIT
+tim> QUIT
+web> QUIT
+-- server: history=0
+-- endings: quit=0 eof=0 dropped=0 kicked=0 closing=0 broken=0 canceled=2

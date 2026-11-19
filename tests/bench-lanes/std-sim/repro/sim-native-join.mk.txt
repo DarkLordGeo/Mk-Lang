@@ -1,0 +1,151 @@
+// A wait for tasks outside every run, which the Sim cannot see. It fails, every seed the same (code 5),
+// and is a repro of a documented limit of std.sim: such a Join counts as main's wait.
+// The repro: under a
+// Sim, main joins a native scope (sys.io's) whose native task sends "ping"
+// through the Sim's Io to a task of the run and reads the echo. The Sim
+// does not see the native task end, so it can call a deadlock on the echo
+// task's last Read before main closes the connection (code 5); in some
+// runs the echo does not come back either (back below 4). Natively the echo
+// comes back and the echo task reads the end of the stream (code 0).
+// Run: `mk test sim-native-join.mk` (copy it with the .mk name). A
+// weaker form of this test, which
+// asserted only back == 4 and equal runs, failed in about 13 of 100 runs
+// and with RunKey 14 of
+// 100 (measured 2026-11-15). This form also asserts code 0.
+
+import std.net
+import std.sim
+
+// JnAddr writes "127.0.0.1:<port>" into b and returns it.
+JnAddr(b: mut [32]u8, port: int): str from b {
+    pre := "127.0.0.1:".AsBytes()
+    (mut b[0..pre.Len()]).CopyFrom(pre)
+    var d: [8]u8 = [0; 8]
+    var n := 0
+    var x := port
+    for {
+        d[n] = Trunc[u8](48 + x % 10)
+        n += 1
+        x = x / 10
+        if x == 0 {
+            break
+        }
+    }
+    for i in 0..n {
+        b[pre.Len() + i] = d[n - 1 - i]
+    }
+    return str.From(b[0..pre.Len() + n]).Must()
+}
+
+// JnEcho accepts one connection, sends back the first 4 bytes it reads,
+// then reads it to its end; code as JnServer's.
+JnEcho(io: Io, l: &net.Listener, code: mut int) {
+    s := l.Accept(io) else {
+        *code = 1
+        return
+    }
+    c := s.Conn()
+    var b: [4]u8 = [0; 4]
+    var n := 0
+    for n < 4 {
+        k := c.Read(io, mut b[n..]) else {
+            *code = 5
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            *code = 9
+            c.Abandon()
+            return
+        }
+        n += k
+    }
+    c.WriteAll(io, b[..]) else {
+        *code = 6
+        c.Abandon()
+        return
+    }
+    for {
+        k := c.Read(io, mut b[..]) else {
+            *code = 5
+            c.Abandon()
+            return
+        }
+        if k == 0 {
+            break
+        }
+    }
+    *code = 0
+    c.Abandon()
+}
+
+// JnPing, a native task, sends "ping" through the Sim's Io and reads the
+// echo: back is the bytes it read back.
+JnPing(io: Io, c: &net.Conn, back: mut int) {
+    ping: [4]u8 = [112, 105, 110, 103]
+    c.WriteAll(io, ping[..]) else {
+        return
+    }
+    var b: [4]u8 = [0; 4]
+    for *back < 4 {
+        k := c.Read(io, mut b[*back..]) else {
+            return
+        }
+        if k == 0 {
+            return
+        }
+        *back += k
+    }
+}
+
+// JnNative: main joins a native scope (nat's), which held no task of the
+// Sim, while its native task talks to a task of the Sim: the join is no
+// wait of the run, so it must not hold the run's choices. back is
+// what the native task read back, code the echo task's.
+JnNative(a: &Arena, seed: u64, nat: Io): (back: int, code: int) {
+    var sm := sim.Sim.New(a, seed) else {
+        return (back: -100, code: -100)
+    }
+    r := JnNativeRun(sm.Io(), nat) else {
+        sm.Free()
+        return (back: -100, code: -100)
+    }
+    sm.Free()
+    return (back: r.back, code: r.code)
+}
+
+JnNativeRun(io: Io, nat: Io): net.Error!(back: int, code: int) {
+    l := try net.Listen(io, "127.0.0.1:0")
+    defer l.Close()
+    var ab: [32]u8 = [0; 32]
+    addr := JnAddr(mut ab, l.Port())
+    var back := 0
+    var code := -1
+    scope outer := io.Scope() {
+        outer.go JnEcho(io, &l, mut code)
+        stream := try net.Dial(io, addr)
+        c := stream.Conn()
+        scope n := nat.Scope() {
+            n.go JnPing(io, &c, mut back)
+        }
+        c.Close(io) else {
+            c.Abandon()
+        }
+    }
+    return (back: back, code: code)
+}
+
+test "REPRO 7.1b: main joining a native scope whose native task pings a task of the Sim: the echo comes back and the echo task reads the end of the stream, each seed the same when run twice" (sys: &System) {
+    var ar := try Arena.New(sys.heap)
+    var bad := 0
+    for seed in 1..9 {
+        r := JnNative(&ar, Trunc[u64](seed), sys.io)
+        again := JnNative(&ar, Trunc[u64](seed), sys.io)
+        if r.back != 4 || r.code != 0 || again.back != r.back || again.code != r.code {
+            bad += 1
+            sys.Print("seed={s} back={b} code={c} again back={b2} code={c2}\n", (s: seed, b: r.back, c: r.code, b2: again.back, c2: again.code)) else {}
+        }
+    }
+    ar.Free()
+    Assert(bad == 0)
+}

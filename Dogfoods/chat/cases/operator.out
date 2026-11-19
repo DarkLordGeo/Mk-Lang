@@ -1,0 +1,59 @@
+alice! connected
+alice< MOTD Welcome to the test server.
+alice< OK welcome
+alice> NICK alice
+alice< OK nick alice
+bob! connected
+bob< MOTD Welcome to the test server.
+bob< OK welcome
+bob> NICK bob
+bob< OK nick bob
+alice> JOIN #ops
+alice< OK join #ops members=1 topic=
+bob> JOIN #ops
+bob< OK join #ops members=2 topic=
+bob> KICK alice
+bob< ERR 481 operator only
+alice> OPER open-sesame
+alice< * bob joined #ops
+alice< ERR 464 bad operator token
+alice> OPER sesame
+alice< OK oper
+alice> MOTD Mind the gap.
+alice< OK motd set
+bob> MOTD
+bob< NOTICE the message of the day changed
+bob< MOTD Mind the gap.
+bob< OK motd
+alice> TOPIC #ops staff only
+alice< NOTICE the message of the day changed
+alice< OK topic
+bob> WHO #ops
+bob< * alice set the topic of #ops
+bob< MEMBERS #ops alice bob
+bob< OK who
+alice> MSG #ops this goes to the history file
+alice< OK msg 1
+bob< <#ops> alice: this goes to the history file
+alice> KICK nobody
+alice< ERR 401 no such nick
+alice> KICK bob
+alice< OK kick
+bob! closed by the server
+alice> WHO #ops
+alice< * bob left #ops (kicked)
+alice< MEMBERS #ops alice
+alice< OK who
+carol! connected
+carol< MOTD Mind the gap.
+carol< OK welcome
+carol> NICK carol
+carol< OK nick carol
+alice> SHUTDOWN sesame
+alice< OK shutdown
+carol< NOTICE server shutting down
+carol! closed by the server
+alice< NOTICE server shutting down
+alice! closed by the server
+-- server: history=1
+-- endings: quit=0 eof=0 dropped=0 kicked=1 closing=4 broken=0 canceled=0

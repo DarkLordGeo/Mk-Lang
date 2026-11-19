@@ -1,0 +1,1 @@
+usage: ucdcases [--every n] [--whatwg dir] <ucd-dir> <cases-dir>

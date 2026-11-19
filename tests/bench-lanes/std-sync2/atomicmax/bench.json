@@ -1,0 +1,36 @@
+{
+  "name": "atomicmax",
+  "table": "idiomatic",
+  "algorithm": "t workers (Mk: tasks; Go: goroutines; C, Rust and Zig: OS threads) each take a ticket n times with a relaxed fetch-and-add on one shared 64-bit counter, then raise one shared 64-bit maximum to the ticket with a weak compare-exchange loop (relaxed, relaxed): Mk atomic.Atomic[i64] FetchAdd and CompareExchangeWeak, C11 atomic_fetch_add_explicit and atomic_compare_exchange_weak_explicit, Rust AtomicI64 fetch_add and compare_exchange_weak, Zig std.atomic.Value(i64) fetchAdd and cmpxchgWeak (.monotonic), Go atomic.Int64 Add and CompareAndSwap (Go has no orders and no weak CAS). Prints the counter and the maximum, t * n and t * n - 1 (README.md).",
+  "overflow": "never",
+  "args": ["5000000", "8"],
+  "quick": ["10000", "8"],
+  "checksum": "40000000 39999999",
+  "quick_checksum": "80000 79999",
+  "sources": {
+    "mk": "mk",
+    "c": "atomicmax.c",
+    "rust": "atomicmax.rs",
+    "zig": "atomicmax.zig",
+    "go": "testdata/atomicmax.go"
+  },
+  "skip": {
+    "mk-wrap": "the counter stays below 2^40"
+  },
+  "concurrency": {
+    "mask": "0x5555",
+    "threads": 8,
+    "models": {
+      "mk": "tasks (M:N on 8 carriers), atomic.Atomic[i64] (D-380)",
+      "c": "OS threads, C11 <threads.h> and <stdatomic.h> explicit orders",
+      "go": "goroutines (GOMAXPROCS 8), sync/atomic.Int64",
+      "rust": "OS threads, std::sync::atomic::AtomicI64",
+      "zig": "OS threads, std.atomic.Value(i64)"
+    }
+  },
+  "no_counts": "B24 does not apply: the counter and the maximum show every operation happened",
+  "notes": [
+    "Concurrency row (B19): mask 0x5555, 8 threads.",
+    "Written by std-sync2's rerun for atomic.Atomic[T] (D-380, D-382): the ordered, generic atomic against each language's own, at the same orders (Go has only sequentially consistent atomics and a strong CAS, which on x86-64 compile to the same lock-prefixed instructions)."
+  ]
+}

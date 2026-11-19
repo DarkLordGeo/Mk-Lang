@@ -1,0 +1,21 @@
+seed 7: crash 7 torn false crashed
+0.000001 WARN accept failed: Os(code: 0)
+0.000003 DEBUG client 2 connected
+0.000005 DEBUG client 3 connected
+0.000007 DEBUG client 1 connected
+0.002837 ERROR simulated crash at log write 7
+0.002839 INFO shutting down with 3 clients connected
+0.002840 DEBUG client 3 left after 4 commands
+0.002841 DEBUG client 1 left after 3 commands
+0.002842 DEBUG client 2 left after 2 commands
+  client 0: sent 3, answered 2, refused 0, gone false, stopped some(ReadError)
+  client 1: sent 3, answered 2, refused 0, gone false, stopped some(ReadError)
+  client 2: sent 4, answered 3, refused 0, gone false, stopped some(ReadError)
+kvd sim: seeds 7..7, 3 clients of 16 steps
+  crashed at a log write: 1 runs, at 1 distinct writes, 0 torn
+  shut down cleanly:      0 runs
+  disk or network fault:  1 runs, 0 steps refused
+  client gone mid-command: 0 runs
+  recovery crashed and ran again: 0 runs
+  every run recovered what its clients were told, twice
+  digest 6ba6a5ec24cecd54

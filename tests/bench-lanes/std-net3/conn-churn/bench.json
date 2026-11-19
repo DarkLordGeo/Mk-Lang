@@ -1,0 +1,21 @@
+{
+  "name": "conn-churn",
+  "table": "idiomatic",
+  "algorithm": "n loopback TCP connections, one after another, of one thread: each round dials the listener, accepts the connection and reads the peer's address from the accept, writes two bytes (i mod 256, twice) at the accepted end, reads one at the dialled end, and closes the dialled end, then the accepted one; the dialled end closes with a byte unread, so the teardown is a reset and leaves no TIME_WAIT entry; sum = 31 sum + each byte read, wrapping. Mk's Accept takes the peer's address from the runtime's accept op (M9 item 7.22, D-810), as accept's own sockaddr in C, Rust, Zig and Go. README.md.",
+  "overflow": "wraps",
+  "args": ["1000"],
+  "quick": ["100"],
+  "checksum": "1000 2447299257384679924 0",
+  "quick_checksum": "100 6955345978518086706 0",
+  "sources": {
+    "mk": "mk",
+    "c": "connchurn.c",
+    "rust": "connchurn.rs",
+    "zig": "connchurn.zig",
+    "go": "testdata/connchurn.go"
+  },
+  "notes": [
+    "Written by M9 item 7.22 (plan/09-deferred.md), the row std-net3's request 24 asked for; it goes to bench8 (item 10) for publishing. No number for it exists yet. The checksum is tcp-pingpong's formula (sum = 31 sum + (i mod 256), mod 2^64) from a Go model over i = 0..n-1, and each cell printed it at n = 100, 200 and 1,000 on Windows (item 7.22's review fix, 2026-11-15; correctness runs, not timed).",
+    "Sockets: the teardown is a reset, so a run leaves no TIME_WAIT entry and the row fits the owner's 10,000-socket cap whatever the run count. The accepted end writes two bytes in one send, the dialled end reads one and closes with the other unread, and its TCP resets the connection (RFC 1122 4.2.2.13); one extra byte moves per round, and the plain close of each language does it with no linger option. Observed on Windows (item 7.22's review fix, 2026-11-15 23:55 GST, lane-N/7.22/fix/tw-cells.sh, netstat -an -p tcp before and after each cell): each of the five cells at n = 100, 200 and 1,000 left 0 new TIME_WAIT entries, while the earlier graceful C cell at n = 200 left 185 naming its listener's port. Linux: not yet run for this row (item 7.22's linux.sh counts the entries for the Mk cell)."
+  ]
+}

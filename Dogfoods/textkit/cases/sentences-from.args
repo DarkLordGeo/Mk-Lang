@@ -1,0 +1,4 @@
+sentences
+--from
+latin1
+$CASES/data/latin1.txt

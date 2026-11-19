@@ -1,0 +1,10 @@
+url
+--base
+http://h/a/b
+../c?q=1
+--set
+port=81
+--set
+hash=top
+--set
+search=k=v w

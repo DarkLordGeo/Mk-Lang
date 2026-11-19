@@ -1,0 +1,2 @@
+go test fuzz v1
+string("interface I {\n\tQ(&self): int\n}\n\nI.M(self) {\n\t_ = self\n\tx := self\n\tself.Q()\n\tself.Nope()\n}\n\nI[T].G(&self) {\n}\n\ninterface S[T] {\n\tItems(&self): []T\n}\n\nS[T].Count(&self): int {\n\treturn self.Items().Len()\n}\n\nF(xs: mut []int, f: fn(&int, &int): bool) {\n\txs.Sort(f)\n}\n")

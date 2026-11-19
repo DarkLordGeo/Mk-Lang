@@ -1,0 +1,16 @@
+--ascii
+--path
+v512
+--tile-rows
+2
+run
+$CASES/data/wide.pgm
+-
+gamma=0.6
+threshold
+erode
+dilate
+resize=97x7
+dilate
+posterize=3
+equalize

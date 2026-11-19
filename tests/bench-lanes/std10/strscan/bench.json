@@ -1,0 +1,142 @@
+{
+  "name": "strscan",
+  "table": "idiomatic",
+  "algorithm": "One string kernel per variant over a 64 KiB text from splitmix64 words, reps calls, call r on the text from offset r mod 64: the all-ASCII test, the last 0xFF byte, the UTF-16 length of UTF-8, and WTF-8 validation; the checksum adds each answer and the offset (README.md).",
+  "overflow": "wraps",
+  "std": [
+    "std.simd.IsAscii",
+    "std.simd.LastIndexByte",
+    "std.simd.Utf16Len",
+    "std.simd.ValidWtf8"
+  ],
+  "args": [
+    "lastindexbyte",
+    "65536",
+    "1000000",
+    "1"
+  ],
+  "quick": [
+    "lastindexbyte",
+    "65536",
+    "1000",
+    "1"
+  ],
+  "checksum": "100000000",
+  "quick_checksum": "100000",
+  "sources": {
+    "mk": "mk",
+    "rust": "strscan.rs",
+    "zig": "strscan.zig",
+    "go": "testdata/strscan.go"
+  },
+  "skip": {
+    "c": "no std form of any variant in C: the UCRT has no memrchr, and C has no all-ASCII test, UTF-16 length or WTF-8 validator",
+    "mk-wrap": "the checksum already uses the wrapping operators; the kernels are std.simd's, whose counters already wrap"
+  },
+  "no_counts": "B24 does not apply: an idiomatic row compares libraries; each kernel's correctness is std/simd/tests_scan.mk's and std/std-simd_vecpaths_test.go's",
+  "variants": [
+    {
+      "name": "isascii",
+      "args": [
+        "isascii",
+        "65536",
+        "1000000",
+        "1"
+      ],
+      "quick": [
+        "isascii",
+        "65536",
+        "1000",
+        "1"
+      ],
+      "checksum": "32500000",
+      "quick_checksum": "32020",
+      "baseline": [
+        "isascii",
+        "65536",
+        "0",
+        "1"
+      ],
+      "skip": {
+        "go": "no all-ASCII test of a slice in Go's std",
+        "zig": "no all-ASCII test of a slice in Zig's std: std.ascii.isAscii takes one byte"
+      }
+    },
+    {
+      "name": "lastindexbyte",
+      "args": [
+        "lastindexbyte",
+        "65536",
+        "1000000",
+        "1"
+      ],
+      "quick": [
+        "lastindexbyte",
+        "65536",
+        "1000",
+        "1"
+      ],
+      "checksum": "100000000",
+      "quick_checksum": "100000",
+      "baseline": [
+        "lastindexbyte",
+        "65536",
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "utf16len",
+      "args": [
+        "utf16len",
+        "65536",
+        "1000000",
+        "1"
+      ],
+      "quick": [
+        "utf16len",
+        "65536",
+        "1000",
+        "1"
+      ],
+      "checksum": "42276000000",
+      "quick_checksum": "42276000",
+      "baseline": [
+        "utf16len",
+        "65536",
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "validwtf8",
+      "args": [
+        "validwtf8",
+        "65536",
+        "1000000",
+        "1"
+      ],
+      "quick": [
+        "validwtf8",
+        "65536",
+        "1000",
+        "1"
+      ],
+      "checksum": "32500000",
+      "quick_checksum": "32020",
+      "baseline": [
+        "validwtf8",
+        "65536",
+        "0",
+        "1"
+      ],
+      "skip": {
+        "rust": "no public WTF-8 validator in Rust's std (std::sys_common::wtf8 is private)",
+        "go": "no WTF-8 validator in Go's std"
+      }
+    }
+  ],
+  "notes": [
+    "utf16len: Zig's calcUtf16LeLen, Rust's encode_utf16().count() and Go's range over runes decode every scalar, while Mk's Utf16Len counts bytes (non-continuations plus four-byte leads) and never decodes; the answer is the same on valid UTF-8, the work is not (std10 review N8)."
+  ]
+}

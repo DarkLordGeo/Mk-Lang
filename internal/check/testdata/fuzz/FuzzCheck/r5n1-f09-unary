@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// f09: unary minus and arithmetic on a named const as a const value argument.\nconst K: int = 3\n\nLane(const i: int): int {\n    return i * 10\n}\n\nexport Main(sys: &System): WriteError!void {\n    try sys.Print(\"{a}\\n\", (a: Lane(-K)))\n}\n")
