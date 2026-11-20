@@ -877,28 +877,43 @@ test "RT8-Dl-Busy a deadline armed by a task that computes with no cancellation 
         return
     }
     for round in 0..20 {
-        t0 := BenchNow()
-        var spins: u64 = 0
-        var exp := false
-        scope s := sys.io.Scope() {
-            s.CancelAfter(core.DurationOf(2 * DlMs + i64(round) * 100_000))
-            // No cancellation point and no schedule step in this loop: only
-            // another carrier, woken by the arming (OweArm, WakeOne), can
-            // fire the deadline.
-            for !s.Expired() {
-                spins +%= 1
-                if BenchNow() - t0 > DlBound {
-                    break
+        d := 2 * DlMs + i64(round) * 100_000
+        // A round whose deadline fired before the loop's first check (the
+        // task was preempted, or CancelAfter's wake took longer than d) saw
+        // no transition while computing; it is tried again, at most 20
+        // times, so the block cannot pass without seeing one.
+        var seen := false
+        for _ in 0..20 {
+            t0 := BenchNow()
+            var spins: u64 = 0
+            var exp := false
+            scope s := sys.io.Scope() {
+                s.CancelAfter(core.DurationOf(d))
+                // No cancellation point and no schedule step in this loop:
+                // only another carrier, woken by the arming (OweArm,
+                // WakeOne), can fire the deadline.
+                for !s.Expired() {
+                    spins +%= 1
+                    if BenchNow() - t0 > DlBound {
+                        break
+                    }
                 }
+                exp = s.Expired()
             }
-            exp = s.Expired()
+            took := BenchNow() - t0
+            // One assert per half, so a failure's line names it: exp is
+            // false when the loop gave up at DlBound before the deadline
+            // fired.
+            Assert(exp)
+            Assert(took < DlBound)
+            if spins > 0 {
+                seen = true
+                break
+            }
+            // Fired before the first check: never before its instant.
+            Assert(took >= d)
         }
-        // One assert per half, so a failure's line names it: spins is 0 when
-        // the deadline fired before the loop's first check, and exp is false
-        // when the loop gave up at DlBound before the deadline fired.
-        Assert(spins > 0)
-        Assert(exp)
-        Assert(BenchNow() - t0 < DlBound)
+        Assert(seen)
     }
     Assert(core.CancelQuiet())
 }

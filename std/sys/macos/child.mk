@@ -709,6 +709,12 @@ export TermMode(h: uint, out: uint, mode: i64, saved: []u8, old: mut []u8): OsRe
         for i in 0..ChTermSaved {
             old[i] = raw.Read(raw.Offset(q, i))
         }
+        // PENDIN (0x2000_0000 of c_lflag, bit 5 of byte 27) is the
+        // kernel's state, not a mode: Darwin sets it when ICANON turns on
+        // and clears it at the next read, so a mode put back from raw
+        // would read back different from the one saved. old leaves it out;
+        // TIOCSETA keeps the kernel's own bit whatever is set.
+        old[27] &= 0xDF
         if mode == core.IoTermGet {
             return Ok(i64(ChTermSaved))
         }

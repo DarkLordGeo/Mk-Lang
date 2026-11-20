@@ -120,7 +120,7 @@ export Open(io: Io): Error!Term {
         in_buf: [0; 4096], head: 0, tail: 0, holding: false, held_at: 0, pasting: false, high: 0, resized: false, empties: 0, cols: 0, rows: 0,
         reg: -1, mouse: false, mouse_at: 0, skip: 0, scan: 0, secret: [0; 1024], secret_len: 0,
         secret_raw: false, kitty: KittyZero())
-    // The size at the start, which a Linux read compares with (a resize
+    // The size at the start, which a Linux or macOS read compares with (a resize
     // between two reads); unknown (0) when no stream gives it.
     (cols, rows) := term.Size(io) else {
         (cols: 0, rows: 0)

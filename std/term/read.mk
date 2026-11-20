@@ -23,7 +23,7 @@
 // Windows' console gives records, not bytes: each key-down record's
 // UTF-16 unit (virtual-terminal input sends sequences as units) becomes
 // UTF-8 here, a surrogate pair joined across records; a window-size
-// record is a resize. Linux sends SIGWINCH for a resize and SIGCONT after
+// record is a resize. Linux and macOS send SIGWINCH for a resize and SIGCONT after
 // a stop (whose shell may have reset the mode): the runtime's signal entry
 // delivers both, and Read races them against the input. The runtime also
 // sets a raw Term's raw mode again on SIGCONT itself, for a
@@ -277,7 +277,7 @@ Term.Compact(mut self) {
 // Fill waits for input and appends what is queued to the buffer: true when
 // it read something or noted a resize, false when bounded and
 // EscapeWait passed with nothing. The buffer is compacted first. On Linux
-// Fill takes both signals' marks (SIGWINCH, SIGCONT: core.IoSignalMark)
+// and macOS Fill takes both signals' marks (SIGWINCH, SIGCONT: core.IoSignalMark)
 // and starts a task for each that waits from its mark, then sets raw mode
 // again while the Term is raw and compares the size (three system calls),
 // then waits: a signal after the marks is one the tasks see, however late
@@ -287,7 +287,7 @@ Term.Compact(mut self) {
 // are about to: at more than one carrier a few instructions between a
 // task's count and its baseline stay uncovered there. A simulated terminal
 // (std.sim) has no shell, no SIGWINCH and no SIGCONT, so those
-// Linux steps are skipped for it: a Sim run that reads the terminal makes
+// POSIX steps are skipped for it: a Sim run that reads the terminal makes
 // the same Sim operations and tasks on every target, and a wait
 // the Sim ends with no cause (main alone, nothing queued, no deadline: a
 // deadlock) is Canceled instead of a retry.
@@ -298,7 +298,7 @@ Term.Fill(mut self, io: Io, bounded: bool, left: i64): Error!bool {
         fail Device(code: 0)
     }
     native := !rt.IsForeign(self.input)
-    linux := Target.os == core.Os.Linux && native
+    posix := (Target.os == core.Os.Linux || Target.os == core.Os.Macos) && native
     var expired := false
     var resize := raw.Atomic[u32].New(0)
     var cont := raw.Atomic[u32].New(0)
@@ -310,7 +310,7 @@ Term.Fill(mut self, io: Io, bounded: bool, left: i64): Error!bool {
         if bounded {
             sc.CancelAfter(core.DurationOf(left))
         }
-        if linux {
+        if posix {
             // The marks come first, on this task: a delivery after them
             // ends the task's wait whenever that wait starts. A
             // signal whose mark the Io does not answer gets the plain
@@ -407,7 +407,7 @@ Term.Fill(mut self, io: Io, bounded: bool, left: i64): Error!bool {
     return true
 }
 
-// Compare is Fill's Linux step after the marks: Between on io masked
+// Compare is Fill's POSIX step after the marks: Between on io masked
 // (neither of its calls is a cancellation point), then FillPause's test
 // sleep on io itself, which a signal task's cancel ends. They are one
 // helper so the pause moves with the compare: a compare moved above the
@@ -422,7 +422,7 @@ Term.Compare(mut self, io: Io, sized: mut bool): core.IoResult {
     return r
 }
 
-// Between is what Fill does on Linux once the marks are taken (or, on an
+// Between is what Fill does on Linux and macOS once the marks are taken (or, on an
 // Io with no marks, once the signal tasks are armed):
 // raw mode set again while the Term is raw, since a stop and a continue
 // that came between two reads reached no wait and the shell may have put
@@ -450,7 +450,7 @@ Term.Between(mut self, io: Io, sized: mut bool): core.IoResult {
 }
 
 // FillPause is a test hook (tests_pty.mk's "winchpause" child):
-// when set, the next Linux Fill sleeps that many milliseconds between its
+// when set, the next POSIX Fill sleeps that many milliseconds between its
 // size compare and its wait (Compare), once the marks are taken (or, on an
 // Io with no marks, its signal tasks armed). 0 in every other
 // program, where it costs Fill one load.
@@ -467,7 +467,7 @@ Paused(io: Io) {
 }
 
 // SignalLate is a test hook (tests_pty.mk's "winchlate" child): when set,
-// the next Linux Fill's signal tasks sleep that many milliseconds before
+// the next POSIX Fill's signal tasks sleep that many milliseconds before
 // their waits start, as a task a busy carrier runs late would, so a
 // SIGWINCH that comes after the compare and before a wait starts can be
 // sent on purpose. 0 in every other program, where it costs Fill one load.
