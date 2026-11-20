@@ -103,6 +103,7 @@ func cArgs(j CJob, asm bool) ([]string, error) {
 		if OSOf(j.Triple) == "windows" {
 			args = append(args, "-mno-stack-arg-probe")
 		}
+		args = append(args, NoOutlineAtomics(j.Triple)...)
 	}
 	args = append(args, "-nostdinc")
 	if j.ResourceDir != "" {

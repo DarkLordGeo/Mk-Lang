@@ -84,7 +84,9 @@ func (t *Tools) Compile(ctx context.Context, j CompileJob) error {
 // compileArgs is the clang command line after the executable:
 // --target=T -x ir -c IN -o OUT -O0|-O3|-Oz [-flto=thin|full] [-march=CPU|-mcpu=CPU]
 // -ffunction-sections -fdata-sections -fno-addrsig -fdebug-compilation-dir=.
-// [-mno-incremental-linker-compatible -Xclang -gno-codeview-command-line].
+// [-mno-outline-atomics] [-mno-incremental-linker-compatible -Xclang
+// -gno-codeview-command-line]. -mno-outline-atomics is for AArch64 triples
+// (NoOutlineAtomics).
 // -march names the CPU on x86_64 and -mcpu on AArch64. The last two are for
 // COFF triples only: without them clang writes a timestamp into the COFF
 // header and the cc1 command line, with the input's absolute path and the
@@ -119,6 +121,7 @@ func compileArgs(j CompileJob) ([]string, error) {
 		}
 	}
 	args = append(args, "-ffunction-sections", "-fdata-sections", "-fno-addrsig", "-fdebug-compilation-dir=.")
+	args = append(args, NoOutlineAtomics(j.Triple)...)
 	if FormatOf(j.Triple) == COFF {
 		args = append(args, "-mno-incremental-linker-compatible", "-Xclang", "-gno-codeview-command-line")
 	}
@@ -126,6 +129,20 @@ func compileArgs(j CompileJob) ([]string, error) {
 		args = append(args, "-mllvm", o)
 	}
 	return args, nil
+}
+
+// NoOutlineAtomics is -mno-outline-atomics for an AArch64 triple, nothing
+// otherwise. clang's driver turns outline atomics on for aarch64 Linux when
+// it finds a GCC installation of 9.3.1 or later on the build host, and an
+// atomic then becomes a call of a libgcc or compiler-rt helper
+// (__aarch64_cas4_acq_rel and its kin), which mk does not link: so a build
+// would link on one host and not on another. With the flag every atomic
+// is inline LL/SC code (the AArch64 baseline has no LSE), on every host.
+func NoOutlineAtomics(triple string) []string {
+	if ArchOf(triple) == "arm64" {
+		return []string{"-mno-outline-atomics"}
+	}
+	return nil
 }
 
 // llvmOptions are the LLVM options j's Tune gives the compile, without

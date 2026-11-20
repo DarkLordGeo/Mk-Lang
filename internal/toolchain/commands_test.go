@@ -48,7 +48,7 @@ func TestCompileCommandLine(t *testing.T) {
 		{CompileJob{Triple: "x86_64-unknown-linux-gnu", Input: in, Output: out, Opt: O3, LTO: true, CPU: "x86-64-v2"},
 			append([]string{"--target=x86_64-unknown-linux-gnu", "-x", "ir", "-c", in, "-o", out, "-O3", "-flto=thin", "-march=x86-64-v2"}, tail...)},
 		{CompileJob{Triple: "aarch64-unknown-linux-gnu", Input: in, Output: out, Opt: O3, CPU: "neoverse-n1"},
-			append([]string{"--target=aarch64-unknown-linux-gnu", "-x", "ir", "-c", in, "-o", out, "-O3", "-mcpu=neoverse-n1"}, tail...)},
+			append(append([]string{"--target=aarch64-unknown-linux-gnu", "-x", "ir", "-c", in, "-o", out, "-O3", "-mcpu=neoverse-n1"}, tail...), "-mno-outline-atomics")},
 	}
 	for _, c := range cases {
 		got, err := compileArgs(c.j)

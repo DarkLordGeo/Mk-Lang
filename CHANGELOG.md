@@ -6,7 +6,7 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 
 ### Targets
 
-- `mk build` builds `aarch64-linux`: static AArch64 executables, cross-compiled from any host. Tested under qemu-user only, not on ARM hardware. System-libc mode and libraries stay x86_64-only.
+- `mk build` builds `aarch64-linux`: static AArch64 executables, cross-compiled from any host. Tested under qemu-user only, not on ARM hardware. System-libc mode and libraries stay x86_64-only. Atomics are always inline (`-mno-outline-atomics`), so a build on an AArch64 Linux host with GCC installed no longer needs libgcc's `__aarch64_*` helpers.
 - New preliminary targets `aarch64-macos` and `x86_64-macos`: Mach-O executables for macOS 11 or later, linked by `ld64.lld` against libSystem, with no macOS SDK needed. Never run by the project; parts of `std.sys` answer `SysErr.Unsupported` there ([macOS and AArch64](doc/reference.md#macos-and-aarch64)).
 - `asm` works on aarch64, with the register classes `reg` and `vreg`, the `w`, `x`, `b`, `h`, `s`, `d` and `q` template modifiers, and `x18`, `x19`, `x29` and `sp` reserved; E1104 `reason: no-register-table` no longer occurs for aarch64.
 
