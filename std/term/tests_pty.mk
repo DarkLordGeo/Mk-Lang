@@ -681,6 +681,9 @@ TmModeAfter(sys: &System, mode: str): (before: str, after: str, code: int) from 
     // only: on Linux a pty's termios outlives its clients, and a child that
     // made the pty its controlling terminal would make every later child's
     // Spawn on it Denied. There it runs off the terminal and only waits.
+    // On macOS it does the same, and there the first open of a peer no one
+    // holds resets termios (XNU's ptsopen), so every probe starts from the
+    // default mode and before == after shows nothing about the restore.
     var a: [4]str = [sys.args[0], sys.args[1], "hold", "unused"]
     var c := proc.DefaultCommand
     c.args = a[..]

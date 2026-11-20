@@ -119,6 +119,7 @@ const Echild: i64 = 10
 const Emfile: i64 = 24
 const Eagain: i64 = 35
 const Einprogress: i64 = 36
+const Einval: i64 = 22
 const Econnaborted: i64 = 53
 const Enotconn: i64 = 57
 const FSetFd: i32 = 2
@@ -240,7 +241,8 @@ SpinUnlock(w: *raw.Atomic[u32]) {
 // OsArea is the first byte of op.os. macOS layout: the wait, done or child
 // list link at 0, the stage (1 connecting) at 12, a sockaddr at 16 (32
 // bytes) with its length at 48, a datagram receive's struct msghdr at 72
-// (48 bytes) and its struct iovec at 128 (16 bytes). Op is C layout: os
+// (48 bytes), its struct iovec at 128 (16 bytes) and the byte an empty
+// receive takes its datagram into at 144. Op is C layout: os
 // starts at byte 136, so these words are naturally aligned.
 OsArea(op: *Op): *u8 {
     unsafe "op is a live operation" {
@@ -254,6 +256,7 @@ const OsAddr: int = 16
 const OsAddrN: int = 48
 const OsMsg: int = 72
 const OsIov: int = 128
+const OsScratch: int = 144
 
 Next(op: *Op): *Op {
     unsafe "the link holds a live op's address or 0" {

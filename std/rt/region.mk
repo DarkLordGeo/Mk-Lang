@@ -124,6 +124,7 @@ const FreshCommit: int = 4096
 /// VMA per slot), GuardProt for good once the kernel refused it or
 /// MK_TEST_GUARDS=prot asked for it (the lowest page PROT_NONE: two VMAs per
 /// slot, so idle tasks are bounded by (vm.max_map_count - maps) / 2).
+/// macOS has no light guard: its slots are GuardProt from the start.
 /// Windows slots always use PAGE_GUARD and never read it.
 export const GuardUntried: u32 = 0
 /// GuardLight: the lowest page of a slot is a madvise guard.
@@ -138,7 +139,7 @@ struct GuardWords {
 var Guards: GuardWords = GuardWords(mode: raw.Atomic[u32].New(0))
 
 /// GuardKind is the guard kind slots are prepared with now (GuardUntried
-/// before the first Linux slot).
+/// before the first Linux slot, and always on Windows; GuardProt on macOS).
 /// O(1); allocates nothing.
 export GuardKind(): u32 {
     // Edge: none needed; every slot handed out was prepared under the mode
@@ -213,7 +214,7 @@ RegionReserve(r: *Region, shift: u32, var slots: int, index: int): bool {
 /// region at most 11 reservation calls of address space (the count halves on
 /// each refusal), nothing committed; allocates nothing from the Heap.
 export RegionsInit(test_slots: int, prot_guards: bool): bool {
-    if prot_guards && Target.os == Os.Linux {
+    if (prot_guards && Target.os == Os.Linux) || Target.os == Os.Macos {
         // Edge: none needed; stored before any task exists.
         Guards.mode.Store(GuardProt)
     }

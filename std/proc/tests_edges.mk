@@ -471,6 +471,13 @@ test "Pty.Read after its only child was waited for returns its output, then the 
     if sys.args.Len() > 2 {
         SpChild(sys)
     }
+    // Not macOS: there the last close of a pty's peer, at the child's exit,
+    // waits at most 60 ticks for the master to read and then discards the
+    // output left (XNU's ptsclose and ttyclose), so a read after the wait
+    // finds only the end.
+    if Target.os == core.Os.Macos {
+        return
+    }
     io := sys.io
     p := Pty.Open(io, 80, 24).Must()
     var a: [6]str = [sys.args[0], sys.args[1], "gen", "5", "0", "0"]
@@ -492,7 +499,9 @@ test "a descriptor a Linux process holds without close-on-exec does not reach th
     if sys.args.Len() > 2 {
         SpChild(sys)
     }
-    if SpWin() {
+    // Linux only, as its title says: the child counts its descriptors in
+    // /proc/self/fd, which macOS does not have.
+    if SpWin() || Target.os == core.Os.Macos {
         return
     }
     var f: [3]str = [sys.args[0], sys.args[1], "fds"]
@@ -641,6 +650,18 @@ SpPtyCutToEnd(io: Io, p: &Pty, buf: mut []u8): int {
     Panic("Pty.Read gave no end in 4,000 rounds")
 }
 
+// SpPtyPass reads p to its end: plainly in pass 0, cut by deadlines
+// (SpPtyCutToEnd) in pass 1; the bytes read.
+SpPtyPass(io: Io, p: &Pty, pass: int): int {
+    var b: [256]u8 = [0; 256]
+    if pass == 0 {
+        (total, end) := SpPtyToEnd(io, p, mut b[..], 10000)
+        Assert(end)
+        return total
+    }
+    return SpPtyCutToEnd(io, p, mut b[..])
+}
+
 test "Pty.Read cut by deadlines of 0 to 6 ms, round after round, loses no byte: the end comes, and on Linux the same child's output has the same length read with and without cuts (repeatable)" (sys: &System) {
     if sys.args.Len() > 2 {
         SpChild(sys)
@@ -655,14 +676,15 @@ test "Pty.Read cut by deadlines of 0 to 6 ms, round after round, loses no byte: 
         c.terminal = some(&p)
         (child, stdin, stdout, stderr) := Spawn(sys.arena, io, &c).Must()
         SpCloseEnds(stdin, stdout, stderr)
-        Assert(SpCode(child.Wait(io).Must()) == 0)
-        var b: [256]u8 = [0; 256]
-        if pass == 0 {
-            (total, end) := SpPtyToEnd(io, &p, mut b[..], 10000)
-            Assert(end)
-            totals[0] = total
+        // macOS reads before the wait: there the last close of a pty's
+        // peer, at the child's exit, waits at most 60 ticks for the master
+        // to read and then discards the output left (XNU's ptsclose).
+        if Target.os == core.Os.Macos {
+            totals[pass] = SpPtyPass(io, &p, pass)
+            Assert(SpCode(child.Wait(io).Must()) == 0)
         } else {
-            totals[1] = SpPtyCutToEnd(io, &p, mut b[..])
+            Assert(SpCode(child.Wait(io).Must()) == 0)
+            totals[pass] = SpPtyPass(io, &p, pass)
         }
         p.Close()
     }

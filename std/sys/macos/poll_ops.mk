@@ -78,8 +78,10 @@ Try(op: *Op): bool {
                 Put32(o, OsAddrN, 32)
                 r = int(accept(s, raw.Offset(o, OsAddr), raw.PtrCast[u8, u32](raw.Offset(o, OsAddrN))))
                 if r >= 0 {
-                    AcceptDone(op, Trunc[uint](r))
-                    return true
+                    if AcceptDone(op, Trunc[uint](r)) {
+                        return true
+                    }
+                    continue
                 }
             } else if k == OpConnect {
                 return ConnectCheck(op)
@@ -118,7 +120,10 @@ Try(op: *Op): bool {
 }
 
 // RecvDgram is one recvmsg of a datagram into op.buf: the msghdr at OsMsg
-// names the sockaddr at OsAddr (32 bytes) and the iovec at OsIov. Darwin's
+// names the sockaddr at OsAddr (32 bytes) and the iovec at OsIov. An empty
+// op.buf receives into the byte at OsScratch instead: Darwin's recvmsg of
+// no bytes returns 0 at once with no datagram taken and no address when
+// nothing is queued, where it must wait; DgramDone cuts the count to 0. Darwin's
 // struct msghdr: name at 0, namelen at 8, iov at 16, iovlen at 24, control
 // at 32, controllen at 40, flags at 44 (48 bytes); struct iovec: base at 0,
 // len at 8. The count, or -1 with errno set.
@@ -128,8 +133,13 @@ RecvDgram(op: *Op): int {
         m := raw.Offset(o, OsMsg)
         v := raw.Offset(o, OsIov)
         raw.Fill(m, 0, 48)
-        Put64(v, 0, u64(raw.Addr((*op).buf)))
-        Put64(v, 8, u64(Clip((*op).len)))
+        if (*op).len <= 0 {
+            Put64(v, 0, u64(raw.Addr(raw.Offset(o, OsScratch))))
+            Put64(v, 8, 1)
+        } else {
+            Put64(v, 0, u64(raw.Addr((*op).buf)))
+            Put64(v, 8, u64(Clip((*op).len)))
+        }
         Put64(m, 0, u64(raw.Addr(raw.Offset(o, OsAddr))))
         Put32(m, 8, 32)
         Put64(m, 16, u64(raw.Addr(v)))
@@ -165,24 +175,34 @@ SockSetup(s: i32, nonblock: bool): i64 {
 // AcceptDone readies the new socket s (close-on-exec, non-blocking,
 // SO_NOSIGPIPE: set here, never assumed from the listener), registers it
 // and reads the peer's address; a socket that cannot be readied or
-// registered is closed (no leak) and the accept fails.
-AcceptDone(op: *Op, s: uint) {
+// registered is closed (no leak) and the accept fails. Darwin's accept can
+// hand out a connection its peer reset while it was queued, with no
+// address (length 0), and its setsockopt then answers EINVAL (a socket shut
+// both ways takes no option): that one is closed and false asks the caller
+// to accept again, as for ECONNABORTED. true: op finished, res set.
+AcceptDone(op: *Op, s: uint): bool {
     unsafe "op is owned by this thread" {
         e := SockSetup(Trunc[i32](s), true)
+        if e == Einval {
+            _ = lc.CloseFd(Trunc[i32](s))
+            return false
+        }
         if e != 0 {
             _ = lc.CloseFd(Trunc[i32](s))
             (*op).res = SockFail(e)
-            return
+            return true
         }
         if !KqAdd(s) {
             _ = lc.CloseFd(Trunc[i32](s))
             (*op).res = Fail(Emfile)
-            return
+            return true
         }
-        if !DecodeAddr(raw.Offset(OsArea(op), OsAddr), mut (*op).addr) {
+        o := OsArea(op)
+        if Get32(o, OsAddrN) == 0 || !DecodeAddr(raw.Offset(o, OsAddr), mut (*op).addr) {
             (*op).addr = SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
         }
         (*op).res = Ok(Trunc[i64](s))
+        return true
     }
 }
 
@@ -244,7 +264,13 @@ ReadyTry(op: *Op): bool {
                 return false
             }
             if (Get16(q, 6) & PollNval) != 0 {
-                (*op).res = Fail(9)
+                // Darwin's poll serves no device: a terminal's readiness is
+                // TermReadyNow's (child.mk), a zero-timeout kqueue read.
+                t := TermReadyNow((*op).h)
+                if t == 0 {
+                    return false
+                }
+                (*op).res = if t > 0 { Ok(0) } else { Fail(-t) }
                 return true
             }
             (*op).res = Ok(0)
@@ -358,14 +384,13 @@ KqSubmit(op: *Op): bool {
             (*op).res = FailWith(core.SysErr.Other)
             return false
         }
-        if !Attached(op) {
-            if Unwatched(op) && (*op).kind != OpConnect && Try(op) {
-                return false
-            }
-            (*op).res = FailWith(if Unwatched(op) { core.SysErr.Unsupported } else { core.SysErr.Other })
-            return false
-        }
+        // A connect is made whether or not the descriptor is attached, as
+        // on Linux: a blocking socket (SocketOpen with async false, never
+        // registered) connects in the call. Only a connect that would go on
+        // in the background needs the write edge, so only that one is
+        // refused on an unattached descriptor.
         if (*op).kind == OpConnect {
+            attached := Attached(op)
             o := OsArea(op)
             n := EncodeAddr(&(*op).addr, raw.Offset(o, OsAddr))
             if n == 0 {
@@ -383,6 +408,10 @@ KqSubmit(op: *Op): bool {
                 (*op).res = ConnectFail(e)
                 return false
             }
+            if !attached {
+                (*op).res = FailWith(core.SysErr.Other)
+                return false
+            }
             Put32(o, OsStage, 1)
             var s := seq
             for {
@@ -398,6 +427,13 @@ KqSubmit(op: *Op): bool {
                     return false
                 }
             }
+        }
+        if !Attached(op) {
+            if Unwatched(op) && Try(op) {
+                return false
+            }
+            (*op).res = FailWith(if Unwatched(op) { core.SysErr.Unsupported } else { core.SysErr.Other })
+            return false
         }
         var first := true
         for {

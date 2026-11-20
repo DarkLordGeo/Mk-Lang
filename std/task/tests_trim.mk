@@ -3,8 +3,8 @@
 // What: the RT14-Trim-* blocks (Slots, Heap, Race, RaceGate, Refused) over
 // TrimSpare in sched.mk.
 // How: Linux reads the resident set (/proc/self/statm, IdleMem) and the
-// mapping count (/proc/self/maps); both targets read the runtime's own counts
-// (rt.SlotCounts, rt.HeapEmptySegments).
+// mapping count (/proc/self/maps), which macOS has no file for; every target
+// reads the runtime's own counts (rt.SlotCounts, rt.HeapEmptySegments).
 
 import std.core
 import std.raw
@@ -85,7 +85,7 @@ test "RT14-Trim-Slots after 1,000 tasks of 64 KiB, idle carriers give back the s
         // Every cold slot commits its top page alone (and the guard page
         // below it, which the count leaves out), as a fresh one does.
         Assert(cold_pages == cold)
-    } else {
+    } else if Target.os == Os.Linux {
         // 1,000 frames of 64 KiB were resident at the peak; after the trim
         // only the kept slots' are, at most 256 x 68 KiB (17.4 MB) of the
         // 65.5 MB.

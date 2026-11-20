@@ -284,10 +284,11 @@ UxDrainUntil(io: Io, rx: Stream, h: &Heap, n: mut int, z: mut bool, y: mut bool)
     rx.Close()
 }
 
-// UxFds is how many descriptors /proc/self/fd lists, the listing's own
-// included (Linux).
+// UxFds is how many descriptors the process's descriptor directory lists,
+// the listing's own included: /proc/self/fd on Linux, /dev/fd on macOS
+// (which has no /proc).
 UxFds(sys: &System): int {
-    var d := fs.Dir.Open(sys.io, "/proc/self/fd").Must()
+    var d := fs.Dir.Open(sys.io, if Target.os == core.Os.Macos { "/dev/fd" } else { "/proc/self/fd" }).Must()
     var n := 0
     for {
         e := d.Next(sys.arena, sys.io).Must()

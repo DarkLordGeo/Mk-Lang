@@ -304,16 +304,16 @@ jobs:
         if: matrix.part == 'checks'
         run: go test -p 2 ./internal/toolchain ./internal/driver -run 'MachO|TBD|FormatOfMacOS|TestStdTargetMissing|TestAArch64'
 
+      # The Go harnesses judge std's blocks as the gate does: a name's
+      # "[exit N: text]" and "[env K=V]" are honoured there, not by a bare
+      # mk test. The host's own target runs natively, dev profile.
       - name: std tests
         if: matrix.part == 'std'
+        env:
+          TARGET: ${{ runner.arch == 'ARM64' && 'aarch64-macos' || 'x86_64-macos' }}
         run: |
-          status=0
-          for m in std.core std.rt std.task std.sync std.time std.fs std.proc std.net std.term std.dl; do
-            echo "::group::$m"
-            go run ./cmd/mk test --std="$m" || status=1
-            echo "::endgroup::"
-          done
-          exit $status
+          go test -p 2 -timeout 100m ./internal/stdtest -run "^TestStdMkTests$/^$TARGET$/^dev$"
+          go test -p 2 -timeout 100m ./internal/driver -run "^TestStdRuntimeTests$/^$TARGET$"
 
       - name: Programs
         if: matrix.part == 'programs'
@@ -396,16 +396,16 @@ jobs:
         if: matrix.part == 'checks'
         run: go test -p 2 ./internal/toolchain ./internal/driver -run 'MachO|TBD|FormatOfMacOS|TestStdTargetMissing|TestAArch64'
 
+      # The Go harnesses judge std's blocks as the gate does: a name's
+      # "[exit N: text]" and "[env K=V]" are honoured there, not by a bare
+      # mk test. The host's own target runs natively, dev profile.
       - name: std tests
         if: matrix.part == 'std'
+        env:
+          TARGET: aarch64-linux
         run: |
-          status=0
-          for m in std.core std.rt std.task std.sync std.time std.fs std.proc std.net std.term std.dl; do
-            echo "::group::$m"
-            go run ./cmd/mk test --std="$m" || status=1
-            echo "::endgroup::"
-          done
-          exit $status
+          go test -p 2 -timeout 100m ./internal/stdtest -run "^TestStdMkTests$/^$TARGET$/^dev$"
+          go test -p 2 -timeout 100m ./internal/driver -run "^TestStdRuntimeTests$/^$TARGET$"
 
       - name: Programs
         if: matrix.part == 'programs'

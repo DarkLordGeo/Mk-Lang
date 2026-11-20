@@ -575,15 +575,21 @@ test "RT8-Call-OpenBytes rt.OpenBytes: a NUL is InvalidPath, UTF-8 opens on any 
     if PWin() {
         Assert(rt.OpenBytes(io, bad, 1).err == core.SysErr.InvalidPath)
     } else {
-        // Linux takes any bytes: create, reopen and remove the name.
+        // Linux takes any bytes: create, reopen and remove the name. On
+        // macOS the file system judges them: APFS keeps names as UTF-8 and
+        // refuses the name (EILSEQ, InvalidPath), and nothing was made.
         c := rt.OpenBytes(io, bad, 1)
-        Assert(c.err == core.SysErr.None)
-        Assert(NativeClose(io, Trunc[uint](c.value)).err == core.SysErr.None)
-        r := rt.OpenBytes(io, bad, 0)
-        Assert(r.err == core.SysErr.None)
-        Assert(NativeClose(io, Trunc[uint](r.value)).err == core.SysErr.None)
-        Assert(rt.RemoveAt(io, 0, bad, false).err == core.SysErr.None)
-        Assert(rt.OpenBytes(io, bad, 0).err == core.SysErr.NotFound)
+        if Target.os == Os.Macos && c.err == core.SysErr.InvalidPath {
+            Assert(rt.OpenBytes(io, bad, 0).err != core.SysErr.None)
+        } else {
+            Assert(c.err == core.SysErr.None)
+            Assert(NativeClose(io, Trunc[uint](c.value)).err == core.SysErr.None)
+            r := rt.OpenBytes(io, bad, 0)
+            Assert(r.err == core.SysErr.None)
+            Assert(NativeClose(io, Trunc[uint](r.value)).err == core.SysErr.None)
+            Assert(rt.RemoveAt(io, 0, bad, false).err == core.SysErr.None)
+            Assert(rt.OpenBytes(io, bad, 0).err == core.SysErr.NotFound)
+        }
     }
     // An Io that is not native: UTF-8 reaches its open entry, other bytes
     // are Unsupported, a NUL is still InvalidPath.

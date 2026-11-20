@@ -36,6 +36,12 @@ const PassSoAcceptConn: i32 = 0x2
 // PassEmsgsize is Darwin's EMSGSIZE.
 const PassEmsgsize: i64 = 40
 const PassEbadf: i64 = 9
+const PassEinval: i64 = 22
+// PassEnoprotoopt is Darwin's ENOPROTOOPT, getsockopt's answer for
+// SO_ACCEPTCONN.
+const PassEnoprotoopt: i64 = 42
+// PassFdSocketInfo is PROC_PIDFDSOCKETINFO, proc_pidfdinfo's flavor.
+const PassFdSocketInfo: i32 = 3
 // PassCmsgBytes is sizeof(struct cmsghdr), already 4-byte aligned.
 const PassCmsgBytes: int = 12
 // PassCtlBytes is the control buffer: a cmsghdr and PassMax descriptors of
@@ -63,7 +69,8 @@ PassMsg(m: *u8, v: *u8, p: *u8, n: int, ctl: *u8, cn: int) {
 /// byte (SCM_RIGHTS), without waiting: value the bytes sent, at least 1,
 /// for the caller to send the rest of as plain bytes; -1 when the socket's
 /// buffer is full and nothing was sent (EAGAIN: the caller waits and asks
-/// again). The caller gives at least one byte and 1 to PassMax
+/// again; Darwin's EMSGSIZE for a full buffer too). The caller gives at
+/// least one byte and 1 to PassMax
 /// descriptors; anything else is Other before any call. A peer gone is
 /// EPIPE, reported as Reset (no SIGPIPE: see the header). O(1): one system
 /// call; allocates nothing.
@@ -92,7 +99,14 @@ export UnixSendFds(fd: uint, data: []u8, fds: []uint): OsResult {
                 return Ok(i64(r))
             }
             e := Errno()
-            if e == UxEagain {
+            // Darwin answers EMSGSIZE, not EAGAIN, for a message with
+            // descriptors while the buffer is full: a Unix stream's send
+            // lowers the sender's high-water mark by what the peer has
+            // queued, and a control part above that mark is refused. The
+            // caller's checks keep a message's control part (at most 268
+            // bytes) far below an empty buffer's mark, so here it is the
+            // full buffer, and the caller waits.
+            if e == UxEagain || e == PassEmsgsize {
                 return Ok(-1)
             }
             if e != UxEintr {
@@ -178,7 +192,9 @@ export UnixRecvFds(fd: uint, buf: mut []u8, fds: mut []uint): OsResult {
 /// one, 3 for any other socket (datagram, seqpacket, or a family other
 /// than Unix, IPv4 and IPv6); os a stream socket's family (Unix, Inet4 or
 /// Inet6) with its bound port in bits 16 and up (TCP only). A value naming
-/// nothing is EBADF (fstat's answer). O(1) system calls; allocates nothing.
+/// nothing is EBADF (fstat's answer). Listening is SO_ACCEPTCONN where
+/// getsockopt answers it, else PassListening's. O(1) system calls;
+/// allocates nothing.
 export PassKind(fd: uint): OsResult {
     var st: [18]u64 = [0; 18]
     if StatFd(fd, mut st) != 0 {
@@ -199,11 +215,6 @@ export PassKind(fd: uint): OsResult {
         if ty[0] != UxSockStream {
             return Ok(3)
         }
-        n[0] = 4
-        if getsockopt(h, UxSolSocket, PassSoAcceptConn, raw.PtrCast[i32, u8](raw.DataMut(mut acc[..])), raw.DataMut(mut n[..])) != 0 {
-            return SockFail(Errno())
-        }
-        kind: i64 = if acc[0] != 0 { 2 } else { 1 }
         n[0] = 128
         p := raw.PtrCast[u64, u8](raw.DataMut(mut sa[..]))
         if getsockname(h, p, raw.DataMut(mut n[..])) != 0 {
@@ -212,6 +223,22 @@ export PassKind(fd: uint): OsResult {
         // sa_len at 0, sa_family at 1, and for IPv4 and IPv6 the port at 2
         // in network order.
         family: u8 = raw.Read(raw.Offset(p, 1))
+        n[0] = 4
+        var listening := false
+        if getsockopt(h, UxSolSocket, PassSoAcceptConn, raw.PtrCast[i32, u8](raw.DataMut(mut acc[..])), raw.DataMut(mut n[..])) == 0 {
+            listening = acc[0] != 0
+        } else {
+            e := Errno()
+            if e != PassEnoprotoopt {
+                return SockFail(e)
+            }
+            l := PassListening(h, family)
+            if l < 0 {
+                return SockFail(-l)
+            }
+            listening = l == 1
+        }
+        kind: i64 = if listening { 2 } else { 1 }
         if family == Trunc[u8](UxAfUnix) {
             return OsResult(value: kind, err: core.SysErr.None, os: i64(Unix))
         }
@@ -223,6 +250,34 @@ export PassKind(fd: uint): OsResult {
             return OsResult(value: kind, err: core.SysErr.None, os: i64(Inet6) | (port << 16))
         }
         return Ok(3)
+    }
+}
+
+// PassListening is SO_ACCEPTCONN where getsockopt does not serve it
+// (Darwin answers ENOPROTOOPT): the socket options in the descriptor's
+// struct socket_fdinfo (proc_pidfdinfo, PROC_PIDFDSOCKETINFO), 1 when
+// listening, 0 when not, or minus an errno. The struct is a 24-byte
+// struct proc_fileinfo, then struct socket_info, whose 136-byte struct
+// vinfo_stat is followed by soi_so and soi_pcb (u64), soi_type,
+// soi_protocol and soi_family (int) and soi_options (short), so soi_type
+// is at byte 176, soi_family at 184 and soi_options at 188
+// (<sys/proc_info.h>). A record whose type is not SOCK_STREAM or whose
+// family is not getsockname's (family) is not that layout: EINVAL, never a
+// guess.
+PassListening(h: i32, family: u8): i64 {
+    var info: [256]u64 = [0; 256]
+    unsafe "proc_pidfdinfo writes at most the 2,048 bytes of info, this frame's" {
+        b := raw.PtrCast[u64, u8](raw.DataMut(mut info[..]))
+        r := proc_pidfdinfo(getpid(), h, PassFdSocketInfo, b, 2048)
+        if r <= 0 {
+            e := Errno()
+            return if e == 0 { -PassEinval } else { -e }
+        }
+        if r < 190 || UxGet32(b, 176) != Trunc[u32](UxSockStream) || UxGet32(b, 184) != u32(family) {
+            return -PassEinval
+        }
+        opts := u32(raw.Read(raw.Offset(b, 188))) | (u32(raw.Read(raw.Offset(b, 189))) << 8)
+        return if (opts & Trunc[u32](PassSoAcceptConn)) != 0 { 1 } else { 0 }
     }
 }
 

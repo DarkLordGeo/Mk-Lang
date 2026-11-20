@@ -8,8 +8,8 @@
 //
 // How: a stream's handle is the directory's descriptor itself, which std.rt
 // closes with Close and removeat.mk's calls name entries by, so no DIR
-// outlives a call: each refill opens the directory afresh (openat of ".",
-// with its own offset), makes a DIR of that descriptor, skips the entries
+// outlives a call: each refill duplicates the descriptor (F_DUPFD_CLOEXEC)
+// and rewinds it, makes a DIR of the duplicate, skips the entries
 // earlier refills used, reads until the block is full, and closes the DIR,
 // as Go's syscall.Getdirentries does on Darwin. Each entry's kind, size
 // and time come from one fstatat(AT_SYMLINK_NOFOLLOW) in the refill; a
@@ -177,7 +177,9 @@ DirKindOnly(block: mut []u8) {
 /// part of a listing that makes system calls, so std.task runs it on the
 /// blocking pool, once per block rather than once per entry. While records
 /// written earlier are unread it makes no call and answers 1. Else one
-/// refill: openat(h, "."), fdopendir, readdir past the entries earlier
+/// refill: a duplicate of h rewound to the start (fcntl F_DUPFD_CLOEXEC
+/// and lseek, which work on a directory that may be read but not
+/// searched), fdopendir, readdir past the entries earlier
 /// refills used, then readdir and one fstatat(AT_SYMLINK_NOFOLLOW) per new
 /// entry until the block is full or the directory ends, and closedir; a
 /// symbolic link is IoKindLink. value: 1 when entries are ready, 0 at the
@@ -195,7 +197,7 @@ DirKindOnly(block: mut []u8) {
 /// entries per block), and entries added or removed between refills may be
 /// seen twice or missed, as Go's syscall.Getdirentries on Darwin, except
 /// for removals by RemoveAt inside the stream, which it counts.
-/// One openat, fdopendir and closedir per refill and one fstatat per new
+/// One fcntl, lseek, fdopendir and closedir per refill and one fstatat per new
 /// entry (per new DT_UNKNOWN entry for kinds alone); libSystem allocates
 /// the DIR and frees it before the call returns; std allocates nothing.
 export DirFill(h: uint, block: mut []u8): OsResult {
@@ -217,10 +219,16 @@ export DirFill(h: uint, block: mut []u8): OsResult {
         }
         FsPut(b, 0, 0)
         FsPut(b, 8, 0)
-        dot: [2]u8 = [46, 0]
-        fd := openat(Trunc[i32](h), raw.Data(dot[..]), ORdOnly | ODirectory | OCloExec)
+        // A duplicate rewound to the start, never openat(h, "."), which a
+        // directory that can be read but not searched refuses (EACCES).
+        fd := fcntl(Trunc[i32](h), PxFDupFdCloExec, 0)
         if fd < 0 {
             return Fail(Errno())
+        }
+        if lseek(fd, 0, 0) < 0 {
+            e := Errno()
+            _ = lc.CloseFd(fd)
+            return Fail(e)
         }
         d := fdopendir(fd)
         if raw.IsNull(d) {

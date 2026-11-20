@@ -164,15 +164,33 @@ export SocketName(h: uint, a: mut SockAddr): OsResult {
 
 /// SocketShutdown shuts down one or both directions of the socket h: how 0
 /// read, 1 write, 2 both (SHUT_RD, SHUT_WR, SHUT_RDWR). Other for a how
-/// above 2, else the OS's error.
-/// O(1): one system call; allocates nothing.
+/// above 2, else the OS's error. Darwin answers ENOTCONN for a direction
+/// already shut, the read side included once the peer's FIN arrived, and
+/// then skips the write side of a SHUT_RDWR; Linux shuts what is left and
+/// answers ENOTCONN only for a socket with no connection. So on ENOTCONN
+/// the write side of a 2 is shut on its own, and the call succeeds while
+/// getpeername still finds a peer.
+/// O(1): one to three system calls; allocates nothing.
 export SocketShutdown(h: uint, how: u32): OsResult {
     if how > 2 {
         return FailWith(core.SysErr.Other)
     }
-    unsafe "shutdown passes no memory" {
-        if shutdown(Trunc[i32](h), Trunc[i32](how)) == -1 {
-            return SockFail(Errno())
+    s := Trunc[i32](h)
+    unsafe "shutdown passes no memory; getpeername writes into sa and n, this frame's, of the size n gives" {
+        if shutdown(s, Trunc[i32](how)) == 0 {
+            return Ok(0)
+        }
+        e := Errno()
+        if e != Enotconn {
+            return SockFail(e)
+        }
+        if how == 2 {
+            _ = shutdown(s, 1)
+        }
+        var sa: [16]u64 = [0; 16]
+        var n: [1]u32 = [128]
+        if getpeername(s, raw.PtrCast[u64, u8](raw.DataMut(mut sa[..])), raw.DataMut(mut n[..])) == -1 {
+            return SockFail(e)
         }
     }
     return Ok(0)

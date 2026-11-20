@@ -3,7 +3,8 @@
 // What: tests that a prepared slot's guard is a light guard where the kernel
 // has one (6.13 and later: no mapping per slot), else the PROT_NONE page
 // (two mappings per slot); MK_TEST_GUARDS=prot forces the older form in a
-// dev build. Windows slots keep PAGE_GUARD and never take a Linux guard
+// dev build. macOS slots are PROT_NONE-guarded from the start (no light
+// guard there); Windows slots keep PAGE_GUARD and never take a Linux guard
 // kind.
 // How: prepares 10,000 slots and counts the process's mappings before and
 // after.
@@ -104,7 +105,10 @@ GCheck(n: int, force_prot: bool) {
     m1 := GMaps()
     kind := GuardKind()
     if Target.os != Os.Linux {
-        Assert(kind == GuardUntried && m0 == -1 && m1 == -1)
+        // macOS has no light guard, so its slots take the PROT_NONE page
+        // from the start; Windows slots never take a Linux guard kind.
+        want := if Target.os == Os.Macos { GuardProt } else { GuardUntried }
+        Assert(kind == want && m0 == -1 && m1 == -1)
         return
     }
     Assert(fresh >= n - 64)

@@ -391,6 +391,16 @@ FlErrors(io: Io) {
     var lb: [1600]u8 = [0; 1600]
     long := FlLong(mut lb, 600, name2)
     Assert(long.Len() > 1024)
+    if Target.os == Os.Macos {
+        // macOS takes no path of 1,024 bytes or more (PATH_MAX, the
+        // kernel's limit on every path argument): InvalidPath, with no
+        // call, on both routes.
+        Assert(NativeOpen(io, long, 0).err == core.SysErr.InvalidPath)
+        Assert(NativeRemove(io, long).err == core.SysErr.InvalidPath)
+        Assert(NativeRemove(io, name2).err == core.SysErr.None)
+        Assert(NativeOpen(io, name2, 0).err == core.SysErr.NotFound)
+        return
+    }
     l := NativeOpen(io, long, 0)
     Assert(l.err == core.SysErr.None && NativeSize(io, Trunc[uint](l.value)).value == 10)
     Assert(NativeClose(io, Trunc[uint](l.value)).err == core.SysErr.None)

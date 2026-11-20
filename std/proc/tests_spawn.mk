@@ -454,7 +454,9 @@ test "Spawn: a Linux child holds only its three streams, whatever the parent has
     if sys.args.Len() > 2 {
         SpChild(sys)
     }
-    if SpWin() {
+    // Linux only, as its title says: the child counts its descriptors in
+    // /proc/self/fd, which macOS does not have.
+    if SpWin() || Target.os == core.Os.Macos {
         return
     }
     io := sys.io

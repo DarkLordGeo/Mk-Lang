@@ -54,7 +54,11 @@ test "RT-Os-Proc-SigPipe a child starts with SIGPIPE at its default, not the run
 }
 
 test "RT-Os-Proc-FdLimit a child starts with the descriptor limit this process inherited, not the raised one" (sys: &System) {
-    if PWin() {
+    // Not macOS: there a child is started by posix_spawn, which has no
+    // attribute for a resource limit and runs nothing in the child before
+    // exec, so the child gets the raised limit (std/sys/macos/poll.mk's
+    // RaiseFdLimit says so).
+    if PWin() || Target.os == core.Os.Macos {
         return
     }
     // PollInit raises this process's soft RLIMIT_NOFILE to its hard limit,
@@ -246,7 +250,13 @@ test "RT-Os-Proc-PathDot an empty or relative PATH entry never finds a program i
         }
         PExit(9)
     }
-    Assert(PSh(sys.io, "cp /bin/true ./mkx-pathdot && chmod +x ./mkx-pathdot") == 0)
+    // macOS has true in /usr/bin only.
+    cp := if Target.os == core.Os.Macos {
+        "cp /usr/bin/true ./mkx-pathdot && chmod +x ./mkx-pathdot"
+    } else {
+        "cp /bin/true ./mkx-pathdot && chmod +x ./mkx-pathdot"
+    }
+    Assert(PSh(sys.io, cp) == 0)
     var self: [4096]u8 = [0; 4096]
     sn := PExePath(mut self[..])
     Assert(sn > 0)

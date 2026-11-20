@@ -630,13 +630,24 @@ const TaStP5 = TaStBytes(EvalArena(), 11)
 const TaStH = TaStHuges(EvalArena())
 const TaStHv = TaHuge(a: 10)
 
+// TaStaticAlign is the alignment a static of an align(n) type keeps: n,
+// except on macOS, where dyld slides the executable by whole pages, so a
+// static keeps at most the OS page (16 KiB on arm64, 4 KiB on x86_64).
+TaStaticAlign(n: uint): uint {
+    if Target.os != Os.Macos {
+        return n
+    }
+    page: uint = if Target.arch == Arch.Arm64 { 16384 } else { 4096 }
+    return if n < page { n } else { page }
+}
+
 test "a static table of an align(n) type over a page made at compile time sits at n" (sys: &System) {
     Assert(TaStP4.Len() == 9 && TaStP5.Len() == 11)
     Assert(TaStB.Len() == 2 && TaStB[0].a == 0 && TaStB[1].a == 8)
-    Assert(TaOff(raw.Data(TaStB), 8192) == 0)
+    Assert(TaOff(raw.Data(TaStB), TaStaticAlign(8192)) == 0)
     Assert(TaStH.Len() == 2 && TaStH[0].a == 0 && TaStH[1].a == 9)
-    Assert(TaOff(raw.Data(TaStH), 65536) == 0)
-    Assert(TaStHv.a == 10 && TaOff(raw.Of(&TaStHv), 65536) == 0)
+    Assert(TaOff(raw.Data(TaStH), TaStaticAlign(65536)) == 0)
+    Assert(TaStHv.a == 10 && TaOff(raw.Of(&TaStHv), TaStaticAlign(65536)) == 0)
 }
 
 // A Slice of LargeSlice bytes or more starts on a cache line (mem_arena.mk

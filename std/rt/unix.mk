@@ -52,7 +52,8 @@ UnixListenJob(a: *core.IoCallArgs) {
 /// connection's runtime socket handle. While the listener's backlog is
 /// full it waits by Io.Sleep between tries (1 ms doubling to 50 ms), so a
 /// cancel or a deadline ends the wait with Canceled and nothing held
-/// (repeatable). Errors: InvalidAddress as UnixListen;
+/// (repeatable); on macOS a full backlog is Refused, since Darwin answers
+/// ECONNREFUSED there as when nothing listens. Errors: InvalidAddress as UnixListen;
 /// Refused when nothing listens at path (Linux NotFound when path does not
 /// exist); Unsupported as UnixListen; Canceled (each try is checked inline,
 /// so a cancelled scope's dial is Canceled before it connects, as net.Dial).

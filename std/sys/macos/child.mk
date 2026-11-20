@@ -28,9 +28,21 @@
 //   detached children's reaper, is waitpid with WNOHANG.
 // - The reaper set is a kqueue: EVFILT_PROC with NOTE_EXIT per child, one
 //   shot, the tag as its udata.
-// - PtyOpen, PtyResize: /dev/ptmx (O_NOCTTY), TIOCPTYGRANT, TIOCPTYUNLK,
-//   TIOCSWINSZ; the peer's name is TIOCPTYGNAME's (as libSystem's grantpt,
-//   unlockpt and ptsname).
+// - PtyOpen, PtyResize: /dev/ptmx (O_NOCTTY), TIOCPTYGRANT, TIOCPTYUNLK;
+//   the peer's name is TIOCPTYGNAME's (as libSystem's grantpt, unlockpt
+//   and ptsname). Darwin's master refuses TIOCSWINSZ, TIOCGETA and
+//   TIOCSETA with ENOTTY until its peer was first opened, and the first
+//   open of a peer that no one holds zeroes the window size and resets
+//   termios. So the size each master was last given is kept in PtySizes,
+//   a table indexed by the master's descriptor; SpawnEx starts a pty's
+//   child stopped (POSIX_SPAWN_START_SUSPENDED, after its file actions
+//   opened the peer), sets that size on the master, and sends SIGCONT, so
+//   the child's first instruction already sees it. The parent never opens
+//   the peer itself: a last close of it waits briefly for the master to
+//   read and then discards what is left, so a parent's copy closed after a
+//   quick child exited would lose that child's output. PtyResize keeps the
+//   size and sets it on the master, where ENOTTY (no peer opened yet)
+//   leaves it to the next spawn.
 // - TermOpen, TermMode: /dev/tty, TIOCGETA and TIOCSETA with Go's x/term
 //   flags over Darwin's 72-byte struct termios.
 // ioctl request numbers and flag bits are Go's (syscall/zerrors_darwin_
@@ -49,8 +61,14 @@ const ChTiocswinsz: uint = 0x8008_7467
 const ChTiocgeta: uint = 0x4048_7413
 const ChTiocseta: uint = 0x8048_7414
 const ChFionread: uint = 0x4004_667F
+const ChTiocoutq: uint = 0x4004_7473
 const ChEnxio: i64 = 6
 const ChEio: i64 = 5
+const ChEnotty: i64 = 25
+const ChSigCont: i32 = 19
+// ChStartSuspended is POSIX_SPAWN_START_SUSPENDED (<spawn.h>): proc.mk's
+// SpawnSetup sets it with POSIX_SPAWN_SETSID for a pty's child.
+const ChStartSuspended: i32 = 0x80
 // ChTermiosAll is sizeof(struct termios) on Darwin: c_iflag, c_oflag,
 // c_cflag and c_lflag as u64 at 0 to 31, c_cc[20] at 32 (VMIN 16, VTIME 17),
 // 4 bytes of padding, then c_ispeed and c_ospeed at 56 and 64. ChTermSaved
@@ -65,6 +83,8 @@ const ChEvfiltProc: u64 = 0xFFFB
 const ChEvfiltUser: u64 = 0xFFF6
 const ChEvAdd: u64 = 0x1
 const ChEvOneShot: u64 = 0x10
+const ChEvError: u64 = 0x4000
+const ChEvfiltRead: u64 = 0xFFFF
 const ChNoteExit: u64 = 0x8000_0000
 const ChNoteTrigger: u64 = 0x0100_0000
 // ChEventBytes is sizeof(struct kevent): ident 0, filter (i16) 8, flags
@@ -373,6 +393,13 @@ SpawnExIn(pg: *u8, p: mut SpawnPlan, s: mut core.IoSpawnReq, src: [3]uint, pty: 
     }
     if r.err == core.SysErr.None {
         r = RunSpawn(*p)
+        if r.err == core.SysErr.None && pty != 0 {
+            z := PtyStart(pty, Trunc[i32](r.os))
+            if z.err != core.SysErr.None {
+                ReapKilled(Trunc[i32](r.os))
+                r = z
+            }
+        }
     }
     for i in 0..3 {
         if own[i] >= 0 {
@@ -397,6 +424,47 @@ SpawnExIn(pg: *u8, p: mut SpawnPlan, s: mut core.IoSpawnReq, src: [3]uint, pty: 
     s.pid = r.os
     s.job = 0
     return Ok(r.value)
+}
+
+// PtyStart lets the child pid, spawned stopped on the master pty
+// (POSIX_SPAWN_START_SUSPENDED, after its spawn opened the peer), run: it
+// sets the size PtySizes holds for pty on the master, which the child's
+// open made settable and zeroed, then sends SIGCONT. A size the master
+// refuses is the answer, with the child killed first (its caller reaps it
+// as a failed spawn's). O(1): two system calls; allocates nothing.
+PtyStart(pty: uint, pid: i32): OsResult {
+    var r := Ok(0)
+    slot := SizeSlot(pty)
+    if !raw.IsNull(slot) {
+        var v: u32 = 0
+        unsafe "slot is pty's word in the table" {
+            v = (*slot).Load()
+        }
+        if v != 0 {
+            r = WinSize(pty, int(v >> 16), int(v & 0xFFFF))
+        }
+    }
+    unsafe "kill passes no memory" {
+        if r.err != core.SysErr.None {
+            _ = kill(pid, 9)
+        }
+        _ = kill(pid, ChSigCont)
+    }
+    return r
+}
+
+// ReapKilled waits for the child pid, which was sent SIGKILL, so a failed
+// spawn leaves no zombie. Blocks only until the kill lands; EINTR is
+// repeated.
+ReapKilled(pid: i32) {
+    var st: i32 = 0
+    for {
+        unsafe "waitpid writes one i32 status into st" {
+            if waitpid(pid, raw.OfMut(mut st), 0) != -1 || Errno() != PxEintr {
+                return
+            }
+        }
+    }
 }
 
 // DarwinSignal is the Darwin number of Linux's signal sig (std.proc speaks
@@ -466,6 +534,43 @@ export TryReap(h: uint): bool {
     }
 }
 
+// PtySizeTable is the base of PtySizes' table (0 before the first PtyOpen
+// maps it): MaxFds u32 words, one per descriptor, each a master's last
+// size as cols << 16 | rows (0 none). Mapped once and never given back;
+// untouched pages cost nothing.
+struct PtySizeTable {
+    base: raw.Atomic[u64]
+}
+
+var PtySizes: PtySizeTable = PtySizeTable(base: raw.Atomic[u64].New(0))
+
+// SizeSlot is the master fd's word in PtySizes, mapping the table on the
+// first call (a racing caller's mapping is given back); null for an fd
+// past the table or when the mapping fails.
+SizeSlot(fd: uint): *raw.Atomic[u32] {
+    if fd >= Trunc[uint](MaxFds) {
+        return raw.Null[raw.Atomic[u32]]()
+    }
+    var b := PtySizes.base.Load()
+    if b == 0 {
+        m := Map(raw.Null[u8](), MaxFds * 4, ProtRW, 0)
+        if raw.IsNull(m) {
+            return raw.Null[raw.Atomic[u32]]()
+        }
+        // Edge: the Cas publishes the fresh zero pages to every later
+        // Load (sequentially consistent).
+        if PtySizes.base.Cas(0, u64(raw.Addr(m))) {
+            b = u64(raw.Addr(m))
+        } else {
+            Unmap(m, MaxFds * 4)
+            b = PtySizes.base.Load()
+        }
+    }
+    unsafe "fd < MaxFds, and the table holds MaxFds words" {
+        return raw.PtrCast[u8, raw.Atomic[u32]](raw.Offset(raw.FromAddr[u8](Trunc[uint](b)), Trunc[int](fd) * 4))
+    }
+}
+
 // WinSize writes cols and rows to fd's terminal (TIOCSWINSZ); Other when
 // either is outside 1 to 65,535.
 WinSize(fd: uint, cols: int, rows: int): OsResult {
@@ -482,11 +587,13 @@ WinSize(fd: uint, cols: int, rows: int): OsResult {
 }
 
 /// PtyOpen opens a pseudo-terminal's master (/dev/ptmx, O_NOCTTY,
-/// close-on-exec, blocking), grants and unlocks its peer and sets its size:
-/// value the master, and w.a and w.b it too (Windows' read and write ends).
-/// The master is attached to the poller (PollAttach) for OpReady; one it
-/// refuses is EMFILE's answer (24). O(1) system calls; the master is
-/// closed on every failure.
+/// close-on-exec, blocking), grants and unlocks its peer and records its
+/// size in PtySizes, which SpawnEx sets once a child opened the peer
+/// (PtyStart): value the master, and
+/// w.a and w.b it too (Windows' read and write ends). The master is
+/// attached to the poller (PollAttach) for OpReady; one it refuses, or a
+/// size table that cannot be mapped, is EMFILE's answer (24). O(1) system
+/// calls; the master is closed on every failure.
 export PtyOpen(cols: int, rows: int, w: mut core.IoWords): OsResult {
     if cols < 1 || cols > 65535 || rows < 1 || rows > 65535 {
         return FailWith(core.SysErr.Other)
@@ -501,11 +608,12 @@ export PtyOpen(cols: int, rows: int, w: mut core.IoWords): OsResult {
             _ = lc.CloseFd(fd)
             return Fail(e)
         }
-        z := WinSize(Trunc[uint](fd), cols, rows)
-        if z.err != core.SysErr.None {
+        slot := SizeSlot(Trunc[uint](fd))
+        if raw.IsNull(slot) {
             _ = lc.CloseFd(fd)
-            return z
+            return Fail(24)
         }
+        (*slot).Store((Trunc[u32](cols) << 16) | Trunc[u32](rows))
         // OpReady waits for the master on the poller.
         if !PollAttach(Trunc[uint](fd)) {
             _ = lc.CloseFd(fd)
@@ -518,10 +626,25 @@ export PtyOpen(cols: int, rows: int, w: mut core.IoWords): OsResult {
 }
 
 /// PtyResize sets the size of the pseudo-terminal whose master is fd; its
-/// session's foreground group gets SIGWINCH from the kernel.
+/// session's foreground group gets SIGWINCH from the kernel. The size is
+/// also recorded for the next spawn on it, so a master whose peer was never
+/// opened (ENOTTY) takes it then. Other for a size outside 1 to 65,535.
 /// O(1): one system call; allocates nothing.
 export PtyResize(fd: uint, cols: int, rows: int): OsResult {
-    return WinSize(fd, cols, rows)
+    if cols < 1 || cols > 65535 || rows < 1 || rows > 65535 {
+        return FailWith(core.SysErr.Other)
+    }
+    slot := SizeSlot(fd)
+    if !raw.IsNull(slot) {
+        unsafe "slot is fd's word in the table" {
+            (*slot).Store((Trunc[u32](cols) << 16) | Trunc[u32](rows))
+        }
+    }
+    r := WinSize(fd, cols, rows)
+    if r.err != core.SysErr.None && r.os == ChEnotty && !raw.IsNull(slot) {
+        return Ok(0)
+    }
+    return r
 }
 
 /// PtyClose is Windows' ClosePseudoConsole: macOS's pty is its master
@@ -637,20 +760,87 @@ export RaiseFatal(sig: u32): bool {
     return SignalRaiseFatal(sig)
 }
 
+// TermAvail is how many bytes a read of the terminal h finds now: for a
+// pty's master (the one side TIOCPTYGNAME answers on) its peer's output
+// queue, TIOCOUTQ, since Darwin's FIONREAD on a master counts the peer's
+// input; for any other terminal FIONREAD's count. Minus the errno when
+// the ioctl fails, but 0 for a master no child has opened yet. O(1): two system calls; allocates nothing.
+TermAvail(h: uint): i64 {
+    var name: [16]u64 = [0; 16]
+    var avail: i32 = 0
+    unsafe "TIOCPTYGNAME writes at most 128 bytes into name; FIONREAD and TIOCOUTQ write one int" {
+        req := if ioctl(Trunc[i32](h), ChTiocptygname, raw.PtrCast[u64, u8](raw.DataMut(mut name[..]))) == 0 {
+            ChTiocoutq
+        } else {
+            ChFionread
+        }
+        if ioctl(Trunc[i32](h), req, raw.PtrCast[i32, u8](raw.OfMut(mut avail))) == -1 {
+            e := Errno()
+            // A master whose peer was never opened refuses TIOCOUTQ
+            // (ENOTTY), and holds nothing.
+            return if req == ChTiocoutq && e == ChEnotty { 0 } else { -e }
+        }
+    }
+    return i64(avail)
+}
+
+// TermReadyNow says whether a read of the terminal h would end now,
+// without waiting: 1 when it holds bytes or its other side is gone, 0
+// when the read would wait, or minus an errno. Darwin's poll answers
+// POLLNVAL for every device, so the poller's readiness try asks this for
+// a terminal: a kqueue of its own takes h's EVFILT_READ with a zero
+// timeout (ready, or EV_EOF once the other side closed); a terminal
+// kqueue refuses is answered by TermAvail alone. O(1): four system calls;
+// allocates nothing.
+TermReadyNow(h: uint): i64 {
+    var ev: [8]u64 = [0; 8]
+    var ts: [2]i64 = [0, 0]
+    unsafe "ev holds two struct kevent records; ts is a zero struct timespec" {
+        kq := kqueue()
+        if kq < 0 {
+            return -Errno()
+        }
+        e := raw.PtrCast[u64, u8](raw.DataMut(mut ev[..]))
+        out := raw.Offset(e, ChEventBytes)
+        ChKevent(e, u64(h), ChEvfiltRead, ChEvAdd, 0, 0)
+        n := kevent(kq, e, 1, out, 1, raw.DataMut(mut ts[..]))
+        x := Errno()
+        _ = lc.CloseFd(kq)
+        if n < 0 {
+            return -x
+        }
+        if n == 0 {
+            return 0
+        }
+        // flags at byte 10 of the event: EV_ERROR is a refused filter,
+        // whose errno is the data word.
+        flags := (ev[5] >> 16) & 0xFFFF
+        if (flags & ChEvError) == 0 {
+            return 1
+        }
+    }
+    a := TermAvail(h)
+    if a > 0 {
+        return 1
+    }
+    return a
+}
+
 /// TermRecords reads the bytes the terminal h holds now, without waiting
-/// (FIONREAD, then one read of at most that many: Darwin's poll does not
+/// (TermAvail, then one read of at most that many: Darwin's poll does not
 /// take a terminal): value the bytes read, 0 when none is there. Windows
 /// answers console records instead.
-/// O(1): two system calls; allocates nothing.
+/// O(1): three system calls; allocates nothing.
 export TermRecords(h: uint, out: mut []u8): OsResult {
     if out.Len() == 0 {
         return Ok(0)
     }
-    var avail: i32 = 0
-    unsafe "ioctl writes one int; read fills at most n bytes of out, the caller's" {
-        if ioctl(Trunc[i32](h), ChFionread, raw.PtrCast[i32, u8](raw.OfMut(mut avail))) == -1 {
-            return Fail(Errno())
-        }
+    a := TermAvail(h)
+    if a < 0 {
+        return Fail(-a)
+    }
+    avail := Trunc[i32](a)
+    unsafe "read fills at most n bytes of out, the caller's" {
         if avail <= 0 {
             return Ok(0)
         }

@@ -77,7 +77,7 @@ SdTimeWait(io: Io, reuse: bool): i64 {
     return l.os
 }
 
-test "SD8-Listen-Reuse a held port is AddrInUse either way; on Linux a TIME_WAIT port rebinds only when both sockets chose reuse; Windows rebinds it either way" (sys: &System) {
+test "SD8-Listen-Reuse a held port is AddrInUse either way; on Linux a TIME_WAIT port rebinds only when both sockets chose reuse, on macOS when the new one does; Windows rebinds it either way" (sys: &System) {
     l := rt.ListenWith(sys.io, "127.0.0.1:0", 0, false)
     Assert(l.err == core.SysErr.None)
     var ab: [32]u8 = [0; 32]
@@ -103,6 +103,14 @@ test "SD8-Listen-Reuse a held port is AddrInUse either way; on Linux a TIME_WAIT
         Assert(rt.ListenWith(sys.io, at2, 0, false).err == core.SysErr.AddrInUse)
         r := rt.ListenWith(sys.io, at2, 0, true)
         Assert(r.err == core.SysErr.None && r.os == port)
+        Assert(rt.CloseRuntimeHandle(Trunc[uint](r.value)).err == core.SysErr.None)
+    } else if Target.os == Os.Macos {
+        // Darwin binds a TIME_WAIT port when the new socket sets
+        // SO_REUSEADDR, whatever the old one chose; without it the bind
+        // finds the TIME_WAIT entry and is AddrInUse.
+        Assert(again.err == core.SysErr.AddrInUse)
+        r := rt.ListenWith(sys.io, at, 0, true)
+        Assert(r.err == core.SysErr.None)
         Assert(rt.CloseRuntimeHandle(Trunc[uint](r.value)).err == core.SysErr.None)
     } else {
         // Windows binds over the TIME_WAIT entry even with
@@ -322,9 +330,12 @@ test "SD8-Spawn-PipeReopen a child's piped streams are pipes it can open again b
     io := sys.io
     var noenv: [1]str = [""]
     // Linux: the child opens its stdin, stdout and stderr again by name,
-    // which a socket's /proc link refuses with ENXIO.
+    // which a socket's /proc link refuses with ENXIO. macOS has no /proc:
+    // its /dev/fd/0 is the same name there (an open of it duplicates the
+    // descriptor).
     var s := CSpec(core.IoStdPipe, core.IoStdPipe, core.IoStdPipe)
-    lin := "cat /dev/stdin > /dev/stdout && cat /proc/self/fd/0 && echo reopened-err > /dev/stderr"
+    fd0 := if Target.os == core.Os.Macos { "/dev/fd/0" } else { "/proc/self/fd/0" }
+    lin := sys.arena.Fmt("cat /dev/stdin > /dev/stdout && cat {fd0} && echo reopened-err > /dev/stderr", (fd0)).Must()
     r := CSh(io, "%SystemRoot%\\System32\\findstr.exe reopen", lin, noenv[0..0], "", mut s)
     Assert(r.err == core.SysErr.None)
     SdWriteAll(io, s.pipes[0], "reopen-in\n".AsBytes())
@@ -363,9 +374,13 @@ test "SD8-Spawn-PipeReopen a child's piped streams are pipes it can open again b
     PClose(io, ch)
 }
 
-// SdPtyRun starts cmd (win's on Windows, lin's on Linux) on the Pty p,
+// SdPtyRun starts cmd (win's on Windows, lin's elsewhere) on the Pty p,
 // waits for it, and only then reads p into buf for at most 10 s: the
-// bytes read and whether the read reached the end.
+// bytes read and whether the read reached the end. On macOS it reads
+// first and waits after the end: there the last close of a pty's peer
+// waits at most 60 ticks for the master to read and then discards the
+// output left (XNU's ptsclose and ttyclose), so a read after the wait
+// would find only the end.
 SdPtyRun(io: Io, p: &core.IoPty, win: str, lin: str, buf: mut []u8): (n: int, end: bool) {
     var noenv: [1]str = [""]
     var s := CSpec(core.IoStdInherit, core.IoStdInherit, core.IoStdInherit)
@@ -373,8 +388,11 @@ SdPtyRun(io: Io, p: &core.IoPty, win: str, lin: str, buf: mut []u8): (n: int, en
     r := CSh(io, win, lin, noenv[0..0], "", mut s)
     Assert(r.err == core.SysErr.None && s.pty == p.term)
     h := Trunc[uint](r.value)
-    Assert(rt.ChildWait(io, h, 0).value == 0)
-    PClose(io, h)
+    mac := Target.os == core.Os.Macos
+    if !mac {
+        Assert(rt.ChildWait(io, h, 0).value == 0)
+        PClose(io, h)
+    }
     var n := 0
     var end := false
     scope d := io.Scope() {
@@ -390,6 +408,10 @@ SdPtyRun(io: Io, p: &core.IoPty, win: str, lin: str, buf: mut []u8): (n: int, en
             }
             n += Trunc[int](g.value)
         }
+    }
+    if mac {
+        Assert(rt.ChildWait(io, h, 0).value == 0)
+        PClose(io, h)
     }
     return (n: n, end: end)
 }

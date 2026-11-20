@@ -519,6 +519,16 @@ test "on Linux: SetKeepAlive arms the keep-alive timer within the idle time set,
     Assert(tr == 0)
 }
 
+// TnSmallSend is the send buffer the cut-write blocks ask for: 0, which
+// Windows keeps and Linux raises to its minimum, and on macOS, whose
+// setsockopt refuses a size below 1, 16 KiB: small beside the peer's
+// receive buffer, which then decides when a send waits, and large enough
+// that WriteCut's 4,096 Writes, each taking up to this much, outrun that
+// buffer (with 1 byte a Write would take a byte per acknowledgment).
+TnSmallSend(): i64 {
+    return if Target.os == core.Os.Macos { 16_384 } else { 0 }
+}
+
 // MidByte is byte i of the cancelled WriteAll's payload: never 0xFF, the byte the caller
 // overwrites its buffer with once WriteAll returned.
 MidByte(i: int): u8 {
@@ -548,8 +558,9 @@ test "a Conn.WriteAll cancelled mid-send fails Canceled having sent a prefix the
     // all, so no cancel could land mid-send; with 0 it waits and the
     // deadline cancels it. (That Windows then sends from the caller's
     // memory, bounded by the peer's window, is from knowledge, not
-    // observed.) Linux keeps its minimum.
-    r := rt.SockOption(rt.NativeIo(), c.h, core.IoSockSendBuffer, 0, 0)
+    // observed.) Linux keeps its minimum. Darwin refuses a size below 1
+    // (EINVAL), so there it is TnSmallSend's.
+    r := rt.SockOption(rt.NativeIo(), c.h, core.IoSockSendBuffer, TnSmallSend(), 0)
     conn := c.Conn()
     onerr conn.Abandon()
     _ = try Check(r)
@@ -688,7 +699,7 @@ test "a Stream.Write cut by its deadline is prefix: the peer reads the counted b
     defer s.Close()
     // No send buffer, as the WriteAll block above: with Windows' default
     // one a Write returns once the data is taken, wherever the peer is.
-    r := rt.SockOption(rt.NativeIo(), c.h, core.IoSockSendBuffer, 0, 0)
+    r := rt.SockOption(rt.NativeIo(), c.h, core.IoSockSendBuffer, TnSmallSend(), 0)
     onerr c.Close()
     _ = try Check(r)
     WriteCut(sys, c, &s)

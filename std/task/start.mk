@@ -7,13 +7,14 @@
 // Stream.
 //
 // How: the entry stub calls Start(sp): Windows mk_start with sp null, Linux
-// _start with the initial stack pointer. On Windows the main thread's own
-// stack (8 MiB through the link's /stack) becomes carrier 0's system stack;
-// on Linux, whose main-thread stack is whatever RLIMIT_STACK allows, Start
-// maps an 8 MiB system stack and continues there. Main runs as the first
-// task, on a Large slot; in a program with no task it runs on a stack of
-// that size that Start maps on both targets. Every failure before Main is
-// rt.Fatal.
+// _start with the initial stack pointer, macOS the support pack's main with
+// the block of main's arguments on the main thread's stack. On Windows the main
+// thread's own stack (8 MiB through the link's /stack) becomes carrier 0's
+// system stack; on Linux, whose main-thread stack is whatever RLIMIT_STACK
+// allows, and on macOS, Start maps an 8 MiB system stack and continues
+// there. Main runs as the first task, on a Large slot; in a program with no
+// task it runs on a stack of that size that Start maps on every target.
+// Every failure before Main is rt.Fatal.
 
 import std.core
 import std.raw
@@ -213,11 +214,14 @@ export Start(sp: *u8): never {
     }
     rt.SetNativeIo(NativeIo())
     var boot := Boot(sp: sp, backend: backend, lo: 0, hi: 0, want: 0, lib: false)
-    if Target.os == Os.Linux || !rt.UsesTasks() {
+    if Target.os == Os.Linux || Target.os == Os.Macos || !rt.UsesTasks() {
         // An 8 MiB system stack for carrier 0, mapped as
         // sys.ThreadStart maps carrier k's (a guard page, then the stack;
         // here with CommitStack, so pages are supplied on touch and nothing
-        // is charged up front). The initial stack stays mapped, because
+        // is charged up front). The guard is an OS page, at least 4 KiB
+        // (16 KiB on arm64 macOS), so the stack starts on a page. On macOS
+        // this also gives carrier 0 known bounds, which libSystem gives
+        // for the threads it made only. The initial stack stays mapped, because
         // GetEnvRaw reads the environment from sp, and is never run on
         // again: Start's frame below is the last frame there.
         // With no task, Main runs on this stack instead of a Large
@@ -228,11 +232,13 @@ export Start(sp: *u8): never {
         // stack words in the context, so the kernel grows it on touch and
         // reports EXCEPTION_STACK_OVERFLOW at its bottom.
         size := if rt.UsesTasks() { SystemStackSize } else { MainStackBytes }
-        base := sys.Reserve(size + 4096, 4096)
+        ps := sys.PageSize()
+        g := if ps > 4096 { ps } else { 4096 }
+        base := sys.Reserve(size + g, g)
         if raw.IsNull(base) {
             rt.Fatal("cannot reserve task stacks")
         }
-        boot.lo = raw.Addr(base) + 4096
+        boot.lo = raw.Addr(base) + Trunc[uint](g)
         boot.hi = boot.lo + Trunc[uint](size)
         var from: Context = [0; 8]
         var to: Context = [0; 8]
@@ -242,7 +248,7 @@ export Start(sp: *u8): never {
                 if !sys.Commit(top, 4096) || !sys.GuardPage(raw.Offset(top, -4096)) {
                     rt.Fatal("cannot reserve task stacks")
                 }
-            } else if !sys.CommitStack(raw.Offset(base, 4096), size) {
+            } else if !sys.CommitStack(raw.Offset(base, g), size) {
                 rt.Fatal("cannot reserve task stacks")
             }
         }

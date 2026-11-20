@@ -260,7 +260,8 @@ Checked(r: int): OsResult {
 // The error mapping, Darwin side (<sys/errno.h>). EINTR is Canceled, as on
 // Linux: every handler std.sys installs restarts calls (SA_RESTART) but
 // the interrupt signal's. EPIPE is Closed on a pipe and Reset on a socket
-// (SockFail).
+// (SockFail). EILSEQ is a name APFS refuses because it is not UTF-8:
+// InvalidPath, as Windows answers a name that is not WTF-8.
 MapError(errno: i64): core.SysErr {
     return match errno {
         2 { core.SysErr.NotFound }
@@ -269,7 +270,7 @@ MapError(errno: i64): core.SysErr {
         21 { core.SysErr.IsDirectory }
         20 { core.SysErr.NotDirectory }
         28 | 69 { core.SysErr.NoSpace }
-        62 | 63 { core.SysErr.InvalidPath }
+        62 | 63 | 92 { core.SysErr.InvalidPath }
         89 | 4 { core.SysErr.Canceled }
         32 { core.SysErr.Closed }
         61 { core.SysErr.Refused }

@@ -2,7 +2,8 @@
 // only run through the driver, so this test is how a failing block shows up
 // in go test.
 // What: TestStdRuntimeTests, stdExpect, stdEnvTag and judgeStdTest.
-// How: runs mk test --std on x86_64-windows and x86_64-linux; a block's name
+// How: runs mk test --std on x86_64-windows and x86_64-linux, and on the
+// host's own target when it is another (a Mac, an ARM machine); a block's name
 // may ask for an exit status and output ("[exit <code>: <text>]") or an
 // environment ("[env K=V ...]"), which runs it alone with that environment.
 
@@ -30,7 +31,11 @@ var stdEnvTag = regexp.MustCompile(`\[env ([^\]]*)\]`)
 // mk test --std, on x86_64-windows and x86_64-linux. A block that asks for
 // an environment runs alone with it (through WSLENV for a WSL child).
 func TestStdRuntimeTests(t *testing.T) {
-	for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
+	targets := []types.Target{types.X86_64Windows, types.X86_64Linux}
+	if h := HostTarget(); h.Name != targets[0].Name && h.Name != targets[1].Name {
+		targets = append(targets, h) // the host's own target, run natively
+	}
+	for _, target := range targets {
 		t.Run(target.Name, func(t *testing.T) {
 			prefix := runner(t, target)
 			cache := t.TempDir()

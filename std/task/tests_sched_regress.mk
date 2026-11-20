@@ -27,9 +27,14 @@ const DcDepth: int = 100_000
 // machine has vm.max_map_count 65530 (read on 2026-11-05), so
 // about 32,000 tasks can live at once: a deeper chain waits for
 // a slot for good. 25,000 is still above the 20,000 levels at which
-// the recursive walk overflowed.
+// the recursive walk overflowed. Elsewhere every live task keeps at least
+// one OS page of its slot resident (its top: the header, the records and
+// the first frame), so the depth is scaled to the page: 100,000 levels of
+// 4 KiB pages, 25,000 of the 16 KiB pages of arm64 macOS, where 100,000
+// would keep 100,000 x 16 KiB = 1.6 GB resident per chain, with the three
+// chains run at once by mk test.
 DcLevels(): int {
-    return if Target.os == Os.Linux { 25_000 } else { DcDepth }
+    return if Target.os == Os.Linux { 25_000 } else { DcDepth * 4096 / sys.PageSize() }
 }
 
 error DcErr

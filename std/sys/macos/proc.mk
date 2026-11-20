@@ -372,10 +372,10 @@ RunSpawn(p: SpawnPlan): OsResult {
 
 // SpawnSetup fills the attributes at and the file actions fa from p: the
 // flags (the file's header), a new session for a pseudo-terminal's child
-// or a new group (pgroup 0: the child's own pid) for a group's, then in
-// order the directory, the three streams (a pty's peer opened as 0, which
-// makes it the new session's controlling terminal, then dup2 onto 1 and
-// 2), stderr joined to stdout, descriptor 3, and the named handles onto 3
+// (started stopped, for child.mk's PtyStart) or a new group (pgroup 0:
+// the child's own pid) for a group's, then in order the directory, the
+// three streams (a pty's peer opened as 0, which makes it the new
+// session's controlling terminal, then dup2 onto 1 and 2), stderr joined to stdout, descriptor 3, and the named handles onto 3
 // to 3 + n - 1. A parent stream that is closed is left closed (an
 // addinherit_np of it would fail the spawn). 0, or the first call's error
 // number.
@@ -383,7 +383,8 @@ SpawnSetup(p: &SpawnPlan, fa: *u8, at: *u8): i32 {
     tty := !raw.IsNull(p.tty)
     var flags: i32 = PxSetSigDef | PxSetSigMask | PxCloExecDefault
     if tty {
-        flags |= PxSetSid
+        // Started stopped: SpawnEx sets the pty's size, then continues it.
+        flags |= PxSetSid | ChStartSuspended
     } else if p.group {
         flags |= PxSetPgroup
     }

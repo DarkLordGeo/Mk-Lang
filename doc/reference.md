@@ -2680,7 +2680,7 @@ Slot 64 64
 | `packed(2) struct` | Each field's alignment capped at `n`, which is 1, 2, 4 or 8 (else E0101). |
 | `align(4096) struct` | Alignment raised to the given power of two, from 1 to 65,536. The size is rounded up to a multiple of it. |
 
-- Every `var`, `const`, local and allocation of an `align(n)` type sits at that alignment, and `AlignOf` reports it.
+- Every `var`, `const`, local and allocation of an `align(n)` type sits at that alignment, and `AlignOf` reports it. On macOS a `var` or `const` keeps at most the OS page (16 KiB on arm64, 4 KiB on x86_64): dyld moves the executable by whole pages. Locals and allocations keep any `n`.
 - An `n` that is not such a power of two, or `align` together with `packed`, is E0706.
 - A field of a packed struct may sit below its type's alignment. Reading it is safe. Borrowing it, `&w.len`, needs an `unsafe` block (E1101, [section 14](#14-unsafe-and-c)).
 - A record lays out its fields in byte order of their names, not in the order written ([section 3](#3-types-and-kinds)). Use a struct where the layout matters.
@@ -9161,6 +9161,9 @@ std's system layer for macOS calls libSystem. Arguments, the environment, memory
 - A `proc.Pipe` end is a blocking end served by the thread pool, not one on the poller.
 - Byte-range locks (`LockRange`) are POSIX record locks: closing any descriptor of a file drops the process's locks on it.
 - A saved terminal mode is 64 bytes, not 36.
+- A pseudo-terminal keeps no output for a read after its last child has closed its side: Darwin discards output left unread then, so read a `Pty` before waiting for its children. A child's terminal mode starts from the defaults each time a new child first opens the `Pty`; its size is kept.
+- A child inherits the raised descriptor limit: `posix_spawn` runs nothing in the child that could restore the original one.
+- A Unix-socket dial to a listener whose backlog is full is `SysErr.Refused`, not a wait. A send buffer (`SocketOption`) must be at least 1 byte.
 - `runtime.WriteDump` and the platform certificate verifier answer `SysErr.Unsupported`, as on Linux; `std.x509` checks chains itself.
 
 All of it is checked and linked here, and none of it has run on a Mac yet.

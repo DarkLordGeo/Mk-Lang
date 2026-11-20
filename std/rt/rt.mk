@@ -175,8 +175,9 @@ export Abandon(h: uint) {
 }
 
 /// SetSysStack records carrier i's system stack [lo, hi). On
-/// Linux, where std.sys reports every SIGSEGV as kind 2, the page below lo
-/// is its guard (InSysGuard); Windows reports a system-stack overflow
+/// Linux and macOS, where std.sys reports every SIGSEGV and SIGBUS as kind
+/// 2, the guard page below lo (GuardBytes: 16 KiB on arm64 macOS) is its
+/// guard (InSysGuard); Windows reports a system-stack overflow
 /// itself (EXCEPTION_STACK_OVERFLOW), and the page below its reservation is
 /// not a guard. On both, SysStackOf finds the carrier a stack pointer is on,
 /// for the fault filter's in_c test.
@@ -219,17 +220,18 @@ export ClearSysStack(i: int) {
 }
 
 // InSysGuard is whether a lies in the guard page below a recorded system
-// stack (Linux only; see SetSysStack).
+// stack (Linux and macOS; see SetSysStack).
 InSysGuard(a: uint): bool {
     st := R()
-    if Target.os != Os.Linux || raw.IsNull(st) {
+    if (Target.os != Os.Linux && Target.os != Os.Macos) || raw.IsNull(st) {
         return false
     }
+    g := Trunc[uint](GuardBytes())
     unsafe "st is R(), not null, which lives until exit" {
         for i in 0..256 {
             // Edge: see SetSysStack; 0 is "none".
             lo := Trunc[uint]((*st).sys_lo[i].Load())
-            if lo != 0 && a < lo && lo - a <= 4096 {
+            if lo != 0 && a < lo && lo - a <= g {
                 return true
             }
         }

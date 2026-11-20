@@ -42,8 +42,11 @@ test "Symlink takes a link past 1,024 units and a relative directory target past
     io := sys.io
     root := "mk_tm9_link"
     RemoveAll(io, root).Must()
-    // d is root/abcde/.../abcde, 1,211 units.
-    rel := Tm9Rep(sys.arena, 1199, 47)
+    // d is root/abcde/.../abcde, 1,211 units. macOS takes no path or link
+    // target of 1,024 bytes or more (PATH_MAX, the kernel's limit on every
+    // path argument), so there rel is 1,000 bytes and d 1,012.
+    reln := if Target.os == core.Os.Macos { 1000 } else { 1199 }
+    rel := Tm9Rep(sys.arena, reln, 47)
     d := sys.arena.Fmt("{root}/{rel}", (root: root, rel: rel)).Must()
     MakeDirAll(io, d).Must()
     WriteAll(io, sys.arena.Fmt("{d}/mark", (d: d)).Must(), "m".AsBytes()).Must()
@@ -62,7 +65,7 @@ test "Symlink takes a link past 1,024 units and a relative directory target past
     // under it opens.
     l2 := "mk_tm9_link/l2"
     Symlink(io, rel, l2).Must()
-    Assert(ReadLink(sys.arena, io, l2).Must() == Tm9Rep(sys.arena, 1199, Tm9Sep()))
+    Assert(ReadLink(sys.arena, io, l2).Must() == Tm9Rep(sys.arena, reln, Tm9Sep()))
     Assert(StatLink(io, l2).Must().kind == Kind.Link)
     Assert(Stat(io, l2).Must().kind == Kind.Dir)
     Assert(ReadText(sys.arena, io, "mk_tm9_link/l2/mark").Must() == "m")

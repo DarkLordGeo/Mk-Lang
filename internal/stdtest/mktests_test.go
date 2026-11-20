@@ -189,15 +189,18 @@ func TestStdMkTests(t *testing.T) {
 	if !slices.Contains(mods, "std.core") {
 		t.Fatalf("no test blocks in std.core: modules %v", mods)
 	}
-	for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
+	for _, target := range stdTestTargets() {
 		t.Run(target.Name, func(t *testing.T) {
 			linux := target.Name == types.X86_64Linux.Name
 			host := runtime.GOOS + "/" + runtime.GOARCH
 			switch {
+			case target.Name == driver.HostTarget().Name:
+				// Native: the host's own target, such as aarch64-macos on
+				// a Mac or aarch64-linux on an ARM Linux machine.
 			case linux && runtime.GOOS == "windows":
 				// A Windows host runs the Linux leg through wsl.exe.
 				wslAnswers(t)
-			case linux && host != "linux/amd64", !linux && runtime.GOOS != "windows":
+			default:
 				t.Skipf("no runner for %s on %s", target.Name, host)
 			}
 			for _, prof := range []types.Profile{types.TestProfile, types.Release} {
@@ -258,6 +261,17 @@ func TestStdMkTests(t *testing.T) {
 			}
 		})
 	}
+}
+
+// stdTestTargets are the targets std's blocks run for: x86_64-windows and
+// x86_64-linux, which the gate runs, and the host's own target when it is
+// another (aarch64-linux, aarch64-macos, x86_64-macos), which runs natively.
+func stdTestTargets() []types.Target {
+	ts := []types.Target{types.X86_64Windows, types.X86_64Linux}
+	if h := driver.HostTarget(); h.Name != ts[0].Name && h.Name != ts[1].Name {
+		ts = append(ts, h)
+	}
+	return ts
 }
 
 // BenchmarkStdCheck: mk check of an empty program over the live

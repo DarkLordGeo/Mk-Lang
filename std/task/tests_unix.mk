@@ -292,12 +292,18 @@ UxDialInto(io: Io, path: []u8, got: &raw.Atomic[u64]) {
 
 test "RT8-Unix-Backlog a dial waits while the backlog is full, a deadline ends it with nothing held, and an accept lets it in" (sys: &System) {
     io := sys.io
+    // Darwin's connect to a Unix listener whose queue is full answers
+    // ECONNREFUSED, as when nothing listens, where Linux answers EAGAIN;
+    // so there the dial cannot wait, and a dial after an accept connects.
+    mac := Target.os == Os.Macos
+    stop := if mac { core.SysErr.Refused } else { core.SysErr.Canceled }
     var nb: [256]u8 = [0; 256]
     name := UxName(io, mut nb, "ux-full")
     l := rt.UnixListen(io, name.AsBytes(), 1)
     Assert(l.err == core.SysErr.None)
     lh := Trunc[uint](l.value)
-    // Fill the backlog: each dial under a short deadline, until one waits.
+    // Fill the backlog: each dial under a short deadline, until one waits
+    // (on macOS, until one is refused).
     var held: [64]uint = [0; 64]
     var n := 0
     var full := false
@@ -307,7 +313,7 @@ test "RT8-Unix-Backlog a dial waits while the backlog is full, a deadline ends i
             s.CancelAfter(core.DurationOf(30 * DlMs))
             r = rt.UnixDial(io, name.AsBytes())
         }
-        if r.err == core.SysErr.Canceled {
+        if r.err == stop {
             full = true
         } else {
             Assert(r.err == core.SysErr.None)
@@ -316,15 +322,21 @@ test "RT8-Unix-Backlog a dial waits while the backlog is full, a deadline ends i
         }
     }
     Assert(full && n >= 1)
-    // A dial waiting on the full backlog gets in once one is accepted.
+    // A dial waiting on the full backlog gets in once one is accepted (on
+    // macOS a dial started after the accept).
     got := raw.Atomic[u64].New(0)
     scope s := io.Scope() {
-        s.go UxDialInto(io, name.AsBytes(), &got)
-        io.Sleep(core.DurationOf(20 * DlMs)) else {}
+        if !mac {
+            s.go UxDialInto(io, name.AsBytes(), &got)
+            io.Sleep(core.DurationOf(20 * DlMs)) else {}
+        }
         a := NativeAccept(io, lh)
         Assert(a.err == core.SysErr.None)
         held[n] = Trunc[uint](a.value)
         n += 1
+        if mac {
+            s.go UxDialInto(io, name.AsBytes(), &got)
+        }
     }
     Assert(got.Load() != 0)
     Assert(rt.CloseRuntimeHandle(Trunc[uint](got.Load())).err == core.SysErr.None)

@@ -273,7 +273,9 @@ test "Command.handles: a Linux child holds its three streams and exactly the han
     if sys.args.Len() > 2 {
         SpChild(sys)
     }
-    if SpWin() {
+    // Linux only, as its title says: the child counts its descriptors in
+    // /proc/self/fd, which macOS does not have.
+    if SpWin() || Target.os == core.Os.Macos {
         return
     }
     io := sys.io
@@ -341,9 +343,10 @@ SpForeignChild(sys: &System): never {
     Exit(0)
 }
 
-// SpFd3: descriptor 3 is open in this (Linux) process.
+// SpFd3: descriptor 3 is open in this process (Linux's /proc/self/fd,
+// Darwin's /dev/fd, where a stat of an entry is fstat of the descriptor).
 SpFd3(io: Io): bool {
-    _ = fs.Stat(io, "/proc/self/fd/3") else {
+    _ = fs.Stat(io, if Target.os == core.Os.Macos { "/dev/fd/3" } else { "/proc/self/fd/3" }) else {
         return false
     }
     return true

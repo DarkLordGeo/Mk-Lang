@@ -17,7 +17,9 @@ import std.sys
 /// positive one is the queue asked for, which the OS may round up. reuse
 /// lets the bind take a port still in TIME_WAIT (Linux SO_REUSEADDR, which
 /// Linux honours only when the socket that left the entry chose reuse too),
-/// and without it such a port is AddrInUse on Linux. Windows binds over
+/// and without it such a port is AddrInUse on Linux. macOS binds a
+/// TIME_WAIT port when the new socket chooses reuse, whatever the old one
+/// chose, and without it such a port is AddrInUse. Windows binds over
 /// TIME_WAIT either way (measured by SD8-Listen-Reuse); without reuse it
 /// sets SO_EXCLUSIVEADDRUSE, which keeps any other socket off the port
 /// while the listener holds it. A port another socket holds is AddrInUse

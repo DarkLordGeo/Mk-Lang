@@ -206,9 +206,13 @@ test "Walk and RemoveAll inside directories whose paths are too long to keep rea
     // 40 levels of 60-byte names: past the 2,048 units a Windows stream
     // keeps (sys/windows/dir.mk DirPathMax), so the deeper levels take
     // GetFinalPathNameByHandleW at each call.
+    // macOS takes no path of 1,024 bytes or more (PATH_MAX, the kernel's
+    // limit on every path argument), so there the tree is 15 levels deep
+    // (911 bytes) and checks only the walk and the removal.
+    levels := if Target.os == core.Os.Macos { 15 } else { 40 }
     var t := Text.New(sys.arena)
     t.Push(root).Must()
-    for i in 0..40 {
+    for i in 0..levels {
         t.Push(sys.arena.Fmt("/{i:02}ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", (i)).Must()).Must()
     }
     deep := t.Str()
@@ -217,7 +221,7 @@ test "Walk and RemoveAll inside directories whose paths are too long to keep rea
     p11 := TfdOn(11)
     got := TfdWalk(sys.heap, io, root)
     walked := TfdOff(11) - p11
-    Assert(got == 41 * 1_000_000 + 1)
+    Assert(got == (levels + 1) * 1_000_000 + 1)
     q11 := TfdOn(11)
     RemoveAll(io, root).Must()
     removed := TfdOff(11) - q11
