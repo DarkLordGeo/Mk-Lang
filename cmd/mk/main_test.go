@@ -19,6 +19,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"mk/internal/driver"
 )
 
 // -update is accepted so go test ./... -update runs.
@@ -55,7 +57,7 @@ func TestUnknownFlagExit2(t *testing.T) {
 func TestVersionPrintsToolchain(t *testing.T) {
 	st, out, _ := mk("version")
 	// The release and the commit first, then the build line.
-	if st != 0 || !strings.HasPrefix(out, "mk 0.1.0 commit ") || !strings.Contains(out, "\nmk build ") || !strings.Contains(out, runtime.Version()) {
+	if st != 0 || !strings.HasPrefix(out, "mk "+driver.Release+" commit ") || !strings.Contains(out, "\nmk build ") || !strings.Contains(out, runtime.Version()) {
 		t.Errorf("status %d out %q", st, out)
 	}
 	if !strings.Contains(out, "LLVM") && !strings.Contains(out, "toolchain:") {

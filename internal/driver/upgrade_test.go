@@ -1,7 +1,8 @@
 // Why: mk upgrade downloads, verifies and swaps whole toolchains; a bad
 // signature or an interrupted unpack must leave the current one working.
 // What: TestUpgradeBetweenReleases, TestUpgradeRefusals and
-// TestUpgradeSelfContained, plus mk toolchain list, use and remove.
+// TestUpgradeSelfContained, TestUpgradePickIntelMac, plus mk toolchain
+// list, use and remove.
 // How: serves two signed releases from httptest, signed with the test key in
 // internal/release/testdata, and tampers with them.
 
@@ -352,4 +353,23 @@ func samePathFold(a, b string) bool {
 		return strings.EqualFold(a, b)
 	}
 	return a == b
+}
+
+// TestUpgradePickIntelMac: a release lists no Intel Mac archive yet, so
+// pick on x86_64-macos fails and says how to build from source; the other
+// hosts' archives are found.
+func TestUpgradePickIntelMac(t *testing.T) {
+	sums := release.Sums{}
+	for _, h := range []string{release.HostWindows, release.HostLinux, release.HostMacOSARM64} {
+		sums[release.ArchiveName("0.2.0", h)] = strings.Repeat("a", 64)
+	}
+	for _, v := range []string{"", "0.2.0"} {
+		_, _, err := pick(sums, v, release.HostMacOS)
+		if err == nil || !strings.Contains(err.Error(), "no binary release for Intel Macs") || !strings.Contains(err.Error(), "brew install llvm@21 lld@21") {
+			t.Errorf("pick %q on an Intel Mac: %v", v, err)
+		}
+	}
+	if name, v, err := pick(sums, "", release.HostMacOSARM64); err != nil || v != "0.2.0" || name != "mk-0.2.0-aarch64-macos.tar.gz" {
+		t.Errorf("pick on Apple silicon: %s %s %v", name, v, err)
+	}
 }

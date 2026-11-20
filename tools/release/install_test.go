@@ -1,9 +1,10 @@
 // Why: the install scripts run on users' machines with network input, so they
 // must install and refuse bad releases without touching more than their
 // root.
-// What: tests of tools/install/install.ps1 (Windows) and install.sh (Linux):
-// install, newest version, signature, tampering, hardening and PATH
-// handling; TestInstallKeys, the scripts' keys against keys.go's.
+// What: tests of tools/install/install.ps1 (Windows) and install.sh (Linux
+// and macOS): install, newest version, signature, tampering, hardening and
+// PATH handling; install.sh's Perl Ed25519 check; TestInstallKeys, the
+// scripts' keys against keys.go's.
 // How: each script runs against a local httptest release server into the
 // test's temporary directory, PATH changes off and every home redirected;
 // install.ps1's registry write is never run (Join-MkPath is tested instead).
@@ -14,9 +15,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -95,14 +100,15 @@ func (s *scriptServer) publish(t *testing.T, version, host string, latest bool) 
 	}
 	name := release.ArchiveName(version, host)
 	h := sha256.Sum256(b.Bytes())
-	// Another host's line and a pre-release line, which the scripts skip
-	// or rank below the release.
-	other := release.HostLinux
-	if host == release.HostLinux {
-		other = release.HostWindows
+	// Every other host's line, at a newer version, and a pre-release line,
+	// which the scripts skip or rank below the release.
+	list := release.Sums{name: hex.EncodeToString(h[:]), release.ArchiveName(version+"-rc1", host): strings.Repeat("1", 64)}
+	for _, other := range release.Hosts {
+		if other != host {
+			list[release.ArchiveName("9.9.9", other)] = strings.Repeat("0", 64)
+		}
 	}
-	sums := release.Sums{name: hex.EncodeToString(h[:]), release.ArchiveName("9.9.9", other): strings.Repeat("0", 64),
-		release.ArchiveName(version+"-rc1", host): strings.Repeat("1", 64)}.Format()
+	sums := list.Format()
 	priv, err := release.ParsePrivate(testKey(t))
 	if err != nil {
 		t.Fatal(err)
@@ -524,26 +530,55 @@ try { $undefinedVariable | Out-Null; "STRICT=off" } catch { "STRICT=on" }
 	}
 }
 
-// TestInstallSh runs install.sh on Linux: the install, the newest, a tampered
-// archive, and --no-modify-path against ~/.profile (HOME is redirected).
-func TestInstallSh(t *testing.T) {
-	// MK_INSTALL_SH_ANYWHERE=1 runs it elsewhere too (a developer's check
-	// under Git's sh on Windows with native symbolic links), never in place
-	// of the Linux run.
-	if runtime.GOOS != "linux" && os.Getenv("MK_INSTALL_SH_ANYWHERE") != "1" {
-		t.Skip("SKIP: install.sh runs under the Linux leaves (MK_LINUX=1)")
+// shHost is the host install.sh installs for in a test: on Linux and macOS
+// this machine's, which the script finds with uname itself. Elsewhere the
+// test is skipped unless MK_INSTALL_SH_ANYWHERE=1 (a developer's check under
+// Git's sh on Windows with native symbolic links, never in place of the
+// Linux and macOS runs), and then it is x86_64 Linux, named to the script
+// by MK_INSTALL_HOST (shEnv).
+func shHost(t *testing.T) string {
+	t.Helper()
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		h := release.HostOf(runtime.GOOS, runtime.GOARCH)
+		// Releases carry no Intel Mac archive yet: install.sh refuses there
+		// (TestInstallShHardening's Intel leg).
+		if h == "" || h == release.HostMacOS {
+			t.Skipf("SKIP: releases carry no archive for %s/%s", runtime.GOOS, runtime.GOARCH)
+		}
+		return h
 	}
+	if os.Getenv("MK_INSTALL_SH_ANYWHERE") != "1" {
+		t.Skip("SKIP: install.sh runs on Linux and macOS (MK_LINUX=1, or the macOS runners)")
+	}
+	return release.HostLinux
+}
+
+// shEnv is env for install.sh, with MK_INSTALL_HOST where uname names no
+// host the script installs (Windows).
+func shEnv(env []string, host string) []string {
+	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+		return env
+	}
+	return append(env, "MK_INSTALL_HOST="+host)
+}
+
+// TestInstallSh runs install.sh on Linux and macOS: the install, the newest,
+// a tampered archive, --no-modify-path against ~/.profile (HOME is
+// redirected) and ~/.zprofile on macOS, the Perl check of the signature
+// when openssl cannot check Ed25519, and the signature refusals.
+func TestInstallSh(t *testing.T) {
+	host := shHost(t)
 	s := &scriptServer{files: map[string][]byte{}}
 	srv := httptest.NewServer(s)
 	defer srv.Close()
-	s.publish(t, "0.3.0", release.HostLinux, false)
-	s.publish(t, "0.4.0", release.HostLinux, true)
+	s.publish(t, "0.3.0", host, false)
+	s.publish(t, "0.4.0", host, true)
 	dir := t.TempDir()
 	// A root with a space.
 	root := filepath.Join(dir, "mk root")
 	// The ~/.profile leg needs PATH modification on: HOME is the redirected
 	// one in dir, so only the test's own .profile is written.
-	env := slices.DeleteFunc(scratchEnv(dir), func(kv string) bool { return kv == "MK_NO_MODIFY_PATH=1" })
+	env := shEnv(slices.DeleteFunc(scratchEnv(dir), func(kv string) bool { return kv == "MK_NO_MODIFY_PATH=1" }), host)
 	home := filepath.Join(dir, "profile", "home")
 	run := func(extra ...string) (string, error) {
 		cmd := exec.Command("sh", append([]string{scriptPath(t, "install.sh"), "--root", root, "--releases", srv.URL}, extra...)...)
@@ -576,18 +611,37 @@ func TestInstallSh(t *testing.T) {
 	if cur, _ := in.Current(); cur != "0.4.0" {
 		t.Errorf("current %q after the newest:\n%s", cur, out)
 	}
-	prof, err := os.ReadFile(filepath.Join(home, ".profile"))
-	if err != nil || strings.Count(string(prof), "export PATH=") != 1 {
-		t.Errorf("~/.profile: %q %v", prof, err)
+	profiles := []string{".profile"}
+	if runtime.GOOS == "darwin" {
+		profiles = append(profiles, ".zprofile")
+	}
+	var profs [][]byte
+	for _, p := range profiles {
+		prof, err := os.ReadFile(filepath.Join(home, p))
+		if err != nil || strings.Count(string(prof), "export PATH=") != 1 {
+			t.Errorf("~/%s: %q %v", p, prof, err)
+		}
+		profs = append(profs, prof)
 	}
 	if out, err = run("--version", "0.3.0"); err != nil {
 		t.Fatalf("reinstall: %v\n%s", err, out)
 	}
-	if prof2, _ := os.ReadFile(filepath.Join(home, ".profile")); !bytes.Equal(prof, prof2) {
-		t.Error("~/.profile got the line twice")
+	for i, p := range profiles {
+		if prof2, _ := os.ReadFile(filepath.Join(home, p)); !bytes.Equal(profs[i], prof2) {
+			t.Errorf("~/%s got the line twice", p)
+		}
 	}
-	name := release.ArchiveName("0.5.0", release.HostLinux)
-	good := s.publish(t, "0.5.0", release.HostLinux, true)
+	shPerlLegs(t, s, env, filepath.Join(dir, "fakebin"), func(env []string) (string, error) {
+		cmd := exec.Command("sh", scriptPath(t, "install.sh"), "--root", root, "--releases", srv.URL, "--no-modify-path", "--version", "0.3.0")
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	})
+	if cur, _ := in.Current(); cur != "0.3.0" {
+		t.Errorf("current %q after the Perl legs:\n%s", cur, out)
+	}
+	name := release.ArchiveName("0.5.0", host)
+	good := s.publish(t, "0.5.0", host, true)
 	bad := append([]byte(nil), good...)
 	bad[len(bad)/2] ^= 0xff
 	s.set("/download/v0.5.0/"+name, bad)
@@ -618,22 +672,153 @@ func TestInstallSh(t *testing.T) {
 	})
 }
 
+// shPerlLegs runs install.sh (run, which installs 0.3.0) with an openssl
+// that fails every command first on PATH, as macOS's LibreSSL fails
+// Ed25519: the script checks the signature with Perl, accepts the good one
+// and refuses SHA256SUMS changed after signing. With perl failing too, it
+// refuses to install anything. dir is for the stand-in programs.
+func shPerlLegs(t *testing.T, s *scriptServer, env []string, dir string, run func(env []string) (string, error)) {
+	t.Helper()
+	withPath := func(bin string) []string {
+		out := append([]string(nil), env...)
+		for i, kv := range out {
+			if k, v, _ := strings.Cut(kv, "="); strings.EqualFold(k, "PATH") {
+				out[i] = k + "=" + bin + string(os.PathListSeparator) + v
+			}
+		}
+		return out
+	}
+	fake := func(bin string, names ...string) {
+		os.MkdirAll(bin, 0o755)
+		for _, n := range names {
+			if err := os.WriteFile(filepath.Join(bin, n), []byte("#!/bin/sh\nexit 1\n"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	noSSL := filepath.Join(dir, "no-openssl")
+	fake(noSSL, "openssl")
+	// Git's sh.exe on Windows puts its own directories first on PATH.
+	probe := exec.Command("sh", "-c", "openssl version")
+	probe.Env = withPath(noSSL)
+	if probe.Run() == nil {
+		t.Log("NOT RUN: the Perl legs (this sh puts another openssl before the stand-in)")
+		return
+	}
+	if exec.Command("perl", "-MMath::BigInt", "-MDigest::SHA", "-MMIME::Base64", "-e", "1").Run() == nil {
+		if out, err := run(withPath(noSSL)); err != nil || !strings.Contains(out, "checked with Perl") {
+			t.Errorf("openssl without Ed25519: %v\n%s", err, out)
+		}
+		p := "/download/v0.3.0/" + release.SumsFile
+		sums := s.files[p]
+		s.set(p, append(append([]byte(nil), sums...), []byte(strings.Repeat("2", 64)+"  mk-0.0.1-x86_64-linux.tar.gz\n")...))
+		if out, err := run(withPath(noSSL)); err == nil || !strings.Contains(out, "signature does not match") {
+			t.Errorf("a changed list, checked with Perl: %v\n%s", err, out)
+		}
+		s.set(p, sums)
+	} else {
+		t.Log("NOT RUN: the Perl check of the signature (no perl with Math::BigInt, Digest::SHA and MIME::Base64)")
+	}
+	neither := filepath.Join(dir, "neither")
+	fake(neither, "openssl", "perl")
+	if out, err := run(withPath(neither)); err == nil || !strings.Contains(out, "nothing here can check Ed25519") {
+		t.Errorf("neither openssl nor perl: %v\n%s", err, out)
+	}
+}
+
+// TestInstallShEd25519: install.sh's Perl Ed25519 check (ed25519_pl) gives
+// Go's answer for Go's signatures: yes for a good one; no for a changed
+// message, a changed R or S, S plus the group order (the same point, a
+// non-canonical S) and another key.
+func TestInstallShEd25519(t *testing.T) {
+	if exec.Command("perl", "-MMath::BigInt", "-MDigest::SHA", "-MMIME::Base64", "-e", "1").Run() != nil {
+		t.Skip("SKIP: no perl with Math::BigInt, Digest::SHA and MIME::Base64")
+	}
+	b, err := os.ReadFile(scriptPath(t, "install.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := regexp.MustCompile(`(?s)\ned25519_pl='\n(.*?)'\n`).FindSubmatch(b)
+	if m == nil {
+		t.Fatal("install.sh has no ed25519_pl")
+	}
+	prog := string(m[1])
+	dir := t.TempDir()
+	check := func(pub ed25519.PublicKey, msg, sig []byte) bool {
+		f := filepath.Join(dir, "msg")
+		os.WriteFile(f, msg, 0o644)
+		enc := base64.StdEncoding.EncodeToString
+		err := exec.Command("perl", "-e", prog, enc(pub), enc(sig), f).Run()
+		if err != nil {
+			if _, ok := err.(*exec.ExitError); !ok {
+				t.Fatal(err)
+			}
+		}
+		return err == nil
+	}
+	order, _ := new(big.Int).SetString("7237005577332262213973186563042994240857116359379907606001950938285454250989", 10)
+	other, _, _ := ed25519.GenerateKey(rand.Reader)
+	for i := range 3 {
+		pub, priv, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msg := make([]byte, 10+i*300)
+		rand.Read(msg)
+		sig := ed25519.Sign(priv, msg)
+		if !check(pub, msg, sig) {
+			t.Errorf("%d: a good signature refused", i)
+		}
+		flip := func(at int) []byte { c := slices.Clone(sig); c[at] ^= 1 << (i % 8); return c }
+		bad := map[string][]byte{"R changed": flip(i), "S changed": flip(40 + i), "S plus the order": plusOrder(sig, order)}
+		for what, sg := range bad {
+			if ed25519.Verify(pub, msg, sg) {
+				t.Fatalf("%d: Go accepts %s", i, what)
+			}
+			if check(pub, msg, sg) {
+				t.Errorf("%d: %s accepted", i, what)
+			}
+		}
+		if check(pub, append(slices.Clone(msg), 'x'), sig) {
+			t.Errorf("%d: a changed message accepted", i)
+		}
+		if check(other, msg, sig) {
+			t.Errorf("%d: another key accepted", i)
+		}
+	}
+}
+
+// plusOrder is sig with S replaced by S + order, still 32 bytes
+// little-endian (S < order < 2^253, so the sum fits).
+func plusOrder(sig []byte, order *big.Int) []byte {
+	le := make([]byte, 32)
+	for i := range 32 {
+		le[i] = sig[63-i]
+	}
+	s := new(big.Int).SetBytes(le)
+	s.Add(s, order)
+	be := s.FillBytes(make([]byte, 32))
+	out := slices.Clone(sig)
+	for i := range 32 {
+		out[32+i] = be[31-i]
+	}
+	return out
+}
+
 // TestInstallShHardening runs install.sh like
-// TestInstallSh (Linux; MK_INSTALL_SH_ANYWHERE=1 elsewhere as a developer
-// check): a version that is not a version token is refused before any
+// TestInstallSh (Linux and macOS; MK_INSTALL_SH_ANYWHERE=1 elsewhere as a
+// developer check): a version that is not a version token is refused before any
 // request; a redirect to plain http elsewhere is refused (curl, and wget
 // when curl is hidden); a loopback redirect is followed; a relative --root
 // is made absolute; a root that a profile line cannot hold is refused
 // before ~/.profile is touched.
 func TestInstallShHardening(t *testing.T) {
-	if runtime.GOOS != "linux" && os.Getenv("MK_INSTALL_SH_ANYWHERE") != "1" {
-		t.Skip("SKIP: install.sh runs under the Linux leaves (MK_LINUX=1)")
-	}
+	host := shHost(t)
 	s := &scriptServer{files: map[string][]byte{}}
 	srv := httptest.NewServer(s)
 	defer srv.Close()
-	s.publish(t, "0.3.0", release.HostLinux, false)
-	s.publish(t, "0.4.0", release.HostLinux, false)
+	s.publish(t, "0.3.0", host, false)
+	s.publish(t, "0.4.0", host, false)
 	dir := t.TempDir()
 	root := filepath.Join(dir, "mkroot")
 	run := func(cwd string, env []string, extra ...string) (string, error) {
@@ -643,7 +828,7 @@ func TestInstallShHardening(t *testing.T) {
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
-	env := scratchEnv(dir)
+	env := shEnv(scratchEnv(dir), host)
 	for _, v := range []string{"../evil", "0.3.0/../../x", "0.3", "0.3.0-rc1/x"} {
 		n := len(s.requested())
 		out, err := run(dir, env, "--root", root, "--version", v)
@@ -654,12 +839,26 @@ func TestInstallShHardening(t *testing.T) {
 			t.Errorf("--version %q requested %v", v, got)
 		}
 	}
+	// An Intel Mac (named through MK_INSTALL_HOST, which the loopback
+	// address admits): refused with the way to build from source, before
+	// any request or write.
+	n := len(s.requested())
+	if out, err := run(dir, append(slices.Clone(env), "MK_INSTALL_HOST="+release.HostMacOS), "--root", root); err == nil ||
+		!strings.Contains(out, "no binary release for Intel Macs") || !strings.Contains(out, "brew install llvm@21 lld@21") {
+		t.Errorf("Intel Mac: %v\n%s", err, out)
+	}
+	if got := s.requested()[n:]; len(got) != 0 {
+		t.Errorf("Intel Mac requested %v", got)
+	}
+	if _, err := os.Stat(filepath.Join(root, "toolchains")); err == nil {
+		t.Error("Intel Mac: the root was written")
+	}
 	s.redirect("/latest/download/"+release.SumsFile, "/download/v0.4.0/"+release.SumsFile)
 	s.redirect("/latest/download/"+release.SigFile, "/download/v0.4.0/"+release.SigFile)
 	if out, err := run(dir, env, "--root", root); err != nil || !strings.Contains(out, "current is mk 0.4.0") {
 		t.Fatalf("a loopback redirect: %v\n%s", err, out)
 	}
-	s.redirect("/download/v0.3.0/"+release.ArchiveName("0.3.0", release.HostLinux), "http://example.invalid/x.tar.gz")
+	s.redirect("/download/v0.3.0/"+release.ArchiveName("0.3.0", host), "http://example.invalid/x.tar.gz")
 	if out, err := run(dir, env, "--root", root, "--version", "0.3.0"); err == nil || !strings.Contains(out, "not https") {
 		t.Errorf("a redirect to http (curl): %v\n%s", err, out)
 	}
@@ -667,7 +866,7 @@ func TestInstallShHardening(t *testing.T) {
 	if wget, err := exec.LookPath("wget"); err == nil {
 		bin := filepath.Join(dir, "wgetonly")
 		os.MkdirAll(bin, 0o755)
-		for _, tool := range []string{"sh", "grep", "sed", "awk", "sort", "tail", "cut", "mktemp", "rm", "mkdir", "mv", "ln", "gzip", "tar", "sha256sum", "cat", "dirname", "pwd", "tr", "head", "wc", "openssl"} {
+		for _, tool := range []string{"sh", "grep", "sed", "awk", "sort", "tail", "cut", "mktemp", "rm", "mkdir", "mv", "ln", "gzip", "tar", "sha256sum", "shasum", "cat", "dirname", "pwd", "tr", "head", "wc", "openssl", "perl", "uname", "sysctl"} {
 			if p, err := exec.LookPath(tool); err == nil {
 				os.Symlink(p, filepath.Join(bin, filepath.Base(p)))
 			}

@@ -100,15 +100,17 @@ A release bundle holds mk, the clang and lld it was tested with, and the documen
 irm https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.ps1 | iex
 ```
 
-On Linux (with curl or wget, and OpenSSL 3 or later for the signature check):
+On x86_64 Linux and on Apple silicon Macs, in a terminal (the macOS bundle is built for macOS 13 Ventura or later and tested on macOS 15):
 
 ```sh
 curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh
 ```
 
-The script checks the release's signature against the release key written into it, and the archive against its SHA-256, before it installs anything. It unpacks the newest release under `%LOCALAPPDATA%\mk` or `~/.local/share/mk` and puts mk on your `PATH` (the user `PATH` on Windows, `~/.profile` on Linux). Open a new terminal and run `mk version`.
+On Linux the script needs curl or wget, and OpenSSL 3 or later or Perl for the signature check; a Mac has everything it needs. It picks the archive for your machine. There is no binary release for Intel Macs yet: there the script installs nothing and points to [Building from source](#building-from-source).
 
-For a given release, set `$env:MK_VERSION = '0.1.0'` before the Windows line, or end the Linux line with `| sh -s -- --version 0.1.0`. `mk upgrade` moves to a newer release later ([mk upgrade and mk toolchain](doc/tools.md#mk-version-mk-upgrade-and-mk-toolchain)). To read a script before you run it, download it from the same address, or take it from `tools/install/` at the release's tag.
+The script checks the release's signature against the release key written into it, and the archive against its SHA-256, before it installs anything. It unpacks the newest release under `%LOCALAPPDATA%\mk` or `~/.local/share/mk` and puts mk on your `PATH` (the user `PATH` on Windows, `~/.profile` on Linux, `~/.zprofile` and `~/.profile` on macOS). Open a new terminal and run `mk version`. On macOS nothing needs signing or approving: the Apple silicon programs carry the ad hoc signature that hardware requires, and Gatekeeper checks only files marked as downloaded, which curl does not mark (a browser does, so install with the script rather than from an archive saved by a browser).
+
+For a given release, set `$env:MK_VERSION = '0.1.0'` before the Windows line, or end the other line with `| sh -s -- --version 0.1.0`. `mk upgrade` moves to a newer release later ([mk upgrade and mk toolchain](doc/tools.md#mk-version-mk-upgrade-and-mk-toolchain)). To read a script before you run it, download it from the same address, or take it from `tools/install/` at the release's tag.
 
 ### Hello, world
 
@@ -148,13 +150,22 @@ go build -o mk ./cmd/mk        # on Windows: go build -o mk.exe ./cmd/mk
 
 Put `mk` on your `PATH`. `mk version` shows the LLVM it found. `--llvm DIR` or `MK_LLVM` names the directory; otherwise mk looks in the default install location (`C:\Program Files\LLVM\bin` on Windows, `/usr/lib/llvm-21/bin` on Linux) and on `PATH`, in the order [LLVM and toolchains](doc/tools.md#11-llvm-and-toolchains) gives. On Windows, use the installer from the LLVM releases page; on Ubuntu and Debian, install `clang-21` and `lld-21` from apt.llvm.org.
 
+On a Mac (Intel, or Apple silicon without the bundle), Homebrew's LLVM 21 works. Homebrew keeps clang and lld in two directories, and mk takes both from one, so link them into a directory of your own and name it with `MK_LLVM`:
+
+```sh
+brew install llvm@21 lld@21
+mkdir -p ~/.local/llvm-21/bin
+ln -sf "$(brew --prefix llvm@21)/bin/clang" "$(brew --prefix lld@21)/bin/ld64.lld" ~/.local/llvm-21/bin/
+export MK_LLVM=~/.local/llvm-21/bin      # add this line to ~/.zprofile too
+```
+
 ## Editor support
 
 `mk lsp` is the language server built into `mk`: diagnostics, hover, completion, go to definition, references, rename, formatting and code actions in any editor that speaks LSP. [doc/editors.md](doc/editors.md) sets it up in VS Code, Neovim, Helix, Emacs, Sublime Text and other editors.
 
 ## Platforms
 
-Mk builds programs for Windows and Linux on x86-64, for Linux on AArch64, and for freestanding x86-64 (no operating system). It also builds for macOS on Apple silicon and Intel, as a preliminary target the project has not run on a Mac. [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
+Mk builds programs for Windows and Linux on x86-64, for Linux on AArch64 (built and run natively on GitHub's ARM runner), for macOS 13 or later on Apple silicon and Intel, and for freestanding x86-64 (no operating system). Releases carry a bundle for Windows and Linux on x86-64 and for Apple silicon Macs; on an Intel Mac or AArch64 Linux, [build mk from source](#building-from-source). [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
 
 ## Contributing
 

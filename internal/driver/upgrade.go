@@ -41,7 +41,7 @@ type UpgradeConfig struct {
 	Base    string        // the release address; "" means MK_RELEASES, else the compiled-in one
 	Home    string        // the install root; "" means MK_HOME, else the one the executable lives in
 	Exe     string        // the running executable; "" means os.Executable
-	Host    string        // release.HostWindows or HostLinux; "" means this host
+	Host    string        // one of release.Hosts; "" means this host
 	Keys    []release.Key // the trusted keys; nil means release.Trusted()
 	Client  *http.Client  // nil means a client with a 30-minute timeout
 	Getenv  func(string) string
@@ -184,7 +184,8 @@ func (c UpgradeConfig) get(file string, limit int64) ([]byte, error) {
 }
 
 // pick is the archive of the host in a verified SHA256SUMS: the version
-// asked for, or the newest the file lists.
+// asked for, or the newest the file lists. On an Intel Mac, for which
+// releases carry no archive yet, the error says how to build from source.
 func pick(sums release.Sums, version, host string) (name, v string, err error) {
 	var best release.Version
 	for n := range sums {
@@ -207,6 +208,9 @@ func pick(sums release.Sums, version, host string) (name, v string, err error) {
 		what := "a release"
 		if version != "" {
 			what = "mk " + version
+		}
+		if host == release.HostMacOS {
+			return "", "", fmt.Errorf("%s has no archive for Intel Macs (%s): there is no binary release for Intel Macs yet; build mk from source with Homebrew's LLVM 21 (brew install llvm@21 lld@21), as README.md's \"Building from source\" says", what, host)
 		}
 		return "", "", fmt.Errorf("%s has no archive for %s in its %s", what, host, release.SumsFile)
 	}

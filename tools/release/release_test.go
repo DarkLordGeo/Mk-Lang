@@ -195,6 +195,76 @@ func TestBuildTwiceSameBytes(t *testing.T) {
 	}
 }
 
+// TestBuildMacOS: an mk built for darwin/arm64 or darwin/amd64 gives that
+// host's .tar.gz with the macOS layout: bin/mk, llvm/bin/clang and
+// llvm/bin/lld executable, clang's headers, no .exe and no llvm-lib. The
+// stand-in mk cannot run here, so its `mk version` is replaced.
+func TestBuildMacOS(t *testing.T) {
+	oldV := mkVersion
+	mkVersion = func(string) (string, error) { return fakeVersionText("0.3.0", 21), nil }
+	t.Cleanup(func() { mkVersion = oldV })
+	j := testJob(t)
+	llvm := t.TempDir()
+	for n, body := range map[string]string{"bin/clang": "fake clang", "bin/lld": "fake lld", "bin/ld64.lld": "not shipped",
+		"lib/clang/21/include/stddef.h": "#define NULL 0\n", "LICENSE.TXT": "LLVM licence placeholder for tests\n"} {
+		p := filepath.Join(llvm, filepath.FromSlash(n))
+		os.MkdirAll(filepath.Dir(p), 0o755)
+		os.WriteFile(p, []byte(body), 0o755)
+	}
+	j.LLVM = llvm
+	for _, c := range []struct{ goarch, host string }{{"arm64", release.HostMacOSARM64}, {"amd64", release.HostMacOS}} {
+		dir := t.TempDir()
+		src := filepath.Join(dir, "src")
+		os.MkdirAll(src, 0o755)
+		os.WriteFile(filepath.Join(src, "go.mod"), []byte("module fakemk\n\ngo 1.22\n"), 0o644)
+		os.WriteFile(filepath.Join(src, "main.go"), []byte("package main\n\nfunc main() {}\n"), 0o644)
+		j.MK = filepath.Join(dir, "mk")
+		cmd := exec.Command(goTool(t), "build", "-trimpath", "-o", j.MK, ".")
+		cmd.Dir = src
+		cmd.Env = append(os.Environ(), "GOFLAGS=", "CGO_ENABLED=0", "GOWORK=off", "GOOS=darwin", "GOARCH="+c.goarch)
+		if b, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("go build for darwin/%s: %v\n%s", c.goarch, err, b)
+		}
+		j.Out = t.TempDir()
+		p, _, err := buildArchive(j)
+		if err != nil {
+			t.Fatalf("darwin/%s: %v", c.goarch, err)
+		}
+		if filepath.Base(p) != "mk-0.3.0-"+c.host+".tar.gz" {
+			t.Errorf("darwin/%s: archive %s", c.goarch, filepath.Base(p))
+		}
+		dest := filepath.Join(t.TempDir(), "x")
+		if err := release.Extract(p, dest, release.TopDir("0.3.0", c.host), release.Limits{}, nil); err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		filepath.WalkDir(dest, func(p string, d os.DirEntry, err error) error {
+			if err == nil && !d.IsDir() {
+				r, _ := filepath.Rel(dest, p)
+				got = append(got, filepath.ToSlash(r))
+			}
+			return nil
+		})
+		want := []string{"CHANGELOG.md", "LICENSE", "LICENSE-LLVM.txt", "RELEASE.txt", "bin/mk", "doc/reference.md",
+			"llvm/bin/clang", "llvm/bin/lld", "llvm/lib/clang/21/include/stddef.h"}
+		slices.Sort(got)
+		if !slices.Equal(got, want) {
+			t.Errorf("darwin/%s: archive holds\n%v\nwant\n%v", c.goarch, got, want)
+		}
+		if runtime.GOOS != "windows" {
+			for _, x := range []string{"bin/mk", "llvm/bin/clang", "llvm/bin/lld"} {
+				if fi, err := os.Stat(filepath.Join(dest, x)); err != nil || fi.Mode().Perm()&0o111 == 0 {
+					t.Errorf("darwin/%s: %s is not executable: %v", c.goarch, x, err)
+				}
+			}
+		}
+		notes, _ := os.ReadFile(filepath.Join(dest, "RELEASE.txt"))
+		if !strings.Contains(string(notes), "host "+c.host+"\n") {
+			t.Errorf("darwin/%s: RELEASE.txt names no host %s:\n%s", c.goarch, c.host, notes)
+		}
+	}
+}
+
 // TestBuildRefuses: an mk built without -trimpath, a missing licence and a
 // bad version are refused before anything is written.
 func TestBuildRefuses(t *testing.T) {

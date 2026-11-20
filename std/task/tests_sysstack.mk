@@ -8,6 +8,23 @@
 import std.raw
 import std.rt
 
+// SsFirst holds the first failing SsCheck's why bits, carrier index, lo,
+// hi, scheduler sp and task sp (SsNote); why is 0 until then.
+var SsFirst: [6]raw.Atomic[u64] = [raw.Atomic[u64].New(0), raw.Atomic[u64].New(0), raw.Atomic[u64].New(0),
+    raw.Atomic[u64].New(0), raw.Atomic[u64].New(0), raw.Atomic[u64].New(0)]
+
+// SsNote records a failing check in SsFirst when it is the first: the Cas
+// of why from 0 admits one writer.
+SsNote(why: u64, i: u64, lo: u64, hi: u64, ssp: u64, me: u64) {
+    if SsFirst[0].Cas(0, why) {
+        SsFirst[1].Store(i)
+        SsFirst[2].Store(lo)
+        SsFirst[3].Store(hi)
+        SsFirst[4].Store(ssp)
+        SsFirst[5].Store(me)
+    }
+}
+
 // SsCheck checks, from a task, the bounds of the carrier it runs on: 8 MiB,
 // the scheduler's saved stack pointer inside them, the task's own stack
 // pointer outside them (it is in a slot). bad counts failures; seen gets
@@ -26,14 +43,19 @@ SsCheck(io: Io, bad: &raw.Atomic[u32], seen: &raw.Atomic[u64], read: &raw.Atomic
         hi := (*c).sys_hi
         ssp := Trunc[uint]((*c).sys_ctx[0])
         me := rt.StackPointer()
+        var why: u64 = 0
         if hi - lo != Trunc[uint](SystemStackSize) {
-            _ = bad.Add(1)
+            why |= 1
         }
         if ssp < lo || ssp >= hi {
-            _ = bad.Add(1)
+            why |= 2
         }
         if me >= lo && me < hi {
+            why |= 4
+        }
+        if why != 0 {
             _ = bad.Add(1)
+            SsNote(why, Trunc[u64]((*c).index), u64(lo), u64(hi), u64(ssp), u64(me))
         }
         if Target.os == Os.Linux {
             // The lowest byte of the recorded range is readable: with
@@ -61,6 +83,13 @@ test "RT-SysStack-Bounds every started carrier's system stack is 8 MiB and holds
         for _ in 0..32 {
             s.go SsCheck(sys.io, &bad, &seen, &read)
         }
+    }
+    if bad.Load() != 0 {
+        // The first failing check's bits (1 size, 2 the scheduler's sp, 4
+        // the task's sp) and values, so a failure names its cause.
+        sys.PrintErr("bad {n}: why {w} carrier {i} lo {lo} hi {hi} ssp {ssp} me {me}\n", (n: bad.Load(),
+            w: SsFirst[0].Load(), i: SsFirst[1].Load(), lo: SsFirst[2].Load(), hi: SsFirst[3].Load(),
+            ssp: SsFirst[4].Load(), me: SsFirst[5].Load())) else {}
     }
     Assert(bad.Load() == 0)
     // On Linux each of the 32 tasks read its carrier's lowest byte.

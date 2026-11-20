@@ -23,9 +23,11 @@ func exeName() string {
 	return "mk"
 }
 
+// hostHere is this machine's host, or Linux's where releases carry none:
+// the tests only need its archive layout.
 func hostHere() string {
-	if runtime.GOOS == "windows" {
-		return HostWindows
+	if h := HostOf(runtime.GOOS, runtime.GOARCH); h != "" {
+		return h
 	}
 	return HostLinux
 }

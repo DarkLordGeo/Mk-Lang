@@ -3,13 +3,21 @@
 # which no other job of the run can change.
 #
 # What: one release bundle, mk-<version>-<host>.zip or .tar.gz, built on the
-# runner image `os`: a release build of mk, clang, lld and clang's headers
-# from LLVM's official release, LLVM's licence and the documentation
-# (tools/release build), unpacked and run once. It uploads the bundle as
-# the artifact bundle-<runner OS> and outputs its file name and SHA-256.
+# runner image `os`: a release build of mk, clang, lld and clang's headers,
+# LLVM's licence and the documentation (tools/release build), unpacked and
+# run once. The hosts are x86_64 Windows and Linux and aarch64 macOS, each
+# with LLVM's official release binaries. There is no x86_64 macOS bundle:
+# LLVM publishes no Intel macOS binaries, and Homebrew's link against its
+# own shared libraries. It uploads the bundle as the artifact bundle-<host>
+# and outputs its file name and SHA-256.
 #
 # How: called only by release.yml, once per host. Everything the job writes
-# goes under RUNNER_TEMP.
+# goes under RUNNER_TEMP. On macOS the bundled programs must load nothing
+# but the system's libraries and run on macOS 13, the oldest release Go
+# supports; on Apple silicon each must carry a valid signature (Go's and
+# LLVM's linkers sign arm64 output ad hoc, and nothing changes the bytes
+# after them). install.sh's tests then run with only what macOS ships on
+# PATH, and mk upgrade's tests on this host's archive.
 name: Bundle
 
 on:
@@ -42,9 +50,12 @@ env:
   # GitHub's API reports for llvmorg-21.1.8.
   LLVM_WIN64_SHA256: 7a5386c26497db1691f320121e5b113364dd0274b98e55f15f4dbc00c0450113
   LLVM_LINUX_SHA256: b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b
+  LLVM_MACOS_ARM64_SHA256: b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669
   # SHA-256 of llvm/LICENSE.TXT at llvmorg-21.1.8, the licence every bundle
   # carries as LICENSE-LLVM.txt.
   LLVM_LICENSE_SHA256: 8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee
+  # The oldest macOS the bundled programs may need: Go 1.27's floor.
+  MACOS_MIN: "13.0"
 
 jobs:
   bundle:
@@ -69,11 +80,21 @@ jobs:
           cache: false
 
       # Everything the job writes goes under RUNNER_TEMP, so the checkout
-      # stays clean and mk's VCS stamp carries no "+dirty".
+      # stays clean and mk's VCS stamp carries no "+dirty". The runner's OS
+      # and architecture name the host.
       - name: Work directories
         env:
           VERSION_IN: ${{ inputs.version }}
         run: |
+          case "$RUNNER_OS/$RUNNER_ARCH" in
+            Windows/X64) host=x86_64-windows ext=zip ;;
+            Linux/X64) host=x86_64-linux ext=tar.gz ;;
+            macOS/ARM64) host=aarch64-macos ext=tar.gz ;;
+            *) echo "::error::releases carry no bundle for $RUNNER_OS $RUNNER_ARCH"; exit 1 ;;
+          esac
+          # macOS has shasum, not sha256sum.
+          sha=sha256sum
+          [ "$RUNNER_OS" = macOS ] && sha="shasum -a 256"
           work="$RUNNER_TEMP/rel"
           mkdir -p "$work/build" "$work/out" "$work/tmp" "$work/cache"
           # Git Bash on Windows: native paths, not ones with mixed
@@ -86,6 +107,9 @@ jobs:
             echo "TMPDIR=$(native "$work/tmp")"
             echo "MK_CACHE=$(native "$work/cache")"
             echo "VERSION=$VERSION_IN"
+            echo "HOST=$host"
+            echo "BUNDLE=mk-$VERSION_IN-$host.$ext"
+            echo "SHA256=$sha"
           } >> "$GITHUB_ENV"
 
       # The release build of mk, before anything else runs in the checkout.
@@ -102,6 +126,21 @@ jobs:
           go build -trimpath -ldflags "-X mk/internal/release.base=$MK_RELEASES_URL" -o "$mk" ./cmd/mk
           "$mk" version
           echo "MK_EXE=$mk" >> "$GITHUB_ENV"
+
+      # install.sh with nothing on PATH but what macOS ships: its curl,
+      # shasum, LibreSSL (which cannot check Ed25519, so the script's Perl
+      # check runs) and Perl. Then mk upgrade picking this host's archive.
+      # Neither needs LLVM, so they run before the long LLVM steps.
+      - name: install.sh and mk upgrade on macOS
+        if: runner.os == 'macOS'
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          /usr/bin/openssl version
+          /usr/bin/perl -v | sed -n 2p
+          go=$(command -v go)
+          PATH=/usr/bin:/bin:/usr/sbin:/sbin "$go" test -p 2 -count=1 -v -run 'TestInstallSh|TestInstallKeys' ./tools/release
+          go test -p 2 -count=1 -run 'TestUpgrade' ./internal/driver
 
       # LLVM's official Windows binaries, from its installer, into the
       # default location. The image may carry another LLVM there: its
@@ -149,39 +188,86 @@ jobs:
           "$name/bin/clang" --version
           echo "LLVM_DIR=$RUNNER_TEMP/$name" >> "$GITHUB_ENV"
 
+      # LLVM's official Apple silicon binaries, the same archive the CI's
+      # macOS job uses. Only the parts a bundle carries are unpacked; the
+      # bundle step checks that they load no library macOS lacks.
+      - name: LLVM (macOS, Apple silicon)
+        if: runner.os == 'macOS' && runner.arch == 'ARM64'
+        run: |
+          cd "$RUNNER_TEMP"
+          name="LLVM-$LLVM_VERSION-macOS-ARM64"
+          curl -fsSL --retry 3 -o llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/$name.tar.xz"
+          echo "$LLVM_MACOS_ARM64_SHA256  llvm.tar.xz" | shasum -a 256 -c -
+          major="${LLVM_VERSION%%.*}"
+          # bin/clang is a link to bin/clang-<major>.
+          tar -xJf llvm.tar.xz "$name/bin/clang" "$name/bin/clang-$major" "$name/bin/lld" "$name/lib/clang/$major/include"
+          rm -f llvm.tar.xz
+          "$name/bin/clang" --version
+          echo "LLVM_DIR=$RUNNER_TEMP/$name" >> "$GITHUB_ENV"
+
       - name: LLVM's licence
         run: |
           curl -fsSL --retry 3 -o "$WORK/LICENSE-LLVM.txt" "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-$LLVM_VERSION/llvm/LICENSE.TXT"
-          echo "$LLVM_LICENSE_SHA256  $WORK/LICENSE-LLVM.txt" | sha256sum -c -
+          echo "$LLVM_LICENSE_SHA256  $WORK/LICENSE-LLVM.txt" | $SHA256 -c -
 
       - name: Bundle
         run: go run ./tools/release build -mk "$MK_EXE" -llvm "$LLVM_DIR" -llvm-license "$WORK/LICENSE-LLVM.txt" -version "$VERSION" -repo . -out "$WORK/out"
 
       # The unpacked bundle's mk must find its own LLVM and build and run a
-      # program. On Linux the bundled tools must need no library the
-      # system lacks.
+      # program. On Linux and macOS the bundled programs must need no
+      # library the system lacks; on macOS they must also run on MACOS_MIN
+      # and, on Apple silicon, carry a valid signature.
       - name: Run the bundle
         run: |
           cd "$WORK"
-          host=x86_64-linux
-          [ "$RUNNER_OS" = Windows ] && host=x86_64-windows
-          top="mk-$VERSION-$host"
+          top="mk-$VERSION-$HOST"
           mkdir smoke
-          if [ "$RUNNER_OS" = Windows ]; then
-            pwsh -NoProfile -Command "Expand-Archive -LiteralPath 'out\\$top.zip' -DestinationPath 'smoke'"
-            mk="smoke/$top/bin/mk.exe"
-          else
-            tar -xzf "out/$top.tar.gz" -C smoke
-            mk="smoke/$top/bin/mk"
-            for t in clang lld; do
-              ldd "smoke/$top/llvm/bin/$t" > ldd.txt 2>&1 || true
-              cat ldd.txt
-              if grep -q "not found" ldd.txt; then
-                echo "::error::the bundled $t needs a library this system lacks"
-                exit 1
-              fi
-            done
-          fi
+          case "$RUNNER_OS" in
+            Windows)
+              pwsh -NoProfile -Command "Expand-Archive -LiteralPath 'out\\$BUNDLE' -DestinationPath 'smoke'"
+              mk="smoke/$top/bin/mk.exe"
+              ;;
+            Linux)
+              tar -xzf "out/$BUNDLE" -C smoke
+              mk="smoke/$top/bin/mk"
+              for t in clang lld; do
+                ldd "smoke/$top/llvm/bin/$t" > ldd.txt 2>&1 || true
+                cat ldd.txt
+                if grep -q "not found" ldd.txt; then
+                  echo "::error::the bundled $t needs a library this system lacks"
+                  exit 1
+                fi
+              done
+              ;;
+            macOS)
+              tar -xzf "out/$BUNDLE" -C smoke
+              mk="smoke/$top/bin/mk"
+              want_major="${MACOS_MIN%%.*}"
+              for f in bin/mk llvm/bin/clang llvm/bin/lld; do
+                p="smoke/$top/$f"
+                # Each listing goes to a file first: under pipefail, a reader
+                # that stops early would fail the step.
+                otool -L "$p" > libs.txt
+                cat libs.txt
+                # The first line names the file; every other is a library.
+                bad=$(tail -n +2 libs.txt | awk '{ print $1 }' | grep -Ev '^(/usr/lib/|/System/Library/)' || true)
+                if [ -n "$bad" ]; then
+                  echo "::error::the bundled $f loads libraries outside the system: $bad"
+                  exit 1
+                fi
+                otool -l "$p" > loads.txt
+                minos=$(awk '$1 == "cmd" && ($2 == "LC_BUILD_VERSION" || $2 == "LC_VERSION_MIN_MACOSX") { b = 1 } b && !done && ($1 == "minos" || $1 == "version") { print $2; done = 1 }' loads.txt)
+                echo "$f needs macOS $minos or later"
+                if [ -z "$minos" ] || [ "${minos%%.*}" -gt "$want_major" ]; then
+                  echo "::error::the bundled $f needs macOS $minos, newer than $MACOS_MIN"
+                  exit 1
+                fi
+                if [ "$RUNNER_ARCH" = ARM64 ]; then
+                  codesign --verify --strict --verbose=2 "$p" || { echo "::error::the bundled $f has no valid signature"; exit 1; }
+                fi
+              done
+              ;;
+          esac
           v=$("$mk" version)
           echo "$v"
           case "$v" in
@@ -201,20 +287,16 @@ jobs:
       - name: Hash
         id: hash
         run: |
-          host=x86_64-linux ext=tar.gz
-          [ "$RUNNER_OS" = Windows ] && host=x86_64-windows ext=zip
-          file="mk-$VERSION-$host.$ext"
-          sum=$(sha256sum < "$WORK/out/$file" | cut -d' ' -f1)
-          echo "$sum  $file"
+          sum=$($SHA256 < "$WORK/out/$BUNDLE" | cut -d' ' -f1)
+          echo "$sum  $BUNDLE"
           {
-            echo "file=$file"
+            echo "file=$BUNDLE"
             echo "sha256=$sum"
           } >> "$GITHUB_OUTPUT"
-          echo "BUNDLE=$file" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: bundle-${{ runner.os }}
+          name: bundle-${{ env.HOST }}
           path: ${{ env.WORK }}/out/${{ env.BUNDLE }}
           if-no-files-found: error
           compression-level: 0

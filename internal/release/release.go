@@ -1,11 +1,12 @@
 // Why: the release tool, the install scripts and mk upgrade must agree on
 // how a release's files are named and versions compared.
 //
-// What: HostOf, TopDir, ArchiveName and ParseArchiveName; Version with
+// What: the hosts (Hosts, HostOf), TopDir, ArchiveName and ParseArchiveName; Version with
 // ParseVersion, String and Compare; Base, the compiled-in release address.
 //
-// How: an archive is mk-<version>-<host>.zip on Windows and .tar.gz
-// elsewhere; a version is Major.Minor.Patch with an optional pre-release
+// How: the hosts are x86_64 Windows and Linux and both macOS
+// architectures; an archive is mk-<version>-<host>.zip on Windows and
+// .tar.gz elsewhere; a version is Major.Minor.Patch with an optional pre-release
 // suffix, which sorts before its release.
 
 // Package release holds what a toolchain release is on disk and on the
@@ -30,21 +31,27 @@ const (
 
 // The hosts a release has an archive for.
 const (
-	HostWindows = "x86_64-windows"
-	HostLinux   = "x86_64-linux"
+	HostWindows    = "x86_64-windows"
+	HostLinux      = "x86_64-linux"
+	HostMacOS      = "x86_64-macos"  // Intel Macs
+	HostMacOSARM64 = "aarch64-macos" // Apple silicon
 )
+
+// Hosts lists every host a release has an archive for.
+var Hosts = []string{HostWindows, HostLinux, HostMacOS, HostMacOSARM64}
 
 // HostOf is the release host of a Go GOOS and GOARCH, or "" when releases
 // carry no archive for it.
 func HostOf(goos, goarch string) string {
-	if goarch != "amd64" {
-		return ""
-	}
-	switch goos {
-	case "windows":
+	switch goos + "/" + goarch {
+	case "windows/amd64":
 		return HostWindows
-	case "linux":
+	case "linux/amd64":
 		return HostLinux
+	case "darwin/amd64":
+		return HostMacOS
+	case "darwin/arm64":
+		return HostMacOSARM64
 	}
 	return ""
 }
@@ -54,7 +61,7 @@ func HostOf(goos, goarch string) string {
 func TopDir(version, host string) string { return "mk-" + version + "-" + host }
 
 // ArchiveName is the host's archive file name: mk-<version>-x86_64-windows.zip
-// or mk-<version>-x86_64-linux.tar.gz.
+// on Windows, mk-<version>-<host>.tar.gz on Linux and macOS.
 func ArchiveName(version, host string) string {
 	if host == HostWindows {
 		return TopDir(version, host) + ".zip"
@@ -65,16 +72,12 @@ func ArchiveName(version, host string) string {
 // ParseArchiveName reads a version and host back from an archive file name,
 // ok=false for any other name.
 func ParseArchiveName(name string) (version, host string, ok bool) {
-	for _, h := range []string{HostWindows, HostLinux} {
+	for _, h := range Hosts {
 		rest, found := strings.CutPrefix(name, "mk-")
 		if !found {
 			return "", "", false
 		}
-		suffix := "-" + h + ".tar.gz"
-		if h == HostWindows {
-			suffix = "-" + h + ".zip"
-		}
-		if v, found := strings.CutSuffix(rest, suffix); found {
+		if v, found := strings.CutSuffix(rest, strings.TrimPrefix(ArchiveName("", h), "mk-")); found {
 			if _, err := ParseVersion(v); err == nil {
 				return v, h, true
 			}

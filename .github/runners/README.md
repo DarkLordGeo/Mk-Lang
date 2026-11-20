@@ -4,13 +4,13 @@
 
 | Workflow | Runs on | When |
 |---|---|---|
-| `ci.yml` | GitHub-hosted `windows-2025` and `ubuntu-24.04` | every push to `main`, every pull request (forks included), by hand |
-| `release.yml` | GitHub-hosted `windows-2025` and `ubuntu-24.04` | a `v*` tag pushed to this repository |
+| `ci.yml` | GitHub-hosted `windows-2025` and `ubuntu-24.04`; a trimmed set on `macos-15`, `macos-15-intel` and `ubuntu-24.04-arm` | every push to `main`, every pull request (forks included), by hand |
+| `release.yml` | GitHub-hosted `windows-2025`, `ubuntu-24.04` and `macos-15` (Apple silicon) | a `v*` tag pushed to this repository |
 | `nightly.yml` | the self-hosted runners below, labelled `mk` | once a night on `main`, and by hand on `main` |
 
 The hosted images are pinned by version; moving to a newer one is a change of its own.
 
-`ci.yml` runs with a read-only token and no secrets, so it runs a fork's pull request as it is. It installs Go and LLVM 21 on each job, runs a checks job (build, vet, gofmt, the documentation tests), and splits the Go tests across parallel jobs: `internal/driver` in shards, `internal/corpus`, `internal/lsp`, and the other packages. `tools/ci/test.sh` runs each part. `release.yml` calls `ci.yml` on both hosts and builds a bundle on each. Only its signing job gets the release key, from the `release` environment, and only its publishing job gets a token that can write ([Releases](../../CONTRIBUTING.md#releases)).
+`ci.yml` runs with a read-only token and no secrets, so it runs a fork's pull request as it is. It installs Go and LLVM 21 on each job, runs a checks job (build, vet, gofmt, the documentation tests), and splits the Go tests across parallel jobs: `internal/driver` in shards, `internal/corpus`, `internal/lsp`, and the other packages. `tools/ci/test.sh` runs each part. `release.yml` calls `ci.yml` on both hosts and builds a bundle on each, and a third on `macos-15` for Apple silicon Macs. Only its signing job gets the release key, from the `release` environment, and only its publishing job gets a token that can write ([Releases](../../CONTRIBUTING.md#releases)).
 
 The nightly gate runs on the self-hosted runners because it reads the evidence directory, which is not in the repository, and runs std's own test suite, which takes hours:
 
