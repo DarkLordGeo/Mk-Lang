@@ -118,7 +118,7 @@ func TestPkgCmd_New(t *testing.T) {
 		t.Fatal(err)
 	}
 	man, _ := os.ReadFile(filepath.Join(root, "pkg.mk"))
-	if !strings.Contains(string(man), `mk: "0.1"`) || !strings.Contains(string(man), `pkg.Bin(name: "hello"`) {
+	if !strings.Contains(string(man), `mk: "`+MinorOf(Release)+`"`) || !strings.Contains(string(man), `pkg.Bin(name: "hello"`) {
 		t.Errorf("pkg.mk:\n%s", man)
 	}
 	clean(t, check(t, Config{Root: root, CacheDir: t.TempDir()}))
