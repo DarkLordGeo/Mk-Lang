@@ -31,11 +31,7 @@ func provenClause(d *diag.Diagnostic, f diag.Fix) bool {
 	if f.Class != diag.Proven {
 		return false
 	}
-	switch d.Code {
-	case diag.E0601, diag.E0602, diag.E0604:
-		return true
-	}
-	return false
+	return d.Code == diag.E0601 || d.Code == diag.E0602 || d.Code == diag.E0604
 }
 
 // whyNotProven is the alternative's note for a proven clause fix whose

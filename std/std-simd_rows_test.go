@@ -193,7 +193,7 @@ func TestSTDSIMD_PlantedViolations(t *testing.T) {
 		{"zig", zig + "\ninline fn k() void {}\n", "forced inlining"},
 		{"go", strings.Replace(gosrc, "import (", "import (\n\t\"unsafe\"", 1), `import "unsafe"`},
 		{"go", gosrc + "\n//go:noinline\nfunc z() {}\n", "//go:"},
-		{"c", strings.ReplaceAll(c, "buffer not 64-byte aligned", "x"), "BS-4"},
+		{"c", strings.ReplaceAll(c, "buffer not 64-byte aligned", "x"), "no 64-byte alignment refusal"},
 		{"note", "mk and go are scalar std validators (str.From, utf8.Valid), labelled", "note"},
 	} {
 		if tc.lang == "note" {

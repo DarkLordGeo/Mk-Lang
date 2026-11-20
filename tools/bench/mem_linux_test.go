@@ -111,12 +111,16 @@ func spawnChecks(t *testing.T, s peakSpawner, env []string) {
 	}
 
 	// Exactness: the helper prints its own VmHWM just before it exits. Its
-	// own peak is not above the reading by more than one step of the kernel's
-	// resident-set counter (128 KiB, 32 pages: the two figures are read at
-	// different moments, and readings moved by that step between runs in
-	// WSL), and a reading above the floor is within 1 MiB of it (the reading
-	// also holds the exit's last pages).
-	const counterStepKiB = 128
+	// own peak is not above the reading by more than the slack of the
+	// kernel's resident-set counter, and a reading above the floor is within
+	// 1 MiB of it (the reading also holds the exit's last pages). Since Linux
+	// 6.2 that counter is a per-CPU counter read without folding in each
+	// CPU's pending delta, so a read can be off by up to one batch per CPU:
+	// max(32, 2*CPUs) pages each. The two figures are read at different
+	// moments, so they can differ by that much. A hosted 4-CPU runner showed
+	// 224 KiB, against 512 KiB for this bound; WSL readings moved by 128 KiB.
+	cpus := uint64(runtime.NumCPU())
+	counterSlackKiB := 4 * max(32, 2*cpus) * cpus
 	for _, tc := range [][]string{{"1", "hwm"}, {"16", "hwm"}, {"64", "hwm"}, {"16", "hwmfree"}} {
 		c := exec.Command(os.Args[0], tc...)
 		c.Env = env
@@ -127,8 +131,8 @@ func spawnChecks(t *testing.T, s peakSpawner, env []string) {
 		own := ownHWM(t, out)
 		raw, floor := rep.MaxrssKiB, rep.FloorKiB
 		t.Logf("%v: ru_maxrss %d KiB, floor %d KiB, the program's own VmHWM %d KiB", tc, raw, floor, own)
-		if own > raw+counterStepKiB {
-			t.Errorf("%v: the program's own VmHWM %d KiB is more than %d KiB above the reading %d KiB", tc, own, counterStepKiB, raw)
+		if own > raw+counterSlackKiB {
+			t.Errorf("%v: the program's own VmHWM %d KiB is more than %d KiB above the reading %d KiB", tc, own, counterSlackKiB, raw)
 		}
 		if raw > floor && raw > own && raw-own >= 1024 {
 			t.Errorf("%v: the reading %d KiB is above the floor %d KiB but %d KiB over the program's own VmHWM %d KiB", tc, raw, floor, raw-own, own)

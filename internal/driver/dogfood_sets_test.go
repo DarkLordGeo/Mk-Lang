@@ -123,7 +123,7 @@ Narrow[const N: int](dst: mut []u8)
     lane := simd.Vec[u8, N].Iota()
     three := simd.Vec[u8, N].Splat(3)
     a := lane.DivTrunc(three)
-    b := ((a +% three) & lane).Shl(1)
+    b := ((a +% three) & lane) << 1
     m := b == lane
     m.Select(b, ~lane).CopyTo(dst, 0)
 }

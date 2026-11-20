@@ -392,6 +392,49 @@ MappedBytes(): u64 {
     return total
 }
 
+// ThreadCount is the process's thread count, the Threads line of
+// /proc/self/status (Linux; 0 elsewhere).
+ThreadCount(): u64 {
+    if Target.os != Os.Linux {
+        return 0
+    }
+    o := sys.OpenFile("/proc/self/status", 0, false)
+    if o.err != core.SysErr.None {
+        return 0
+    }
+    var buf: [8192]u8 = [0; 8192]
+    r := sys.ReadSync(Trunc[uint](o.value), mut buf[..], 0)
+    _ = sys.Close(Trunc[uint](o.value))
+    if r.err != core.SysErr.None || r.value <= 0 {
+        return 0
+    }
+    n := Trunc[int](r.value)
+    key := "\nThreads:"
+    for i in 0..n - key.Len() {
+        var hit := true
+        for k in 0..key.Len() {
+            if buf[i + k] != key.Byte(k) {
+                hit = false
+                break
+            }
+        }
+        if !hit {
+            continue
+        }
+        var v: u64 = 0
+        for j in i + key.Len()..n {
+            c := buf[j]
+            if c >= 48 && c <= 57 {
+                v = v * 10 + u64(c) - 48
+            } else if c != 9 && c != 32 {
+                break
+            }
+        }
+        return v
+    }
+    return 0
+}
+
 JoinQuick(arg: *u8) {
 }
 
@@ -407,6 +450,7 @@ test "Runtime 128 joined threads give back their stacks and alternate signal sta
         }
     }
     before := MappedBytes()
+    threads_before := ThreadCount()
     for _ in 0..128 {
         r := sys.ThreadStartJoin(JoinQuick, raw.Null[u8](), 1 << 16)
         Assert(r.err == core.SysErr.None)
@@ -416,8 +460,18 @@ test "Runtime 128 joined threads give back their stacks and alternate signal sta
         }
     }
     after := MappedBytes()
-    // A leak of the alternate stacks would be 128 x 64 KiB = 8 MiB.
-    Assert(after < before + (4 << 20))
+    threads_after := ThreadCount()
+    // A leak of the alternate stacks would be 128 x 64 KiB = 8 MiB. The
+    // runtime may start a carrier during the loop (carriers start on
+    // demand and never exit), which maps an 8 MiB system stack, its guard
+    // page and a 64 KiB alternate stack: each thread the process gained is
+    // allowed that much. A leak adds no thread, since every joined one has
+    // ended.
+    var grown: u64 = 0
+    if threads_after > threads_before {
+        grown = threads_after - threads_before
+    }
+    Assert(after < before + (4 << 20) + grown * ((8 << 20) + (128 << 10)))
 }
 
 // Dedicated and Thread. Each test

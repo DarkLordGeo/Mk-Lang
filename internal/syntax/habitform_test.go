@@ -25,6 +25,17 @@ func TestFloatDigits(t *testing.T) {
 	})
 }
 
+// TestFloatDigitsHole: a gen template's `$0.` is hole 0 and a dot, not a
+// float missing its fraction; `1.` beside it still is one.
+func TestFloatDigitsHole(t *testing.T) {
+	if _, ds := Lex(0, "$0.$1($2): $3 {\n    return $0.$4\n}\n"); len(ds) != 0 {
+		t.Errorf("template holes: %s", ds[0].Message)
+	}
+	if _, ds := Lex(0, "$0 + 1."); len(ds) != 1 || ds[0].Message != "a float needs digits on both sides of `.`: write `1.0`" {
+		t.Errorf("`1.` after a hole: %v", ds)
+	}
+}
+
 // TestHabitForms: the habits that share a prefix with Mk name the Mk form.
 func TestHabitForms(t *testing.T) {
 	runCases(t, []pcase{

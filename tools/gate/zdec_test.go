@@ -511,7 +511,8 @@ func TestNoZdecSpec(t *testing.T) {
 // TestCHeaders: off Windows the step skips when clang finds no C
 // library headers and fails when clang fails otherwise.
 // Run here with this host's clang: on Windows, with INCLUDE and LIB
-// cleared it finds no stdio.h (a skip), with msvcEnv's it finds them;
+// cleared and -nostdlibinc it finds no stdio.h (a skip), with msvcEnv's
+// it finds them;
 // and a "clang" that fails for another reason is a failure, not a skip.
 func TestCHeaders(t *testing.T) {
 	if skip, fail := cHeaders(fakeZdec(t, "fail")); skip != "" || !strings.Contains(fail, "fake: a failure") {
@@ -531,9 +532,15 @@ func TestCHeaders(t *testing.T) {
 	cEnv, why := msvcEnv(func(string) string { return "" }, msvcBases())
 	t.Setenv("INCLUDE", "")
 	t.Setenv("LIB", "")
+	// Without INCLUDE, clang can still find Visual Studio through its setup
+	// registration (the hosted windows-2025 image has one). The driver's
+	// CCC_OVERRIDE_OPTIONS appends -nostdlibinc, so this clang searches no
+	// system include directory at all.
+	t.Setenv("CCC_OVERRIDE_OPTIONS", "+-nostdlibinc")
 	if skip, fail := cHeaders(clang); !strings.Contains(skip, "finds no C library headers") || fail != "" {
-		t.Errorf("clang with no INCLUDE: skip %q, fail %q; want a skip", skip, fail)
+		t.Errorf("clang with no INCLUDE and -nostdlibinc: skip %q, fail %q; want a skip", skip, fail)
 	}
+	os.Unsetenv("CCC_OVERRIDE_OPTIONS")
 	if why != "" {
 		t.Logf("no MSVC environment (%s): the found-headers case was not checked", why)
 		return

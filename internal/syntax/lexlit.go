@@ -25,7 +25,13 @@ func (lx *lexer) number() {
 	n := uint32(len(text))
 	i := start
 	kind := ast.TokInt
-	if text[i] == '0' && i+1 < n && strings.IndexByte("xobXOB", text[i+1]) >= 0 {
+	if lx.last == ast.TokDollar {
+		// A gen template's hole `$N`: an index, never a float, so `$0.$1`
+		// is hole 0, a dot and hole 1.
+		for i < n && isIdentByte(text[i]) {
+			i++
+		}
+	} else if text[i] == '0' && i+1 < n && strings.IndexByte("xobXOB", text[i+1]) >= 0 {
 		i += 2
 		for i < n && isIdentByte(text[i]) {
 			i++

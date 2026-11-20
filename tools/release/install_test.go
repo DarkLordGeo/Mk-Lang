@@ -240,6 +240,11 @@ func scratchEnv(dir string) []string {
 		os.MkdirAll(p, 0o755)
 		env = append(env, k+"="+p)
 	}
+	// Windows PowerShell's own files stay out of the fake profile where the
+	// variables can move them.
+	cache := filepath.Join(dir, "pscache")
+	os.MkdirAll(cache, 0o755)
+	env = append(env, "PSModuleAnalysisCachePath="+filepath.Join(cache, "ModuleAnalysisCache"), "POWERSHELL_TELEMETRY_OPTOUT=1", "POWERSHELL_UPDATECHECK=Off")
 	// A script that ignored -NoModifyPath / --no-modify-path still leaves
 	// the registry and ~/.profile alone.
 	return append(env, "MK_NO_MODIFY_PATH=1", testKeyEnv)
@@ -355,12 +360,54 @@ func TestInstallPs1(t *testing.T) {
 	if b, err := cmd.CombinedOutput(); err == nil || !strings.Contains(string(b), "not https") {
 		t.Errorf("http elsewhere: %v\n%s", err, b)
 	}
-	// Nothing reached the redirected profile directories.
+	// Nothing reached the redirected profile directories but what Windows
+	// PowerShell itself writes.
 	for _, k := range []string{"localappdata", "userprofile", "appdata", "home"} {
-		if des, _ := os.ReadDir(filepath.Join(dir, "profile", k)); len(des) != 0 {
-			t.Errorf("the script wrote into %s: %v", k, des)
+		if got := profileWrites(filepath.Join(dir, "profile", k), k); len(got) != 0 {
+			t.Errorf("the script wrote into %s: %v", k, got)
 		}
 	}
+}
+
+// powershellOwn are the files Windows PowerShell 5.1 and its .NET runtime
+// write for themselves, under the local application data folder: the
+// startup profile data and module analysis cache, and the CLR's usage log.
+// Where the user's shell folders are stored as %USERPROFILE%\AppData\...
+// (the hosted windows-2025 image), that folder is the fake USERPROFILE's,
+// whatever LOCALAPPDATA says. install.ps1 writes only under -Root.
+var powershellOwn = []string{`Microsoft\Windows\PowerShell\`, `Microsoft\CLR_v4.0\UsageLogs\`}
+
+// profileWrites lists the files and directories under the fake profile
+// directory p (k is its variable, lower case) that are neither in a
+// powershellOwn directory nor on the way to one.
+func profileWrites(p, k string) []string {
+	var own []string
+	for _, o := range powershellOwn {
+		switch k {
+		case "localappdata":
+			own = append(own, o)
+		case "userprofile":
+			own = append(own, `AppData\Local\`+o)
+		}
+	}
+	var out []string
+	filepath.WalkDir(p, func(path string, d os.DirEntry, err error) error {
+		if err != nil || path == p {
+			return nil
+		}
+		rel, _ := filepath.Rel(p, path)
+		for _, o := range own {
+			if strings.HasPrefix(rel, o) || d.IsDir() && strings.HasPrefix(o, rel+`\`) {
+				return nil
+			}
+		}
+		out = append(out, rel)
+		if d.IsDir() {
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return out
 }
 
 // TestInstallPs1PathString: the user PATH value install.ps1 would write,

@@ -19,6 +19,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"mk/internal/toolchain"
 )
 
 // compiler is one clang: a host binary, or WSL's clang fed on stdin.
@@ -118,27 +120,14 @@ var (
 func findHostClang(t *testing.T) compiler {
 	t.Helper()
 	hostOnce.Do(func() {
-		exe := "clang"
-		if runtime.GOOS == "windows" {
-			exe = "clang.exe"
+		// The clang mk itself would use. PATH alone is wrong on Linux:
+		// Ubuntu's /usr/bin/clang is LLVM 18, which does not parse range().
+		tl, err := toolchain.Discover(toolchain.Options{})
+		if err != nil {
+			hostWhy = err.Error() + "; the gate fails on this skip"
+			return
 		}
-		var cands []string
-		if d := os.Getenv("MK_LLVM"); d != "" {
-			cands = append(cands, filepath.Join(d, exe))
-		}
-		if runtime.GOOS == "windows" {
-			cands = append(cands, `C:\Program Files\LLVM\bin\clang.exe`)
-		}
-		if p, err := exec.LookPath(exe); err == nil {
-			cands = append(cands, p)
-		}
-		for _, c := range cands {
-			if _, err := os.Stat(c); err == nil {
-				hostClang = &compiler{name: "clang", argv: []string{c}}
-				return
-			}
-		}
-		hostWhy = "clang not found (MK_LLVM, C:\\Program Files\\LLVM\\bin, PATH); the gate fails on this skip"
+		hostClang = &compiler{name: "clang", argv: []string{tl.Clang}}
 	})
 	if hostClang == nil {
 		t.Skip(hostWhy)
