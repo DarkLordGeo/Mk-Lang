@@ -79,6 +79,10 @@ type Block struct {
 	Codes    []diag.Code
 	Source   string
 	Expected []Marker
+	// Arch is the "// arch: x86_64" line right after the verdict, "" when
+	// there is none: the block holds on that architecture only. The line
+	// stays in Source, a comment.
+	Arch string
 }
 
 // Key is the block's name in reports, the pending allowlist and --only:
@@ -146,6 +150,14 @@ func extractBlock(document string, lines []string, open int) (Block, int, error)
 		return Block{}, 0, errAt(b.Line, "%v", err)
 	}
 	b.Verdict, b.Codes = v, codes
+	if open+2 < len(lines) {
+		if a, ok := strings.CutPrefix(lines[open+2], "// arch: "); ok {
+			if a = strings.TrimSpace(a); a != "x86_64" && a != "aarch64" {
+				return Block{}, 0, errAt(b.Line+1, "arch %q, want x86_64 or aarch64", a)
+			}
+			b.Arch = strings.TrimSpace(a)
+		}
+	}
 	var src strings.Builder
 	end := -1
 	for j := open + 2; j < len(lines); j++ {

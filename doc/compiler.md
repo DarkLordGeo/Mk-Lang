@@ -158,7 +158,7 @@ C import is a native step, because a generator's fuel and determinism rules do n
 
 LLVM is the only back end, run as a process in every profile: `clang -O0` for dev builds, `-O3` with ThinLTO for release. The IR may use LLVM 21's features, so LLVM 21 or newer is required. There is no `opt` or `llc` step and no C source. The driver finds the tools from `--llvm`, then `MK_LLVM`, then a toolchain bundle's `llvm/bin` (the directory `../llvm/bin` from the `mk` executable's directory, used only when it holds both `clang` and the linker), then the platform's usual install location, then `PATH`. `mk version` prints what it found.
 
-No C runtime is linked. The memory functions, stack probes, the task switch and the program entry are emitted as LLVM IR; the rest of the runtime is Mk in `std`. Line tables are emitted in every profile: DWARF on Linux, CodeView on Windows.
+No C runtime is linked. The memory functions, stack probes, the task switch and the program entry are emitted as LLVM IR; the rest of the runtime is Mk in `std`. Line tables are emitted in every profile: DWARF on Linux and macOS, CodeView on Windows. A macOS executable is linked by `ld64.lld` against a libSystem stub the driver writes from `std/sys/macos/libSystem.def`, so no SDK is needed.
 
 - **Inline assembly.** Each `asm` statement becomes one LLVM inline-asm call, Intel syntax unless `att`. `.s` files go through Clang.
 - **Stack overflow.** Each task stack has a guard page below it, and frames larger than a page probe it, so an overflow always faults on the guard.

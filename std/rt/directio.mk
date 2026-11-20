@@ -116,8 +116,16 @@ export NewHandle(os: uint, async: bool): uint {
 /// KindDir is HandleRec.kind of a directory stream: dir is its
 /// sys.DirBlockBytes block from the heap, zeroed, freed when the record is.
 export const KindDir: u32 = 5
-/// KindProcess is HandleRec.kind of a child process (os the pidfd or the
-/// process handle).
+/// ProcHandleIsFd reports whether a child's OS handle is a descriptor or
+/// handle the OS closes (Linux's pidfd, Windows' process handle); on macOS
+/// it is the pid, which nothing closes.
+/// O(1); allocates nothing.
+export ProcHandleIsFd(): bool {
+    return Target.os != Os.Macos
+}
+
+/// KindProcess is HandleRec.kind of a child process (os the pidfd, the
+/// process handle, or on macOS the pid).
 export const KindProcess: u32 = 6
 
 /// NewDirHandle wraps the directory stream os (sys.DirOpen) with a fresh
@@ -332,7 +340,10 @@ export CloseRuntimeHandle(h: uint): sys.OsResult {
             return ok
         }
         var res := ok
-        if (*r).kind == KindSocket {
+        if (*r).kind == KindProcess && !ProcHandleIsFd() {
+            // A macOS child's handle is its pid, no descriptor: nothing to
+            // close (the poller holds no registration for it either).
+        } else if (*r).kind == KindSocket {
             res = if (*r).abort { sys.SocketAbortClose((*r).os) } else { sys.SocketShutdownClose((*r).os) }
         } else {
             if (*r).async {

@@ -27,11 +27,17 @@ import (
 // asmClasses is the LLVM constraint of each register class.
 var asmClasses = map[string]string{
 	"reg": "r", "reg_byte": "q", "xmm_reg": "x", "ymm_reg": "x", "zmm_reg": "v", "kreg": "^Yk",
+	"vreg": "w", // aarch64's v0 to v31
 }
 
 // asmModifiers maps a template modifier to LLVM's x86 operand modifier
 // (r 64-bit, e 32-bit, x 16-bit, l low byte, y ymm, z zmm).
 var asmModifiers = map[string]string{"r": "q", "e": "k", "x": "w", "l": "b", "y": "t", "z": "g"}
+
+// asmModifiersArm64 are aarch64's template modifiers, LLVM's own names: w
+// and x a general register's 32- and 64-bit names, b, h, s, d and q a
+// vector register's 8- to 128-bit scalar names.
+var asmModifiersArm64 = map[string]string{"w": "w", "x": "x", "b": "b", "h": "h", "s": "s", "d": "d", "q": "q"}
 
 // clobberABI is the caller-saved set of clobber_abi("C") per C ABI:
 // sysv64 on Linux and freestanding (k0 to k7 included: a C callee may
@@ -60,6 +66,43 @@ func clobberABI(win bool) []string {
 		out = append(out, "k"+strconv.Itoa(i)) // the AVX-512 masks
 	}
 	return out
+}
+
+// clobberABIArm64 is AAPCS64's caller-saved set: x0 to x17 and x30 (the
+// link register a call overwrites), and q0 to q31 whole. A callee keeps
+// only the low halves of v8 to v15, so the whole registers are clobbered;
+// x18, the platform register, is never named. The x and q registers become
+// discarded lateouts, as x86_64's do, so an input may still be given one;
+// the link register, which LLVM allocates to no operand, a clobber.
+func clobberABIArm64() []string {
+	var out []string
+	for i := 0; i <= 17; i++ {
+		out = append(out, "x"+strconv.Itoa(i))
+	}
+	out = append(out, "x30")
+	for i := 0; i <= 31; i++ {
+		out = append(out, "q"+strconv.Itoa(i))
+	}
+	return out
+}
+
+// arm64Family is the 64-bit (or q) register an aarch64 register name is
+// part of: w5 is x5, v3, d3 and s3 are q3, lr is x30; any other name is
+// returned lowered.
+func arm64Family(r string) string {
+	r = strings.ToLower(r)
+	if r == "lr" {
+		return "x30"
+	}
+	if len(r) >= 2 && r[1] >= '0' && r[1] <= '9' {
+		switch r[0] {
+		case 'w':
+			return "x" + r[1:]
+		case 'v', 'd', 's':
+			return "q" + r[1:]
+		}
+	}
+	return r
 }
 
 // hasFeature reports whether function fi is compiled with feature: its
@@ -240,6 +283,7 @@ func (fg *fnGen) asmStmt(a *mir.Asm) {
 		}
 		if op.Explicit {
 			written[regFamily(op.Reg)] = true
+			written[arm64Family(op.Reg)] = true
 		}
 		if op.Out.Local == mir.NoLocal && op.Explicit && !asmReads(op.Kind) {
 			clobbers = append(clobbers, "~{"+op.Reg+"}")
@@ -264,8 +308,22 @@ func (fg *fnGen) asmStmt(a *mir.Asm) {
 		// lacks avx512f: no kreg operand can be there (mono's E1104
 		// feature), and LLVM has no mask register type to give a lateout.
 		kOut := fg.fi >= 0 && g.hasFeature(fg.fi, "avx512f")
-		for _, r := range clobberABI(g.cfg.Target.OS == types.OSWindows) {
+		arm := g.cfg.Target.Arch == types.ArchArm64
+		set := clobberABI(g.cfg.Target.OS == types.OSWindows)
+		if arm {
+			set = clobberABIArm64()
+		}
+		for _, r := range set {
 			switch {
+			case arm && written[arm64Family(r)]:
+			case arm && r == "x30":
+				clobbers = append(clobbers, "~{lr}") // LLVM allocates no operand to the link register
+			case arm && r[0] == 'q':
+				outCons, outTys = append(outCons, "={"+r+"}"), append(outTys, m.Vector(2, m.I(64)))
+				outs = append(outs, outSlot{})
+			case arm:
+				outCons, outTys = append(outCons, "={"+r+"}"), append(outTys, m.I(64))
+				outs = append(outs, outSlot{})
 			case written[regFamily(r)]:
 			case strings.HasPrefix(r, "st") || strings.HasPrefix(r, "mm"):
 				clobbers = append(clobbers, "~{"+r+"}")
@@ -299,7 +357,11 @@ func (fg *fnGen) asmStmt(a *mir.Asm) {
 		}
 	}
 	if a.Options&mir.AsmPreservesFlags == 0 {
-		clobbers = append(clobbers, "~{dirflag}", "~{fpsr}", "~{flags}")
+		if g.cfg.Target.Arch == types.ArchArm64 {
+			clobbers = append(clobbers, "~{cc}")
+		} else {
+			clobbers = append(clobbers, "~{dirflag}", "~{fpsr}", "~{flags}")
+		}
 	}
 	if a.Options&(mir.AsmNomem|mir.AsmReadonly) == 0 {
 		clobbers = append(clobbers, "~{memory}")
@@ -342,8 +404,12 @@ func (fg *fnGen) asmStmt(a *mir.Asm) {
 		attrs = attrs.Flag("noreturn")
 	}
 	fl := llvm.AsmFlags{SideEffect: a.Options&mir.AsmPure == 0, AlignStack: a.Options&mir.AsmNostack == 0,
-		Intel: a.Options&mir.AsmAtt == 0}
-	res := fg.cur.InlineAsmDialect(m.FuncType(ret, inTys, false), asmTemplate(a, num, syms), cons, fl, ins, attrs)
+		Intel: a.Options&mir.AsmAtt == 0 && g.cfg.Target.Arch == types.ArchX64}
+	mods := asmModifiers
+	if g.cfg.Target.Arch == types.ArchArm64 {
+		mods = asmModifiersArm64
+	}
+	res := fg.cur.InlineAsmDialect(m.FuncType(ret, inTys, false), asmTemplate(a, num, syms, mods), cons, fl, ins, attrs)
 	for k, o := range outs {
 		if !o.keep {
 			continue
@@ -359,7 +425,7 @@ func (fg *fnGen) asmStmt(a *mir.Asm) {
 // asmTemplate is a's template in LLVM's form: {i} is ${n},
 // {i:m} is ${n:m'}, a sym operand's hole its symbol, {{ and }} braces, and
 // $ is $$. With options(raw) only $ is escaped.
-func asmTemplate(a *mir.Asm, num []int, syms []string) string {
+func asmTemplate(a *mir.Asm, num []int, syms []string, mods map[string]string) string {
 	t := a.Template
 	var sb strings.Builder
 	raw := a.Options&mir.AsmRaw != 0
@@ -391,7 +457,7 @@ func asmTemplate(a *mir.Asm, num []int, syms []string) string {
 				sb.WriteString("{" + hole + "}")
 			default:
 				sb.WriteString("${" + strconv.Itoa(num[k]))
-				if m := asmModifiers[mod]; m != "" {
+				if m := mods[mod]; m != "" {
 					sb.WriteString(":" + m)
 				}
 				sb.WriteByte('}')

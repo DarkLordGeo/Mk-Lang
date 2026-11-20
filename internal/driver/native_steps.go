@@ -322,7 +322,8 @@ func (w *world) stagedHits(triple string) bool {
 	if !w.cfg.Profile.Optimized() {
 		return false
 	}
-	return toolchain.FormatOf(triple) == toolchain.ELF || w.cfg.Tune.FatLTO
+	f := toolchain.FormatOf(triple)
+	return f == toolchain.ELF || f == toolchain.MachO || w.cfg.Tune.FatLTO
 }
 
 // linkOrCopyFile makes dst a hard link to src, or a copy where a link is

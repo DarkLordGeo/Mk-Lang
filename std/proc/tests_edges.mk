@@ -118,7 +118,7 @@ test "Linux: 200 Reads waiting on proc.Pipe ends at once start no thread for the
     // false: a pool end, each waiting Read a wait job with a thread of its
     // own), which the 72-waiter block above cannot see on Linux, since
     // wait jobs keep the pool free there too.
-    if SpWin() {
+    if SpWin() || Target.os == core.Os.Macos {
         return
     }
     io := sys.io

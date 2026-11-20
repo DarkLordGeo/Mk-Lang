@@ -4,7 +4,10 @@
 # What: on GitHub-hosted Windows and Linux runners, a checks job (build, vet,
 # gofmt, the documentation tests) and the Go tests of every package but std
 # (std's long suite runs nightly), split across parallel jobs:
-# internal/driver in SHARD_COUNT shards, corpus, lsp, and the rest.
+# internal/driver in SHARD_COUNT shards, corpus, lsp, and the rest. On
+# hosted Macs (Apple silicon and Intel) and the hosted ARM Linux runner, a
+# trimmed set (the macos and arm64-linux jobs). There is no aarch64-windows
+# job: mk does not build for aarch64-windows.
 #
 # How: runs on pushes to main, on every pull request (forks included), by
 # hand, and from release.yml as a reusable workflow. It runs with a
@@ -199,3 +202,215 @@ jobs:
             *) echo "unknown part $PART"; exit 1 ;;
           esac
           bash tools/ci/test.sh
+
+  # macOS: the targets mk cross-compiles everywhere, built and run natively
+  # on GitHub's hosted Macs (Apple silicon for aarch64-macos, Intel for
+  # x86_64-macos). A trimmed set, for the five hosted macOS runners a public
+  # repository gets at once: the checks with the documentation tests for
+  # the host target, std's tests of the modules the macOS system layer
+  # serves, and the programs of tests/programs run natively. Not a required
+  # check. Skipped when another workflow calls this one.
+  macos:
+    name: ${{ matrix.part }} (${{ matrix.os }})
+    if: inputs.oses == ''
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+        part: [checks, std, programs]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      # SHA-256 of LLVM-21.1.8-macOS-ARM64.tar.xz, from the release's asset
+      # digest. LLVM publishes no x86_64 macOS archive of 21.1.8, so the
+      # Intel job takes Homebrew's llvm@21, whose bottle brew checks, and
+      # checks the version.
+      LLVM_MACOS_ARM64_SHA256: b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      - name: Temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/tmp" "$RUNNER_TEMP/mkcache"
+          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "MK_CACHE=$RUNNER_TEMP/mkcache" >> "$GITHUB_ENV"
+
+      - name: LLVM (Apple silicon)
+        if: runner.arch == 'ARM64'
+        run: |
+          cd "$RUNNER_TEMP"
+          name="LLVM-$LLVM_VERSION-macOS-ARM64"
+          curl -fsSL --retry 3 -o llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/$name.tar.xz"
+          echo "$LLVM_MACOS_ARM64_SHA256  llvm.tar.xz" | shasum -a 256 -c -
+          tar -xJf llvm.tar.xz
+          rm -f llvm.tar.xz
+          echo "MK_LLVM=$RUNNER_TEMP/$name/bin" >> "$GITHUB_ENV"
+
+      # Homebrew ships lld apart from llvm, and mk takes clang and the
+      # linker from one directory, so both are linked into one.
+      - name: LLVM (Intel)
+        if: runner.arch == 'X64'
+        run: |
+          brew install llvm@21
+          brew install lld@21 || brew install lld
+          bin="$RUNNER_TEMP/llvm-bin"
+          mkdir -p "$bin"
+          for tool in clang ld.lld ld64.lld lld lld-link llvm-lib; do
+            for dir in "$(brew --prefix llvm@21)/bin" "$(brew --prefix lld@21 2>/dev/null)/bin" "$(brew --prefix lld 2>/dev/null)/bin"; do
+              if [ -x "$dir/$tool" ]; then
+                ln -sf "$dir/$tool" "$bin/$tool"
+                break
+              fi
+            done
+          done
+          ls -l "$bin"
+          echo "MK_LLVM=$bin" >> "$GITHUB_ENV"
+
+      - name: Toolchain
+        env:
+          WANT: ${{ runner.arch == 'ARM64' && '21.1.8' || '21.' }}
+        run: |
+          v=$("$MK_LLVM/clang" --version)
+          echo "$v"
+          case "$v" in
+            *"clang version $WANT"*) ;;
+            *) echo "::error::$MK_LLVM holds no clang $WANT"; exit 1 ;;
+          esac
+          [ -x "$MK_LLVM/ld64.lld" ] || [ -x "$MK_LLVM/lld" ] || { echo "::error::no ld64.lld or lld in $MK_LLVM"; exit 1; }
+          go version
+          go run ./cmd/mk version
+
+      - name: Build
+        if: matrix.part == 'checks'
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Documentation tests
+        if: matrix.part == 'checks'
+        run: go run ./cmd/mk corpus -j 3
+
+      - name: Mach-O tests
+        if: matrix.part == 'checks'
+        run: go test -p 2 ./internal/toolchain ./internal/driver -run 'MachO|TBD|FormatOfMacOS|TestStdTargetMissing|TestAArch64'
+
+      - name: std tests
+        if: matrix.part == 'std'
+        run: |
+          status=0
+          for m in std.core std.rt std.task std.sync std.time std.fs std.proc std.net std.term std.dl; do
+            echo "::group::$m"
+            go run ./cmd/mk test --std="$m" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Programs
+        if: matrix.part == 'programs'
+        env:
+          # coderegion runs x86-64 machine code and needs std.vm's code
+          # regions; linuxsyscall is Linux's raw system call.
+          SKIP_PROGRAMS: coderegion linuxsyscall
+        run: bash tools/ci/programs.sh
+
+  # aarch64-linux, natively on GitHub's hosted ARM runner: the same trimmed
+  # set as the macos job (checks with the documentation tests for the host
+  # target, std's tests, the programs of tests/programs). Not a required
+  # check. Skipped when another workflow calls this one.
+  arm64-linux:
+    name: ${{ matrix.part }} (${{ matrix.os }})
+    if: inputs.oses == ''
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04-arm]
+        part: [checks, std, programs]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      # SHA-256 of LLVM-21.1.8-Linux-ARM64.tar.xz, from the release's asset
+      # digest. apt.llvm.org's arm64 packages are not pinned to one point
+      # release, so the official archive is used here.
+      LLVM_LINUX_ARM64_SHA256: 65ce0b329514e5643407db2d02a5bd34bf33d159055dafa82825c8385bd01993
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      - name: Temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/tmp" "$RUNNER_TEMP/mkcache"
+          echo "TMPDIR=$RUNNER_TEMP/tmp" >> "$GITHUB_ENV"
+          echo "MK_CACHE=$RUNNER_TEMP/mkcache" >> "$GITHUB_ENV"
+
+      - name: LLVM
+        run: |
+          cd "$RUNNER_TEMP"
+          name="LLVM-$LLVM_VERSION-Linux-ARM64"
+          curl -fsSL --retry 3 -o llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/$name.tar.xz"
+          echo "$LLVM_LINUX_ARM64_SHA256  llvm.tar.xz" | sha256sum -c -
+          tar -xJf llvm.tar.xz
+          rm -f llvm.tar.xz
+          echo "MK_LLVM=$RUNNER_TEMP/$name/bin" >> "$GITHUB_ENV"
+
+      - name: Toolchain
+        run: |
+          v=$("$MK_LLVM/clang" --version)
+          echo "$v"
+          case "$v" in
+            *"clang version $LLVM_VERSION"*) ;;
+            *) echo "::error::$MK_LLVM holds no clang $LLVM_VERSION"; exit 1 ;;
+          esac
+          go version
+          go run ./cmd/mk version
+
+      - name: Build
+        if: matrix.part == 'checks'
+        run: |
+          go build ./...
+          go vet ./...
+
+      - name: Documentation tests
+        if: matrix.part == 'checks'
+        run: go run ./cmd/mk corpus -j 3
+
+      - name: AArch64 and Mach-O tests
+        if: matrix.part == 'checks'
+        run: go test -p 2 ./internal/toolchain ./internal/driver -run 'MachO|TBD|FormatOfMacOS|TestStdTargetMissing|TestAArch64'
+
+      - name: std tests
+        if: matrix.part == 'std'
+        run: |
+          status=0
+          for m in std.core std.rt std.task std.sync std.time std.fs std.proc std.net std.term std.dl; do
+            echo "::group::$m"
+            go run ./cmd/mk test --std="$m" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Programs
+        if: matrix.part == 'programs'
+        env:
+          # coderegion runs x86-64 machine code; linuxsyscall uses x86_64's
+          # system-call numbers through std.linux.
+          SKIP_PROGRAMS: coderegion linuxsyscall
+        run: bash tools/ci/programs.sh

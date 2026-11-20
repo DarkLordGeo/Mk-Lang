@@ -261,6 +261,14 @@ func makeUnit(rel, suite string, prelude bool, files []UnitFile) (Unit, error) {
 				return Unit{}, fmt.Errorf("%s: host given twice", where)
 			}
 			u.Meta.Host = val
+		case "arch":
+			if val != "x86_64" && val != "aarch64" {
+				return Unit{}, fmt.Errorf("%s: arch %q, want x86_64 or aarch64", where, val)
+			}
+			if u.Meta.Arch != "" {
+				return Unit{}, fmt.Errorf("%s: arch given twice", where)
+			}
+			u.Meta.Arch = val
 		default:
 			return Unit{}, fmt.Errorf("%s: unknown header key %q", where, key)
 		}

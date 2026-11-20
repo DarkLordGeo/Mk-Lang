@@ -105,7 +105,7 @@ NativeSpawn(io: Io, args: []str, child: mut core.IoChild): core.IoResult {
         }
         if ph != 0 {
             _ = rt.CloseRuntimeHandle(ph)
-        } else {
+        } else if rt.ProcHandleIsFd() {
             _ = sys.Close(os)
         }
         return ErrOf(core.SysErr.Other)

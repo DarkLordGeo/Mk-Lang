@@ -92,17 +92,29 @@ func TestAsmRegisters(t *testing.T) {
 	}
 }
 
-// TestNoRegisterTable: on aarch64 any asm is E1104 no-register-table.
-func TestNoRegisterTable(t *testing.T) {
-	sw := newSrcWorld(t, `Nop() {
+// TestAsmRegistersArm64: aarch64's table accepts reg and vreg and the x, w
+// and v registers, and refuses an x86_64 register (register), the reserved
+// x18, x19 and x29 (reserved) and an integer in vreg (class).
+func TestAsmRegistersArm64(t *testing.T) {
+	sw := newSrcWorld(t, `Regs(x: u64, f: f64): u64 {
+    var r := x
     unsafe "test" {
         asm("nop")
+        asm("add {r}, {r}, {x}", r: inout(reg) r, x: in(reg) x)
+        asm("fmov d0, {f}", f: in(vreg) f, out("x0") _, out("w1") _, out("v2") _)
+        asm("nop", in("eax") x)
+        asm("nop", in("x19") x)
+        asm("nop", in("x29") x)
+        asm("nop", in("x18") x)
+        asm("nop", in(vreg) x)
     }
+    return r
 }
 `)
 	_, ds := Collect(sw, sw.limitRoots(), Options{Target: types.Aarch64Linux, Validate: true})
-	if got := asmCodes(t, ds); len(got) != 1 || got[0] != "no-register-table " {
-		t.Errorf("got %q, want one no-register-table", got)
+	got := strings.Join(asmCodes(t, ds), "; ")
+	if want := "class vreg; register eax; reserved x18; reserved x19; reserved x29"; got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 

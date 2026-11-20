@@ -9040,8 +9040,9 @@ A target is the machine and system a program is built for. `--target name` picks
 | `x86_64-linux` | Yes | Yes: a static executable, or one that loads the system C library ([std.libc](std/libc.md#system-libc-mode-on-linux)) |
 | `x86_64-freestanding` | Yes | Yes: a static ELF that runs with no operating system ([below](#freestanding)) |
 | `x86_64-nutshell` | Yes | Yes ([below](#nutshell)) |
-| `aarch64-linux`, `aarch64-nutshell` | Yes | No: E0202, `reason: not-built` |
-| `aarch64-macos` | No: std has no system layer for it (E0202, `reason: no-std-target`) | No |
+| `aarch64-linux` | Yes | Yes: a static executable. Not a library, and not system-libc mode ([below](#macos-and-aarch64)) |
+| `aarch64-macos`, `x86_64-macos` | Yes | Yes: a Mach-O executable that loads libSystem, macOS 11 or later. Preliminary: never run by the project ([below](#macos-and-aarch64)) |
+| `aarch64-nutshell` | Yes | No: E0202, `reason: not-built` |
 
 `Target`, a constant in the prelude, describes the target the code is compiled for ([branching on the target](#branching-on-the-target)). Code that needs one system's own module, such as `std.linux`, goes in a per-target module: on any other target, importing that module is E0202, `reason: target-selected`.
 
@@ -9136,6 +9137,33 @@ src/f.mk:1:8: E0202 unknown-module: module std.fs is not available on x86_64-fre
 - The executable is a static ELF of type `ET_EXEC` at a fixed address, with no dynamic section and no RELRO. Its loadable segments are page-aligned in the file and in memory, and none is both writable and executable.
 - The CPU baseline, the red zone and the C ABI are those of `x86_64-linux`.
 - `aarch64-nutshell` can be checked but not built.
+
+### macOS and AArch64
+
+`aarch64-linux`, `aarch64-macos` and `x86_64-macos` are built by the same compiler as the x86-64 targets, cross-compiled from any host. The project has no Mac and no ARM machine, so their status is stated per target:
+
+| Target | What the project checks | Not yet |
+|---|---|---|
+| `aarch64-linux` | Every program of `tests/programs` that targets Linux and is not x86-specific builds, and its cases pass, dev and release, under qemu-user (an emulator on x86-64), not on ARM hardware | System-libc mode and libraries (`pkg.Lib`) are x86_64-only; `std.linux` (the raw system call) is x86_64-only, since its numbers are x86_64's; `runtime.AddFaultFilter` panics |
+| `aarch64-macos`, `x86_64-macos` | `mk check` of std, its tests included, and `mk corpus` for the target; `mk build` links every program of `tests/programs` but the x86- and Linux-specific ones. A small program's load commands, imports and reproducible bytes are checked by a test. None has run | Libraries, `pkg.Link`, `c_sources` and C imports; source-level debugging (no `.dSYM` is made); the parts of `std.sys` listed in [std.sys on macOS](#stdsys-on-macos) |
+
+- The C ABI is AAPCS64 on `aarch64-linux`, Apple's arm64 variant of it on `aarch64-macos` (the caller extends small integers, and every variadic argument goes on the stack), and System V on `x86_64-macos`.
+- A macOS executable loads `/usr/lib/libSystem.B.dylib`, the only stable interface to the macOS kernel, and nothing else. mk writes the stub of it that the link reads, so no macOS SDK is needed. dyld calls the program's `main` (`LC_MAIN`). `ld64.lld` signs arm64 executables ad hoc, which arm64 macOS requires.
+- Pages are 16 KiB on arm64 macOS. A task's stack guard is one page there, so a stack overflow is detected 16 KiB before the slot's base rather than 4 KiB.
+- `asm` on aarch64 takes the register classes `reg` (x0 to x30) and `vreg` (v0 to v31), the explicit registers `x0`, `w0`, `v0` and their numbered kin, and the template modifiers `w`, `x`, `b`, `h`, `s`, `d` and `q`. x18, x19, x29 and sp are reserved (E1104, `reason: reserved`).
+- `aarch64-windows` is not a target: its system layer, import libraries and stack probes are not built.
+
+#### std.sys on macOS
+
+std's system layer for macOS calls libSystem. Arguments, the environment, memory, threads, clocks, random bytes, files, directories, sockets (TCP, UDP and Unix), the kqueue poller, child processes (`posix_spawn`), pipes, ptys and the terminal, signals, faults, descriptor passing and `std.dl` are implemented. What differs from Linux:
+
+- `std.vm` code regions (`CodeRegion.New`) fail with `SysErr.Unsupported`: arm64 macOS runs generated code only from `MAP_JIT` memory, which has no second, writable view. `runtime.AddFaultFilter` panics on aarch64-macos, as on every aarch64 target, and on x86_64-macos installs a filter that no fault reaches.
+- A `proc.Pipe` end is a blocking end served by the thread pool, not one on the poller.
+- Byte-range locks (`LockRange`) are POSIX record locks: closing any descriptor of a file drops the process's locks on it.
+- A saved terminal mode is 64 bytes, not 36.
+- `runtime.WriteDump` and the platform certificate verifier answer `SysErr.Unsupported`, as on Linux; `std.x509` checks chains itself.
+
+All of it is checked and linked here, and none of it has run on a Mac yet.
 
 ### Compiler errors for modules
 
@@ -9743,6 +9771,7 @@ The `cpu` clause comes after any `requires` and `ensures` lines, and before a `s
 
 ```mk
 // verdict: reject E1101
+// arch: x86_64
 // naming a cpu function as a value needs unsafe, as calling it does
 import std.simd
 
@@ -9790,6 +9819,7 @@ src/f.mk:1:19: E1108 general-regs-only: a value of type `f64` in a general-regs-
 
 ```mk
 // verdict: ok
+// arch: x86_64
 // Add adds b to a with one instruction.
 Add(a: u64, b: u64): u64 {
     var x := a
@@ -9851,6 +9881,7 @@ Every operand form once:
 
 ```mk
 // verdict: ok
+// arch: x86_64
 const Shift = 3
 
 export extern Hook() {}

@@ -44,6 +44,8 @@ const (
 	NoFormat Format = iota
 	COFF
 	ELF
+	// MachO is macOS's format, linked by ld64.lld (macho.go).
+	MachO
 )
 
 func (f Format) String() string {
@@ -52,14 +54,16 @@ func (f Format) String() string {
 		return "COFF"
 	case ELF:
 		return "ELF"
+	case MachO:
+		return "Mach-O"
 	}
 	return "none"
 }
 
 // FormatOf is the format of a triple's executables: COFF for Windows, ELF
 // for Linux, for a triple with no OS (x86_64-unknown-none-elf, the
-// freestanding target, free.go) and for Nutshell's (nutshell.go),
-// NoFormat otherwise.
+// freestanding target, free.go) and for Nutshell's (nutshell.go), Mach-O
+// for macOS, NoFormat otherwise.
 func FormatOf(triple string) Format {
 	if isFreeTriple(triple) || IsNutshellTriple(triple) {
 		return ELF
@@ -69,6 +73,8 @@ func FormatOf(triple string) Format {
 		return COFF
 	case "linux":
 		return ELF
+	case "darwin":
+		return MachO
 	}
 	return NoFormat
 }
@@ -76,17 +82,20 @@ func FormatOf(triple string) Format {
 // LinkJob is one executable. Every path is absolute; Objects are in the
 // order the driver sorted them, so the link is deterministic.
 type LinkJob struct {
-	Format       Format
-	Output       string
-	Objects      []string // absolute, in the order the driver sorted them
-	Libs         []string // import libraries (COFF only), absolute
-	Entry        string   // "" means "mk_start" (COFF) or "_start" (ELF)
-	StackReserve uint64   // bytes; 0 means the linker default (COFF /stack only)
-	Release      bool     // /opt:ref,icf or --gc-sections
-	LTO          bool     // ThinLTO at -O3 over bitcode objects
-	LTOCacheDir  string   // cache.Store.Dir("thinlto"); "" disables
-	LTOCacheSize int64    // bytes, the ThinLTO pruning bound; 0 with LTOCacheDir is an error
-	Jobs         int      // ThinLTO backend jobs; 0 means the linker default
+	Format  Format
+	Output  string
+	Objects []string // absolute, in the order the driver sorted them
+	Libs    []string // import libraries (COFF), or libSystem's stub (Mach-O), absolute
+	Entry   string   // "" means "mk_start" (COFF), "_start" (ELF) or "_main" (Mach-O)
+	// MachOArch is a Mach-O link's -arch, "arm64" or "x86_64"
+	// (MachOArch of the triple); any other link takes "".
+	MachOArch    string
+	StackReserve uint64 // bytes; 0 means the linker default (COFF /stack only)
+	Release      bool   // /opt:ref,icf or --gc-sections
+	LTO          bool   // ThinLTO at -O3 over bitcode objects
+	LTOCacheDir  string // cache.Store.Dir("thinlto"); "" disables
+	LTOCacheSize int64  // bytes, the ThinLTO pruning bound; 0 with LTOCacheDir is an error
+	Jobs         int    // ThinLTO backend jobs; 0 means the linker default
 	// SectionAlign is the COFF image's section alignment, /align:N, for
 	// static data aligned over a page (codegen.StaticAlign); 0 is
 	// the linker's 4096. An ELF link takes 0 only.
@@ -286,6 +295,9 @@ func linkArgs(j LinkJob) ([]string, error) {
 	}
 	if j.Kind == Dynamic {
 		return dynamicArgs(j, policy)
+	}
+	if j.Format == MachO {
+		return machoArgs(j)
 	}
 	if j.Kind != Executable {
 		return nil, fmt.Errorf("toolchain: a link makes an executable or a dynamic library, not %v", j.Kind)

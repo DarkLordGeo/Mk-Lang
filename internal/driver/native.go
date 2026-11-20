@@ -90,20 +90,19 @@ func (s *Session) bins() ([]binTarget, error) {
 	return nil, usagef("no bin named %s; the package has %s", s.cfg.Bin, strings.Join(names, ", "))
 }
 
-// notBuilt is nil when mk can build an executable for t, else E0202
-// reason not-built: every aarch64 target is checked only (layouts and ABI
-// are unit-tested) until aarch64 code generation is built; without this
-// check mk build would write an x86-64 executable for aarch64-linux
-// without a word. mk check type-checks for it.
+// notBuilt is nil when mk can build an executable for t (t.Built), else
+// E0202 reason not-built: a checked-only target's layouts and ABI are
+// unit-tested, but its system layer or link is not built. mk check
+// type-checks for it.
 func notBuilt(t types.Target) *diag.Diagnostic {
-	if t.Arch == types.ArchX64 {
+	if t.Built {
 		return nil
 	}
-	alt := "build for x86_64-windows or x86_64-linux"
+	alt := "build for x86_64-windows, x86_64-linux or aarch64-linux"
 	if t.OS == types.OSNutshell {
 		alt = "build x86_64-nutshell"
 	}
-	return diag.New(diag.E0202, source.Span{}, t.Name+" is checked only: mk check type-checks for it, but mk build, run and test need aarch64 code generation, which is not built").
+	return diag.New(diag.E0202, source.Span{}, t.Name+" is checked only: mk check type-checks for it, but mk build, run and test are not built for it").
 		Text("target", t.Name).Text("reason", "not-built").Alt(alt)
 }
 
@@ -625,6 +624,15 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 			return "", ds
 		}
 	}
+	// macOS: the libSystem stub the link reads (macho.go), and its key.
+	var stub string
+	var stubKey source.Hash
+	if w.cfg.Target.OS == types.OSMacos {
+		var d *diag.Diagnostic
+		if stub, stubKey, d = w.macosStub(tools); d != nil {
+			return "", []*diag.Diagnostic{d}
+		}
+	}
 	linked := j.place != nil || j.keyed != ""
 	job := w.linkJob(triple, filepath.Join(work, j.name+exeSuffix(w.cfg.Target)))
 	job.Subsystem = j.subsystem
@@ -649,6 +657,9 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 	}
 	xkeys = append(xkeys, ckeys...)
 	xkeys = append(xkeys, plan.keys()...)
+	if stub != "" {
+		xkeys = append(xkeys, stubKey)
+	}
 	var dest, storedPDB, key string
 	// verifyHit is MK_CACHE_VERIFY over a stored link: the link runs, and
 	// its output is compared with the stored copy.
@@ -726,6 +737,13 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 		return w.finishLibrary(ctx, tools, st, j, job, objs, libs, cobjs, plan, work)
 	}
 	job.Objects, job.Libs = append(append(objs, w.cfg.ExtraObjects...), cobjs...), libs
+	if stub != "" {
+		tbd := filepath.Join(work, "libSystem.tbd")
+		if err := os.WriteFile(tbd, []byte(stub), 0o644); err != nil {
+			return "", []*diag.Diagnostic{diag.Toolchain("fs", "write", err.Error(), "cannot write the libSystem stub")}
+		}
+		job.Libs = []string{tbd}
+	}
 	if ds := plan.apply(ctx, tools, work, &job); len(ds) > 0 {
 		return "", ds
 	}
@@ -991,6 +1009,9 @@ func (w *world) linkJob(triple, out string) toolchain.LinkJob {
 	job.Nutshell = w.cfg.Target.OS == types.OSNutshell
 	if job.Format == toolchain.COFF {
 		job.StackReserve = stackReserve
+	}
+	if job.Format == toolchain.MachO {
+		job.MachOArch = toolchain.MachOArch(triple)
 	}
 	return job
 }

@@ -118,7 +118,7 @@ func TestAsmHoles(t *testing.T) {
 		{"unknown hole", `asm("{q}", inout(reg) a)`, "E1104@12:7"},
 		{"unclosed", `asm("{a", inout(reg) a)`, "E1104@12:7"},
 		{"lone brace", `asm("a}", inout(reg) a)`, "E1104@12:7"},
-		{"bad modifier", `asm("{a:q}", inout(reg) a)`, "E1104@12:7"},
+		{"bad modifier", `asm("{a:k}", inout(reg) a)`, "E1104@12:7"},
 		{"label twice", `asm("{t}", t: inout(reg) a, t: in(reg) p)`, "E1104@12:31"},
 		{"two operands pass a", `asm("{a}", in(reg) a, lateout(reg) a)`, "E1104@12:7"},
 		{"reserved register", `asm("nop", in("rbx") a)`, "E1104@12:17"},

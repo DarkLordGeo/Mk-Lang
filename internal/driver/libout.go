@@ -92,7 +92,7 @@ func (s *Session) buildLibrary(bin binTarget, out string, several bool) (string,
 	if d := notBuilt(s.cfg.Target); d != nil {
 		return "", []*diag.Diagnostic{d}
 	}
-	if s.cfg.Target.OS != types.OSWindows && s.cfg.Target.OS != types.OSLinux {
+	if s.cfg.Target.Arch != types.ArchX64 || s.cfg.Target.OS != types.OSWindows && s.cfg.Target.OS != types.OSLinux {
 		return "", []*diag.Diagnostic{diag.New(diag.E0202, source.Span{}, "a library output is built for x86_64-windows and x86_64-linux only").
 			Text("target", s.cfg.Target.Name).Text("reason", "not-built").Alt("build for x86_64-windows or x86_64-linux")}
 	}

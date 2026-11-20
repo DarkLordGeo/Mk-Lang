@@ -372,7 +372,7 @@ SpawnOn(io: Io, args: []str, env: []str, dir: str, s: mut core.IoSpawnReq, named
         }
         if ph != 0 {
             _ = CloseRuntimeHandle(ph)
-        } else {
+        } else if ProcHandleIsFd() {
             _ = sys.Close(Trunc[uint](r.value))
         }
         if s.job != 0 {

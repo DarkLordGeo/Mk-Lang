@@ -4,6 +4,12 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 
 ## Unreleased
 
+### Targets
+
+- `mk build` builds `aarch64-linux`: static AArch64 executables, cross-compiled from any host. Tested under qemu-user only, not on ARM hardware. System-libc mode and libraries stay x86_64-only.
+- New preliminary targets `aarch64-macos` and `x86_64-macos`: Mach-O executables for macOS 11 or later, linked by `ld64.lld` against libSystem, with no macOS SDK needed. Never run by the project; parts of `std.sys` answer `SysErr.Unsupported` there ([macOS and AArch64](doc/reference.md#macos-and-aarch64)).
+- `asm` works on aarch64, with the register classes `reg` and `vreg`, the `w`, `x`, `b`, `h`, `s`, `d` and `q` template modifiers, and `x18`, `x19`, `x29` and `sp` reserved; E1104 `reason: no-register-table` no longer occurs for aarch64.
+
 ### Fixed
 
 - Linux: processes that share a listener (Supervise's workers, a child given the listener, a listener passed over a Unix socket) take every connection when one of them is killed. On io_uring with Linux 6.10 and later, a connection could stall until the next one arrived.

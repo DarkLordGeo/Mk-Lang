@@ -157,7 +157,7 @@ FWord(p: *u64): &raw.Atomic[u64] {
 /// allocates nothing.
 export AddFaultFilter(f: fn(&FaultContext): FaultAction): FilterId {
     if Target.arch != Arch.X64 {
-        raw.Fail(8, "runtime.AddFaultFilter: x86_64 only (aarch64 is check-only)")
+        raw.Fail(8, "runtime.AddFaultFilter: x86_64 only (no aarch64 FaultContext)")
     }
     // Edge: the claim needs no edge; the slot is this caller's alone.
     i := FWord(raw.Of(&FilterSet.claimed)).Add(1)

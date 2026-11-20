@@ -130,11 +130,26 @@ export VmCodeFree(c: &VmCode, size: int) {
 /// VmFlush makes code written through a region's writable view visible to
 /// execution through its executable view at [x, x + n). On x86_64 the
 /// instruction cache is coherent with stores (Intel SDM vol. 3, 11.6), so a
-/// fence suffices; aarch64, type-checked but not built yet, needs the
-/// dc cvau / ic ivau sequence, owed with its build.
-/// O(1); allocates nothing.
+/// fence suffices. aarch64 cleans each data cache line to the point of
+/// unification (dc cvau) and invalidates each instruction cache line (ic
+/// ivau), at the line sizes CTR_EL0 states (Arm ARM, B2.4.4), then
+/// synchronizes the pipeline (isb). Linux lets EL0 read CTR_EL0 and run
+/// both maintenance instructions.
+/// O(n / line); allocates nothing.
 export VmFlush(x: *u8, n: int) {
-    raw.Fence()
+    if Target.arch == Arch.Arm64 {
+        if n <= 0 {
+            return
+        }
+        lo := raw.Addr(x)
+        hi := lo + Trunc[uint](n)
+        unsafe "cache maintenance over [x, x + n), which the caller's region holds; it writes no memory" {
+            asm("mrs {c}, ctr_el0\nmov {s}, #4\nubfx {t}, {c}, #16, #4\nlsl {t}, {s}, {t}\nsub {u}, {t}, #1\nbic {p}, {lo}, {u}\n1:\ndc cvau, {p}\nadd {p}, {p}, {t}\ncmp {p}, {hi}\nb.lo 1b\ndsb ish\nand {t}, {c}, #15\nlsl {t}, {s}, {t}\nsub {u}, {t}, #1\nbic {p}, {lo}, {u}\n2:\nic ivau, {p}\nadd {p}, {p}, {t}\ncmp {p}, {hi}\nb.lo 2b\ndsb ish\nisb",
+                c: out(reg) _, s: out(reg) _, t: out(reg) _, u: out(reg) _, p: out(reg) _, lo: in(reg) lo, hi: in(reg) hi, options(nostack))
+        }
+    } else {
+        raw.Fence()
+    }
 }
 
 /// RawSyscall is std.linux's Syscall: the kernel's raw result, -4095 to -1

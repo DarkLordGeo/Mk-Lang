@@ -33,7 +33,7 @@ export IsGuardPage(a: uint): bool {
     top := SlotTop(a)
     if top != 0 {
         base := SlotBase(top)
-        if base != 0 && a >= base && a < base + 4096 {
+        if base != 0 && a >= base && a < base + Trunc[uint](GuardBytes()) {
             return true
         }
     }

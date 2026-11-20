@@ -154,7 +154,7 @@ Put `mk` on your `PATH`. `mk version` shows the LLVM it found. `--llvm DIR` or `
 
 ## Platforms
 
-Mk builds programs for Windows and Linux on x86-64, and for freestanding x86-64 (no operating system). It does not build for macOS or AArch64; both are planned. [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
+Mk builds programs for Windows and Linux on x86-64, for Linux on AArch64, and for freestanding x86-64 (no operating system). It also builds for macOS on Apple silicon and Intel, as a preliminary target the project has not run on a Mac. [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
 
 ## Contributing
 

@@ -1317,6 +1317,23 @@ entry:
 
 declare void @mk_task_start()
 
+declare void @mk.std.task.Start(ptr noundef) noreturn nounwind
+
+define dso_local i32 @main(i32 noundef %p0, ptr noundef %p1, ptr noundef %p2, ptr noundef %p3) nounwind uwtable noreturn "probe-stack"="inline-asm" "stack-probe-size"="4096" {
+entry:
+  %v0 = alloca [4 x i64], align 8
+  %v1 = zext i32 %p0 to i64
+  store i64 %v1, ptr %v0, align 8
+  %v2 = getelementptr i8, ptr %v0, i64 8
+  store ptr %p1, ptr %v2, align 8
+  %v3 = getelementptr i8, ptr %v0, i64 16
+  store ptr %p2, ptr %v3, align 8
+  %v4 = getelementptr i8, ptr %v0, i64 24
+  store ptr %p3, ptr %v4, align 8
+  call void @mk.std.task.Start(ptr noundef %v0) noreturn nounwind
+  unreachable
+}
+
 define weak dso_local void @MkThreadYield() nounwind uwtable {
 entry:
   call void asm sideeffect "yield", "~{memory}"()

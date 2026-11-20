@@ -35,6 +35,7 @@ func TestFormatGolden(t *testing.T) {
 	for _, c := range []struct{ name, in, want string }{
 		{"become", "F(a: int): int {\n    become   G(a,1)\n}\n", "F(a: int): int {\n    become G(a, 1)\n}\n"},
 		{"range patterns", "F(x: i8) {\n    match x {\n        0 .. 10 {}\n        100..{}\n        ..-3 {}\n        -5..-4|..-9 {}\n        _ {}\n    }\n}\n", "F(x: i8) {\n    match x {\n        0..10 {}\n        100.. {}\n        ..-3 {}\n        -5..-4 | ..-9 {}\n        _ {}\n    }\n}\n"},
+		{"variadic extern", "extern open(path: *u8, flags: i32,...): i32\n", "extern open(path: *u8, flags: i32, ...): i32\n"},
 		{"spaces", "F(a:int,b:  int):int{\n\treturn a+b*  -a\n}\n", "F(a: int, b: int): int {\n    return a + b * -a\n}\n"},
 		{"unary and types", "G(p: & Arena, q: * u64, r: ? str, s: [ ] u8): OutOfMemory ! [ ] u8 {\n}\n", "G(p: &Arena, q: *u64, r: ?str, s: []u8): OutOfMemory![]u8 {\n}\n"},
 		{"error set", "H(): A|B!void {\n}\nconst M: int = X | Y\n", "H(): A|B!void {\n}\nconst M: int = X | Y\n"},

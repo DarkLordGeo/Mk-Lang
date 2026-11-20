@@ -57,6 +57,11 @@ type Meta struct {
 	// run judging another target skips it (SKIP, never a pass); "" judges
 	// it everywhere.
 	Host string
+	// Arch is "// arch: x86_64": the unit holds when judged for a target
+	// of that architecture ("x86_64" or "aarch64", the part of a target
+	// name before its '-'), as an asm example in x86 assembly does; a run
+	// judging another architecture skips it. "" judges it everywhere.
+	Arch string
 }
 
 // Unit is one judged compilation unit: a design block or a conformance unit.
@@ -104,7 +109,7 @@ func BlockUnit(b *Block) *Unit {
 		Verdict: b.Verdict,
 		Codes:   slices.Clone(b.Codes),
 		Files:   []UnitFile{{Path: BlockFile, Text: b.Source}},
-		Meta:    Meta{Prelude: b.Verdict != VerdictParse},
+		Meta:    Meta{Prelude: b.Verdict != VerdictParse, Arch: b.Arch},
 		Block:   b,
 	}
 	for _, m := range b.Expected {

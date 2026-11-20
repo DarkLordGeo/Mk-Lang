@@ -124,12 +124,15 @@ const Ret42: [6]u8 = [0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3]
 
 // CallAt calls the code at addr, which takes nothing and returns a u32 in
 // eax, from inline assembly (raw.FnFromAddr is tested in std.mem).
+// Ret42 is x86_64's, so elsewhere nothing is called and the answer is 0.
 CallAt(addr: uint): u32 {
     var r: u32 = 0
-    unsafe "addr is a code region's executable entry holding Ret42, which touches no memory and preserves every callee-saved register" {
-        // The call pushes below rsp: step over System V's 128-byte red
-        // zone first, so it never overwrites a leaf frame's locals.
-        asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+    if Target.arch == Arch.X64 {
+        unsafe "addr is a code region's executable entry holding Ret42, which touches no memory and preserves every callee-saved register" {
+            // The call pushes below rsp: step over System V's 128-byte red
+            // zone first, so it never overwrites a leaf frame's locals.
+            asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+        }
     }
     return r
 }

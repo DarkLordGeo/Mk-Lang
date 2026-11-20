@@ -26,8 +26,9 @@ var preludeNames = std.PreludeNames[:]
 
 // stdInternal is std.Internal: modules only std modules may import (E0202
 // reason std-internal), and std.simd.kernel, the std-only module of the
-// crypto kernels, until std.Internal names it too.
-var stdInternal = withModule(std.Internal[:], "std.simd.kernel")
+// crypto kernels, and std.sys.lc, macOS's libSystem names, until
+// std.Internal names them too.
+var stdInternal = withModule(withModule(std.Internal[:], "std.simd.kernel"), "std.sys.lc")
 
 // withModule is mods with m appended unless it is already there, in a new
 // slice.
@@ -68,7 +69,7 @@ var stdLayout = struct {
 	Manifest string
 }{
 	NotModules:  []string{"corpus", "pkg"},
-	TargetDirs:  []string{"free/sys", "linux/linux", "linux/other", "sys/linux", "sys/macos", "sys/nutshell", "sys/windows"},
+	TargetDirs:  []string{"free/sys", "linux/linux", "linux/other", "lc/macos", "lc/other", "sys/linux", "sys/macos", "sys/nutshell", "sys/windows"},
 	TestPrelude: std.TestPreludePath,
 	Manifest:    "pkg.mk",
 }

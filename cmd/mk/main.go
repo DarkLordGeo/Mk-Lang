@@ -465,6 +465,10 @@ type corpusFlags struct {
 	llvm     string
 	maxDiags int
 	timings  bool
+	// target is --target: the target every unit is judged for, the
+	// host's by default. A unit marked for one host only is skipped on
+	// any other.
+	target string
 }
 
 func newCorpusFlagSet(stderr io.Writer, c *corpusFlags) *flag.FlagSet {
@@ -481,6 +485,7 @@ func newCorpusFlagSet(stderr io.Writer, c *corpusFlags) *flag.FlagSet {
 	fs.StringVar(&c.llvm, "llvm", "", "directory holding the LLVM tools")
 	fs.IntVar(&c.maxDiags, "max-diagnostics", -1, "cap on diagnostics; 0 means no cap (units are judged uncapped)")
 	fs.BoolVar(&c.timings, "timings", false, "per-stage timings on stderr")
+	fs.StringVar(&c.target, "target", "", "judge every unit for this target (default: the host's)")
 	return fs
 }
 
@@ -492,6 +497,9 @@ func newCorpusFlagSet(stderr io.Writer, c *corpusFlags) *flag.FlagSet {
 // gives; a bad MK_FRAME_POINTERS is reported and the default kept.
 func (c *corpusFlags) driverConfig(stderr io.Writer) driver.Config {
 	cfg := driver.Config{LLVMDir: c.llvm, Jobs: c.jobs}
+	if t, _, ok := driver.TargetNamed(c.target); ok && c.target != "" {
+		cfg.Target = t
+	}
 	if !framePointersEnv(&cfg, stderr) {
 		cfg.FramePointers = framePointersDefault(cfg.Target.Name)
 	}

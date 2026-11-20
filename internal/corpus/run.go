@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 
 	"mk/internal/diag"
@@ -159,6 +160,11 @@ func Run(opts Options) (*Result, error) {
 		if u.Meta.Host != "" && u.Meta.Host != judged {
 			res.Units[i] = UnitResult{Unit: u, Judgement: Judgement{Status: StatusSkip,
 				Reason: "host: holds when judged for " + u.Meta.Host + " only, this run judges " + judged, Expected: u.Expected}}
+			continue
+		}
+		if arch, _, _ := strings.Cut(judged, "-"); u.Meta.Arch != "" && u.Meta.Arch != arch {
+			res.Units[i] = UnitResult{Unit: u, Judgement: Judgement{Status: StatusSkip,
+				Reason: "arch: holds when judged for " + u.Meta.Arch + " only, this run judges " + judged, Expected: u.Expected}}
 			continue
 		}
 		wg.Add(1)

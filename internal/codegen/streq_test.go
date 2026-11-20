@@ -67,15 +67,20 @@ func TestStrEqualBranchesOnLength(t *testing.T) {
 			continue
 		}
 		asm := string(b)
-		i := strings.Index(asm, "\nmk.main.EqGet:")
+		// Mach-O prefixes '_' to every symbol.
+		us := ""
+		if target.OS == types.OSMacos {
+			us = "_"
+		}
+		i := strings.Index(asm, "\n"+us+"mk.main.EqGet:")
 		if i < 0 {
 			t.Fatalf("%s: no mk.main.EqGet in the assembly", target.Name)
 		}
 		fn := asm[i:]
-		if j := strings.Index(fn, ".Lfunc_end"); j >= 0 {
+		if j := strings.Index(fn, "func_end"); j >= 0 {
 			fn = fn[:j]
 		}
-		if regexp.MustCompile(`call[a-z]*\s+(memcmp|bcmp)\b`).MatchString(fn) {
+		if regexp.MustCompile(`call[a-z]*\s+_?(memcmp|bcmp)\b`).MatchString(fn) {
 			t.Errorf("%s: s == \"GET\" still calls memcmp at -O2:\n%s", target.Name, fn)
 		}
 		if !strings.Contains(fn, "$3,") { // the length test against the literal's 3

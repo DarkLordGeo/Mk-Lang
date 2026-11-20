@@ -42,11 +42,10 @@ enum Os {
 // TestDeadBranchNotJudged: Spin's pause is under `Target.arch ==
 // Arch.X64`. Collected for aarch64 it draws no E1104 (the branch is not in
 // the instance); for x86_64 it is live and fits. Spin's yield, under a
-// parenthesized aarch64 test, is the reverse: absent on x86_64, live (and
-// E1104 no-register-table, as any live asm there) on aarch64. Pick's asm is under a
-// compound test of Target constants (||, !, &&, an int field), live only on
-// x86_64-linux. With no arch test, aarch64 judges the asm (E1104
-// no-register-table).
+// parenthesized aarch64 test, is the reverse: absent on x86_64, live on
+// aarch64. Pick's asm is under a compound test of Target constants (||, !,
+// &&, an int field), live only on x86_64-linux. With no arch test, aarch64
+// judges the asm by its own table: an operand-free template draws nothing.
 func TestDeadBranchNotJudged(t *testing.T) {
 	const tested = targetDecls + `Spin() {
     if Target.arch == Arch.X64 {
@@ -86,10 +85,10 @@ Pick(): u64 {
 		want   []string
 		asms   map[string]int // asm statements per instance, by key
 	}{
-		{"x86 asm, aarch64", types.Aarch64Linux, tested, []string{"no-register-table "}, map[string]int{"m.Spin": 1, "m.Pick": 0}},
+		{"x86 asm, aarch64", types.Aarch64Linux, tested, nil, map[string]int{"m.Spin": 1, "m.Pick": 0}},
 		{"x86 asm, x86_64-linux", types.X86_64Linux, tested, nil, map[string]int{"m.Spin": 1, "m.Pick": 1}},
 		{"x86 asm, x86_64-windows", types.X86_64Windows, tested, nil, map[string]int{"m.Spin": 1, "m.Pick": 0}},
-		{"no arch test, aarch64", types.Aarch64Linux, untested, []string{"no-register-table "}, map[string]int{"m.Spin": 1}},
+		{"no arch test, aarch64", types.Aarch64Linux, untested, nil, map[string]int{"m.Spin": 1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sw := newSrcWorldFor(t, "m", false, tc.target, true, tc.src)

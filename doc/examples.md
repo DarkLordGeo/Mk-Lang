@@ -259,6 +259,7 @@ A freestanding x86-64 kernel's core: a serial port driver, a page-frame allocato
 
 ```mk
 // verdict: ok
+// arch: x86_64
 import std.atomic
 import std.dyn
 
@@ -609,6 +610,7 @@ Measure[T: Shape](s: &T): f64 {
 
 ```mk
 // verdict: reject E0314
+// arch: x86_64
 Fast(x: int): int
     cpu "avx2"
 {

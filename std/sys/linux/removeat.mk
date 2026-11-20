@@ -12,7 +12,10 @@
 import std.core
 import std.raw
 
-const ONoFollowAt: uint = 0o400000
+// ONoFollowAt is O_NOFOLLOW, which aarch64 numbers apart from x86_64.
+ONoFollowAt(): uint {
+    return if Target.arch == Arch.Arm64 { 0o100000 } else { 0o400000 }
+}
 
 /// NameAt checks name for an *At call: with a held directory (dir: true) it
 /// must be one entry's name: not empty, not . or .., no '/' and no NUL;
@@ -58,7 +61,7 @@ export DirOpenAt(dir: uint, held: []u8, name: []u8, fresh: mut []u8): OsResult {
     }
     base := if dir == 0 { AtFdcwd } else { dir }
     unsafe "system call; c is NUL-terminated" {
-        r := Syscall(Nrs().openat, base, raw.Addr(raw.Data(c[..])), ORdOnly | ODirectory | ONoFollowAt | OCloExec, 0, 0, 0)
+        r := Syscall(Nrs().openat, base, raw.Addr(raw.Data(c[..])), ORdOnly | ODirectory() | ONoFollowAt() | OCloExec, 0, 0, 0)
         if r == -40 || r == -20 {
             return OsResult(value: 0, err: core.SysErr.NotDirectory, os: i64(-r))
         }

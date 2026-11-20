@@ -64,8 +64,12 @@ var reservedRegs = map[string]bool{
 	"rip": true, "eip": true, "ip": true,
 }
 
-// asmMods are the template modifiers a hole may carry ({name:mod}).
-var asmMods = map[string]bool{"": true, "r": true, "e": true, "x": true, "l": true, "y": true, "z": true}
+// asmMods are the template modifiers a hole may carry ({name:mod}):
+// x86_64's r, e, x, l, y and z, and aarch64's w and x (a general
+// register's 32- and 64-bit names) and b, h, s, d and q (a vector
+// register's scalar names).
+var asmMods = map[string]bool{"": true, "r": true, "e": true, "x": true, "l": true, "y": true, "z": true,
+	"w": true, "b": true, "h": true, "s": true, "d": true, "q": true}
 
 // nakedFn reports whether the unit is a naked function's body.
 func (u *unit) nakedFn() bool {
@@ -412,7 +416,7 @@ func AsmTemplate(in *source.Interner, b *Body, s *ast.AsmStmt) (text, bad, name 
 			hole := string(raw[i+1 : i+1+j])
 			name, mod, _ := strings.Cut(hole, ":")
 			if !asmMods[mod] {
-				return "", "`" + mod + "` is no template modifier (r, e, x, l, y, z)", name
+				return "", "`" + mod + "` is no template modifier (r, e, x, l, y, z on x86_64; w, x, b, h, s, d, q on aarch64)", name
 			}
 			k, why := find(name)
 			if k < 0 {

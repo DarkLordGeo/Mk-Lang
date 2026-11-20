@@ -129,7 +129,9 @@ const (
 
 // DefaultDirs is the default-locations rule for a host OS: `C:\Program Files\LLVM\bin` on
 // Windows; on Linux /usr/lib/llvm-N/bin for N from MaxTestedMajor down to
-// MinMajor (21 alone), then /usr/local/bin and /usr/bin.
+// MinMajor (21 alone), then /usr/local/bin and /usr/bin; on macOS
+// Homebrew's llvm (/opt/homebrew/opt/llvm/bin, /usr/local/opt/llvm/bin),
+// then /usr/local/bin.
 func DefaultDirs(goos string) []string {
 	switch goos {
 	case "windows":
@@ -140,6 +142,10 @@ func DefaultDirs(goos string) []string {
 			d = append(d, fmt.Sprintf("/usr/lib/llvm-%d/bin", n))
 		}
 		return append(d, "/usr/local/bin", "/usr/bin")
+	case "darwin":
+		// Homebrew's keg-only llvm, on Apple silicon and on Intel; Apple's
+		// own clang has no lld.
+		return []string{"/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/local/bin"}
 	}
 	return []string{"/usr/local/bin", "/usr/bin"}
 }

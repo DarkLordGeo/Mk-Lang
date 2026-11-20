@@ -129,11 +129,14 @@ SkipLoad(c: &FaultContext): FaultAction {
     return FaultAction.Resume(ctx: d)
 }
 
-// CallCode calls the code at addr, which returns a u32 in eax.
+// CallCode calls the code at addr, which returns a u32 in eax. The code
+// is x86_64's, so elsewhere nothing is called and the answer is 0.
 CallCode(addr: uint): u32 {
     var r: u32 = 0
-    unsafe "addr is a code region's entry holding LoadNull, which touches no Mk memory" {
-        asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+    if Target.arch == Arch.X64 {
+        unsafe "addr is a code region's entry holding LoadNull, which touches no Mk memory" {
+            asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+        }
     }
     return r
 }
@@ -525,8 +528,10 @@ GuardTask(ok: &raw.Atomic[u64]) {
         return
     }
     GuardAt.Store(u64(g))
-    unsafe "g is the top byte of this task's guard page: the write faults and the filter skips it" {
-        asm("mov byte ptr [rax], 1", in("rax") g)
+    if Target.arch == Arch.X64 {
+        unsafe "g is the top byte of this task's guard page: the write faults and the filter skips it" {
+            asm("mov byte ptr [rax], 1", in("rax") g)
+        }
     }
     ok.Store(GuardSeen.Load())
 }

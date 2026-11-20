@@ -302,11 +302,20 @@ func usagef(format string, args ...any) *UsageError {
 	return &UsageError{Msg: fmt.Sprintf(format, args...)}
 }
 
-// HostTarget is the build target that matches the running OS: x86_64-windows
-// on Windows, x86_64-linux elsewhere.
+// HostTarget is the build target that matches the running OS and
+// architecture: x86_64-windows on Windows, aarch64-macos or x86_64-macos on
+// macOS, aarch64-linux on arm64 Linux, x86_64-linux elsewhere.
 func HostTarget() types.Target {
-	if runtime.GOOS == "windows" {
+	arm := runtime.GOARCH == "arm64"
+	switch {
+	case runtime.GOOS == "windows":
 		return types.X86_64Windows
+	case runtime.GOOS == "darwin" && arm:
+		return types.Aarch64Macos
+	case runtime.GOOS == "darwin":
+		return types.X86_64Macos
+	case arm:
+		return types.Aarch64Linux
 	}
 	return types.X86_64Linux
 }

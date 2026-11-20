@@ -21,13 +21,17 @@ import (
 
 // linker is the program a link of the format runs, with the arguments that
 // come before the link's own: the named linker (lld-link for COFF, ld.lld
-// for ELF) when Dir has it, else lld under `-flavor link` or `-flavor gnu`.
+// for ELF, ld64.lld for Mach-O) when Dir has it, else lld under `-flavor
+// link`, `-flavor gnu` or `-flavor darwin`.
 // With neither, the named linker with an empty path, which
 // run reports as not found.
 func (t *Tools) linker(f Format) (tool, path string, pre []string) {
 	tool, path, flavor := NameLLDLink, t.LLDLink, "link"
-	if f == ELF {
+	switch f {
+	case ELF:
 		tool, path, flavor = NameLDLLD, t.LDLLD, "gnu"
+	case MachO:
+		tool, path, flavor = NameLD64LLD, t.ld64(), "darwin"
 	}
 	if path == "" && t.LLD != "" {
 		return NameLLD, t.LLD, []string{"-flavor", flavor}

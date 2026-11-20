@@ -214,7 +214,7 @@ go test -p 2 ./internal/driver -run '^TestDeterminismGOMAXPROCS$'
 
 ### Documentation
 
-- Every fenced `mk` block in `doc/` is a test. Its first line is its verdict: `// verdict: ok`, `// verdict: parse`, or `// verdict: reject E0505` with the exact codes the compiler must report, and `// <- E0505` at the end of the line where the error must be reported. Use a `text` or `sh` fence for anything that is not Mk.
+- Every fenced `mk` block in `doc/` is a test. Its first line is its verdict: `// verdict: ok`, `// verdict: parse`, or `// verdict: reject E0505` with the exact codes the compiler must report, and `// <- E0505` at the end of the line where the error must be reported. A block that holds on one architecture only, such as an `asm` example in x86 assembly, says so on its second line, `// arch: x86_64`, and `mk corpus --target` for another architecture skips it. Use a `text` or `sh` fence for anything that is not Mk.
 - A change to the language, the library or a command changes the documentation in the same commit, and a user-visible change adds a line to [CHANGELOG.md](CHANGELOG.md).
 
 ### Comments

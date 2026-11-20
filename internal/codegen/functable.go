@@ -190,7 +190,8 @@ func (s *support) funcTable(g *packGen, sig *types.Signature) {
 	rowT := rowType(m)
 	var rows []llvm.Value
 	for _, n := range s.asmNames {
-		f := m.Declare(s.asmName(n), llvm.FuncSig{Linkage: llvm.External, Ret: m.Void()})
+		// The IR name: LLVM adds Mach-O's '_' itself (asmName is the assembler's).
+		f := m.Declare(n, llvm.FuncSig{Linkage: llvm.External, Ret: m.Void()})
 		kind := uint64(rowOther)
 		if n == symChkstk || n == symChkstkAligned {
 			kind = rowChkstk // the aligned probe pushes as __chkstk does

@@ -104,13 +104,18 @@ export SpinLock[T](c: &SpinCore[T]): *SpinCore[T] {
     }
 }
 
-// SpinPauseHint is x86_64's spin-wait hint (Intel SDM, PAUSE; Go's
-// procyield and Rust's spin_loop do the same in their spin waits). x86_64
-// only, as every supported target is; an aarch64 port guards it on
-// Target.arch (yield there). std.core is in std/pkg.mk's unsafe_modules.
+// SpinPauseHint is the spin-wait hint: x86_64's pause (Intel SDM, PAUSE;
+// Go's procyield and Rust's spin_loop do the same in their spin waits),
+// aarch64's yield. std.core is in std/pkg.mk's unsafe_modules.
 SpinPauseHint() {
-    unsafe "pause: a spin-wait hint; it reads and writes no memory and no flags" {
-        asm("pause", options(nomem, nostack, preserves_flags))
+    if Target.arch == Arch.Arm64 {
+        unsafe "yield: a spin-wait hint; it reads and writes no memory and no flags" {
+            asm("yield", options(nomem, nostack, preserves_flags))
+        }
+    } else {
+        unsafe "pause: a spin-wait hint; it reads and writes no memory and no flags" {
+            asm("pause", options(nomem, nostack, preserves_flags))
+        }
     }
 }
 

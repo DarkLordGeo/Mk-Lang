@@ -4,8 +4,9 @@
 // the instance's feature set are known.
 //
 // What: the check of every asm operand of a built instance body against the
-// target's register table, reporting E1104 (register, feature, class, or
-// no-register-table for a target without a table, such as aarch64).
+// target's register table, reporting E1104 (register, feature, class,
+// reserved, or no-register-table for a target without a table). The
+// aarch64 table is in asmregs_aarch64.go.
 //
 // How: a feature counts when it is in the target's baseline or the
 // instance's cpu set. Only the asm statements still in the body's blocks
@@ -130,6 +131,10 @@ func (c *collector) asmRegisters(i int) {
 	for _, st := range live {
 		a := &b.Asms[st.Asm]
 		span = st.Span
+		if arm64Target(c.opt.Target) {
+			c.arm64Registers(a, func(a *mir.Asm, reason, msg, reg string) { report(a, reason, msg, reg) })
+			continue
+		}
 		if c.opt.Target.Arch != types.ArchX64 {
 			report(a, "no-register-table", "asm has no register table on "+c.opt.Target.Name+" in 1.0", "")
 			continue

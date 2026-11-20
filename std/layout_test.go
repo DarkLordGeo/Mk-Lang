@@ -106,9 +106,11 @@ var moduleDirs = struct {
 }{
 	modules: []string{"core", "raw", "fs", "net", "time", "proc", "sync", "atomic", "math", "derive", "rt", "task", "pkg", "coll", "hash", "mem", "json", "http", "regex", "crypto", "compress", "cli", "log", "text", "dyn", "sim", "simd", "mmio", "db", "libc", "free", "db/sqlite", "dyn/erased", "big", "csv", "dl", "encoding", "encoding/cjk", "url", "simd/kernel", "time/tzdata", "x509", "term", "tls", "websocket", "target", "runtime", "vm", "testing", "build"}, // a nested path names the module with dots: db/sqlite is std.db.sqlite, dyn/erased is std.dyn.erased
 	// free/sys is std.sys on x86_64-freestanding, sys/nutshell on
-	// the Nutshell targets; linux/linux is std.linux for os
-	// "linux", linux/other its empty placeholder elsewhere.
-	targetDirs: []string{"sys/windows", "sys/linux", "free/sys", "sys/nutshell", "linux/linux", "linux/other"},
+	// the Nutshell targets, sys/macos on macOS; linux/linux is std.linux
+	// for os "linux", linux/other its empty placeholder elsewhere;
+	// lc/macos is std.sys.lc (libSystem's names) on macOS, lc/other its
+	// empty placeholder elsewhere.
+	targetDirs: []string{"sys/windows", "sys/linux", "free/sys", "sys/nutshell", "sys/macos", "linux/linux", "linux/other", "lc/macos", "lc/other"},
 	notModule:  "corpus",
 }
 
@@ -245,14 +247,16 @@ func targetSelections(text string) (sel [][]string, body string, ok bool) {
 var hostTargets = [][]string{{"windows", "sys", "sys/windows"}, {"linux", "sys", "sys/linux"}}
 
 // wantTargets is pkg.mk's: hostTargets' two, free/sys for the freestanding
-// target, and sys/nutshell for the Nutshell targets; and, beside each
-// std.sys, std.linux: linux/linux for linux, the empty linux/other
-// elsewhere.
+// target, sys/macos for macOS and sys/nutshell for the Nutshell targets;
+// and, beside each std.sys, std.linux (linux/linux for linux, the empty
+// linux/other elsewhere) and std.sys.lc (lc/macos for macOS, the empty
+// lc/other elsewhere).
 var wantTargets = [][]string{
-	{"windows", "sys", "sys/windows"}, {"windows", "linux", "linux/other"},
-	{"linux", "sys", "sys/linux"}, {"linux", "linux", "linux/linux"},
-	{"freestanding", "sys", "free/sys"}, {"freestanding", "linux", "linux/other"},
-	{"nutshell", "sys", "sys/nutshell"}, {"nutshell", "linux", "linux/other"},
+	{"windows", "sys", "sys/windows"}, {"windows", "linux", "linux/other"}, {"windows", "sys.lc", "lc/other"},
+	{"linux", "sys", "sys/linux"}, {"linux", "linux", "linux/linux"}, {"linux", "sys.lc", "lc/other"},
+	{"freestanding", "sys", "free/sys"}, {"freestanding", "linux", "linux/other"}, {"freestanding", "sys.lc", "lc/other"},
+	{"macos", "sys", "sys/macos"}, {"macos", "linux", "linux/other"}, {"macos", "sys.lc", "lc/macos"},
+	{"nutshell", "sys", "sys/nutshell"}, {"nutshell", "linux", "linux/other"}, {"nutshell", "sys.lc", "lc/other"},
 }
 
 // TestPerTargetSysModule: pkg.mk's targets map the name sys to
@@ -280,7 +284,7 @@ func TestPerTargetSysModule(t *testing.T) {
 	}
 	for _, d := range mkDirs(t) {
 		if (strings.HasPrefix(d, "sys/") || strings.HasPrefix(d, "free/")) && !slices.Contains(moduleDirs.targetDirs, d) {
-			t.Errorf("std/%s: only sys/windows, sys/linux, free/sys and sys/nutshell form std.sys", d)
+			t.Errorf("std/%s: only sys/windows, sys/linux, sys/macos, free/sys and sys/nutshell form std.sys", d)
 		}
 	}
 }

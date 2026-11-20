@@ -1,14 +1,17 @@
-// Why: some targets (every aarch64 target) are checked only; building for
+// Why: some targets (aarch64-nutshell) are checked only; building for
 // them must fail clearly instead of producing a broken executable.
-// What: TestAArch64NotBuilt and TestBuildRunTestVerified.
+// What: TestAArch64NotBuilt, TestAArch64LinuxELF and
+// TestBuildRunTestVerified.
 // How: mk build, run and test refuse such a target with E0202 reason
 // not-built and write no executable, while mk check still type-checks for
-// it; the second test checks that build, run and test offer only fixes
-// that recompile, as mk check does.
+// it; aarch64-linux, which is built, gives a static AArch64 ELF; the last
+// test checks that build, run and test offer only fixes that recompile, as
+// mk check does.
 
 package driver
 
 import (
+	"debug/elf"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +38,7 @@ func TestAArch64NotBuilt(t *testing.T) {
 	if err := os.WriteFile(file, []byte(t8Program), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, tg := range []types.Target{types.Aarch64Linux} {
+	for _, tg := range []types.Target{types.Aarch64Nutshell} {
 		t.Run(tg.Name, func(t *testing.T) {
 			s, err := NewSession(Config{Root: file, Target: tg, CacheDir: t.TempDir()})
 			if err != nil {
@@ -64,6 +67,63 @@ func TestAArch64NotBuilt(t *testing.T) {
 			tr, _, err := s.Test(TestOptions{})
 			if err != nil || len(tr.Report.Diags) != 1 || tr.Report.Diags[0].Diag.Code != diag.E0202 || factText(tr.Report.Diags[0].Diag, "reason") != "not-built" {
 				t.Errorf("test: err %v, %s", err, diagLines(tr))
+			}
+		})
+	}
+}
+
+// TestAArch64LinuxELF: dev and release, an aarch64-linux build is a static
+// ELF64 executable for EM_AARCH64 with no interpreter, entered at _start in
+// dev; a second build from an empty cache gives the same bytes. It is not
+// run: the host is x86_64.
+func TestAArch64LinuxELF(t *testing.T) {
+	t.Parallel()
+	file := filepath.Join(t.TempDir(), "hi.mk")
+	if err := os.WriteFile(file, []byte(t8Program), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, prof := range []types.Profile{types.Dev, types.Release} {
+		t.Run(prof.String(), func(t *testing.T) {
+			exe := buildProgram(t, file, types.Aarch64Linux, prof, t.TempDir())
+			f, err := elf.Open(exe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			if f.Class != elf.ELFCLASS64 || f.Machine != elf.EM_AARCH64 || f.Type != elf.ET_EXEC {
+				t.Errorf("class %v machine %v type %v, want ELFCLASS64 EM_AARCH64 ET_EXEC", f.Class, f.Machine, f.Type)
+			}
+			for _, p := range f.Progs {
+				if p.Type == elf.PT_INTERP || p.Type == elf.PT_DYNAMIC {
+					t.Errorf("program header %v in a static executable", p.Type)
+				}
+			}
+			if prof == types.Dev {
+				syms, err := f.Symbols()
+				if err != nil {
+					t.Fatal(err)
+				}
+				var start uint64
+				for _, s := range syms {
+					if s.Name == "_start" {
+						start = s.Value
+					}
+				}
+				if start == 0 || f.Entry != start {
+					t.Errorf("entry %#x, _start %#x", f.Entry, start)
+				}
+			}
+			again := buildProgram(t, file, types.Aarch64Linux, prof, t.TempDir())
+			a, err := os.ReadFile(exe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := os.ReadFile(again)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(a) != string(b) {
+				t.Errorf("two builds differ: %d and %d bytes", len(a), len(b))
 			}
 		})
 	}

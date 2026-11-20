@@ -3,7 +3,7 @@
 // line.
 //
 // What: runCorpus, the `mk corpus` command; its flags are corpus.Options
-// (newCorpusFlagSet) plus --strict.
+// (newCorpusFlagSet, --target among them) plus --strict.
 //
 // How: the report goes to stdout (the text report, or JSON Lines with
 // --json); a root, extraction, allowlist or usage error goes to stderr with
@@ -15,8 +15,10 @@ package main
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"mk/internal/corpus"
+	"mk/internal/driver"
 )
 
 func runCorpus(args []string, stdout, stderr io.Writer) int {
@@ -33,6 +35,12 @@ func runCorpus(args []string, stdout, stderr io.Writer) int {
 			err = fmt.Errorf("mk corpus takes no path; use --root")
 		}
 		return usageErr(stderr, fs, err)
+	}
+	if c.target != "" {
+		if _, names, ok := driver.TargetNamed(c.target); !ok {
+			fmt.Fprintf(stderr, "mk: unknown target %q (one of %s)\n", c.target, strings.Join(names, ", "))
+			return 2
+		}
 	}
 	opts := corpus.Options{Root: c.root, Conformance: c.all, Only: c.only,
 		NoPending: c.noPending || strict, Build: c.build, Jobs: c.jobs, Driver: c.driverConfig(stderr)}

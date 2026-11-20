@@ -29,14 +29,17 @@ import (
 // every profile; the std intrinsics that reach them are lowered to calls of
 // these names.
 const (
-	symMemcpy      = "memcpy"
-	symMemmove     = "memmove"
-	symMemset      = "memset"
-	symMemcmp      = "memcmp"
-	symBcmp        = "bcmp"
-	symChkstk      = "__chkstk"
-	symFltused     = "_fltused"
-	symStart       = "mk_start"
+	symMemcpy  = "memcpy"
+	symMemmove = "memmove"
+	symMemset  = "memset"
+	symMemcmp  = "memcmp"
+	symBcmp    = "bcmp"
+	symChkstk  = "__chkstk"
+	symFltused = "_fltused"
+	symStart   = "mk_start"
+	// symMachOMain is the macOS entry dyld calls through LC_MAIN, _main
+	// in the object (Mach-O prefixes '_').
+	symMachOMain   = "main"
 	symELFStart    = "_start"
 	symSwitch      = "mk_switch"
 	symTaskStart   = "mk_task_start"
@@ -674,8 +677,10 @@ func (s *support) asmFunc(name, body string) {
 	switch {
 	case s.t.OS == types.OSWindows:
 		a.WriteString("\t.def " + n + ";\n\t.scl 2;\n\t.type 32;\n\t.endef\n\t.p2align 4\n")
-	case s.t.OS == types.OSMacos:
+	case s.t.OS == types.OSMacos && s.t.Arch == types.ArchArm64:
 		a.WriteString("\t.p2align 2\n")
+	case s.t.OS == types.OSMacos:
+		a.WriteString("\t.p2align 4\n")
 	case s.t.Arch == types.ArchArm64:
 		a.WriteString("\t.type " + n + ",%function\n\t.p2align 2\n")
 	default:
@@ -688,7 +693,7 @@ func (s *support) asmFunc(name, body string) {
 		case types.OSWindows:
 			a.WriteString("\t.seh_proc " + n + "\n")
 			end = "\t.seh_endproc\n"
-		case types.OSLinux, types.OSNutshell:
+		case types.OSLinux, types.OSNutshell, types.OSMacos:
 			a.WriteString("\t.cfi_startproc\n")
 			end = "\t.cfi_endproc\n"
 		}
@@ -718,7 +723,7 @@ func (s *support) targetRoutines() {
 		s.asmFunc(symSwitch, arm64Switch)
 		s.asmFunc(symTaskStart, arm64TaskStart)
 		s.asmFunc(symCallSystem, arm64CallSystem)
-		if s.t.OS == types.OSLinux {
+		if s.t.OS == types.OSLinux { // macOS: dyld calls main (entry)
 			s.asmFunc(symELFStart, arm64ELFStart)
 			s.asmFunc(symClone, arm64Clone)
 			s.asmFunc(symSigreturn, arm64Sigreturn)
@@ -738,6 +743,14 @@ func (s *support) targetRoutines() {
 		// None: no process entry, no tasks to switch, no threads,
 		// no signals, no system stack; the program's MkEntry is the entry
 		// and ld.lld needs no __chkstk on ELF.
+	case s.t.OS == types.OSMacos:
+		// System V's switch, task start and system-stack call; dyld
+		// calls main (entry), threads come from pthread_create and the
+		// kernel's signal trampoline is libSystem's, so there is no
+		// _start, mk_clone or mk_sigreturn.
+		s.asmFunc(symSwitch, sysvSwitch)
+		s.asmFunc(symTaskStart, sysvTaskStart)
+		s.asmFunc(symCallSystem, sysvCallSystem)
 	case s.t.OS == types.OSNutshell:
 		// Linux's System V routines with Nutshell's own _start, and
 		// no mk_clone or mk_sigreturn (support_nutshell.go).
@@ -788,13 +801,39 @@ func (s *support) initContext() {
 	b.Ret(nil)
 }
 
+// machoMain emits main(argc, argv, envp, apple), the macOS entry dyld
+// calls through LC_MAIN: it stores its four arguments in a block of four
+// words on the main thread's stack and calls std.task.Start with the
+// block's address, the sp std/sys/macos reads argv and envp from. Start
+// never returns, so the block lives as long as the process.
+func (s *support) machoMain() {
+	m := s.m
+	hook := m.Declare(symTaskStartHook, llvm.FuncSig{Linkage: llvm.External, Ret: m.Void(),
+		Params: []llvm.Type{m.Ptr()}, ParamAttrs: []llvm.Attrs{llvm.Attrs{}.Flag("noundef")},
+		FnAttrs: llvm.Attrs{}.Flag("noreturn").Flag("nounwind")})
+	attrs := s.fnAttrs().Flag("noreturn").Str("probe-stack", "inline-asm").Str("stack-probe-size", "4096")
+	i64 := m.I(64)
+	f := s.define(symMachOMain, m.I(32), []llvm.Type{m.I(32), m.Ptr(), m.Ptr(), m.Ptr()}, attrs)
+	b := f.NewBlock("entry")
+	block := b.Alloca(m.Array(4, i64), 8)
+	b.Store(b.Cast(llvm.ZExt, f.Param(0), i64), block, 8)
+	for i := 1; i <= 3; i++ {
+		b.Store(f.Param(i), b.GEPBytes(block, m.ConstInt(i64, uint64(8*i)), false), 8)
+	}
+	b.CallFunc(hook, []llvm.Value{block})
+	b.Unreachable()
+}
+
 // entry emits the entry stub: Windows mk_start(), linked with
 // -entry:mk_start; Linux and Nutshell mk_start(sp), called by _start with
 // the initial stack pointer (on Nutshell, the address of the two start
 // words _start pushed). Both call std.task.Start and never return.
 func (s *support) entry() {
 	if s.t.OS == types.OSMacos {
-		return // macOS needs libSystem's entry; not built end to end
+		if !s.cfg.Library {
+			s.machoMain()
+		}
+		return
 	}
 	if s.t.OS == types.OSFreestanding {
 		return // the program's export extern MkEntry is the entry

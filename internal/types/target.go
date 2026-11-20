@@ -95,9 +95,14 @@ var (
 	X86_64Linux = Target{Name: "x86_64-linux", Arch: ArchX64, OS: OSLinux, PointerBytes: 8,
 		LLVMTriple: "x86_64-unknown-linux-gnu", Built: true, VectorBits: 128}
 	Aarch64Linux = Target{Name: "aarch64-linux", Arch: ArchArm64, OS: OSLinux, PointerBytes: 8,
-		LLVMTriple: "aarch64-unknown-linux-gnu", VectorBits: 128}
+		LLVMTriple: "aarch64-unknown-linux-gnu", Built: true, VectorBits: 128}
 	Aarch64Macos = Target{Name: "aarch64-macos", Arch: ArchArm64, OS: OSMacos, PointerBytes: 8,
-		LLVMTriple: "arm64-apple-macosx11.0.0", VectorBits: 128}
+		LLVMTriple: "arm64-apple-macosx11.0.0", Built: true, VectorBits: 128}
+	// X86_64Macos is macOS on Intel: System V, Mach-O, libSystem, macOS
+	// 11 or later (the release that added Apple silicon, so both macOS
+	// targets share one minimum).
+	X86_64Macos = Target{Name: "x86_64-macos", Arch: ArchX64, OS: OSMacos, PointerBytes: 8,
+		LLVMTriple: "x86_64-apple-macosx11.0.0", Built: true, VectorBits: 128}
 	// X86_64Freestanding is the freestanding target:
 	// no OS, an ELF object for ld.lld, layers 0 and 1 of std only. It is in
 	// AllTargets() and found by TargetByName, but not in Targets(), which
@@ -120,7 +125,7 @@ var (
 
 // Targets lists every supported hosted target, in name order.
 func Targets() []Target {
-	return []Target{Aarch64Linux, Aarch64Macos, X86_64Linux, X86_64Windows}
+	return []Target{Aarch64Linux, Aarch64Macos, X86_64Linux, X86_64Macos, X86_64Windows}
 }
 
 // AllTargets lists every supported target: the hosted ones, then

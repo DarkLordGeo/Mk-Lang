@@ -15,12 +15,14 @@ import (
 	"mk/internal/types"
 )
 
-// abiTargets is types.Targets() plus x86_64-freestanding, which has its
+// abiTargets is types.Targets() less x86_64-macos, plus x86_64-freestanding, which has its
 // clang record (testdata/clang/x86_64-freestanding.txt, written by the
 // probe) but is not among the hosted Targets(). Listing it here lets the
 // oracle and the probe-hash test judge it too.
 func abiTargets() []types.Target {
-	ts := types.Targets()
+	// x86_64-macos has no record of its own: it lowers every row as
+	// x86_64-linux does (TestMacosX64IsSysV), whose record holds for both.
+	ts := slices.DeleteFunc(types.Targets(), func(t types.Target) bool { return t.Name == types.X86_64Macos.Name })
 	if !slices.ContainsFunc(ts, func(t types.Target) bool { return t.Name == types.X86_64Freestanding.Name }) {
 		ts = append(ts, types.X86_64Freestanding)
 	}

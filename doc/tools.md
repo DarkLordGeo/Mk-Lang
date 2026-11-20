@@ -359,6 +359,7 @@ mk corpus -j 2 --only "doc/tools.md:*"
 | `--all` | Also judge the files of `tests/conformance` |
 | `--build` | Also build the blocks whose verdict is `ok`, and run those that have a `Main` |
 | `--strict` | Count a pending block as failed |
+| `--target name` | Judge every block for this target; the default is the host. A block that holds for one host only is skipped |
 | `--root dir` | The repository root. The default is found from the current directory |
 
 ## 3. Diagnostics
@@ -608,7 +609,7 @@ mk compiles to LLVM IR and runs clang and lld on it. It needs LLVM 21 or newer. 
 1. `--llvm dir`. It is an error if the directory holds no clang.
 2. `MK_LLVM`.
 3. `../llvm/bin` beside mk's own `bin/` directory, in a release archive.
-4. The host's default locations: `C:\Program Files\LLVM\bin` on Windows; `/usr/lib/llvm-21/bin`, `/usr/local/bin` and `/usr/bin` on Linux.
+4. The host's default locations: `C:\Program Files\LLVM\bin` on Windows; `/usr/lib/llvm-21/bin`, `/usr/local/bin` and `/usr/bin` on Linux; Homebrew's `/opt/homebrew/opt/llvm/bin` and `/usr/local/opt/llvm/bin`, then `/usr/local/bin`, on macOS.
 5. The directories on `PATH` that hold clang.
 
 Within the last two rules, a directory that also holds the linker wins over an earlier one that holds clang alone. The other tools come from the chosen directory only. `mk version` shows which directory was chosen and by which rule. Changing LLVM rebuilds everything.

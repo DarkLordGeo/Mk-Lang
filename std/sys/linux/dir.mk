@@ -36,7 +36,10 @@ const DirHead: int = 32
 const DirFacts: int = 8192
 const DirSlot: int = 24
 const DirSkip: u32 = 0xFFFF_FFFF
-const ODirectory: uint = 0o200000
+// ODirectory is O_DIRECTORY, which aarch64 numbers apart from x86_64.
+ODirectory(): uint {
+    return if Target.arch == Arch.Arm64 { 0o40000 } else { 0o200000 }
+}
 const AtSymlinkNoFollow: uint = 0x100
 const AtNoAutomount: uint = 0x800
 // TYPE | MTIME | SIZE (the facts IoStat holds).
@@ -135,7 +138,7 @@ export DirOpen(p: str): OsResult {
         return FailWith(core.SysErr.InvalidPath)
     }
     unsafe "system call; c is NUL-terminated" {
-        flags := ORdOnly | ODirectory | OCloExec
+        flags := ORdOnly | ODirectory() | OCloExec
         r := Syscall(Nrs().openat, AtFdcwd, raw.Addr(raw.Data(c[..])), flags, 0, 0, 0)
         return Result(r)
     }

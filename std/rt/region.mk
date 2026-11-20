@@ -100,9 +100,15 @@ EnsureRegion(class: u8): bool {
     Unlock(&LazyLock)
     return ok
 }
-// GuardBytes is the guard page at every slot's base; Windows also keeps the
-// 16 KiB guarantee above it (std/task/spawn.mk's TaskGuarantee).
-const GuardBytes: int = 4096
+// GuardBytes is the guard page at every slot's base: 4 KiB, or the OS page
+// where that is larger (16 KiB on arm64 macOS, where no smaller range can
+// be protected); Windows also keeps the 16 KiB guarantee above it
+// (std/task/spawn.mk's TaskGuarantee). Every slot is at least 64 KiB, so a
+// slot always has room above its guard.
+GuardBytes(): int {
+    ps := sys.PageSize()
+    return if ps > 4096 { ps } else { 4096 }
+}
 // FreshCommit is the top a fresh Windows slot commits: one page, which
 // holds the 512-byte top, the usual argument block and the initial frame; a
 // task that needs more grows through the PAGE_GUARD page below it as any
@@ -295,7 +301,7 @@ Prepare(top: uint, slot: int, retried: bool): bool {
         if retried && !sys.GuardPage(base) {
             return false
         }
-        return sys.CommitStack(raw.Offset(base, GuardBytes), slot - GuardBytes)
+        return sys.CommitStack(raw.Offset(base, GuardBytes()), slot - GuardBytes())
     }
 }
 
@@ -522,7 +528,7 @@ TrimOne(h: *SlotHeader, slot: int): bool {
             (*h).committed_pages = Trunc[u16](if guarded { FreshCommit / 4096 } else { FreshCommit / 4096 + 1 })
             return true
         }
-        sys.Discard(TrimLo(h, slot), slot - GuardBytes - 4096)
+        sys.Discard(TrimLo(h, slot), slot - GuardBytes() - 4096)
         return !TrimHookRefuses()
     }
 }
@@ -532,7 +538,7 @@ TrimOne(h: *SlotHeader, slot: int): bool {
 TrimLo(h: *SlotHeader, slot: int): *u8 {
     unsafe "h is the header of a slot of slot bytes; the address is inside it" {
         top := raw.Addr(h) + Trunc[uint](HeaderBytes)
-        return raw.FromAddr[u8](top - Trunc[uint](slot) + Trunc[uint](GuardBytes))
+        return raw.FromAddr[u8](top - Trunc[uint](slot) + Trunc[uint](GuardBytes()))
     }
 }
 
@@ -542,7 +548,7 @@ TrimLo(h: *SlotHeader, slot: int): *u8 {
 // a real slot), and refuses while the hook is armed, as a kernel's ENOMEM
 // would. Linux only: a Windows trim never refuses.
 ReadyCold(h: *SlotHeader, slot: int): bool {
-    return if TrimHookRefuses() { false } else { sys.CommitStack(TrimLo(h, slot), slot - GuardBytes - 4096) }
+    return if TrimHookRefuses() { false } else { sys.CommitStack(TrimLo(h, slot), slot - GuardBytes() - 4096) }
 }
 
 // TrimHookRefuses counts the test hook down and is true while it is armed.

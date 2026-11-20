@@ -731,6 +731,8 @@ func space(prev, cur *item) bool {
 		return false
 	case p == ast.TokComma && c == ast.TokDotDot: // a pattern's `, ..`
 		return true
+	case p == ast.TokComma && c == ast.TokEllipsis: // an extern's variadic `, ...`
+		return true
 	case p == ast.TokLParen || p == ast.TokLBracket:
 		return false
 	case c == ast.TokDot && p == ast.TokPipe && !prev.tight:

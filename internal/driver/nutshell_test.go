@@ -64,7 +64,7 @@ func TestNutshellBuildRefusesAarch64(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, paths, err := s.Build(filepath.Join(t.TempDir(), "main"))
-	// E0202 reason not-built, as every aarch64 target.
+	// E0202 reason not-built, as every checked-only target.
 	if err != nil || len(paths) != 0 || len(r.Report.Diags) != 1 || r.Report.Diags[0].Diag.Code != diag.E0202 ||
 		!strings.Contains(r.Report.Diags[0].Diag.Message, "aarch64-nutshell is checked only") {
 		t.Errorf("mk build --target aarch64-nutshell: %v, %v, %v", err, paths, r.Report.Diags[0].Diag)

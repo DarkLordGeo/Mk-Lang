@@ -62,6 +62,12 @@ PWin(): bool {
     return PollBackend() == 1
 }
 
+// TermModeLen is the bytes of a saved terminal mode: Linux's 36-byte
+// termios, the first 64 bytes of macOS's 72-byte one.
+TermModeLen(): int {
+    return if Target.os == Os.Macos { 64 } else { 36 }
+}
+
 // PStdio is a child's request with the three modes given.
 PStdio(i: u32, o: u32, e: u32): core.IoChild {
     return core.IoChild(stdio: [i, o, e], inherit: 0, pipes: [0; 3], pid: 0)

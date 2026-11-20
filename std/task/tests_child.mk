@@ -317,21 +317,21 @@ test "RT8-Child-Pty a child on a pseudo-terminal: its size, a resize, its output
     } else {
         // The master's mode is its terminal's: raw, then the saved mode back.
         m := rt.TermMode(io, p.read, p.write, core.IoTermRaw, none8[0..0], mut old[..])
-        Assert(m.err == core.SysErr.None && m.value == 36)
-        Assert(rt.TermMode(io, p.read, p.write, core.IoTermSaved, old[0..36], mut again[..]).err == core.SysErr.None)
+        Assert(m.err == core.SysErr.None && m.value == i64(TermModeLen()))
+        Assert(rt.TermMode(io, p.read, p.write, core.IoTermSaved, old[0..TermModeLen()], mut again[..]).err == core.SysErr.None)
         Assert(rt.TermMode(io, p.read, p.write, core.IoTermNoEcho, none8[0..0], mut again[..]).err == core.SysErr.None)
-        for i in 0..36 {
+        for i in 0..TermModeLen() {
             Assert(again[i] == old[i])
         }
         // IoTermGet reads the mode in force (echo off now) and sets nothing:
         // two reads agree, and differ from the mode saved first.
         var g1: [64]u8 = [0; 64]
         var g2: [64]u8 = [0; 64]
-        Assert(rt.TermMode(io, p.read, p.write, core.IoTermGet, none8[0..0], mut g1[..]).value == 36)
-        Assert(rt.TermMode(io, p.read, p.write, core.IoTermGet, none8[0..0], mut g2[..]).value == 36)
+        Assert(rt.TermMode(io, p.read, p.write, core.IoTermGet, none8[0..0], mut g1[..]).value == i64(TermModeLen()))
+        Assert(rt.TermMode(io, p.read, p.write, core.IoTermGet, none8[0..0], mut g2[..]).value == i64(TermModeLen()))
         var same := true
         var differs := false
-        for i in 0..36 {
+        for i in 0..TermModeLen() {
             same = same && g1[i] == g2[i]
             differs = differs || g1[i] != old[i]
         }
