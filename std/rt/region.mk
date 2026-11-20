@@ -100,12 +100,12 @@ EnsureRegion(class: u8): bool {
     Unlock(&LazyLock)
     return ok
 }
-// GuardBytes is the guard page at every slot's base: 4 KiB, or the OS page
-// where that is larger (16 KiB on arm64 macOS, where no smaller range can
-// be protected); Windows also keeps the 16 KiB guarantee above it
-// (std/task/spawn.mk's TaskGuarantee). Every slot is at least 64 KiB, so a
-// slot always has room above its guard.
-GuardBytes(): int {
+/// GuardBytes is the guard page at every slot's base: 4 KiB, or the OS page
+/// where that is larger (16 KiB on arm64 macOS, where no smaller range can
+/// be protected); Windows also keeps the 16 KiB guarantee above it
+/// (std/task/spawn.mk's TaskGuarantee). Every slot is at least 64 KiB, so a
+/// slot always has room above its guard. O(1); allocates nothing.
+export GuardBytes(): int {
     ps := sys.PageSize()
     return if ps > 4096 { ps } else { 4096 }
 }

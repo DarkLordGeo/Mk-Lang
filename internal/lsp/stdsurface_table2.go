@@ -772,6 +772,7 @@ var surfaceDocs2 = map[string]surfaceDoc{
 	"runtime.OsError":                   {Module: "std.runtime", Lines: []string{"error OsError(code: i64)"}},
 	"runtime.PanicInfo":                 {Module: "std.runtime", Lines: []string{"struct PanicInfo"}},
 	"runtime.Processors":                {Module: "std.runtime", Lines: []string{"runtime.Processors(): int"}},
+	"runtime.RegCount":                  {Module: "std.runtime", Lines: []string{"runtime.RegCount(): int"}},
 	"runtime.StackBounds":               {Module: "std.runtime", Lines: []string{"runtime.StackBounds(): (lo: uint, hi: uint)"}},
 	"runtime.StackRemaining":            {Module: "std.runtime", Lines: []string{"runtime.StackRemaining(): uint"}},
 	"runtime.TaskIo":                    {Module: "std.runtime", Lines: []string{"runtime.TaskIo(): ?Io"}},
@@ -903,5 +904,4 @@ var surfaceDocs2 = map[string]surfaceDoc{
 	"str.AsBytes":                       {Module: "", Lines: []string{"str.AsBytes(self): []u8"}},
 	"str.Byte":                          {Module: "", Lines: []string{"str.Byte(self, i: int): u8"}},
 	"str.EndsWith":                      {Module: "", Lines: []string{"str.EndsWith(self, suffix: str): bool"}},
-	"str.Find":                          {Module: "", Lines: []string{"str.Find(self, sub: str): ?int"}},
 }

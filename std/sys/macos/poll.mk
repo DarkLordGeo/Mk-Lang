@@ -89,6 +89,11 @@ const FiltRead: u16 = 0xFFFF
 const FiltWrite: u16 = 0xFFFE
 const FiltProc: u16 = 0xFFFB
 const FiltUser: u16 = 0xFFF6
+// FiltTimer is EVFILT_TIMER (-7); its data is the period in milliseconds.
+const FiltTimer: u16 = 0xFFF9
+// TickMs is the period at which an unwatched terminal's pending OpReady is
+// tried again (UnwatchedArm).
+const TickMs: u64 = 10
 const EvAdd: u16 = 0x1
 const EvDelete: u16 = 0x2
 const EvOneShot: u16 = 0x10
@@ -144,8 +149,9 @@ const PollNval: u16 = 0x20
 const MaxFds: int = 1_048_576
 const DescBytes: int = 64
 // A record: lock at 0, read seq at 4, write seq at 8, the registered
-// filters at 12 (1 read, 2 write, 4 an unwatched character device), then the read list (head 16, tail 24)
-// and the write list (head 32, tail 40).
+// filters at 12 (1 read, 2 write, 4 an unwatched character device, 8 its
+// tick timer armed), then the read list (head 16, tail 24) and the write
+// list (head 32, tail 40).
 const DLock: int = 0
 const DSeqRead: int = 4
 const DSeqWrite: int = 8
@@ -458,6 +464,29 @@ SetEv(p: *u8, i: int, ident: u64, filter: u16, flags: u16, fflags: u32) {
     }
 }
 
+// UnwatchedArm arms, or with arm false disarms, the tick of the unwatched
+// character device fd: a periodic EVFILT_TIMER of TickMs whose ident is
+// fd. kqueue serves no /dev/tty on macOS (libuv's select thread exists for
+// the same reason), so a pending OpReady on one is tried again at each
+// tick (KqReap) instead of at an edge. Called under fd's record lock, with
+// the armed bit (8) read and set there, so a tick is never disarmed while
+// an op waits for it. O(1): at most one system call; allocates nothing.
+UnwatchedArm(d: *u8, fd: uint, arm: bool) {
+    bits := Get32(d, DAttach)
+    armed := (bits & 8) != 0
+    if arm == armed {
+        return
+    }
+    var ev: [4]u64 = [0; 4]
+    unsafe "ev holds one struct kevent" {
+        p := raw.PtrCast[u64, u8](raw.DataMut(mut ev[..]))
+        SetEv(p, 0, u64(fd), FiltTimer, if arm { EvAdd } else { EvDelete }, 0)
+        Put64(p, 16, TickMs)
+        _ = kevent(Kq(), p, 1, raw.Null[u8](), 0, raw.Null[i64]())
+    }
+    Put32(d, DAttach, if arm { bits | 8 } else { bits & ~u32(8) })
+}
+
 // KqApply applies the n changes at ch, each with EV_RECEIPT, and receives
 // their receipts into rc (n records): the receipt count, or -1 when kevent
 // itself failed. EINTR is repeated (every change here is idempotent or its
@@ -626,6 +655,8 @@ KqDel(fd: uint) {
     d := Desc(fd)
     SpinLock(DescLock(d))
     bits := Get32(d, DAttach)
+    // An unwatched terminal's tick stops with it.
+    UnwatchedArm(d, fd, false)
     SpinUnlock(DescLock(d))
     if bits != 0 {
         var ch: [8]u64 = [0; 8]
@@ -970,6 +1001,17 @@ KqReap(timeout_ns: i64, out: mut []*Op, k: int): int {
                 continue
             }
             d := Desc(Trunc[uint](ident))
+            if filter == FiltTimer {
+                // An unwatched terminal's tick: its read list is tried as
+                // at an edge, and the tick stops once nothing waits.
+                n = Ready(d, DSeqRead, DHeadRead, out, n)
+                SpinLock(DescLock(d))
+                if Get64(d, DHeadRead) == 0 {
+                    UnwatchedArm(d, Trunc[uint](ident), false)
+                }
+                SpinUnlock(DescLock(d))
+                continue
+            }
             if filter == FiltRead {
                 n = Ready(d, DSeqRead, DHeadRead, out, n)
                 if (flags & EvEof) != 0 {

@@ -46,7 +46,7 @@ export StackBounds(): (lo: uint, hi: uint) {
     if !raw.IsNull(slot) {
         hi := raw.Addr(slot)
         top := hi + Trunc[uint](rt.HeaderBytes)
-        lo := rt.SlotBase(top) + 4096 + task.SlotGuarantee()
+        lo := rt.SlotBase(top) + Trunc[uint](rt.GuardBytes()) + task.SlotGuarantee()
         return (lo: lo, hi: hi)
     }
     var b := sys.ThreadStackBounds()

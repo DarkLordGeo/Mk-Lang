@@ -758,18 +758,18 @@ test "Filter an unresumed illegal instruction in a code region is reported as a 
     _ = Ud2Region(false)
 }
 
-// Linux routes only the faults Mk owns,
+// Linux and macOS route only the faults Mk owns,
 // as Windows' frame walk does (sys.FaultOwned): a pc in the image, a thread
 // std.sys started, or a stack pointer on a task slot or a carrier's system
 // stack. C code outside the image on a thread std did not make is not
 // Mk's: the handler gives it the default action. Windows' answer is true
 // for every fault its handler routes.
-test "Filter Linux takes a fault as Mk's by its pc, its thread or its stack, and C code on a foreign thread as not" {
+test "Filter Linux and macOS take a fault as Mk's by its pc, its thread or its stack, and C code on a foreign thread as not" {
     var x: u64 = 0
     unsafe "addresses only, never read" {
         slot := raw.Addr(raw.Of(&x))
         image := raw.Addr(raw.Of(&FaultSeen))
-        if Target.os != Os.Linux {
+        if Target.os != Os.Linux && Target.os != Os.Macos {
             Assert(sys.FaultOwnedBy(4096, 8192, false))
             return
         }

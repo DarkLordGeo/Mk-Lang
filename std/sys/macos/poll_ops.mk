@@ -431,11 +431,36 @@ KqSubmit(op: *Op): bool {
             }
         }
         if !Attached(op) {
-            if Unwatched(op) && Try(op) {
+            if !Unwatched(op) {
+                (*op).res = FailWith(core.SysErr.Other)
                 return false
             }
-            (*op).res = FailWith(if Unwatched(op) { core.SysErr.Unsupported } else { core.SysErr.Other })
-            return false
+            // An unwatched terminal (no kqueue filter): only OpReady waits,
+            // recorded on the read list and tried again at each tick of
+            // the descriptor's timer; any other op is tried once.
+            if (*op).kind != OpReady {
+                if !Try(op) {
+                    (*op).res = FailWith(core.SysErr.Unsupported)
+                }
+                return false
+            }
+            for {
+                s := ReadSeq(op)
+                if Try(op) {
+                    return false
+                }
+                rec := Record(op, s)
+                if rec == 2 {
+                    return false
+                }
+                if rec == 0 {
+                    d := Desc(fd)
+                    SpinLock(DescLock(d))
+                    UnwatchedArm(d, fd, true)
+                    SpinUnlock(DescLock(d))
+                    return true
+                }
+            }
         }
         var first := true
         for {
