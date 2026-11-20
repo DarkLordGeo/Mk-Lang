@@ -86,11 +86,12 @@ NativeAccept(io: Io, h: uint): core.IoResult {
                 op.buf = raw.PtrCast[u64, u8](raw.DataMut(mut area[..]))
                 op.len = sys.AcceptUnixArea
             }
-            // On Windows a listener inherited from another process takes
-            // the shared-port path: its registered wait is freed by
+            // A listener another process holds too takes the shared-port
+            // path. On Windows its registered wait is freed by
             // PollRelease, and a peer that reset before the accept comes
             // back as Reset to be asked again (for any other listener sys
-            // issues it again itself).
+            // issues it again itself). On Linux under io_uring it waits
+            // non-exclusively, so a killed sibling cannot take a wake.
             op.pos = (*r).pos
             e := Await(raw.OfMut(mut op), Cancellable(io))
             sys.PollRelease(raw.OfMut(mut op))

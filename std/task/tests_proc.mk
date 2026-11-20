@@ -1,9 +1,10 @@
 // Why: proc.Run and Supervise rest on the runtime's process entries, whose
 // pipes, waits and kills must neither deadlock nor leak handles.
-// What: the RT-Os-Spawn-* blocks and RT-Os-Inherit: NativeSpawn with every
-// stdio mode, exit codes, both pipes drained at once past the pipe buffer,
-// stdin fed and closed, a missing program, a cancelled procwait, prockill,
-// an inherited listener, and equal handle counts over many spawns.
+// What: the RT-Os-Spawn-* blocks, RT-Os-Inherit and RT-Os-Inherit-Close:
+// NativeSpawn with every stdio mode, exit codes, both pipes drained at once
+// past the pipe buffer, stdin fed and closed, a missing program, a
+// cancelled procwait, prockill, an inherited listener and one holder's
+// close of it, and equal handle counts over many spawns.
 // How: the child is the system shell (cmd.exe /c on Windows, /bin/sh -c on
 // Linux); run by the scheduler harness at 1 to 8 carriers, dev and release.
 
@@ -494,6 +495,43 @@ test "RT-Os-Inherit a listener inherited by two children, one killed, the other 
     PClose(sys.io, Trunc[uint](a.value))
     PClose(sys.io, Trunc[uint](b.value))
     PClose(sys.io, lh)
+}
+
+test "RT-Os-Inherit-Close a holder's close of an inherited listener leaves the other holders serving" (sys: &System) {
+    i := NativeInherited(sys.io)
+    if i.err == core.SysErr.None {
+        // Child C closes its copy and ends; child B serves until killed
+        // (or for 60 s, as in the Inherit block).
+        h := Trunc[uint](i.value)
+        tag := sys.args[2].AsBytes()[0]
+        if tag == 67 {
+            PExit(if NativeClose(sys.io, h).err == core.SysErr.None { 0 } else { 5 })
+        }
+        scope s := sys.io.Scope() {
+            s.go PServe(sys.io, h, tag, i.os)
+            _ = NativeSleep(sys.io, 60_000_000_000)
+            PExit(4)
+        }
+        return
+    }
+    Assert(i.err == core.SysErr.NotFound)
+    l := NListen(sys.io)
+    lh := Trunc[uint](l.value)
+    c := PChild(sys, lh, "C")
+    Assert(PWait(sys.io, Trunc[uint](c.value)) == 0)
+    PClose(sys.io, Trunc[uint](c.value))
+    // C's close left the listener open: B, started after it, serves.
+    b := PChild(sys, lh, "B")
+    Assert(PAsk(sys.io, l.os) == 66)
+    // So does the parent's own close of its copy.
+    PClose(sys.io, lh)
+    for _ in 0..5 {
+        Assert(PAsk(sys.io, l.os) == 66)
+    }
+    Assert(NativeProcKill(sys.io, Trunc[uint](b.value)).err == core.SysErr.None)
+    cb := PWait(sys.io, Trunc[uint](b.value))
+    Assert(cb == 1 || cb == -9)
+    PClose(sys.io, Trunc[uint](b.value))
 }
 
 // PWaitOne waits for h and counts it in got when it was killed.

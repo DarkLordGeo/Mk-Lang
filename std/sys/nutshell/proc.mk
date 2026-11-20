@@ -2,8 +2,8 @@
 // what std/sys/linux exports, so std checks and builds for the target until
 // the Nutshell backend replaces this directory.
 //
-// What: PipeRoom, SharedPort, Spawn, PollRelease, ProcKill, Inherited and
-// InheritSeal.
+// What: PipeRoom, SharedPort, Spawn, PollRelease, ProcKill, ShareListener,
+// Inherited and InheritSeal.
 //
 // How: no child can be spawned or inherited.
 
@@ -34,6 +34,12 @@ export PollRelease(op: *Op) {
 /// ProcKill has std/sys/linux's contract; this placeholder fails with Other.
 /// O(1); allocates nothing.
 export ProcKill(h: uint): OsResult {
+    return Unsupported()
+}
+
+/// ShareListener has std/sys/linux's contract; this placeholder fails with
+/// Other. O(1); allocates nothing.
+export ShareListener(fd: uint): OsResult {
     return Unsupported()
 }
 

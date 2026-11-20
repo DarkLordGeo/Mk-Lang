@@ -291,7 +291,7 @@ export Spawn(io: Io, args: []str, env: []str, dir: str, s: mut core.IoSpawnReq):
 /// are runtime handles (at most sys.PassMax, each native: PassNative), and
 /// the child gets a copy of each beside its streams, listed in its
 /// MK_HANDLES, as sys.SpawnEx says; the caller keeps its own, and each
-/// socket among them is marked shared (PassShared) once the child starts.
+/// socket among them is marked shared (PassOn) once the child starts.
 /// Under a simulated Io named is ignored (std.sim's child runs no program).
 export SpawnNamed(io: Io, args: []str, env: []str, dir: str, s: mut core.IoSpawnReq, named: []uint): core.IoResult {
     if Target.os != Os.Windows || s.pty == 0 || !core.IsNative(io) {
@@ -391,7 +391,7 @@ SpawnOn(io: Io, args: []str, env: []str, dir: str, s: mut core.IoSpawnReq, named
     }
     s.pipes = hs
     for x in named {
-        PassShared(x)
+        PassOn(x)
     }
     return core.IoResult(value: Trunc[i64](ph), err: core.SysErr.None, os: s.pid)
 }

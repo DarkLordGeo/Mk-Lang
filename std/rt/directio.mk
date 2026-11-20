@@ -270,7 +270,8 @@ export NewProcHandle(os: uint): uint {
 /// NewInheritedSocket wraps the listening socket this process inherited
 /// (std.task's inherited entry), as NewSocketHandle does; pos is shared
 /// (sys.SharedPort when the socket's completion port is the parent's,
-/// Windows; else 0), which every accept on it passes on as op.pos.
+/// Windows, or on Linux; else 0), which every accept on it passes on as
+/// op.pos.
 /// 0 when the heap is exhausted. O(1); allocates one HandleRec from the Heap.
 export NewInheritedSocket(os: uint, family: u16, shared: i64): uint {
     h := NewSocketHandle(os, family)

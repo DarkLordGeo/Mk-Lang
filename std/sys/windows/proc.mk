@@ -2,8 +2,8 @@
 // a careless CreateProcessW leaks every inheritable handle into the child
 // and quotes arguments in ways a child can misread.
 //
-// What: Spawn, PipeRoom, ProcKill, Inherited, InheritSeal, HandlesValue
-// and PassMax: starting a child with its pipes and named handles, and the
+// What: Spawn, PipeRoom, ProcKill, ShareListener, Inherited, InheritSeal,
+// HandlesValue and PassMax: starting a child with its pipes and named handles, and the
 // handles a parent passed to this process.
 //
 // How: CreateProcessW with STARTUPINFOEXW and
@@ -862,6 +862,15 @@ export ProcKill(h: uint): OsResult {
         }
         return Fail(e)
     }
+}
+
+/// ShareListener has std/sys/linux's contract for a listener another
+/// process holds too; on Windows it changes nothing and answers os 0: a
+/// listener on this process's own completion port accepts as any, and one
+/// on another's takes the shared-port path by Inherited's and PassReady's
+/// SharedPort. O(1); allocates nothing.
+export ShareListener(fd: uint): OsResult {
+    return Ok(0)
 }
 
 /// Inherited answers the socket this process inherited from a Spawn with

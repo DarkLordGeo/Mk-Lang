@@ -4,8 +4,9 @@
 // What: SendFds and RecvFds behind std.net's Stream.SendHandles and
 // RecvHandles (SCM_RIGHTS on Linux; Windows and Nutshell answer
 // Unsupported, std.sys), InheritedFds for proc.Inherited's adoption of the
-// handles a Command named (MK_HANDLES), Passed, and PassShared, the mark that
-// keeps a shared socket alive.
+// handles a Command named (MK_HANDLES), Passed, PassShared, the mark that
+// keeps a shared socket alive, and PassOn, which adds the shared accept path
+// for a listener another process now holds.
 //
 // How: native only: a simulated Io's handles are no OS handles, so every
 // call here answers Unsupported under one. The sends and receives run
@@ -68,10 +69,38 @@ export PassShared(h: uint) {
     }
 }
 
+/// PassOn marks the handle h, now held by another process too (sent with
+/// SendFds, named by a spawn, or inherited by a child), as shared
+/// (PassShared). On Linux a listening socket also takes the shared accept
+/// path (sys.ShareListener, kept as the record's pos), as the other
+/// process's copy does, so no holder's accept waits exclusively. A failure
+/// there leaves the listener's accepts as they were. O(1) system calls;
+/// allocates nothing.
+export PassOn(h: uint) {
+    PassShared(h)
+    if Target.os != Os.Linux {
+        return
+    }
+    unsafe "h is the caller's live handle; only its owner's task writes its record" {
+        r := Rec(h)
+        if (*r).kind != KindSocket || (*r).pos == sys.SharedPort {
+            return
+        }
+        k := sys.PassKind((*r).os)
+        if k.err != core.SysErr.None || k.value != i64(PassListener) {
+            return
+        }
+        s := sys.ShareListener((*r).os)
+        if s.err == core.SysErr.None {
+            (*r).pos = s.os
+        }
+    }
+}
+
 /// SendFds sends data on the Unix stream h with the handles hs attached
 /// to its first byte: value the bytes sent with them, at least 1 (the
 /// caller sends the rest as plain bytes). Each socket among hs is then
-/// marked shared (PassShared). Errors: Unsupported under a simulated Io,
+/// marked shared (PassOn). Errors: Unsupported under a simulated Io,
 /// for a handle that is not a native Unix stream socket, and on Windows
 /// and Nutshell (no SCM_RIGHTS); Other for an empty data, no handles, more
 /// than sys.PassMax, or a handle among hs that is not native; Canceled
@@ -109,7 +138,7 @@ export SendFds(io: Io, h: uint, data: []u8, hs: []uint): core.IoResult {
         }
         if r.value >= 0 {
             for x in hs {
-                PassShared(x)
+                PassOn(x)
             }
             return IoOf(r)
         }
@@ -197,8 +226,9 @@ AdoptAll(fds: []uint, out: mut []Passed, received: bool): core.IoResult {
 /// Adopt wraps the OS handle os, passed to this process, as a runtime
 /// handle in p, typed by what the OS says it is (sys.PassKind): a socket
 /// readied for the poller (sys.PassReady) and marked shared, a listener
-/// inherited on Windows on its parent's completion port (sys.SharedPort),
-/// anything else a file served by the blocking pool. os is not closed on
+/// on the shared accept path (sys.SharedPort: on Windows it stays on its
+/// parent's completion port; on Linux sys.ShareListener readies it), anything
+/// else a file served by the blocking pool. os is not closed on
 /// failure: Unsupported for a socket that is not a stream socket, or a
 /// handle the OS cannot type, Other when the heap cannot give a record,
 /// else the OS's. typed is false when sys.PassKind failed, so os names no
@@ -224,6 +254,13 @@ Adopt(os: uint, p: mut Passed): (r: sys.OsResult, typed: bool) {
         h = NewHandle(os, false)
     } else if Target.os == Os.Windows && kind == PassListener {
         h = NewInheritedSocket(os, family, sys.SharedPort)
+    } else if Target.os == Os.Linux && kind == PassListener {
+        s := sys.ShareListener(os)
+        if s.err != core.SysErr.None {
+            sys.PollDetach(os)
+            return (r: s, typed: true)
+        }
+        h = NewInheritedSocket(os, family, s.os)
     } else {
         h = NewSocketHandle(os, family)
     }

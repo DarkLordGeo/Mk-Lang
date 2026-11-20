@@ -3,8 +3,8 @@
 // PATH search, the pipes and the wait.
 //
 // What: Spawn (SpawnWith, SpawnIn, ChildMain), FindProgram, ChildStream,
-// ProcTry and ProcKill, PipeRoom, and the inherited-handle calls Inherited,
-// InheritSeal and HandlesValue (MK_INHERIT, MK_HANDLES).
+// ProcTry and ProcKill, PipeRoom, and the inherited-handle calls ShareListener,
+// Inherited, InheritSeal and HandlesValue (MK_INHERIT, MK_HANDLES).
 //
 // How: musl's posix_spawn shape. The parent blocks every signal and calls
 // clone(CLONE_VM | CLONE_VFORK | CLONE_PIDFD | SIGCHLD) onto a stack it
@@ -39,9 +39,12 @@ export PipeRoom(h: uint): int {
     return -1
 }
 
-/// SharedPort is the op.pos of an accept on a listener whose completion port
-/// is another process's (Windows only, poll_iocp.mk); Linux ignores op.pos
-/// for an accept, and an inherited descriptor is registered here as any.
+/// SharedPort is the op.pos of an accept on a listener other processes
+/// accept on too. On Windows its completion port is another process's
+/// (poll_iocp.mk). On Linux it marks a listener another process holds too
+/// (ShareListener answers it as os), whose accepts under io_uring wait
+/// non-exclusively (poll_uring.mk's Prep and SharedAccept); epoll ignores
+/// it.
 export const SharedPort: i64 = 1
 
 const CloneVm: uint = 0x100
@@ -617,9 +620,34 @@ export ProcKill(h: uint): OsResult {
     return Ok(0)
 }
 
+/// ShareListener readies the listening socket fd for accepts beside other
+/// processes that hold it (a listener handed to a child, inherited from a
+/// parent, or passed over a Unix socket): non-blocking, with O_NONBLOCK
+/// ORed into the open file's flags, which every holder shares; os
+/// SharedPort, which the socket's record keeps as pos, so under io_uring
+/// every accept on it waits non-exclusively (poll_uring.mk's Prep and
+/// SharedAccept). Errors: the OS's (fcntl). O(1) system calls; allocates
+/// nothing.
+export ShareListener(fd: uint): OsResult {
+    unsafe "a system call that passes no memory, only values and handles" {
+        fl := Syscall(Nrs().fcntl, fd, FGetFl, 0, 0, 0, 0)
+        if IsErr(fl) {
+            return Result(fl)
+        }
+        if (Trunc[uint](fl) & ONonBlock) == 0 {
+            nb := Syscall(Nrs().fcntl, fd, FSetFl, Trunc[uint](fl) | ONonBlock, 0, 0, 0)
+            if IsErr(nb) {
+                return Result(nb)
+            }
+        }
+    }
+    return OsResult(value: 0, err: core.SysErr.None, os: SharedPort)
+}
+
 /// Inherited answers the socket this process inherited from a Spawn with
-/// inherit (MK_INHERIT=<fd> in the environment): close-on-exec again,
-/// non-blocking and registered on epoll as SocketOpen's async sockets.
+/// inherit (MK_INHERIT=<fd> in the environment): close-on-exec again and
+/// ready to share (ShareListener: os SharedPort); under epoll also
+/// registered as SocketOpen's async sockets.
 /// NotFound when there is none; a value that names no socket is Other.
 /// O(1) system calls besides the environment scan; allocates nothing beyond the
 /// socket's registration with the poller.
@@ -637,17 +665,15 @@ export Inherited(sp: *u8): OsResult {
         if IsErr(c) {
             return Result(c)
         }
-        if !IsUring() {
-            nb := Syscall(Nrs().fcntl, v, FSetFl, ONonBlock | ORdWr, 0, 0, 0)
-            if IsErr(nb) {
-                return Result(nb)
-            }
-            if !EpollAdd(v) {
-                return FailWith(core.SysErr.Other)
-            }
-        }
     }
-    return Ok(Trunc[i64](v))
+    s := ShareListener(v)
+    if s.err != core.SysErr.None {
+        return s
+    }
+    if !IsUring() && !EpollAdd(v) {
+        return FailWith(core.SysErr.Other)
+    }
+    return OsResult(value: Trunc[i64](v), err: core.SysErr.None, os: SharedPort)
 }
 
 // InheritValue parses MK_INHERIT: the descriptor, -1 when it is not set,

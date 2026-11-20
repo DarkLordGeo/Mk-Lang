@@ -2,6 +2,13 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## Unreleased
+
+### Fixed
+
+- Linux: processes that share a listener (Supervise's workers, a child given the listener, a listener passed over a Unix socket) take every connection when one of them is killed. On io_uring with Linux 6.10 and later, a connection could stall until the next one arrived.
+- A worker that closes its copy of a shared listener, or a parent that closes its own, no longer stops the listener for the other processes that hold it.
+
 ## 0.1.0 (2026-11-20)
 
 The first public release of Mk: a small, memory-safe systems language with no garbage collector, compiled by a Go compiler that emits LLVM IR, with a runtime and standard library written in Mk and no C runtime.

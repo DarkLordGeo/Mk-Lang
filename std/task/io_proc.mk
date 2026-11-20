@@ -112,6 +112,11 @@ NativeSpawn(io: Io, args: []str, child: mut core.IoChild): core.IoResult {
     }
     child.pipes = hs
     child.pid = a.child.pid
+    if child.inherit != 0 {
+        // The child holds the listener too: this copy's close must not end
+        // it for the child, and on Linux its accepts take the shared path.
+        rt.PassOn(child.inherit)
+    }
     return NoErr(Trunc[i64](ph))
 }
 
@@ -190,13 +195,16 @@ NativeInherited(io: Io): core.IoResult {
     var a := sys.SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
     n := sys.SocketName(os, mut a)
     if n.err != core.SysErr.None {
-        _ = sys.SocketShutdownClose(os)
+        _ = sys.SocketAbortClose(os)
         return rt.IoOf(n)
     }
     h := rt.NewInheritedSocket(os, a.family, r.os)
     if h == 0 {
-        _ = sys.SocketShutdownClose(os)
+        _ = sys.SocketAbortClose(os)
         return ErrOf(core.SysErr.Other)
     }
+    // The parent and its other children hold the listener too, so a close
+    // here releases this copy only.
+    rt.PassShared(h)
     return core.IoResult(value: Trunc[i64](h), err: core.SysErr.None, os: i64(a.port))
 }

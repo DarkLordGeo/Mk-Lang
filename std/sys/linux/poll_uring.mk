@@ -2,7 +2,8 @@
 // the process with few system calls; it is the default Linux poller.
 //
 // What: the io_uring backend: UringInit, UringSubmit (with TrySend),
-// UringCancel, Resubmit, UringFinish, UringReap and UringWait.
+// UringCancel, Resubmit, UringFinish (with SharedAccept), UringReap and
+// UringWait.
 //
 // How: one ring for the process, its SQ ring, CQ ring and SQE array mapped
 // with mmap (one mapping for the two rings). A send is first tried once on
@@ -79,6 +80,9 @@ const OpcUnlinkAt: u8 = 36
 const WakeTag: u64 = 1
 const AddrMask: u64 = 0xFFFF_FFFF_FFFF
 const AcceptCloExec: u32 = 0x80000
+// POLLHUP and POLLRDHUP in a POLL_ADD's result mask (SharedAccept).
+const PollHupMask: u32 = 0x10
+const PollRdHupMask: u32 = 0x2000
 // MSG_DONTWAIT: TrySend's one non-blocking send on a blocking socket.
 const MsgDontWait: uint = 0x40
 
@@ -297,6 +301,19 @@ Prep(op: *Op, q: *u8): bool {
             if k == OpSend {
                 Put32(q, 28, Trunc[u32](MsgNoSignal))
             }
+        } else if k == OpAccept && (*op).pos == SharedPort {
+            // A listener other processes accept on too (inherited, handed to
+            // a child, or passed): a one-shot POLL_ADD for POLLIN, then
+            // SharedAccept. The kernel arms an ACCEPT's wait as an exclusive
+            // waiter, and a killed process's armed ACCEPT stays on the
+            // listener's queue until its ring's exit work runs
+            // (asynchronously since Linux 6.10): a connection that arrives
+            // meanwhile wakes only that dead entry, and the live sibling
+            // hears of it only when the next connection comes. A POLL_ADD
+            // waits non-exclusively, so every holder is woken.
+            raw.Write(q, OpcPollAdd)
+            Put32(q, 4, fd)
+            Put32(q, 28, 1)
         } else if k == OpAccept {
             raw.Write(q, OpcAccept)
             Put32(q, 4, fd)
@@ -583,16 +600,65 @@ Resubmit(op: *Op, out: mut []*Op, k: int): int {
     }
 }
 
+// SharedAccept is a shared listener's accept after its POLL_ADD fired with
+// the poll mask mask: one accept4 on the listener (non-blocking:
+// ShareListener set O_NONBLOCK; EINTR and ECONNABORTED, a peer that gave
+// up, are tried again at once, as epoll's Try does). true with res set: the
+// new socket, close-on-exec and blocking as an ACCEPT's, or the error;
+// EAGAIN with POLLHUP or POLLRDHUP in mask is EINVAL, as a blocking accept
+// answers (a Unix listener a holder shut down polls readable for good).
+// false: a sibling took the connection (EAGAIN) and no cancel came, so the
+// op waits again.
+SharedAccept(op: *Op, mask: i32): bool {
+    unsafe "op's CQE was just reaped: the op is this thread's; its os area holds the address" {
+        o := OsArea(op)
+        for {
+            Put32(o, OsAddrN, 32)
+            r := Syscall(Nrs().accept4, (*op).h, raw.Addr(raw.Offset(o, OsAddr)), raw.Addr(raw.Offset(o, OsAddrN)),
+                Trunc[uint](AcceptCloExec), 0, 0)
+            if r == Eintr4 || r == Econnaborted {
+                continue
+            }
+            if r == Eagain && (Trunc[u32](mask) & (PollHupMask | PollRdHupMask)) != 0 {
+                (*op).res = IoFail((*op).h, OpAccept, 22)
+                return true
+            }
+            if r == Eagain {
+                // Edge: as the resubmit's: a cancel stored after this Load is
+                // followed by its PollCancel.
+                if (*op).cancel.Load() == 1 {
+                    (*op).res = FailWith(core.SysErr.Canceled)
+                    return true
+                }
+                return false
+            }
+            if IsErr(r) {
+                (*op).res = IoFail((*op).h, OpAccept, i64(-r))
+                return true
+            }
+            if !DecodeAddr(raw.Offset(o, OsAddr), mut (*op).addr) {
+                (*op).addr = SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
+            }
+            (*op).res = Ok(Trunc[i64](r))
+            return true
+        }
+    }
+}
+
 // UringFinish turns op's CQE result into op.res. false: the op goes on to
 // its next step (the directory step of a remove; an EINTR or ECONNABORTED
-// without a cancel; an OpReady's EINVAL on a terminal without a cancel)
-// and the caller submits it again once it has released
-// the CQ lock (a submission may have to wait for the kernel to flush its
-// completion backlog, which needs the CQ head this reap is about to return).
+// without a cancel; an OpReady's EINVAL on a terminal without a cancel; a
+// shared listener's accept that lost its connection to a sibling) and the
+// caller submits it again once it has released the CQ lock (a submission
+// may have to wait for the kernel to flush its completion backlog, which
+// needs the CQ head this reap is about to return).
 UringFinish(op: *Op, res: i32): bool {
     unsafe "op's CQE was just reaped: the op is this thread's until it is handed out" {
         k := (*op).kind
         if res >= 0 {
+            if k == OpAccept && (*op).pos == SharedPort {
+                return SharedAccept(op, res)
+            }
             if k == OpAccept {
                 if !DecodeAddr(raw.Offset(OsArea(op), OsAddr), mut (*op).addr) {
                     (*op).addr = SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
