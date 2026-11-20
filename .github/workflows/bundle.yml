@@ -13,11 +13,11 @@
 #
 # How: called only by release.yml, once per host. Everything the job writes
 # goes under RUNNER_TEMP. On macOS the bundled programs must load nothing
-# but the system's libraries and run on macOS 13, the oldest release Go
-# supports; on Apple silicon each must carry a valid signature (Go's and
-# LLVM's linkers sign arm64 output ad hoc, and nothing changes the bytes
-# after them). install.sh's tests then run with only what macOS ships on
-# PATH, and mk upgrade's tests on this host's archive.
+# but the system's libraries and run on macOS 14, the oldest release the
+# official LLVM build supports; on Apple silicon each must carry a valid
+# signature (Go's and LLVM's linkers sign arm64 output ad hoc, and nothing
+# changes the bytes after them). install.sh's tests then run with only
+# what macOS ships on PATH, and mk upgrade's tests on this host's archive.
 name: Bundle
 
 on:
@@ -55,7 +55,7 @@ env:
   # carries as LICENSE-LLVM.txt.
   LLVM_LICENSE_SHA256: 8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee
   # The oldest macOS the bundled programs may need: Go 1.27's floor.
-  MACOS_MIN: "13.0"
+  MACOS_MIN: "14.0"
 
 jobs:
   bundle:

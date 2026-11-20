@@ -207,7 +207,10 @@ export StackWords(): [4]u64 {
 }
 
 /// ThreadStackBounds is the calling thread's stack [lo, hi) as libSystem
-/// mapped it, above its guard page, for a thread std made. (0, 0) on the
+/// mapped it, above its guard page, for a thread std made. hi is where
+/// libSystem's thread record starts, in the mapping's last page, so the
+/// range can be up to a page longer than the size asked for (12 KiB on
+/// arm64, whose pages are 16 KiB). (0, 0) on the
 /// main thread and on a thread std did not make, as on Linux.
 /// O(MadeSlots); allocates nothing.
 export ThreadStackBounds(): (lo: uint, hi: uint) {

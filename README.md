@@ -100,7 +100,7 @@ A release bundle holds mk, the clang and lld it was tested with, and the documen
 irm https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.ps1 | iex
 ```
 
-On x86_64 Linux and on Apple silicon Macs, in a terminal (the macOS bundle is built for macOS 13 Ventura or later and tested on macOS 15):
+On x86_64 Linux and on Apple silicon Macs, in a terminal (the macOS bundle needs macOS 14 Sonoma or later and is tested on macOS 15):
 
 ```sh
 curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh

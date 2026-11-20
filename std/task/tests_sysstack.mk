@@ -1,12 +1,15 @@
-// Why: every carrier's system stack is SystemStackSize = 8 MiB, carrier 0's
-// included, and the guard page below it must report a stack overflow.
-// What: RT-SysStack-Bounds and RT-SysStack-GuardFault (SsCheck, SsTouchGuard),
+// Why: every carrier's system stack is SystemStackSize = 8 MiB (on macOS
+// up to a page more, SsSizeOk), carrier 0's included, and the guard page
+// below it must report a stack overflow.
+// What: RT-SysStack-Bounds and RT-SysStack-GuardFault (SsCheck, SsSizeOk,
+// SsNote, SsTouchGuard),
 // run by std/rt-sched_harness_test.go on both targets.
 // How: tasks spread over the carriers and read each carrier record's bounds;
 // the fault block touches the guard page and expects "stack limit".
 
 import std.raw
 import std.rt
+import std.sys
 
 // SsFirst holds the first failing SsCheck's why bits, carrier index, lo,
 // hi, scheduler sp and task sp (SsNote); why is 0 until then.
@@ -23,6 +26,20 @@ SsNote(why: u64, i: u64, lo: u64, hi: u64, ssp: u64, me: u64) {
         SsFirst[4].Store(ssp)
         SsFirst[5].Store(me)
     }
+}
+
+// SsSizeOk is whether n is a carrier thread's system stack size: exactly
+// SystemStackSize, but on macOS up to a page more. libSystem puts the
+// thread's own record in the last page of the mapping, just above the
+// stack, and reports the stack's top as that record's start, so the rest
+// of that page (12 KiB with arm64's 16 KiB pages and its 4 KiB record) is
+// stack too.
+SsSizeOk(n: uint): bool {
+    size := Trunc[uint](SystemStackSize)
+    if Target.os == Os.Macos {
+        return n >= size && n < size + Trunc[uint](sys.PageSize())
+    }
+    return n == size
 }
 
 // SsCheck checks, from a task, the bounds of the carrier it runs on: 8 MiB,
@@ -44,7 +61,7 @@ SsCheck(io: Io, bad: &raw.Atomic[u32], seen: &raw.Atomic[u64], read: &raw.Atomic
         ssp := Trunc[uint]((*c).sys_ctx[0])
         me := rt.StackPointer()
         var why: u64 = 0
-        if hi - lo != Trunc[uint](SystemStackSize) {
+        if !SsSizeOk(hi - lo) {
             why |= 1
         }
         if ssp < lo || ssp >= hi {

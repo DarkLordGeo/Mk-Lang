@@ -1,0 +1,109 @@
+# Why: a published release must install the way README.md says, on every
+# host it ships a bundle for, from the release page and nothing else.
+#
+# What: run by hand after a release is published. On Windows, Linux and an
+# Apple silicon Mac, the one-line installer of README.md installs the
+# release (the newest one, or the version given), and the installed mk
+# builds and runs a hello program. On an Intel Mac the installer must
+# refuse and install nothing.
+#
+# How: GitHub-hosted runners, read-only, no secrets, no checkout: the
+# scripts come from the release itself, as a user gets them. The installer
+# writes no shell profile or user PATH (-NoModifyPath, --no-modify-path);
+# the job puts the installed bin directory on its own PATH.
+name: Install test
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to install (empty: the newest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  RELEASES: https://github.com/zerodayokay/Mk-Lang/releases
+
+jobs:
+  unix:
+    name: install (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - name: Install with the one-line installer
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          root="$RUNNER_TEMP/mk"
+          if [ -n "$WANT" ]; then
+            curl -fsSL "$RELEASES/download/v$WANT/install.sh" | sh -s -- --version "$WANT" --root "$root" --no-modify-path
+          else
+            curl -fsSL "$RELEASES/latest/download/install.sh" | sh -s -- --root "$root" --no-modify-path
+          fi
+          echo "$root/current/bin" >> "$GITHUB_PATH"
+
+      - name: mk builds and runs a program
+        run: |
+          mk version
+          dir="$RUNNER_TEMP/hello"
+          mkdir -p "$dir"
+          printf '%s\n' 'export Main(sys: &System): WriteError!void {' '    try sys.Print("hello from mk\n")' '}' > "$dir/hello.mk"
+          cd "$dir"
+          out=$(mk run hello.mk)
+          echo "$out"
+          [ "$out" = "hello from mk" ]
+
+  intel-mac:
+    name: install refuses (macos-15-intel)
+    runs-on: macos-15-intel
+    timeout-minutes: 10
+    steps:
+      - name: The installer refuses an Intel Mac and installs nothing
+        run: |
+          root="$RUNNER_TEMP/mk"
+          if curl -fsSL "$RELEASES/latest/download/install.sh" | sh -s -- --root "$root" --no-modify-path; then
+            echo "::error::install.sh installed on an Intel Mac"
+            exit 1
+          fi
+          [ ! -e "$root/current" ] || { echo "::error::install.sh left $root/current"; exit 1; }
+
+  windows:
+    name: install (windows-2025)
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - name: Install with the one-line installer
+        shell: pwsh
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'mk'
+          $script = Join-Path $env:RUNNER_TEMP 'install.ps1'
+          if ($env:WANT) {
+            $env:MK_VERSION = $env:WANT
+            Invoke-WebRequest -UseBasicParsing "$env:RELEASES/download/v$env:WANT/install.ps1" -OutFile $script
+          } else {
+            Invoke-WebRequest -UseBasicParsing "$env:RELEASES/latest/download/install.ps1" -OutFile $script
+          }
+          pwsh -NoProfile -File $script -Root $root -NoModifyPath
+          if ($LASTEXITCODE -ne 0) { throw "install.ps1 failed: $LASTEXITCODE" }
+          Add-Content $env:GITHUB_PATH (Join-Path $root 'current\bin')
+
+      - name: mk builds and runs a program
+        shell: pwsh
+        run: |
+          mk version
+          $dir = Join-Path $env:RUNNER_TEMP 'hello'
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Set-Content -Encoding utf8NoBOM (Join-Path $dir 'hello.mk') "export Main(sys: &System): WriteError!void {`n    try sys.Print(`"hello from mk\n`")`n}"
+          Set-Location $dir
+          $out = (mk run hello.mk | Out-String).Trim()
+          Write-Output $out
+          if ($out -ne 'hello from mk') { throw "unexpected output: $out" }
