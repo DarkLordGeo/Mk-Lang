@@ -266,7 +266,8 @@ sub add {
     my ($ee, $f, $g, $h) = ($b - $a, $e - $c, $e + $c, $b + $a);
     return [($ee * $f) % $p, ($g * $h) % $p, ($f * $g) % $p, ($ee * $h) % $p];
 }
-# -A from the public key: y and the sign of x (RFC 8032, 5.1.3).
+# -A from the public key: y and the sign of x, decoded as crypto/ed25519 in Go
+# does (a y at or above p is reduced); the key is always an embedded one.
 my $yb = $pub;
 my $sign = ord(substr($yb, 31, 1)) >> 7;
 substr($yb, 31, 1) = chr(ord(substr($yb, 31, 1)) & 127);
