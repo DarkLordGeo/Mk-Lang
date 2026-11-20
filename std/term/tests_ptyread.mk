@@ -180,7 +180,7 @@ TmStopCont(sys: &System, mode: str, settle: i64) {
         }
         // "s" makes the child put the terminal in line mode (stopcont: 150
         // ms into its next wait; stopbusy: at once, then a second's work).
-        p.WriteAll(io, "s".AsBytes()).Must()
+        TmType(sys, &p, "s")
         _ = TmAwait(sys, path, "key Char s\n")
         io.Sleep(TmMs(300)).Must()
         _ = TmSh(sys, sys.arena.Fmt("kill -STOP {pid}", (pid)).Must())
@@ -188,9 +188,9 @@ TmStopCont(sys: &System, mode: str, settle: i64) {
         cont = TmSh(sys, sys.arena.Fmt("kill -CONT {pid}", (pid)).Must())
         io.Sleep(TmMs(settle)).Must()
         // In raw mode "a" arrives alone; in line mode it waits for Enter.
-        p.WriteAll(io, "a".AsBytes()).Must()
+        TmType(sys, &p, "a")
         _ = TmAwait(sys, path, "key Char s\nkey Char a\n")
-        p.WriteAll(io, "q".AsBytes()).Must()
+        TmType(sys, &p, "q")
         quit = TmAwait(sys, path, "key Char s\nkey Char a\nkey Char q\n")
         if !quit {
             child.Kill() else {}
@@ -271,7 +271,7 @@ TmCutOnce(sys: &System, mode: str): (code: int, text: str) from sys {
             io.Sleep(TmMs(10)).Must()
         }
         if cut {
-            p.WriteAll(io, "q".AsBytes()).Must()
+            TmType(sys, &p, "q")
             for _ in 0..500 {
                 got := fs.ReadText(sys.arena, io, path) else { "" }
                 if got.EndsWith("key Char q\n") {
@@ -411,7 +411,7 @@ TmWinch(sys: &System, mode: str): (code: int, text: str) from sys {
             io.Sleep(TmMs(300)).Must()
             p.Resize(io, 100, 30).Must()
             _ = TmAwait(sys, path, "pre\nresize 100 30\n")
-            p.WriteAll(io, "q".AsBytes()).Must()
+            TmType(sys, &p, "q")
             for _ in 0..500 {
                 got := fs.ReadText(sys.arena, io, path) else { "" }
                 if got.EndsWith("key Char q\n") {

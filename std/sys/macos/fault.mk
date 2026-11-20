@@ -10,9 +10,10 @@
 // kind 2 and a SIGILL one of kind 3, handed to the hook, and rt.OnFault
 // makes kind 2 kind 1 when the address is a guard page it owns. The fault's
 // pc and sp come from the thread state in uc_mcontext (<mach/arm/
-// _structs.h>, <mach/i386/_structs.h>). No fault filter runs and no code
-// region exists here (filter.mk), and a library's handler chain is not
-// built (lib.mk).
+// _structs.h>, <mach/i386/_structs.h>). runtime.AddFaultFilter's filters
+// run first, on that thread state (filter.mk); a resume returns, and
+// libSystem's trampoline installs the state the filter edited. A library's
+// handler chain is not built (lib.mk).
 
 import std.raw
 
@@ -183,11 +184,17 @@ SigFault(sig: i32, info: *u8, uc: *u8) {
         mc := raw.FromAddr[u8](raw.Read(raw.PtrCast[u8, uint](raw.Offset(uc, 48))))
         sp := raw.Read(raw.PtrCast[u8, uint](raw.Offset(mc, McontextSp())))
         pc := raw.Read(raw.PtrCast[u8, uint](raw.Offset(mc, McontextPc())))
-        if !FaultOwned(pc, sp) {
+        if !InCodeRegion(pc) && !FaultOwned(pc, sp) {
             Redeliver(sig)
             return
         }
-        kind: u32 = if sig == SigIll { 3 } else { 2 }
+        // The filters run first; a fault in a code region that no filter
+        // resumes is kind 4, as on Linux.
+        own: u32 = if sig == SigIll { 3 } else { 2 }
+        if Filter(mc, own, addr, pc) {
+            return
+        }
+        kind: u32 = if InCodeRegion(pc) { 4 } else { own }
         f := FaultInfo(kind: kind, addr: addr, pc: pc, sp: sp)
         // Edge: FaultHook's Swap to 1 came after the hook's bytes were written,
         // so a Load of 1 reads them.

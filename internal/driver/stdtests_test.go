@@ -96,6 +96,15 @@ func TestStdRuntimeTests(t *testing.T) {
 // Native runs stay exact; std/rt_term_test.go reads the shell's 128+n.
 func judgeStdTest(t *testing.T, tc TestCase, viaRunner bool) {
 	t.Helper()
+	if tc.Status == 0 {
+		// A block that prints "skip: <reason>" first and ends with status 0
+		// skips by design on this target (as internal/stdtest's stdSkipped).
+		first, _, _ := strings.Cut(strings.TrimLeft(tc.Output, "\r\n"), "\n")
+		if reason, ok := strings.CutPrefix(strings.TrimRight(first, "\r"), "skip: "); ok {
+			t.Logf("%s %q: skipped: %s", tc.Module, tc.Name, reason)
+			return
+		}
+	}
 	code, text := 0, ""
 	if m := stdExpect.FindStringSubmatch(tc.Name); m != nil {
 		code, _ = strconv.Atoi(m[1])

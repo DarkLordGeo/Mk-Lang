@@ -116,6 +116,43 @@ export UnixSendFds(fd: uint, data: []u8, fds: []uint): OsResult {
     }
 }
 
+// RecvClosingFds is a stream receive of at most n bytes into p that closes
+// every descriptor that came with them: the poller's OpRecv (poll_ops.mk),
+// for Read's contract that a byte carrying handles leaves none in this
+// process. Darwin's soreceive installs SCM_RIGHTS descriptors in the
+// receiving process even for a recv or read that asks for no control data,
+// and then drops only the message, so a plain recv would leak each one; a
+// TCP socket's receive carries none and costs one recvmsg as recvfrom did.
+// m (48 bytes) and v (16) are the caller's msghdr and iovec. The count, or
+// -1 with errno as recvmsg left it. O(1) system calls besides one close
+// per descriptor; allocates nothing.
+RecvClosingFds(fd: i32, p: *u8, n: uint, m: *u8, v: *u8): int {
+    var ctl: [34]u64 = [0; 34]
+    unsafe "ctl is this frame's; m, v and p are the caller's for the call" {
+        c := raw.PtrCast[u64, u8](raw.DataMut(mut ctl[..]))
+        PassMsg(m, v, p, Trunc[int](n), c, PassCtlBytes)
+        r := recvmsg(fd, m, 0)
+        if r < 0 {
+            return r
+        }
+        clen := Trunc[int](u64(UxGet32(m, 40)))
+        var off := 0
+        for off + PassCmsgBytes <= clen {
+            l := Trunc[int](u64(UxGet32(c, off)))
+            if l < PassCmsgBytes || off + l > clen {
+                break
+            }
+            if UxGet32(c, off + 4) == PassSolSocket && UxGet32(c, off + 8) == PassScmRights {
+                for j in 0..(l - PassCmsgBytes) / 4 {
+                    _ = lc.CloseFd(Trunc[i32](UxGet32(c, off + PassCmsgBytes + 4 * j)))
+                }
+            }
+            off += (l + 3) / 4 * 4
+        }
+        return r
+    }
+}
+
 /// UnixRecvFds receives at most buf.Len() bytes (at least 1) and the
 /// descriptors that came with them, without waiting: value the bytes, 0 at
 /// the end of the stream, -1 when nothing is queued (EAGAIN: the caller

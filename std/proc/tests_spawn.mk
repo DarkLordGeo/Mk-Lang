@@ -977,6 +977,35 @@ SpPtyUntil(io: Io, p: &Pty, buf: mut []u8, want: str): bool {
     return false
 }
 
+// SpPtyDrain reads p until its end, or until a read fails (its scope's
+// cancel).
+SpPtyDrain(io: Io, p: &Pty) {
+    var b: [4096]u8 = [0; 4096]
+    for {
+        k := p.Read(io, mut b[..]) else {
+            return
+        }
+        if k == 0 {
+            return
+        }
+    }
+}
+
+// SpWaitReading waits for child while a task reads what is left on p, and
+// returns its code (SpCode). On macOS a child that holds the pty as its
+// controlling terminal (an Mk program takes it at start-up) does not end
+// until its output, an echo included, has been read: XNU's proc_exit
+// drains a controlling process's terminal (ttywait) with no timeout.
+SpWaitReading(io: Io, p: &Pty, child: Child): int {
+    var code := -1
+    scope s := io.Scope() {
+        s.go SpPtyDrain(io, p)
+        code = SpCode(child.Wait(io).Must())
+        s.Cancel()
+    }
+    return code
+}
+
 test "Pty: a child on a pseudo-terminal reads the line typed into it and writes back; Resize, a bad size and Close" (sys: &System) {
     if sys.args.Len() > 2 {
         SpChild(sys)
@@ -1004,7 +1033,7 @@ test "Pty: a child on a pseudo-terminal reads the line typed into it and writes 
     p.WriteAll(io, "hello\r".AsBytes()).Must()
     var b: [8192]u8 = [0; 8192]
     Assert(SpPtyUntil(io, &p, mut b[..], "got:hello"))
-    Assert(SpCode(child.Wait(io).Must()) == 0)
+    Assert(SpWaitReading(io, &p, child) == 0)
     p.Close()
 }
 
@@ -1025,7 +1054,7 @@ test "Pty: Command.terminal makes the pseudo-terminal the child's stdin, stdout 
     var b: [8192]u8 = [0; 8192]
     Assert(SpPtyAll(io, &p, mut b[..], wants[0..k]))
     p.WriteAll(io, "x\r".AsBytes()).Must()
-    Assert(SpCode(child.Wait(io).Must()) == 0)
+    Assert(SpWaitReading(io, &p, child) == 0)
     p.Close()
 }
 
@@ -1060,7 +1089,7 @@ test "Pty.Read: a deadline ends it with Canceled while the child waits for input
     Assert(cut)
     p.WriteAll(io, "after\r".AsBytes()).Must()
     Assert(SpPtyUntil(io, &p, mut b[..], "got:after"))
-    Assert(SpCode(child.Wait(io).Must()) == 0)
+    Assert(SpWaitReading(io, &p, child) == 0)
     p.Close()
 }
 

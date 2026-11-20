@@ -70,7 +70,9 @@ const MaxBundle: i64 = 67_108_864
 /// certificate once, first seen first. A missing file or directory, and one
 /// that cannot be listed to its end, is skipped, so a system with none
 /// gives an empty pool. Files are read through io, so a simulated Io reads
-/// its own disk and environment.
+/// its own disk and environment. macOS reads the same way: its usual
+/// bundle is /etc/ssl/cert.pem, the roots the system's LibreSSL and curl
+/// use; the Keychain is not read.
 ///
 /// On Windows the pool lists nothing and stands for the system: Verify
 /// hands the chain to the platform's check.
@@ -82,7 +84,7 @@ export SystemRoots(a: &Arena, io: Io): Error!Pool from a {
     if Target.os == core.Os.Windows {
         return Pool(certs: List[Certificate].New(a).Done()[..], system: true)
     }
-    if Target.os != core.Os.Linux {
+    if Target.os != core.Os.Linux && Target.os != core.Os.Macos {
         fail Unsupported
     }
     var out := List[Certificate].New(a)

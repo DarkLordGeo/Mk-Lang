@@ -1,11 +1,14 @@
 // Why: a macOS link must be one exact command line and read a libSystem
 // stub whose bytes depend only on the names it exports.
-// What: TestMachOArgs, TestMachOArgsRefused, TestTBD and TestFormatOfMacOS.
+// What: TestMachOArgs, TestMachOArgsRefused, TestTBD, TestFormatOfMacOS and
+// TestMachOResponseFile.
 // How: machoArgs and TBD are compared with literal expectations.
 
 package toolchain
 
 import (
+	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -92,5 +95,54 @@ func TestTBD(t *testing.T) {
 		if !strings.Contains(a, w) {
 			t.Errorf("no %q in\n%s", w, a)
 		}
+	}
+}
+
+const machoMainIR = `define i32 @main(i32 %c, ptr %v) {
+  ret i32 0
+}
+`
+
+// TestMachOResponseFile: a Mach-O link read from a response file (forced
+// by responseFileAt 0; ld64.lld has no --rsp-quoting and reads POSIX
+// quoting) gives the same bytes as the plain link, for both macOS
+// architectures, in a directory whose name holds a space.
+func TestMachOResponseFile(t *testing.T) {
+	tl := realTools(t)
+	for _, c := range []struct{ triple, arch string }{{"arm64-apple-macosx11.0.0", "arm64"}, {"x86_64-apple-macosx11.0.0", "x86_64"}} {
+		t.Run(c.arch, func(t *testing.T) {
+			link := func(dir string) []byte {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				in, obj, tbd := filepath.Join(dir, "m.ll"), filepath.Join(dir, "m.o"), filepath.Join(dir, "libSystem.tbd")
+				if err := os.WriteFile(in, []byte(machoMainIR), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(tbd, []byte(TBD(nil)), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				if err := tl.Compile(context.Background(), CompileJob{Triple: c.triple, Input: in, Output: obj, Opt: O0}); err != nil {
+					t.Fatal(err)
+				}
+				out := filepath.Join(dir, "m")
+				if err := tl.Link(context.Background(), LinkJob{Format: MachO, MachOArch: c.arch, Output: out, Objects: []string{obj}, Libs: []string{tbd}}); err != nil {
+					t.Fatal(err)
+				}
+				b, err := os.ReadFile(out)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return b
+			}
+			plain := link(filepath.Join(t.TempDir(), "plain dir"))
+			old := responseFileAt
+			responseFileAt = 0
+			forced := link(filepath.Join(t.TempDir(), "rsp dir"))
+			responseFileAt = old
+			if string(plain) != string(forced) {
+				t.Errorf("the response-file link differs from the plain one: %d and %d bytes", len(plain), len(forced))
+			}
+		})
 	}
 }

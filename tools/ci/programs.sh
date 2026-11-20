@@ -62,6 +62,11 @@ run_case() { # name profile args stdin stdout stderr exit timeout files
   else
     fail=$((fail + 1))
     echo "FAIL $name $prof $cname: $why"
+    if [ -n "$out" ]; then
+      echo "--- stdout, want (-) and got (+):"
+      diff <(tr -d '\r' < "$progs/$out") "$dir/out.txt" | head -c 3000
+    fi
+    echo "--- stderr:"
     head -c 2000 "$dir/err.txt"
   fi
 }

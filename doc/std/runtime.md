@@ -92,15 +92,15 @@ A library ([packages](../packages.md#15-libraries)) has its own runtime, and onl
 `AddFaultFilter(f)` lets a JIT, a garbage collector or a sandbox see a hardware fault before Mk reports it, and sometimes resume.
 
 - Filters run in the order added, before Mk's own report. Each gets a `FaultContext`: the `FaultKind`, the address, `Pc`, `Sp` and the general registers. It returns `FaultAction.Pass`, or `FaultAction.Resume` with a context it edited, which the handler installs.
-- A filter runs inside the fault. It must not take a lock, allocate or suspend. On Windows a filter runs on the faulting stack: during a task's stack overflow it has 8 KiB, out of the 16 KiB the runtime keeps for the report. On Linux filters run on the carrier's 64 KiB alternate signal stack. A fault inside a filter ends the process with `panic: fault in a fault filter`, status 101.
-- There can be at most 16 filters, and they stay for the life of the process; one more panics with code 8. Fault filters exist on x86_64 only; on another target `AddFaultFilter` panics with code 8.
+- A filter runs inside the fault. It must not take a lock, allocate or suspend. On Windows a filter runs on the faulting stack: during a task's stack overflow it has 8 KiB, out of the 16 KiB the runtime keeps for the report. On Linux and macOS filters run on the carrier's 64 KiB alternate signal stack. A fault inside a filter ends the process with `panic: fault in a fault filter`, status 101.
+- There can be at most 16 filters, and they stay for the life of the process; one more panics with code 8. `Reg(n)` numbers the registers as the target encodes them, `RegCount()` of them: x86_64's 16 (0 rax, 1 rcx, ..., 15 r15) or aarch64's x0 to x30 and sp (31).
 
 Which faults reach the filters depends on the target:
 
 | Target | Faults the filters see |
 |---|---|
 | Windows | A stack overflow (in a library, one in its own code or on a stack Mk made); an access or illegal-instruction fault in Mk code; any fault whose `pc` is in a code region. Never a fault that C code handles itself (`__try`). |
-| Linux | A `SIGSEGV`, `SIGBUS` or `SIGILL` that Mk owns: its `pc` in the executable's image, on the main thread or a thread std started, or on a task's or a carrier's stack; any fault in a code region. A fault in C code outside the image on a foreign thread, and a signal another process or thread sends, get the signal's default action, raised again at once. |
+| Linux, macOS | A `SIGSEGV`, `SIGBUS` or `SIGILL` that Mk owns: its `pc` in the executable's image, on the main thread or a thread std started, or on a task's or a carrier's stack; any fault in a code region. A fault in C code outside the image on a foreign thread, and a signal another process or thread sends, get the signal's default action, raised again at once. |
 
 - `FaultKind.Stack` is an access to a guard page the runtime knows, a task's or a carrier's, and is reported as a stack overflow wherever its `pc` is.
 - A fault in a [`std.vm`](vm.md) code region goes to the filters, and is never reported as a fault in Mk code. One that no filter resumes ends the process with `panic: fault in a code region`, status 101.
@@ -412,6 +412,8 @@ Linux a fault in a shared library's C code called on an Mk thread
 reaches the filters and Mk's report, where Windows routes only a fault
 whose pc is in the image.
 
+macOS routes as Linux does.
+
 On Linux, a fault in C code outside the image on a thread std did not
 make gets the signal's default action, raised again at once, as on
 Windows it gets the system's. So does a SIGSEGV, SIGBUS or SIGILL that
@@ -419,10 +421,9 @@ another process or thread sends (kill, tgkill): it is not a fault and
 is never reported as Mk's. C code that installs a signal handler of its
 own replaces std's.
 
-Callable only in unsafe (E1101). Panics with code 8 past 16 filters,
-and on an aarch64 target, whose FaultContext would not hold x86_64's
-registers. O(1) besides waiting for an earlier addition to publish;
-allocates nothing.
+Callable only in unsafe (E1101). Panics with code 8 past 16 filters.
+O(1) besides waiting for an earlier addition to publish; allocates
+nothing.
 
 ### `Blocking`
 
@@ -531,8 +532,9 @@ export struct FaultContext
 A fault's context: its kind and address, and the faulting thread's
 general registers and program counter. A filter may edit them with the
 setters and return the context with Resume. Reg(n) and SetReg(n)
-number the registers as x86_64 encodes them: 0 rax, 1 rcx, 2 rdx,
-3 rbx, 4 rsp, 5 rbp, 6 rsi, 7 rdi, 8 to 15 r8 to r15.
+number the registers as the target encodes them (RegCount of them): on
+x86_64 0 rax, 1 rcx, 2 rdx, 3 rbx, 4 rsp, 5 rbp, 6 rsi, 7 rdi, 8 to 15
+r8 to r15; on aarch64 0 to 30 x0 to x30, 31 sp.
 
 ### `FaultContext.Addr`
 
@@ -566,8 +568,9 @@ nothing.
 export FaultContext.Reg(&self, n: int): u64
 ```
 
-General register n, 0 to 15, in the order FaultContext lists. Another n
-panics with the bounds code (2). O(1); allocates nothing.
+General register n, 0 to RegCount() - 1, in the order FaultContext
+lists. Another n panics with the bounds code (2). O(1); allocates
+nothing.
 
 ### `FaultContext.SetPc`
 
@@ -583,8 +586,8 @@ Sets the program counter the thread resumes at. O(1); allocates nothing.
 export FaultContext.SetReg(mut self, n: int, v: u64)
 ```
 
-Sets general register n, 0 to 15. Another n panics with the bounds code
-(2). O(1); allocates nothing.
+Sets general register n, 0 to RegCount() - 1. Another n panics with the
+bounds code (2). O(1); allocates nothing.
 
 ### `FaultContext.SetSp`
 
@@ -592,7 +595,8 @@ Sets general register n, 0 to 15. Another n panics with the bounds code
 export FaultContext.SetSp(mut self, sp: uint)
 ```
 
-Sets the stack pointer, Reg(4). O(1); allocates nothing.
+Sets the stack pointer: Reg(4) on x86_64, Reg(31) on aarch64. O(1);
+allocates nothing.
 
 ### `FaultContext.Sp`
 
@@ -600,7 +604,8 @@ Sets the stack pointer, Reg(4). O(1); allocates nothing.
 export FaultContext.Sp(&self): uint
 ```
 
-The stack pointer, Reg(4). O(1); allocates nothing.
+The stack pointer: Reg(4) on x86_64, Reg(31) on aarch64. O(1);
+allocates nothing.
 
 ### `FaultKind`
 
@@ -952,6 +957,15 @@ export Processors(): int
 
 The number of processors the OS reports this process may run on. O(1)
 after the first call's system call; allocates nothing.
+
+### `RegCount`
+
+```
+export RegCount(): int
+```
+
+RegCount is how many general registers a FaultContext holds: 16 on
+x86_64, 32 on aarch64 (x0 to x30 and sp). O(1); allocates nothing.
 
 ### `StackBounds`
 

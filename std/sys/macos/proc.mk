@@ -64,6 +64,8 @@ const PxFDupFdCloExec: i32 = 0x43
 const PxFdCloExec: i32 = 1
 const PxONonBlock: i32 = 0x4
 const PxONoCtty: i32 = 0x2_0000
+// PxTiocsctty is TIOCSCTTY (<sys/ttycom.h>, _IO('t', 97)).
+const PxTiocsctty: uint = 0x2000_7461
 const PxWNoHang: i32 = 1
 const PxAtFdcwd: i32 = -2
 const PxAtEAccess: i32 = 0x10
@@ -700,7 +702,8 @@ InheritValue(sp: *u8): i64 {
     return v
 }
 
-/// InheritSeal runs at start-up (std.task's Start): the socket MK_INHERIT
+/// InheritSeal runs at start-up (std.task's Start): it takes a terminal on
+/// descriptor 0 as the controlling terminal (CttyTake); then the socket MK_INHERIT
 /// names is made close-on-exec at once. The spawn's dup2 cleared the flag
 /// on descriptor 3, and without this a child that starts a program before
 /// it calls Inherited, or never calls it, hands the listener to a program
@@ -714,11 +717,31 @@ InheritValue(sp: *u8): i64 {
 /// a list that fails is left as it is, every descriptor it names untouched.
 /// O(1) system calls; allocates nothing.
 export InheritSeal(sp: *u8) {
+    CttyTake()
     v := InheritValue(sp)
     PassHandlesSeal(sp, v)
     if v >= 0 && HandleKind(Trunc[uint](v)) == 4 {
         unsafe "fcntl passes no memory" {
             _ = fcntl(Trunc[i32](v), PxFSetFd, PxFdCloExec)
+        }
+    }
+}
+
+// CttyTake makes the terminal on descriptor 0 this process's controlling
+// terminal (TIOCSCTTY) when descriptor 0 is a terminal. Linux gives a
+// session leader with none the first terminal it opens; XNU gives one
+// only by this ioctl, and posix_spawn applies POSIX_SPAWN_SETSID after
+// its file actions opened the terminal, so a child child.mk's SpawnEx
+// starts on a pty leads a new session with no controlling terminal until
+// it asks. The kernel refuses (EPERM, ignored here) a process that leads
+// no session, a session that has a terminal, and a terminal another
+// session holds, so this never takes a terminal from anyone. Called at
+// start-up (InheritSeal), before the program runs. O(1): two system
+// calls; allocates nothing.
+CttyTake() {
+    unsafe "isatty and ioctl pass no memory" {
+        if isatty(0) == 1 {
+            _ = ioctl(0, PxTiocsctty)
         }
     }
 }

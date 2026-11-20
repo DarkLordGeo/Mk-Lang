@@ -8,6 +8,7 @@
 package corpus
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -258,16 +259,18 @@ func TestDocumentsAreAllDocFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	var want []string
-	for _, dir := range []string{"doc", "doc/std"} {
-		ents, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	err = filepath.WalkDir(filepath.Join(root, "doc"), func(p string, e fs.DirEntry, err error) error {
 		if err != nil {
-			t.Fatal(err)
+			return err
 		}
-		for _, e := range ents {
-			if e.Type().IsRegular() && strings.HasSuffix(e.Name(), ".md") {
-				want = append(want, dir+"/"+e.Name())
-			}
+		if e.Type().IsRegular() && strings.HasSuffix(e.Name(), ".md") {
+			rel, _ := filepath.Rel(root, p)
+			want = append(want, filepath.ToSlash(rel))
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 	slices.Sort(want)
 	if !slices.Equal(docs, want) {

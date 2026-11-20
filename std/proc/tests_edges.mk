@@ -443,7 +443,8 @@ test "Pty.WriteAll to a child that never reads ends by its deadline, Canceled, a
         }
     }
     child.Kill().Must()
-    _ = child.Wait(io.NoCancel()).Must()
+    // The echo of what was written is left on p (SpWaitReading).
+    _ = SpWaitReading(io, &p, child)
     p.Close()
     Assert(failed)
 }

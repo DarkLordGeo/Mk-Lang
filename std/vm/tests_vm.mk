@@ -6,6 +6,7 @@
 // reads and writes. A read of a Protect(None) page faults; that test is
 // std.runtime's (tests_fault.mk, with runtime.AddFaultFilter).
 
+import std.core
 import std.raw
 
 test "VM reserve 32 GiB, commit 32 KiB at each end, write and read them" {
@@ -119,50 +120,73 @@ ReserveMisaligned(size: int, align: int): bool {
     return false
 }
 
-// The x86_64 code `mov eax, 42; ret`.
-const Ret42: [6]u8 = [0xB8, 0x2A, 0x00, 0x00, 0x00, 0xC3]
+// RetArm64 is the aarch64 code `movz w0, #0; ret`, whose imm16 is bits 5
+// to 20 of the first word; WriteRet writes it, or x86_64's
+// `mov eax, v; ret`, with the value it returns.
+const RetArm64: [8]u8 = [
+    0x00, 0x00, 0x80, 0x52, // movz w0, #0
+    0xC0, 0x03, 0x5F, 0xD6 // ret
+]
+
+// RetLen is the length of the target's `return v` code.
+RetLen(): int {
+    return if Target.arch == Arch.Arm64 { 8 } else { 6 }
+}
+
+// NoCodeRegions is whether the target makes no code region, where every
+// block that needs one returns at once: macOS. Apple silicon runs
+// generated code only from a MAP_JIT mapping, which is one view whose
+// writability is switched per thread, never the second, writable view a
+// CodeRegion has, and macOS's layer makes none on Intel either.
+NoCodeRegions(): bool {
+    return Target.os == core.Os.Macos
+}
 
 // CallAt calls the code at addr, which takes nothing and returns a u32 in
-// eax, from inline assembly (raw.FnFromAddr is tested in std.mem).
-// Ret42 is x86_64's, so elsewhere nothing is called and the answer is 0.
+// eax or w0, from inline assembly (raw.FnFromAddr is tested in std.mem).
 CallAt(addr: uint): u32 {
     var r: u32 = 0
     if Target.arch == Arch.X64 {
-        unsafe "addr is a code region's executable entry holding Ret42, which touches no memory and preserves every callee-saved register" {
+        unsafe "addr is a code region's executable entry holding WriteRet's code, which touches no memory and preserves every callee-saved register" {
             // The call pushes below rsp: step over System V's 128-byte red
             // zone first, so it never overwrites a leaf frame's locals.
             asm("sub rsp, 128\ncall {a}\nadd rsp, 128", a: in(reg) addr, out("eax") r, clobber_abi("C"))
+        }
+    }
+    if Target.arch == Arch.Arm64 {
+        unsafe "addr is a code region's executable entry holding WriteRet's code, which touches no memory and preserves every callee-saved register" {
+            // blr writes only x30, and AAPCS64 has no red zone below sp.
+            asm("blr {a}", a: in(reg) addr, out("w0") r, clobber_abi("C"))
         }
     }
     return r
 }
 
 test "VM a code region runs code written through its writable view" {
+    if NoCodeRegions() {
+        return
+    }
     c := CodeRegion.New(100) else {
         Assert(false)
         return
     }
     Assert(c.Size() == PageSize())
     var w := c.Writable()
-    for i in 0..6 {
-        w[i] = Ret42[i]
-    }
-    c.Flush(0, 6)
+    WriteRet(w, 0, 42)
+    n := RetLen()
+    c.Flush(0, n)
     e := c.Entry(0)
+    first: u8 = if Target.arch == Arch.Arm64 { 0x40 } else { 0xB8 }
+    last: u8 = if Target.arch == Arch.Arm64 { 0xD6 } else { 0xC3 }
     unsafe "the executable view is readable: it holds the bytes the writable view wrote" {
-        Assert(raw.Read(raw.FromAddr[u8](e)) == 0xB8)
-        Assert(raw.Read(raw.FromAddr[u8](e + 5)) == 0xC3)
+        Assert(raw.Read(raw.FromAddr[u8](e)) == first)
+        Assert(raw.Read(raw.FromAddr[u8](e + Trunc[uint](n - 1))) == last)
     }
     Assert(e != raw.Addr(raw.DataMut(w)))
     Assert(CallAt(e) == 42)
     // A second function, written later at another offset.
-    w[64] = 0xB8
-    w[65] = 0x07
-    w[66] = 0
-    w[67] = 0
-    w[68] = 0
-    w[69] = 0xC3
-    c.Flush(64, 6)
+    WriteRet(w, 64, 7)
+    c.Flush(64, n)
     Assert(CallAt(c.Entry(64)) == 7)
     Assert(CallAt(e) == 42)
     c.Release()
@@ -218,7 +242,12 @@ test "VM Decommit of a range that is not whole pages panics [exit 101: Region.De
     r.Release()
 }
 
-test "VM CodeRegion.Entry outside the region panics [exit 101: CodeRegion.Entry: offset outside the region]" {
+test "VM CodeRegion.Entry outside the region panics [exit 101: CodeRegion.Entry: offset outside the region]" (sys: &System) {
+    if NoCodeRegions() {
+        sys.Print("skip: macOS gives std no code regions\n", ()) else {
+        }
+        return
+    }
     c := CodeRegion.New(64) else {
         return
     }
@@ -304,8 +333,16 @@ test "VM the commit bitmap is exact across its 64-page words" {
     r.Release()
 }
 
-// WriteRet writes `mov eax, v; ret` at offset o of w.
+// WriteRet writes the target's code `return v` at offset o of w: x86_64's
+// `mov eax, v; ret`, or RetArm64 with v in its immediate.
 WriteRet(w: mut []u8, o: int, v: u8) {
+    if Target.arch == Arch.Arm64 {
+        for i in 0..8 {
+            w[o + i] = RetArm64[i]
+        }
+        SetImm(w, o, v)
+        return
+    }
     w[o] = 0xB8
     w[o + 1] = v
     w[o + 2] = 0
@@ -314,24 +351,48 @@ WriteRet(w: mut []u8, o: int, v: u8) {
     w[o + 5] = 0xC3
 }
 
+// SetImm writes v into the immediate of the code WriteRet wrote at offset
+// o of w: x86_64's imm32 byte 1; aarch64's imm16, bits 5 to 12 of v's
+// value, which lie in bytes 0 and 1.
+SetImm(w: mut []u8, o: int, v: u8) {
+    if Target.arch == Arch.Arm64 {
+        imm := u32(v) << 5
+        w[o] = RetArm64[0] | Trunc[u8](imm)
+        w[o + 1] = RetArm64[1] | Trunc[u8](imm >> 8)
+        return
+    }
+    w[o + 1] = v
+}
+
+// ImmOf is the value SetImm wrote at offset o of w.
+ImmOf(w: []u8, o: int): u8 {
+    if Target.arch == Arch.Arm64 {
+        return Trunc[u8]((u32(w[o]) >> 5) | (u32(w[o + 1]) << 3))
+    }
+    return w[o + 1]
+}
+
 // Seal and Unseal change the writable view only; Entry's code runs
 // before, while and after. The write that faults while sealed is
 // std.runtime's test (tests_fault.mk), with a filter that sees it.
 test "VM a sealed code region runs at Entry, and Unseal lets a patch through" {
+    if NoCodeRegions() {
+        return
+    }
     c := CodeRegion.New(2 * PageSize()) else {
         Assert(false)
         return
     }
     var w := c.Writable()
     WriteRet(w, 0, 42)
-    c.Flush(0, 6)
+    c.Flush(0, RetLen())
     e := c.Entry(0)
     Assert(CallAt(e) == 42)
     c.Seal() else {
         Assert(false)
     }
     Assert(CallAt(e) == 42)
-    Assert(w[1] == 42)
+    Assert(ImmOf(w[..], 0) == 42)
     c.Seal() else {
         Assert(false)
     }
@@ -352,6 +413,9 @@ test "VM a sealed code region runs at Entry, and Unseal lets a patch through" {
 }
 
 test "VM a reserved code region runs what Commit took, and keeps it over a second Commit" {
+    if NoCodeRegions() {
+        return
+    }
     ps := PageSize()
     c := CodeRegion.Reserve(8 * ps) else {
         Assert(false)
@@ -368,7 +432,10 @@ test "VM a reserved code region runs what Commit took, and keeps it over a secon
     Assert(w[ps] == 0 && w[5 * ps + 8] == 0)
     WriteRet(w, ps, 42)
     WriteRet(w, 5 * ps, 5)
-    c.Flush(0, 8 * ps)
+    // Only committed pages are flushed: aarch64's cache maintenance (dc
+    // cvau) faults on a page of the executable view not committed.
+    c.Flush(ps, RetLen())
+    c.Flush(5 * ps, RetLen())
     Assert(CallAt(c.Entry(ps)) == 42)
     Assert(CallAt(c.Entry(5 * ps)) == 5)
     // Pages 1, 4 and 5 committed, the others not: Seal and Unseal go by
@@ -386,12 +453,15 @@ test "VM a reserved code region runs what Commit took, and keeps it over a secon
     Assert(CallAt(c.Entry(ps)) == 42)
     Assert(CallAt(c.Entry(5 * ps)) == 5)
     WriteRet(w, 7 * ps, 3)
-    c.Flush(7 * ps, 6)
+    c.Flush(7 * ps, RetLen())
     Assert(CallAt(c.Entry(7 * ps)) == 3)
     c.Release()
 }
 
 test "VM CodeRegion.Commit outside whole pages of the region is Misaligned" {
+    if NoCodeRegions() {
+        return
+    }
     ps := PageSize()
     c := CodeRegion.Reserve(4 * ps) else {
         Assert(false)
@@ -433,7 +503,12 @@ test "VM CodeRegion.Commit outside whole pages of the region is Misaligned" {
     n.Release()
 }
 
-test "VM a write to a page a reserved code region has not committed faults [exit 101: panic: invalid memory access at]" {
+test "VM a write to a page a reserved code region has not committed faults [exit 101: panic: invalid memory access at]" (sys: &System) {
+    if NoCodeRegions() {
+        sys.Print("skip: macOS gives std no code regions\n", ()) else {
+        }
+        return
+    }
     c := CodeRegion.Reserve(2 * PageSize()) else {
         return
     }
@@ -446,7 +521,12 @@ test "VM a write to a page a reserved code region has not committed faults [exit
 // The executable view of a page not committed is inaccessible too: a read
 // of it faults (a committed page would read 0, so this tells the two apart,
 // where a call into a zero page faults in either case).
-test "VM a read through the executable view of a page a reserved code region has not committed faults [exit 101: panic: invalid memory access at]" {
+test "VM a read through the executable view of a page a reserved code region has not committed faults [exit 101: panic: invalid memory access at]" (sys: &System) {
+    if NoCodeRegions() {
+        sys.Print("skip: macOS gives std no code regions\n", ()) else {
+        }
+        return
+    }
     c := CodeRegion.Reserve(2 * PageSize()) else {
         return
     }

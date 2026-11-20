@@ -63,7 +63,7 @@ var SystemCell: Mutex[PoolCell] = Mutex[PoolCell].New(PoolCell(pool: none, empty
 /// store again. O(1) once kept (one uncontended lock); else SystemRoots'
 /// cost and one copy of the certificates.
 ///
-/// On Linux a later change to the bundle, or to SSL_CERT_FILE and
+/// On Linux and macOS a later change to the bundle, or to SSL_CERT_FILE and
 /// SSL_CERT_DIR, is not seen. On Windows the pool stands for the platform,
 /// which reads its store at each Verify.
 ///
@@ -86,7 +86,7 @@ var SystemCell: Mutex[PoolCell] = Mutex[PoolCell].New(PoolCell(pool: none, empty
 /// Canceled in a cancelled scope, since taking the lock can be cancelled,
 /// or in the load (nothing is consumed; call again), and with OutOfMemory.
 export SystemPool(h: &Heap, io: Io): Error!&Pool {
-    if Target.os != core.Os.Windows && Target.os != core.Os.Linux {
+    if Target.os != core.Os.Windows && Target.os != core.Os.Linux && Target.os != core.Os.Macos {
         fail Unsupported
     }
     if (!core.IsNative(io) && (core.IoFlags(io) & SimBits) != 0) {

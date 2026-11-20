@@ -28,9 +28,14 @@ var responseFileAt = 16 << 10
 // rspQuoting is the linker option that names the response file's quoting,
 // given before the @file: Windows rules for lld-link (its default on every
 // host), POSIX rules for ld.lld, whose default otherwise follows the host.
+// ld64.lld has no such option and always reads POSIX (GNU) quoting, so a
+// Mach-O link gets none ("").
 func rspQuoting(f Format) string {
-	if f == COFF {
+	switch f {
+	case COFF:
 		return "--rsp-quoting=windows"
+	case MachO:
+		return ""
 	}
 	return "--rsp-quoting=posix"
 }
@@ -134,7 +139,11 @@ func (t *Tools) runLinkerIn(ctx context.Context, f Format, args []string, dir st
 		}
 	}
 	defer os.Remove(file)
-	out, err := run(ctx, tool, path, append(append([]string(nil), pre...), rspQuoting(f), "@"+at), dir)
+	rargs := append([]string(nil), pre...)
+	if q := rspQuoting(f); q != "" {
+		rargs = append(rargs, q)
+	}
+	out, err := run(ctx, tool, path, append(rargs, "@"+at), dir)
 	var te *ToolError
 	if errors.As(err, &te) {
 		te.Command = CommandLine(path, full)

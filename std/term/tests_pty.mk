@@ -646,7 +646,7 @@ TmRun(sys: &System, mode: str, keys: []str, resize_at: int): (code: int, text: s
                 continue
             }
             n := TmLines(sys, path)
-            p.WriteAll(io, keys[i].AsBytes()).Must()
+            TmType(sys, &p, keys[i])
             TmStep(sys, path, paced, n)
         }
         st := child.Wait(io).Must()
@@ -657,6 +657,15 @@ TmRun(sys: &System, mode: str, keys: []str, resize_at: int): (code: int, text: s
     text := fs.ReadText(sys.arena, io, path) else { "" }
     fs.Remove(io, path) else {}
     return (code, text)
+}
+
+// TmType writes keys to p; a failure panics naming the error, so a log
+// shows the OS's code (a write to a master whose last child closed its
+// side is EIO, a sign the child ended early).
+TmType(sys: &System, p: &proc.Pty, keys: str) {
+    p.WriteAll(sys.io, keys.AsBytes()) else e {
+        Panic(sys.arena.Fmt("typing into the pty: {e}", (e)).Must())
+    }
 }
 
 // TmCloseEnds closes the pipe ends a Spawn with a terminal never makes.
@@ -705,7 +714,9 @@ TmModeAfter(sys: &System, mode: str): (before: str, after: str, code: int) from 
 // TmOnPty runs mode on p and returns its transcript.
 TmOnPty(sys: &System, p: &proc.Pty, mode: str): str from sys {
     (code, text) := TmOnPtyCode(sys, p, mode)
-    Assert(code == 0)
+    if code != 0 {
+        Panic(sys.arena.Fmt("mode {mode} ended with code {code}, transcript: {text}", (mode, code, text)).Must())
+    }
     return text
 }
 

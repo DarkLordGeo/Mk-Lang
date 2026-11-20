@@ -168,8 +168,9 @@ export SocketName(h: uint, a: mut SockAddr): OsResult {
 /// already shut, the read side included once the peer's FIN arrived, and
 /// then skips the write side of a SHUT_RDWR; Linux shuts what is left and
 /// answers ENOTCONN only for a socket with no connection. So on ENOTCONN
-/// the write side of a 2 is shut on its own, and the call succeeds while
-/// getpeername still finds a peer.
+/// the write side of a 2 is shut on its own, which succeeds when it was
+/// still open; otherwise the call succeeds while getpeername still finds a
+/// peer.
 /// O(1): one to three system calls; allocates nothing.
 export SocketShutdown(h: uint, how: u32): OsResult {
     if how > 2 {
@@ -184,8 +185,11 @@ export SocketShutdown(h: uint, how: u32): OsResult {
         if e != Enotconn {
             return SockFail(e)
         }
-        if how == 2 {
-            _ = shutdown(s, 1)
+        // The write side shut here is the call's success even when the
+        // peer's ACK of that FIN, on loopback at once, has already ended
+        // the connection, so getpeername would find none.
+        if how == 2 && shutdown(s, 1) == 0 {
+            return Ok(0)
         }
         var sa: [16]u64 = [0; 16]
         var n: [1]u32 = [128]

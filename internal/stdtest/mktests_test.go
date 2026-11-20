@@ -168,6 +168,10 @@ func stdMkTest(t *testing.T, cfg driver.Config, opt driver.TestOptions) *driver.
 // judgeStdTest fails t unless tc ended as its name asks.
 func judgeStdTest(t *testing.T, tc driver.TestCase) {
 	t.Helper()
+	if reason, ok := stdSkipped(tc); ok {
+		t.Logf("%s %q: skipped: %s", tc.Module, tc.Name, reason)
+		return
+	}
 	code, text := 0, ""
 	if m := stdExpect.FindStringSubmatch(tc.Name); m != nil {
 		code, _ = strconv.Atoi(m[1])
@@ -176,6 +180,19 @@ func judgeStdTest(t *testing.T, tc driver.TestCase) {
 	if tc.Status != code || !strings.Contains(tc.Output, text) {
 		t.Errorf("%s %q: %s, status %d, want %d with %q in the output\n%s", tc.Module, tc.Name, tc.Result, tc.Status, code, text, tc.Output)
 	}
+}
+
+// stdSkipped reports a block that ended with status 0 after printing
+// "skip: <reason>" as its first line: one whose feature the target does not
+// have by design (macOS's code regions), so its name's verdict cannot be
+// reached. The reason is logged; the block is neither a pass nor a failure.
+func stdSkipped(tc driver.TestCase) (string, bool) {
+	if tc.Status != 0 {
+		return "", false
+	}
+	first, _, _ := strings.Cut(strings.TrimLeft(tc.Output, "\r\n"), "\n")
+	reason, ok := strings.CutPrefix(strings.TrimRight(first, "\r"), "skip: ")
+	return reason, ok
 }
 
 // TestStdMkTests: every test block of every std module outside

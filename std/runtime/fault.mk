@@ -6,8 +6,10 @@
 //
 // How: filters run in the order added, before Mk's own report. On Windows
 // in the vectored handler on the faulting stack (a stack overflow's inside
-// the task's 16 KiB guarantee area); on Linux in the SIGSEGV, SIGBUS and
-// SIGILL handler on the carrier's alternate signal stack. A filter runs
+// the task's 16 KiB guarantee area); on Linux and macOS in the SIGSEGV,
+// SIGBUS and SIGILL handler on the carrier's alternate signal stack. The
+// registers are read from and written back to the OS context at the
+// offsets of ContextReg and ContextPc, per OS and architecture. A filter runs
 // inside a fault: it must not take a lock the faulting code may hold,
 // allocate, or suspend, and a fault inside a filter is reported, not
 // filtered (RunFilters). The list is lock-free: append only, each filter
@@ -36,13 +38,25 @@ export enum FaultKind {
 /// A fault's context: its kind and address, and the faulting thread's
 /// general registers and program counter. A filter may edit them with the
 /// setters and return the context with Resume. Reg(n) and SetReg(n)
-/// number the registers as x86_64 encodes them: 0 rax, 1 rcx, 2 rdx,
-/// 3 rbx, 4 rsp, 5 rbp, 6 rsi, 7 rdi, 8 to 15 r8 to r15.
+/// number the registers as the target encodes them (RegCount of them): on
+/// x86_64 0 rax, 1 rcx, 2 rdx, 3 rbx, 4 rsp, 5 rbp, 6 rsi, 7 rdi, 8 to 15
+/// r8 to r15; on aarch64 0 to 30 x0 to x30, 31 sp.
 export struct FaultContext {
     k: FaultKind
     at: uint
-    regs: [16]u64
+    regs: [32]u64
     ip: uint
+}
+
+/// RegCount is how many general registers a FaultContext holds: 16 on
+/// x86_64, 32 on aarch64 (x0 to x30 and sp). O(1); allocates nothing.
+export RegCount(): int {
+    return if Target.arch == Arch.Arm64 { 32 } else { 16 }
+}
+
+// SpReg is the stack pointer's register number.
+SpReg(): int {
+    return if Target.arch == Arch.Arm64 { 31 } else { 4 }
 }
 
 /// A filter's answer: Resume at the context it edited, which the handler
@@ -77,15 +91,17 @@ export FaultContext.Pc(&self): uint {
     return self.ip
 }
 
-/// The stack pointer, Reg(4). O(1); allocates nothing.
+/// The stack pointer: Reg(4) on x86_64, Reg(31) on aarch64. O(1);
+/// allocates nothing.
 export FaultContext.Sp(&self): uint {
-    return Trunc[uint](self.regs[4])
+    return Trunc[uint](self.regs[SpReg()])
 }
 
-/// General register n, 0 to 15, in the order FaultContext lists. Another n
-/// panics with the bounds code (2). O(1); allocates nothing.
+/// General register n, 0 to RegCount() - 1, in the order FaultContext
+/// lists. Another n panics with the bounds code (2). O(1); allocates
+/// nothing.
 export FaultContext.Reg(&self, n: int): u64 {
-    return self.regs[n]
+    return self.regs[..RegCount()][n]
 }
 
 /// Sets the program counter the thread resumes at. O(1); allocates nothing.
@@ -93,14 +109,18 @@ export FaultContext.SetPc(mut self, pc: uint) {
     self.ip = pc
 }
 
-/// Sets the stack pointer, Reg(4). O(1); allocates nothing.
+/// Sets the stack pointer: Reg(4) on x86_64, Reg(31) on aarch64. O(1);
+/// allocates nothing.
 export FaultContext.SetSp(mut self, sp: uint) {
-    self.regs[4] = u64(sp)
+    self.regs[SpReg()] = u64(sp)
 }
 
-/// Sets general register n, 0 to 15. Another n panics with the bounds code
-/// (2). O(1); allocates nothing.
+/// Sets general register n, 0 to RegCount() - 1. Another n panics with the
+/// bounds code (2). O(1); allocates nothing.
 export FaultContext.SetReg(mut self, n: int, v: u64) {
+    if n < 0 || n >= RegCount() {
+        raw.Fail(2, "FaultContext.SetReg: register out of range")
+    }
     self.regs[n] = v
 }
 
@@ -144,6 +164,8 @@ FWord(p: *u64): &raw.Atomic[u64] {
 /// reaches the filters and Mk's report, where Windows routes only a fault
 /// whose pc is in the image.
 ///
+/// macOS routes as Linux does.
+///
 /// On Linux, a fault in C code outside the image on a thread std did not
 /// make gets the signal's default action, raised again at once, as on
 /// Windows it gets the system's. So does a SIGSEGV, SIGBUS or SIGILL that
@@ -151,14 +173,10 @@ FWord(p: *u64): &raw.Atomic[u64] {
 /// is never reported as Mk's. C code that installs a signal handler of its
 /// own replaces std's.
 ///
-/// Callable only in unsafe (E1101). Panics with code 8 past 16 filters,
-/// and on an aarch64 target, whose FaultContext would not hold x86_64's
-/// registers. O(1) besides waiting for an earlier addition to publish;
-/// allocates nothing.
+/// Callable only in unsafe (E1101). Panics with code 8 past 16 filters.
+/// O(1) besides waiting for an earlier addition to publish; allocates
+/// nothing.
 export AddFaultFilter(f: fn(&FaultContext): FaultAction): FilterId {
-    if Target.arch != Arch.X64 {
-        raw.Fail(8, "runtime.AddFaultFilter: x86_64 only (no aarch64 FaultContext)")
-    }
     // Edge: the claim needs no edge; the slot is this caller's alone.
     i := FWord(raw.Of(&FilterSet.claimed)).Add(1)
     if i >= u64(FilterMax) {
@@ -193,20 +211,44 @@ export AddFaultFilter(f: fn(&FaultContext): FaultAction): FilterId {
     return FilterId(n: Trunc[int](i))
 }
 
-// ContextReg is the offset of encoding register n in the OS context, and
-// ContextPc that of the program counter, on x86_64 (AddFaultFilter refuses
-// another arch, so no filter runs there): Windows' CONTEXT (Rax at 0x78 to
-// R15 at 0xF0 in encoding order, Rip at 0xF8), and
-// Linux x86_64's ucontext_t (uc_mcontext.gregs at 40, in the kernel's REG_
-// order: R8..R15 0 to 7, RDI 8, RSI 9, RBP 10, RBX 11, RDX 12, RAX 13, RCX
-// 14, RSP 15, RIP 16).
+// ContextReg is the offset of encoding register n in the OS context std.sys
+// hands the hook, and ContextPc that of the program counter:
+// - Windows' CONTEXT: Rax at 0x78 to R15 at 0xF0 in encoding order, Rip at
+//   0xF8.
+// - Linux x86_64's ucontext_t: uc_mcontext.gregs at 40, in the kernel's REG_
+//   order (R8..R15 0 to 7, RDI 8, RSI 9, RBP 10, RBX 11, RDX 12, RAX 13,
+//   RCX 14, RSP 15, RIP 16).
+// - Linux aarch64's ucontext_t: uc_mcontext (struct sigcontext) at 176,
+//   after the 128-byte signal mask, 16-aligned: fault_address, then
+//   regs[31] (x0 to x30) at 184, sp at 432, pc at 440.
+// - macOS: the thread state uc_mcontext points to (std.sys passes it, not
+//   the ucontext), after the 16-byte exception state: on x86_64 rax, rbx,
+//   rcx, rdx, rdi, rsi, rbp, rsp, r8 to r15, then rip (MacGreg maps the
+//   encoding order); on arm64 x0 to x28, fp (x29) and lr (x30) in order
+//   from 16, sp at 264, pc at 272.
 const LinuxGreg: [16]int = [13, 14, 12, 11, 15, 10, 9, 8, 0, 1, 2, 3, 4, 5, 6, 7]
+const MacGreg: [16]int = [0, 2, 3, 1, 7, 6, 5, 4, 8, 9, 10, 11, 12, 13, 14, 15]
 
 ContextReg(n: int): int {
+    if Target.arch == Arch.Arm64 {
+        if Target.os == Os.Macos {
+            return if n == 31 { 264 } else { 16 + n * 8 }
+        }
+        return if n == 31 { 432 } else { 184 + n * 8 }
+    }
+    if Target.os == Os.Macos {
+        return 16 + MacGreg[n] * 8
+    }
     return if Target.os == Os.Windows { 0x78 + n * 8 } else { 40 + LinuxGreg[n] * 8 }
 }
 
 ContextPc(): int {
+    if Target.arch == Arch.Arm64 {
+        return if Target.os == Os.Macos { 272 } else { 440 }
+    }
+    if Target.os == Os.Macos {
+        return 16 + 16 * 8
+    }
     return if Target.os == Os.Windows { 0xF8 } else { 40 + 16 * 8 }
 }
 
@@ -245,9 +287,9 @@ RunFilters(os: *u8, kind: u32, addr: uint, pc: uint): bool {
 
 // RunFiltersIn is RunFilters inside the thread's mark.
 RunFiltersIn(os: *u8, kind: u32, addr: uint, pc: uint): bool {
-    var c := FaultContext(k: KindOf(kind, addr), at: addr, regs: [0; 16], ip: pc)
+    var c := FaultContext(k: KindOf(kind, addr), at: addr, regs: [0; 32], ip: pc)
     unsafe "os is the faulting thread's OS context, live while the handler runs" {
-        for n in 0..16 {
+        for n in 0..RegCount() {
             c.regs[n] = raw.Read(raw.PtrCast[u8, u64](raw.Offset(os, ContextReg(n))))
         }
     }
@@ -258,7 +300,7 @@ RunFiltersIn(os: *u8, kind: u32, addr: uint, pc: uint): bool {
         match f(&c) {
             .Resume(ctx) {
                 unsafe "os is the faulting thread's OS context; the handler installs it when it resumes" {
-                    for n in 0..16 {
+                    for n in 0..RegCount() {
                         raw.Write(raw.PtrCast[u8, u64](raw.Offset(os, ContextReg(n))), ctx.regs[n])
                     }
                     raw.Write(raw.PtrCast[u8, u64](raw.Offset(os, ContextPc())), u64(ctx.ip))

@@ -9144,7 +9144,7 @@ src/f.mk:1:8: E0202 unknown-module: module std.fs is not available on x86_64-fre
 
 | Target | What the project checks | Not yet |
 |---|---|---|
-| `aarch64-linux` | Every program of `tests/programs` that targets Linux and is not x86-specific builds, and its cases pass, dev and release, under qemu-user (an emulator on x86-64), not on ARM hardware | System-libc mode and libraries (`pkg.Lib`) are x86_64-only; `std.linux` (the raw system call) is x86_64-only, since its numbers are x86_64's; `runtime.AddFaultFilter` panics |
+| `aarch64-linux` | CI builds and runs the checks, std's test blocks and `tests/programs` natively on GitHub's `ubuntu-24.04-arm` runner; the programs also pass under qemu-user | System-libc mode and libraries (`pkg.Lib`) are x86_64-only; `std.linux` (the raw system call) is x86_64-only, since its numbers are x86_64's |
 | `aarch64-macos`, `x86_64-macos` | `mk check` of std, its tests included, and `mk corpus` for the target; `mk build` links every program of `tests/programs` but the x86- and Linux-specific ones. A small program's load commands, imports and reproducible bytes are checked by a test. None has run | Libraries, `pkg.Link`, `c_sources` and C imports; source-level debugging (no `.dSYM` is made); the parts of `std.sys` listed in [std.sys on macOS](#stdsys-on-macos) |
 
 - The C ABI is AAPCS64 on `aarch64-linux`, Apple's arm64 variant of it on `aarch64-macos` (the caller extends small integers, and every variadic argument goes on the stack), and System V on `x86_64-macos`.
@@ -9157,11 +9157,12 @@ src/f.mk:1:8: E0202 unknown-module: module std.fs is not available on x86_64-fre
 
 std's system layer for macOS calls libSystem. Arguments, the environment, memory, threads, clocks, random bytes, files, directories, sockets (TCP, UDP and Unix), the kqueue poller, child processes (`posix_spawn`), pipes, ptys and the terminal, signals, faults, descriptor passing and `std.dl` are implemented. What differs from Linux:
 
-- `std.vm` code regions (`CodeRegion.New`) fail with `SysErr.Unsupported`: arm64 macOS runs generated code only from `MAP_JIT` memory, which has no second, writable view. `runtime.AddFaultFilter` panics on aarch64-macos, as on every aarch64 target, and on x86_64-macos installs a filter that no fault reaches.
+- `std.vm` code regions (`CodeRegion.New`) fail with `SysErr.Unsupported`: arm64 macOS runs generated code only from `MAP_JIT` memory, which has no second, writable view. Fault filters (`runtime.AddFaultFilter`) work as on Linux.
 - A `proc.Pipe` end is a blocking end served by the thread pool, not one on the poller.
 - Byte-range locks (`LockRange`) are POSIX record locks: closing any descriptor of a file drops the process's locks on it.
 - A saved terminal mode is 64 bytes, not 36.
-- A pseudo-terminal keeps no output for a read after its last child has closed its side: Darwin discards output left unread then, so read a `Pty` before waiting for its children. A child's terminal mode starts from the defaults each time a new child first opens the `Pty`; its size is kept.
+- A child started on a `Pty` (`Command.terminal`) gets it as its controlling terminal only when it is an Mk program: `posix_spawn` makes the child a session leader after it opens the terminal, and only the child's own `TIOCSCTTY` makes it controlling, which an Mk program's start does. Another program started on a `Pty` has no controlling terminal.
+- A child that holds a `Pty` as its controlling terminal does not end until its output has been read, so read a `Pty` while you wait for its children. Output that a child without one leaves unread is discarded shortly after it exits. A child's terminal mode starts from the defaults each time a new child first opens the `Pty`; its size is kept.
 - A child inherits the raised descriptor limit: `posix_spawn` runs nothing in the child that could restore the original one.
 - A Unix-socket dial to a listener whose backlog is full is `SysErr.Refused`, not a wait. A send buffer (`SocketOption`) must be at least 1 byte.
 - `runtime.WriteDump` and the platform certificate verifier answer `SysErr.Unsupported`, as on Linux; `std.x509` checks chains itself.
@@ -11156,7 +11157,7 @@ This table lists the importable modules and the names each one exports. The [lib
 | `std.tls` | `Client Server Connector Acceptor Conn Config DefaultConfig Identity Version Error`, Experimental |
 | `std.csv` | `Records Record Options DefaultOptions WriteRecord Codec Error` |
 | `std.dl` | `Open Library Search Error`, Provisional |
-| `std.runtime` | `Processors Carriers StackBounds StackRemaining Blocking Waker PanicInfo AddFaultFilter FaultContext FaultAction FaultKind FilterId ForeignIo Foreign ForeignContext IoTable IoResult SysErr IoStat IoAddr IoChild IoCallArgs IoWords InertTable Dedicated Thread Joined TaskIo Cycles WriteDump Unsupported OsError Error`; `AddFaultFilter`, `ForeignIo` and `ForeignContext` only inside an unsafe block, and `ForeignIo` and the `Io` table Provisional |
+| `std.runtime` | `Processors Carriers StackBounds StackRemaining Blocking Waker PanicInfo AddFaultFilter FaultContext FaultAction FaultKind FilterId RegCount ForeignIo Foreign ForeignContext IoTable IoResult SysErr IoStat IoAddr IoChild IoCallArgs IoWords InertTable Dedicated Thread Joined TaskIo Cycles WriteDump Unsupported OsError Error`; `AddFaultFilter`, `ForeignIo` and `ForeignContext` only inside an unsafe block, and `ForeignIo` and the `Io` table Provisional |
 | `std.vm` | `PageSize Reserve Region CodeRegion Prot Misaligned Unsupported Os Error`, every call inside an unsafe block |
 | `std.linux` | `Syscall`, every call inside an unsafe block, on x86_64-linux only |
 | `std.testing` | `Fuzz Bench` |
@@ -13177,6 +13178,7 @@ FaultContext.Reg(&self, n: int): u64
 FaultContext.SetPc(mut self, pc: uint)
 FaultContext.SetSp(mut self, sp: uint)
 FaultContext.SetReg(mut self, n: int, v: u64)
+runtime.RegCount(): int
 runtime.ForeignIo(ctx: *u8, table: &IoTable): Foreign
 Foreign.Io(&self): Io
 Foreign.Release(self)

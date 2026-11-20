@@ -370,8 +370,9 @@ func TestInstallPs1(t *testing.T) {
 }
 
 // powershellOwn are the files Windows PowerShell 5.1 and its .NET runtime
-// write for themselves, under the local application data folder: the
-// startup profile data and module analysis cache, and the CLR's usage log.
+// write for themselves, under the local and roaming application data
+// folders: the startup profile data and module analysis cache, and the
+// CLR's usage log.
 // Where the user's shell folders are stored as %USERPROFILE%\AppData\...
 // (the hosted windows-2025 image), that folder is the fake USERPROFILE's,
 // whatever LOCALAPPDATA says. install.ps1 writes only under -Root.
@@ -387,7 +388,7 @@ func profileWrites(p, k string) []string {
 		case "localappdata":
 			own = append(own, o)
 		case "userprofile":
-			own = append(own, `AppData\Local\`+o)
+			own = append(own, `AppData\Local\`+o, `AppData\Roaming\`+o)
 		}
 	}
 	var out []string

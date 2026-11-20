@@ -63,7 +63,9 @@ Try(op: *Op): bool {
         for {
             var r := 0
             if k == OpRecv {
-                r = recvfrom(s, (*op).buf, Clip((*op).len), 0, raw.Null[u8](), raw.Null[u32]())
+                // recvmsg, closing any descriptors a Unix peer attached
+                // (passfd.mk's RecvClosingFds).
+                r = RecvClosingFds(s, (*op).buf, Clip((*op).len), raw.Offset(o, OsMsg), raw.Offset(o, OsIov))
             } else if k == OpSend {
                 // SocketOpen's and accepted sockets have SO_NOSIGPIPE, and
                 // the process ignores SIGPIPE (fault.mk): a closed peer is

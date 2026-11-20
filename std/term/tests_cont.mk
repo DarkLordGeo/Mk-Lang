@@ -309,9 +309,9 @@ test "on Linux, a raw program waiting in Read through five stops and continues r
             }
             io.Sleep(TmMs(100)).Must()
         }
-        p.WriteAll(io, "a".AsBytes()).Must()
+        TmType(sys, &p, "a")
         _ = TmAwait(sys, path, "reading\nkey Char a\n")
-        p.WriteAll(io, "q".AsBytes()).Must()
+        TmType(sys, &p, "q")
         quit = TmAwait(sys, path, "reading\nkey Char a\nkey Char q\n")
         if !quit {
             child.Kill() else {}

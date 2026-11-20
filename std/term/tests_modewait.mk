@@ -230,9 +230,9 @@ test "on Linux, a Read whose wait sees the terminal's mode set 40 times by anoth
         reading = TmAwait(sys, path, "reading\n")
         flipped = TmAwait(sys, flips_path, "flipped 40\n")
         // The last mode set was raw: "a" arrives alone.
-        p.WriteAll(io, "a".AsBytes()).Must()
+        TmType(sys, &p, "a")
         _ = TmAwait(sys, path, "reading\nkey Char a\n")
-        p.WriteAll(io, "q".AsBytes()).Must()
+        TmType(sys, &p, "q")
         quit = TmAwait(sys, path, "reading\nkey Char a\nkey Char q\n")
         if !quit {
             child.Kill() else {}
