@@ -145,19 +145,22 @@ func TestDebugExeDeterministic(t *testing.T) {
 }
 
 // debuggerRun runs argv with a hard deadline (an unhit breakpoint must not
-// hang the test) and returns its combined output.
+// hang the test) and returns its combined output. The Windows debuggers'
+// symbol paths name dir only, so no symbol server is asked over the network
+// (a hosted runner's first lookup can take minutes).
 func debuggerRun(t *testing.T, dir string, argv ...string) string {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "_NT_SYMBOL_PATH="+dir, "_NT_ALT_SYMBOL_PATH="+dir, "_NT_SYMCACHE_PATH="+dir)
 	cmd.WaitDelay = waitDelay
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	err := cmd.Run()
 	if ctx.Err() != nil {
-		t.Fatalf("%s did not finish in 90 s:\n%s", filepath.Base(argv[0]), out.String())
+		t.Fatalf("%s did not finish in 180 s:\n%s", filepath.Base(argv[0]), out.String())
 	}
 	if err != nil {
 		t.Logf("%s: %v", filepath.Base(argv[0]), err)
