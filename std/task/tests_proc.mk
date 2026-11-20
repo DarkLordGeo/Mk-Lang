@@ -411,12 +411,24 @@ PServe(io: Io, l: uint, tag: u8, port: i64) {
 // PAsk dials port, sends a byte and returns the tag it gets back, 0 on any
 // failure or when the child's inherited entry did not answer port.
 PAsk(io: Io, port: i64): u8 {
+    return PAnswer(io, PHold(io, port), port)
+}
+
+// PHold dials port and sends nothing: the holder that accepts it waits in
+// its recv until PAnswer, so it accepts no other connection meanwhile. 0 on
+// failure.
+PHold(io: Io, port: i64): uint {
     var ab: [32]u8 = [0; 32]
     d := NativeDial(io, NAddr(mut ab, port))
-    if d.err != core.SysErr.None {
+    return if d.err != core.SysErr.None { 0 } else { Trunc[uint](d.value) }
+}
+
+// PAnswer sends a byte on s, a connection PHold made, aborts it and returns
+// the tag it got back, as PAsk does. A 0 s returns 0.
+PAnswer(io: Io, s: uint, port: i64): u8 {
+    if s == 0 {
         return 0
     }
-    s := Trunc[uint](d.value)
     var q: [1]u8 = [63]
     var got: [3]u8 = [0; 3]
     var n := 0
@@ -530,23 +542,21 @@ test "RT-Os-Inherit-Close a holder's close of an inherited listener leaves the o
     // C's close left the listener open: B, started after it, serves.
     b := PChild(sys, lh, "B")
     Assert(PAsk(sys.io, l.os) == 66)
-    // The parent accepts beside B on the shared listener: some dial
-    // reaches it (tag 80), every other one B.
+    // The parent accepts beside B on the shared listener. Which holder's
+    // accept the kernel serves is its choice (on Windows B's fresh accept
+    // can win every race), so the first connection is held open: the
+    // holder that took it waits in its recv, and the second can only reach
+    // the other. One of the two answers 80 (the parent), the other 66 (B).
     got := raw.Atomic[u32].New(0)
-    var np := 0
     scope s := sys.io.Scope() {
         s.go PServeOne(sys.io, lh, 80, l.os, &got)
-        for _ in 0..400 {
-            t := PAsk(sys.io, l.os)
-            Assert(t == 66 || t == 80)
-            if t == 80 {
-                np += 1
-                break
-            }
-        }
-        s.Cancel()
+        hold := PHold(sys.io, l.os)
+        Assert(hold != 0)
+        t := PAsk(sys.io, l.os)
+        u := PAnswer(sys.io, hold, l.os)
+        Assert((t == 66 && u == 80) || (t == 80 && u == 66))
     }
-    Assert(np == 1 && got.Load() == 1)
+    Assert(got.Load() == 1)
     // So does the parent's own close of its copy.
     PClose(sys.io, lh)
     for _ in 0..5 {
