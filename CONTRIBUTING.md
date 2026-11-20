@@ -123,7 +123,7 @@ GitHub Actions runs three workflows ([.github/runners](.github/runners/README.md
 
 - On every push to `main` and every pull request, forks included, CI runs on GitHub-hosted Windows and Linux runners: `go build ./...`, `go vet ./...`, `gofmt`, `go run ./cmd/mk corpus`, and `go test` over every package but `./std`, split across parallel jobs by `tools/ci/test.sh`. It has a read-only token and no secrets. A pull request from outside the project waits for a maintainer to approve its run.
 - A nightly run on `main`, on the project's self-hosted Windows and Linux runners, adds the gate's build, test and corpus steps, `./std` included.
-- A `v*` tag of a commit on `main` runs CI on Windows and Linux, builds and signs the binary bundles, and drafts a GitHub release ([Releases](#releases)).
+- A `v*` tag of a commit on `main` (whose push already ran CI) builds and signs the binary bundles, and drafts a GitHub release ([Releases](#releases)).
 
 Run the same commands locally before you open a pull request.
 
@@ -132,7 +132,7 @@ Run the same commands locally before you open a pull request.
 A release is a `v*` tag whose version is `Release` in `internal/driver/version.go` and `version` in `editors/vscode/package.json`, and has a section in [CHANGELOG.md](CHANGELOG.md). Set all three, merge them to `main`, then tag that commit and push the tag (`git tag v0.1.0`, `git push origin v0.1.0`). `.github/workflows/release.yml` then:
 
 1. Fails at once unless the tagged commit is on `main`, the tag is mk's version, CHANGELOG.md has a section headed `## <version>` (a date in parentheses may follow), and `internal/release/keys.go` and the install scripts hold the same release key.
-2. Runs CI on Windows and Linux. Beside it, on a Windows and a Linux runner, builds a release build of mk (`go build -trimpath` with the release address compiled in) and its bundle with `go run ./tools/release build`: mk, clang, lld and clang's headers from LLVM's official 21.1.8 release (checked against their SHA-256), LLVM's licence and the documentation. It unpacks each bundle and runs a hello program with it.
+2. On a Windows and a Linux runner, builds a release build of mk (`go build -trimpath` with the release address compiled in) and its bundle with `go run ./tools/release build`: mk, clang, lld and clang's headers from LLVM's official 21.1.8 release (checked against their SHA-256), LLVM's licence and the documentation. It unpacks each bundle and runs a hello program with it.
 3. Packages the VS Code extension in a job of its own, with npm's install scripts off.
 4. When all of that passes, writes `SHA256SUMS` over the bundles, the extension, `install.ps1` and `install.sh`, signs it with `MK_RELEASE_KEY`, a secret of the `release` environment, and checks the signature against the keys built into mk. That job runs only the pinned GitHub actions and `tools/release`, and is the only one that sees the key.
 5. A last job, the only one whose token can write and which holds no secret, checks the signature and every file again and drafts the GitHub release: the bundles, `SHA256SUMS`, `SHA256SUMS.sig`, `install.ps1`, `install.sh` and the extension, with the tag's CHANGELOG section as notes. A version with a pre-release suffix (`0.2.0-rc.1`) is drafted as a pre-release.
@@ -141,7 +141,7 @@ Read the draft and publish it. The install scripts and `mk upgrade` find only pu
 
 The `release` environment admits only `v*` tags, so a branch or a pull request never reaches the key, whatever its workflow files say. Since it checks only the tag's name, a tag ruleset on `refs/tags/v*` restricts creating, updating (moving, force-pushing) and deleting such tags; only the repository admin role may bypass it, and no GitHub App, the GitHub Actions app included, and no deploy key. Without the update rule, anyone with write access could move an existing tag to a commit of their own, whose workflow would then get the key.
 
-To try everything but signing before the tag, run the Release workflow by hand on `main` (Actions > Release > Run workflow). It runs the checks that need no tag, CI, both bundles and the extension, and builds `SHA256SUMS` as a release would; it neither signs nor drafts a release.
+To try everything but signing before the tag, run the Release workflow by hand on `main` (Actions > Release > Run workflow). It runs the checks that need no tag, both bundles and the extension, and builds `SHA256SUMS` as a release would; it neither signs nor drafts a release.
 
 The release key is made once, offline: `go run ./tools/release keygen -out <file outside every repository>` writes the private key and prints the public key's line. Add that line to `trusted` in `internal/release/keys.go`, and the same key id and public key to `$MkTrustedKeys` in `tools/install/install.ps1` and `trusted_keys` in `tools/install/install.sh` (`go test ./tools/release -run TestInstallKeys` checks that the three agree). Store the private key file's text as the secret `MK_RELEASE_KEY` of the `release` environment (never as a repository secret, which every branch's workflows can read) and keep two copies offline, never on a drive the self-hosted runners' accounts can read. To change keys, release once with the next key listed beside the current one, then sign with the next and remove the old.
 
