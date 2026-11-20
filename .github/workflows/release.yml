@@ -1,8 +1,9 @@
 # Why: a release should come from a tagged commit that passed the checks,
 # as signed binary bundles that need neither Go nor LLVM, without hand work.
 #
-# What: on a v* tag of a commit on main (whose push ran CI), one bundle
-# per host (bundle.yml),
+# What: on a v* tag of a commit on main, the CI workflow on Windows and
+# Linux (build, vet, gofmt, the documentation tests and the same test set
+# as every push); beside it, one bundle per host (bundle.yml),
 # mk-<version>-x86_64-windows.zip, mk-<version>-x86_64-linux.tar.gz and
 # mk-<version>-aarch64-macos.tar.gz (Apple silicon; no Intel Mac bundle yet),
 # and the VS Code extension (.vsix). Then one job writes SHA256SUMS over the
@@ -124,6 +125,10 @@ jobs:
       - name: The install scripts trust the same keys
         run: go test -count=1 -run TestInstallKeys ./tools/release
 
+  test:
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
   # One job per host, so each bundle's SHA-256 is an output of its own.
   bundle-windows:
     needs: preflight
@@ -192,7 +197,7 @@ jobs:
   # the install scripts.
   sign:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [bundle-windows, bundle-linux, bundle-macos-arm64, vsix]
+    needs: [test, bundle-windows, bundle-linux, bundle-macos-arm64, vsix]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: release
@@ -324,7 +329,7 @@ jobs:
   # checked against itself, with no key and no release.
   check:
     if: github.event_name == 'workflow_dispatch'
-    needs: [bundle-windows, bundle-linux, bundle-macos-arm64, vsix]
+    needs: [test, bundle-windows, bundle-linux, bundle-macos-arm64, vsix]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
