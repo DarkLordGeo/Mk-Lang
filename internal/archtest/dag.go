@@ -84,7 +84,8 @@ var DAG = []Edge{
 // test edge reaches the package that imports it (TestTestEdgesAreSafe).
 // lower's tests may also import eval, to run lowered bodies; mono's tests
 // may build instances from real source through syntax, check and lower, and
-// codegen's native tests may use toolchain's discovery; gen's tests may
+// codegen's native tests and llvm's syntax smoke test may use toolchain's
+// discovery, so they run the clang mk runs; gen's tests may
 // lower Mk test generators through resolve, check and lower. corpus's tests
 // may import eval for the soundness runner with no entry here: corpus
 // reaches eval through driver, and TestTestEdgesAreSafe refuses a test edge
@@ -95,6 +96,7 @@ var TestEdges = []Edge{
 	{"lower", []string{"syntax", "eval"}},
 	{"mono", []string{"syntax", "resolve", "ast", "check", "lower"}},
 	{"codegen", []string{"toolchain"}},
+	{"llvm", []string{"toolchain"}},
 	{"gen", []string{"resolve", "check", "lower"}},
 }
 

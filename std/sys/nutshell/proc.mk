@@ -15,9 +15,7 @@ export PipeRoom(h: uint): int {
     return -1
 }
 
-/// SharedPort is the op.pos of an accept on a listener whose completion port
-/// is another process's (Windows only, poll_iocp.mk); Linux ignores op.pos
-/// for an accept, and an inherited descriptor is registered here as any.
+/// SharedPort has std/sys/linux's contract; this placeholder never accepts.
 export const SharedPort: i64 = 1
 
 /// Spawn has std/sys/linux's contract; this placeholder fails with Other.

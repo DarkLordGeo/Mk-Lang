@@ -4,7 +4,8 @@
 //
 // What: proc.Supervise, IsWorker, and SuperviseOn (Supervise over any
 // listener's runtime handle), with Slot, the loop that keeps one worker
-// running and restarts it with a backoff.
+// running and restarts it with a backoff, and SupShare, the listener's shared
+// mark while workers hold it.
 //
 // How: the parent starts each worker as this executable again (an empty
 // args[0] to the runtime's spawn), with this process's arguments, its
@@ -16,6 +17,7 @@
 import std.core
 import std.net
 import std.raw
+import std.rt
 
 // RestartBurst restarts of one slot in RestartPeriod start its backoff
 // (Erlang/OTP's supervisor restart intensity and period: a backoff after
@@ -246,10 +248,29 @@ SuperviseOn[E, L](sys: &System, workers: int, h: uint, l: &L, const worker: fn(&
         try argv.Push(sys.args[i])
     }
     args := argv.Done()
+    // h is marked shared once, before the slots pass it on at once
+    // (rt.PassOn), and alone again when they have all ended, so the
+    // caller's close then shuts the listener down and its port refuses at
+    // once, whatever the kernel still holds of the workers' accepts.
+    SupShare(sys.io, h, true)
+    defer SupShare(sys.io, h, false)
     try scope s := sys.io.ScopeOf[Error]() {
         for _ in 0..workers {
             s.go Slot(sys.io, args[..], h)
         }
+    }
+}
+
+// SupShare marks the listener h shared with the workers (on) or this
+// process's alone again (off); a simulated Io's handle is left as it is.
+SupShare(io: Io, h: uint, on: bool) {
+    if !core.IsNative(io) || !rt.PassNative(h) {
+        return
+    }
+    if on {
+        rt.PassOn(h)
+    } else {
+        rt.PassAlone(h)
     }
 }
 

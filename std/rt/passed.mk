@@ -5,8 +5,8 @@
 // RecvHandles (SCM_RIGHTS on Linux; Windows and Nutshell answer
 // Unsupported, std.sys), InheritedFds for proc.Inherited's adoption of the
 // handles a Command named (MK_HANDLES), Passed, PassShared, the mark that
-// keeps a shared socket alive, and PassOn, which adds the shared accept path
-// for a listener another process now holds.
+// keeps a shared socket alive, PassOn, which adds the shared accept path for a
+// listener another process now holds, and PassAlone, which undoes the mark.
 //
 // How: native only: a simulated Io's handles are no OS handles, so every
 // call here answers Unsupported under one. The sends and receives run
@@ -58,13 +58,29 @@ export PassNative(h: uint): bool {
 /// (passed on, or adopted from one): its close then skips the shutdown,
 /// which would end every process's copy of the connection, and only
 /// releases this one (sys.SocketAbortClose), so the peer sees the end when
-/// the last copy closes. Anything but a socket is left as it is. O(1);
-/// allocates nothing.
+/// the last copy closes. Anything but a socket is left as it is. A mark
+/// already there is only read, so tasks that pass the same handle at once
+/// (Supervise's slots, after SuperviseOn marked it) never write the record
+/// together. O(1); allocates nothing.
 export PassShared(h: uint) {
-    unsafe "h is the caller's live handle; only its owner's task writes its record" {
+    unsafe "h is the caller's live handle; a write happens only while no other task passes it on (see above)" {
         r := Rec(h)
-        if (*r).kind == KindSocket {
+        if (*r).kind == KindSocket && !(*r).abort {
             (*r).abort = true
+        }
+    }
+}
+
+/// PassAlone undoes PassShared's mark on a listener that no other process
+/// holds any more (every child Supervise started has ended): its close
+/// shuts it down again, so its port refuses connections at once, even
+/// while the kernel still holds a dead holder's pending accept on it.
+/// Anything but a socket is left as it is. O(1); allocates nothing.
+export PassAlone(h: uint) {
+    unsafe "h is the caller's live handle, which no other task uses now" {
+        r := Rec(h)
+        if (*r).kind == KindSocket && (*r).abort {
+            (*r).abort = false
         }
     }
 }
@@ -74,14 +90,15 @@ export PassShared(h: uint) {
 /// (PassShared). On Linux a listening socket also takes the shared accept
 /// path (sys.ShareListener, kept as the record's pos), as the other
 /// process's copy does, so no holder's accept waits exclusively. A failure
-/// there leaves the listener's accepts as they were. O(1) system calls;
-/// allocates nothing.
+/// there leaves the listener's accepts as they were. A handle already on
+/// that path is only read, as in PassShared. O(1) system calls; allocates
+/// nothing.
 export PassOn(h: uint) {
     PassShared(h)
     if Target.os != Os.Linux {
         return
     }
-    unsafe "h is the caller's live handle; only its owner's task writes its record" {
+    unsafe "h is the caller's live handle; a write happens only while no other task passes it on (PassShared)" {
         r := Rec(h)
         if (*r).kind != KindSocket || (*r).pos == sys.SharedPort {
             return
@@ -96,7 +113,6 @@ export PassOn(h: uint) {
         }
     }
 }
-
 /// SendFds sends data on the Unix stream h with the handles hs attached
 /// to its first byte: value the bytes sent with them, at least 1 (the
 /// caller sends the rest as plain bytes). Each socket among hs is then

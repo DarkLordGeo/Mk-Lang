@@ -2,7 +2,7 @@
 // the process with few system calls; it is the default Linux poller.
 //
 // What: the io_uring backend: UringInit, UringSubmit (with TrySend),
-// UringCancel, Resubmit, UringFinish (with SharedAccept), UringReap and
+// UringCancel, Resubmit, UringFinish (with SharedStep), UringReap and
 // UringWait.
 //
 // How: one ring for the process, its SQ ring, CQ ring and SQE array mapped
@@ -11,7 +11,10 @@
 // would block, goes through the ring. Submission fills an SQE under the SQ
 // lock, publishes the tail with a sequentially consistent store and enters
 // the kernel; completions are reaped under the CQ lock by whoever polls. The
-// wake is an eventfd with a read always pending on the ring.
+// wake is an eventfd with a read always pending on the ring. Nothing that
+// runs under the CQ lock makes a system call that can block: the reap,
+// UringFinish and its steps only read results and decide the next SQE,
+// which the caller submits after the lock is released.
 //
 // user_data is the op's address (below 2^48 on both architectures) with a
 // 16-bit submission generation above it, kept in op.os. ASYNC_CANCEL names
@@ -80,9 +83,24 @@ const OpcUnlinkAt: u8 = 36
 const WakeTag: u64 = 1
 const AddrMask: u64 = 0xFFFF_FFFF_FFFF
 const AcceptCloExec: u32 = 0x80000
-// POLLHUP and POLLRDHUP in a POLL_ADD's result mask (SharedAccept).
+// POLLHUP and POLLRDHUP in a POLL_ADD's result mask (SharedStep).
 const PollHupMask: u32 = 0x10
 const PollRdHupMask: u32 = 0x2000
+// IORING_ACCEPT_DONTWAIT (Linux 6.10), in an ACCEPT SQE's ioprio: the
+// accept never waits, whatever the file's O_NONBLOCK.
+const AcceptDontWait: u16 = 2
+// OsPollMask keeps a shared listener's POLL_ADD result for its ACCEPT step:
+// the RECVMSG msghdr's bytes, which an accept never uses.
+const OsPollMask: int = 72
+
+// DontWaitState says whether this kernel takes AcceptDontWait: 0 not known
+// yet, 1 it does, 2 it refuses it (EINVAL, kernels before 6.10). Racing
+// reapers store the same answer.
+struct DontWaitState {
+    v: raw.Atomic[u32]
+}
+
+var DontWait: DontWaitState = DontWaitState(v: raw.Atomic[u32].New(0))
 // MSG_DONTWAIT: TrySend's one non-blocking send on a blocking socket.
 const MsgDontWait: uint = 0x40
 
@@ -301,21 +319,27 @@ Prep(op: *Op, q: *u8): bool {
             if k == OpSend {
                 Put32(q, 28, Trunc[u32](MsgNoSignal))
             }
-        } else if k == OpAccept && (*op).pos == SharedPort {
+        } else if k == OpAccept && (*op).pos == SharedPort && Get32(o, OsStage) == 0 {
             // A listener other processes accept on too (inherited, handed to
-            // a child, or passed): a one-shot POLL_ADD for POLLIN, then
-            // SharedAccept. The kernel arms an ACCEPT's wait as an exclusive
-            // waiter, and a killed process's armed ACCEPT stays on the
-            // listener's queue until its ring's exit work runs
-            // (asynchronously since Linux 6.10): a connection that arrives
-            // meanwhile wakes only that dead entry, and the live sibling
-            // hears of it only when the next connection comes. A POLL_ADD
-            // waits non-exclusively, so every holder is woken.
+            // a child, or passed) first waits with a one-shot POLL_ADD for
+            // POLLIN, then accepts (SharedStep). The kernel arms an ACCEPT's
+            // wait as an exclusive waiter, and a killed process's armed
+            // ACCEPT stays on the listener's queue until its ring's exit work
+            // runs (asynchronously since Linux 6.10): a connection that
+            // arrives meanwhile wakes only that dead entry, and the live
+            // sibling hears of it only when the next connection comes. A
+            // POLL_ADD waits non-exclusively, so every holder is woken.
             raw.Write(q, OpcPollAdd)
             Put32(q, 4, fd)
             Put32(q, 28, 1)
         } else if k == OpAccept {
             raw.Write(q, OpcAccept)
+            // A shared listener's accept step 1 never waits (AcceptDontWait);
+            // step 2, on a kernel that refuses the flag, is a plain ACCEPT
+            // (SharedStep).
+            if (*op).pos == SharedPort && Get32(o, OsStage) == 1 {
+                Put16(q, 2, AcceptDontWait)
+            }
             Put32(q, 4, fd)
             Put32(o, OsAddrN, 32)
             Put64(q, 8, u64(raw.Addr(raw.Offset(o, OsAddrN))))
@@ -600,65 +624,84 @@ Resubmit(op: *Op, out: mut []*Op, k: int): int {
     }
 }
 
-// SharedAccept is a shared listener's accept after its POLL_ADD fired with
-// the poll mask mask: one accept4 on the listener (non-blocking:
-// ShareListener set O_NONBLOCK; EINTR and ECONNABORTED, a peer that gave
-// up, are tried again at once, as epoll's Try does). true with res set: the
-// new socket, close-on-exec and blocking as an ACCEPT's, or the error;
-// EAGAIN with POLLHUP or POLLRDHUP in mask is EINVAL, as a blocking accept
-// answers (a Unix listener a holder shut down polls readable for good).
-// false: a sibling took the connection (EAGAIN) and no cancel came, so the
-// op waits again.
-SharedAccept(op: *Op, mask: i32): bool {
-    unsafe "op's CQE was just reaped: the op is this thread's; its os area holds the address" {
+// SharedStep moves a shared listener's accept (op.pos SharedPort) on after
+// the CQE res; OsStage says which step res answers. 0: the POLL_ADD fired,
+// so the next step is an ACCEPT, with AcceptDontWait (step 1) unless this
+// kernel refuses it (step 2). 1 or 2: the ACCEPT's answer. Neither step
+// waits in the kernel once the POLL_ADD fired, except step 2 after a lost
+// race, which then waits as any ACCEPT (on kernels before 6.10, where a
+// dead holder's wait is removed with its ring), and nothing here makes a
+// system call. The answer is 0 to go on with UringFinish's own handling of
+// res, 1 when op.res is set (the op is done), 2 to submit op again (its
+// next step, or the POLL_ADD again after a sibling took the connection).
+// EAGAIN with POLLHUP or POLLRDHUP in the POLL_ADD's mask is EINVAL, as a
+// blocking accept answers (a Unix listener a holder shut down polls
+// readable for good).
+SharedStep(op: *Op, res: i32): u32 {
+    unsafe "op's CQE was just reaped: the op is this thread's until it is handed out" {
         o := OsArea(op)
-        for {
-            Put32(o, OsAddrN, 32)
-            r := Syscall(Nrs().accept4, (*op).h, raw.Addr(raw.Offset(o, OsAddr)), raw.Addr(raw.Offset(o, OsAddrN)),
-                Trunc[uint](AcceptCloExec), 0, 0)
-            if r == Eintr4 || r == Econnaborted {
-                continue
+        st := Get32(o, OsStage)
+        if st == 0 {
+            if res < 0 {
+                return 0
             }
-            if r == Eagain && (Trunc[u32](mask) & (PollHupMask | PollRdHupMask)) != 0 {
-                (*op).res = IoFail((*op).h, OpAccept, 22)
-                return true
-            }
-            if r == Eagain {
-                // Edge: as the resubmit's: a cancel stored after this Load is
-                // followed by its PollCancel.
-                if (*op).cancel.Load() == 1 {
-                    (*op).res = FailWith(core.SysErr.Canceled)
-                    return true
-                }
-                return false
-            }
-            if IsErr(r) {
-                (*op).res = IoFail((*op).h, OpAccept, i64(-r))
-                return true
-            }
-            if !DecodeAddr(raw.Offset(o, OsAddr), mut (*op).addr) {
-                (*op).addr = SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)
-            }
-            (*op).res = Ok(Trunc[i64](r))
-            return true
+            Put32(o, OsPollMask, Trunc[u32](i64(res)))
+            // Edge: none; a cache of the kernel's answer (DontWaitState).
+            Put32(o, OsStage, if DontWait.v.Load() == 2 { 2 } else { 1 })
+            return 2
         }
+        e := -i64(res)
+        if res >= 0 || e == 11 {
+            // The kernel took step 1's flag; step 2 after an EINVAL of step 1
+            // (DontWait still 0) shows the flag was what it refused.
+            if st == 1 {
+                DontWait.v.Store(1)
+            } else if DontWait.v.Load() == 0 {
+                DontWait.v.Store(2)
+            }
+        }
+        if res >= 0 {
+            return 0
+        }
+        if e == 11 {
+            if (Get32(o, OsPollMask) & (PollHupMask | PollRdHupMask)) != 0 {
+                (*op).res = IoFail((*op).h, OpAccept, 22)
+                return 1
+            }
+            // Edge: as the resubmit's: a cancel stored after this Load is
+            // followed by its PollCancel.
+            if (*op).cancel.Load() == 1 {
+                (*op).res = FailWith(core.SysErr.Canceled)
+                return 1
+            }
+            Put32(o, OsStage, 0)
+            return 2
+        }
+        if e == 22 && st == 1 && DontWait.v.Load() == 0 {
+            // A kernel before 6.10 refuses the flag with EINVAL; so does a
+            // listener that is not listening. Step 2 tells them apart.
+            Put32(o, OsStage, 2)
+            return 2
+        }
+        return 0
     }
 }
-
 // UringFinish turns op's CQE result into op.res. false: the op goes on to
 // its next step (the directory step of a remove; an EINTR or ECONNABORTED
 // without a cancel; an OpReady's EINVAL on a terminal without a cancel; a
-// shared listener's accept that lost its connection to a sibling) and the
-// caller submits it again once it has released the CQ lock (a submission
+// shared listener's next step, SharedStep) and the caller submits it again once it has released the CQ lock (a submission
 // may have to wait for the kernel to flush its completion backlog, which
 // needs the CQ head this reap is about to return).
 UringFinish(op: *Op, res: i32): bool {
     unsafe "op's CQE was just reaped: the op is this thread's until it is handed out" {
         k := (*op).kind
-        if res >= 0 {
-            if k == OpAccept && (*op).pos == SharedPort {
-                return SharedAccept(op, res)
+        if k == OpAccept && (*op).pos == SharedPort {
+            step := SharedStep(op, res)
+            if step != 0 {
+                return step == 1
             }
+        }
+        if res >= 0 {
             if k == OpAccept {
                 if !DecodeAddr(raw.Offset(OsArea(op), OsAddr), mut (*op).addr) {
                     (*op).addr = SockAddr(family: 0, port: 0, addr: [0; 16], scope_id: 0)

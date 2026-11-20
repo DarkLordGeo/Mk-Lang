@@ -3,8 +3,9 @@
 // What: the RT-Os-Spawn-* blocks, RT-Os-Inherit and RT-Os-Inherit-Close:
 // NativeSpawn with every stdio mode, exit codes, both pipes drained at once
 // past the pipe buffer, stdin fed and closed, a missing program, a
-// cancelled procwait, prockill, an inherited listener and one holder's
-// close of it, and equal handle counts over many spawns.
+// cancelled procwait, prockill, an inherited listener, the parent's accept
+// beside a child on it and one holder's close of it, and equal handle counts
+// over many spawns.
 // How: the child is the system shell (cmd.exe /c on Windows, /bin/sh -c on
 // Linux); run by the scheduler harness at 1 to 8 carriers, dev and release.
 
@@ -529,6 +530,23 @@ test "RT-Os-Inherit-Close a holder's close of an inherited listener leaves the o
     // C's close left the listener open: B, started after it, serves.
     b := PChild(sys, lh, "B")
     Assert(PAsk(sys.io, l.os) == 66)
+    // The parent accepts beside B on the shared listener: some dial
+    // reaches it (tag 80), every other one B.
+    got := raw.Atomic[u32].New(0)
+    var np := 0
+    scope s := sys.io.Scope() {
+        s.go PServeOne(sys.io, lh, 80, l.os, &got)
+        for _ in 0..400 {
+            t := PAsk(sys.io, l.os)
+            Assert(t == 66 || t == 80)
+            if t == 80 {
+                np += 1
+                break
+            }
+        }
+        s.Cancel()
+    }
+    Assert(np == 1 && got.Load() == 1)
     // So does the parent's own close of its copy.
     PClose(sys.io, lh)
     for _ in 0..5 {
@@ -538,6 +556,23 @@ test "RT-Os-Inherit-Close a holder's close of an inherited listener leaves the o
     cb := PWait(sys.io, Trunc[uint](b.value))
     Assert(cb == 1 || cb == -9)
     PClose(sys.io, Trunc[uint](b.value))
+}
+
+// PServeOne answers one connection on l as PServe does, with tag; got is 1
+// when it did, 2 when the accept failed (the block's cancel).
+PServeOne(io: Io, l: uint, tag: u8, port: i64, got: &raw.Atomic[u32]) {
+    a := NativeAccept(io, l)
+    if a.err != core.SysErr.None {
+        got.Store(2)
+        return
+    }
+    s := Trunc[uint](a.value)
+    var buf: [16]u8 = [0; 16]
+    _ = NativeRecv(io, s, mut buf[..])
+    var t: [3]u8 = [tag, Trunc[u8](port >> 8), Trunc[u8](port)]
+    _ = NSendAll(io, s, t[..])
+    _ = NativeClose(io, s)
+    got.Store(1)
 }
 
 // PWaitOne waits for h and counts it in got when it was killed.

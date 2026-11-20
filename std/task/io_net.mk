@@ -98,6 +98,13 @@ NativeAccept(io: Io, h: uint): core.IoResult {
             if e != core.SysErr.None {
                 return ErrOf(e)
             }
+            // An accept issued before the listener turned shared (a child
+            // started meanwhile, rt.PassOn) can fail when the child took its
+            // connection under the new O_NONBLOCK; it is asked again on the
+            // shared path.
+            if op.res.err != core.SysErr.None && op.pos != sys.SharedPort && (*r).pos == sys.SharedPort {
+                continue
+            }
             if (*r).pos != sys.SharedPort || op.res.err != core.SysErr.Reset {
                 break
             }

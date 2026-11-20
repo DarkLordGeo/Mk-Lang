@@ -43,7 +43,7 @@ export PipeRoom(h: uint): int {
 /// accept on too. On Windows its completion port is another process's
 /// (poll_iocp.mk). On Linux it marks a listener another process holds too
 /// (ShareListener answers it as os), whose accepts under io_uring wait
-/// non-exclusively (poll_uring.mk's Prep and SharedAccept); epoll ignores
+/// non-exclusively (poll_uring.mk's Prep and SharedStep); epoll ignores
 /// it.
 export const SharedPort: i64 = 1
 
@@ -626,8 +626,10 @@ export ProcKill(h: uint): OsResult {
 /// ORed into the open file's flags, which every holder shares; os
 /// SharedPort, which the socket's record keeps as pos, so under io_uring
 /// every accept on it waits non-exclusively (poll_uring.mk's Prep and
-/// SharedAccept). Errors: the OS's (fcntl). O(1) system calls; allocates
-/// nothing.
+/// SharedStep). The flag matters to epoll's accept4 only: io_uring's accept
+/// never depends on it, so another holder that clears it cannot make an
+/// io_uring process block. Errors: the OS's (fcntl). O(1) system calls;
+/// allocates nothing.
 export ShareListener(fd: uint): OsResult {
     unsafe "a system call that passes no memory, only values and handles" {
         fl := Syscall(Nrs().fcntl, fd, FGetFl, 0, 0, 0, 0)

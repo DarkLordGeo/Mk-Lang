@@ -639,10 +639,6 @@ export ProcKill(h: uint): OsResult {
     return Ok(0)
 }
 
-/// Inherited answers the socket this process inherited from a Spawn with
-/// inherit (MK_INHERIT=<fd> in the environment): close-on-exec again,
-/// non-blocking and attached to the poller, as SocketOpen's async sockets.
-/// NotFound when there is none; a value that names no socket is Other.
 /// ShareListener has std/sys/linux's contract for a listener another
 /// process holds too; on macOS it changes nothing and answers os 0: kqueue
 /// wakes every holder of a shared listener, and Inherited already makes an
@@ -651,6 +647,10 @@ export ShareListener(fd: uint): OsResult {
     return OsResult(value: 0, err: core.SysErr.None, os: 0)
 }
 
+/// Inherited answers the socket this process inherited from a Spawn with
+/// inherit (MK_INHERIT=<fd> in the environment): close-on-exec again,
+/// non-blocking and attached to the poller, as SocketOpen's async sockets.
+/// NotFound when there is none; a value that names no socket is Other.
 /// O(1) system calls besides the environment scan; allocates nothing
 /// beyond the socket's registration with the poller.
 export Inherited(sp: *u8): OsResult {

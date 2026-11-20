@@ -13,7 +13,7 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 ### Fixed
 
 - Linux: processes that share a listener (Supervise's workers, a child given the listener, a listener passed over a Unix socket) take every connection when one of them is killed. On io_uring with Linux 6.10 and later, a connection could stall until the next one arrived.
-- A worker that closes its copy of a shared listener, or a parent that closes its own, no longer stops the listener for the other processes that hold it.
+- Linux: a worker that closes its copy of a shared listener, or a parent that closes its own while workers hold it, no longer stops the listener for the other processes.
 
 ## 0.1.0 (2026-11-20)
 

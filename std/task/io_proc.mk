@@ -69,6 +69,13 @@ NativeSpawn(io: Io, args: []str, child: mut core.IoChild): core.IoResult {
             a.inherit = (*rec).os
         }
     }
+    if child.inherit != 0 {
+        // The child is to hold the listener too: from before its start this
+        // copy's close must not end it for the child, and on Linux its
+        // accepts take the shared path (a child that never starts leaves a
+        // mark that changes nothing on a listener nobody else holds).
+        rt.PassOn(child.inherit)
+    }
     var op := sys.NewOp(sys.OpOpen, 0)
     unsafe "a is in this frame until OnPool returns" {
         op.buf = raw.PtrCast[SpawnArgs, u8](raw.OfMut(mut a))
@@ -112,11 +119,6 @@ NativeSpawn(io: Io, args: []str, child: mut core.IoChild): core.IoResult {
     }
     child.pipes = hs
     child.pid = a.child.pid
-    if child.inherit != 0 {
-        // The child holds the listener too: this copy's close must not end
-        // it for the child, and on Linux its accepts take the shared path.
-        rt.PassOn(child.inherit)
-    }
     return NoErr(Trunc[i64](ph))
 }
 

@@ -205,24 +205,33 @@ test "RT8-Dl-Zero a zero or negative deadline cancels at once and expires" (sys:
 test "RT8-Dl-CancelFirst a scope cancelled first never expires, before or after its deadline is set" (sys: &System) {
     for k in 0..2 {
         var exp := true
+        // k 1 arms the deadline before the cancel: 500 ms is far past any
+        // stall of this task between the two statements on a loaded
+        // machine, which a short deadline would lose to.
+        d: i64 = if k == 0 { 5 * DlMs } else { 500 * DlMs }
         scope outer := sys.io.Scope() {
             scope s := sys.io.Scope() {
                 if k == 0 {
                     s.Cancel()
-                    s.CancelAfter(core.DurationOf(5 * DlMs))
+                    s.CancelAfter(core.DurationOf(d))
                 } else {
-                    s.CancelAfter(core.DurationOf(5 * DlMs))
+                    s.CancelAfter(core.DurationOf(d))
                     s.Cancel()
                 }
                 // Past the deadline: a timer left armed would fire now.
-                sys.io.NoCancel().Sleep(core.DurationOf(30 * DlMs)) else {
+                sys.io.NoCancel().Sleep(core.DurationOf(d + 25 * DlMs)) else {
                     Assert(false)
                 }
                 exp = s.Expired()
             }
             Assert(!outer.Expired())
         }
-        Assert(!exp)
+        // One assert line per leg, so a failure's line names its k.
+        if k == 0 {
+            Assert(!exp)
+        } else {
+            Assert(!exp)
+        }
     }
 }
 
