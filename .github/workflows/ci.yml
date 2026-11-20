@@ -35,13 +35,23 @@ jobs:
         include:
           - os: windows
             gate: "1"
-            testflags: "-p 4"
-            gomemlimit: ""
+            shards: "3"
+            otherp: "2"
+            alone: ""
+            last: "mk/internal/corpus mk/internal/lsp"
+            alonemem: ""
+            shardmem: "4GiB"
+            lastmem: "8GiB"
             shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
           - os: linux
             gate: ""
-            testflags: "-p 1"
-            gomemlimit: "5GiB"
+            shards: "3"
+            otherp: "2"
+            alone: "TestScheduleIsDeterministic|TestConcurrentBuildsShareCache|TestBodiesInParallelAreDeterministic"
+            last: "mk/internal/corpus mk/internal/lsp"
+            alonemem: "5GiB"
+            shardmem: "3GiB"
+            lastmem: "5GiB"
             shell: bash
     runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
     timeout-minutes: 360
@@ -55,10 +65,6 @@ jobs:
       # MK_GATE=1 turns a test that cannot run here into a failure; only the
       # Windows job sets it, since on Linux the Windows legs cannot run.
       MK_GATE: ${{ matrix.gate }}
-      # The Linux runner has about 16 GB: one test package at a time and a soft
-      # cap on each test binary's Go heap keep the largest tests (parallel
-      # build sessions, the corpus, the LSP sweep) inside it.
-      GOMEMLIMIT: ${{ matrix.gomemlimit }}
       MK_CACHE: ${{ github.workspace }}/../.mkcache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -100,7 +106,18 @@ jobs:
           fi
 
       - name: Test
-        run: go test ${{ matrix.testflags }} -timeout 3h $(go list ./... | grep -v '^mk/std$')
+        # tools/ci/test.sh splits internal/driver, most of the run, across
+        # processes and keeps the memory-heavy tests apart; the matrix sets
+        # its shards and Go heap caps for each runner's memory.
+        run: bash tools/ci/test.sh
+        env:
+          DRIVER_SHARDS: ${{ matrix.shards }}
+          OTHER_P: ${{ matrix.otherp }}
+          ALONE_TESTS: ${{ matrix.alone }}
+          LAST_PKGS: ${{ matrix.last }}
+          ALONE_MEM: ${{ matrix.alonemem }}
+          SHARD_MEM: ${{ matrix.shardmem }}
+          LAST_MEM: ${{ matrix.lastmem }}
 
       - name: Documentation tests
         run: go run ./cmd/mk corpus

@@ -62,7 +62,13 @@ jobs:
           go vet ./...
 
       - name: Test
-        run: go test -timeout 3h $(go list ./... | grep -v '^mk/std$')
+        run: bash tools/ci/test.sh
+        env:
+          DRIVER_SHARDS: "3"
+          OTHER_P: "2"
+          LAST_PKGS: mk/internal/corpus mk/internal/lsp
+          SHARD_MEM: 4GiB
+          LAST_MEM: 8GiB
 
       - name: Documentation tests
         run: go run ./cmd/mk corpus
