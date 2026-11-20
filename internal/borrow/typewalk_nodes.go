@@ -3,7 +3,8 @@
 // every loan rule on a parameter works on those nodes.
 //
 // What: nodeInfo, abstractNodes (p#1, p#2 and p#A of a parameter's type),
-// maxReferents, splitAllocators, nodeFlags and allocRefs.
+// takesStores, maxReferents, grows and recordInstances, splitAllocators,
+// nodeFlags and allocRefs.
 //
 // How: p#1 stands for the first layer of referents, p#2 for the second and
 // everything reached from it, p#A for the allocators below the first level,
@@ -13,16 +14,29 @@
 package borrow
 
 import (
+	"slices"
+
 	"mk/internal/types"
 )
 
 // nodeInfo is one abstract node of a carrier parameter: the types it
 // stands for, whether it stands for any type, and whether the loan that
-// targets it is exclusive.
+// targets it is exclusive. cutTakes reports that a referent the walk
+// stopped at (grows) takes stores (takesStores): ANY stands for the
+// referents past the stop, but the node's takes is computed from its types,
+// so the stop carries what they take.
 type nodeInfo struct {
-	types []types.TypeID
-	any   bool
-	excl  bool
+	types    []types.TypeID
+	any      bool
+	excl     bool
+	cutTakes bool
+}
+
+// takesStores reports whether memory of type t takes stores, as addAbstract
+// judges each type of a node: storesFirst, or storesFirstGen for every
+// instance when t mentions a parameter.
+func (w *walker) takesStores(t types.TypeID) bool {
+	return w.storesFirst(t) || w.paramFrom(t, 0) && w.storesFirstGen(t)
 }
 
 func (n *nodeInfo) addType(t types.TypeID) bool {
@@ -57,7 +71,7 @@ func (w *walker) abstractNodes(t types.TypeID) (n1, n2, nA nodeInfo) {
 	// Layer 2: the steps of every layer-1 referent; ANY steps to ANY.
 	var work []types.TypeID
 	seen := make(map[types.TypeID]bool)
-	perItem := make(map[types.ItemID]int)
+	perItem, perRecord := make(map[types.ItemID]int), make(map[types.ItemID]map[types.TypeID]bool)
 	addLayer := func(steps []refStep, layer2 bool) {
 		for _, s := range steps {
 			if layer2 {
@@ -67,11 +81,15 @@ func (w *walker) abstractNodes(t types.TypeID) (n1, n2, nA nodeInfo) {
 			case s.any:
 				n2.any = true
 			case seen[s.referent]:
-			case w.grows(s.referent, perItem, len(seen)):
+			case w.grows(s.referent, perItem, perRecord, len(seen)):
 				// A polymorphically recursive type (struct G[T] { next:
 				// ?&G[?T] }) reaches a new referent type at every hop;
 				// the walk stops at ANY, which stands for all of them.
+				// What the stopped referent takes, at any depth below it
+				// (takesStores is bounded on such a type), stays with the
+				// node: ANY alone does not make it take stores.
 				n2.any = true
+				n2.cutTakes = n2.cutTakes || w.takesStores(s.referent)
 			default:
 				seen[s.referent] = true
 				if w.factsOf(s.referent).Allocator {
@@ -110,8 +128,14 @@ const (
 
 // grows reports whether the layer-2 walk has met as many referent types of
 // t's constructor (its named type under ?, [N] and E!) as it may, or as
-// many referents as it may, counting t. seen is the number met so far.
-func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, seen int) bool {
+// many referents as it may, counting t. seen is the number met so far. A
+// record referent counts the generic instances it holds inline
+// (recordInstances) in perRecord, per constructor, and stops the walk when
+// one constructor has more distinct instances there than maxReferentsPerItem:
+// a polymorphic recursion through a record (`next: ?&(a: G[?T], b: int)`)
+// meets a new record holding a new G at every hop, while records that share
+// their instances (each holding B[int]) never stop it.
+func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, perRecord map[types.ItemID]map[types.TypeID]bool, seen int) bool {
 	if seen >= maxReferents {
 		return true
 	}
@@ -119,11 +143,56 @@ func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, seen int) b
 	for ty.Kind == types.KOptional || ty.Kind == types.KArray || ty.Kind == types.KErrorUnion {
 		ty = w.tab.Get(ty.Elem)
 	}
+	if ty.Kind == types.KRecord {
+		over := false
+		for _, inst := range w.recordInstances(ty) {
+			it := w.tab.Get(inst).Item
+			if perRecord[it] == nil {
+				perRecord[it] = map[types.TypeID]bool{}
+			}
+			perRecord[it][inst] = true
+			over = over || len(perRecord[it]) > maxReferentsPerItem
+		}
+		return over
+	}
 	if ty.Kind != types.KNamed || ty.Item == types.NoItem {
 		return false
 	}
 	perItem[ty.Item]++
 	return perItem[ty.Item] > maxReferentsPerItem
+}
+
+// recordInstances is the generic instances a record holds inline: each
+// generic named type in its fields' bytes (through ?, [N], E! and nested
+// records, never through a reference, whose referent the walk meets and
+// counts on its own, nor into a named type's arguments), each once.
+func (w *walker) recordInstances(rec *types.Type) []types.TypeID {
+	var items []types.TypeID
+	seen := map[types.TypeID]bool{}
+	var visit func(t types.TypeID)
+	visit = func(t types.TypeID) {
+		if t == types.NoType || seen[t] {
+			return
+		}
+		seen[t] = true
+		ty := w.tab.Get(t)
+		switch ty.Kind {
+		case types.KNamed:
+			if ty.Item != types.NoItem && len(ty.Args) > 0 && !slices.Contains(items, t) {
+				items = append(items, t)
+			}
+		case types.KRecord:
+			for _, f := range ty.Fields {
+				visit(f.Type)
+			}
+		case types.KOptional, types.KArray, types.KErrorUnion:
+			visit(ty.Elem)
+		}
+	}
+	for _, f := range rec.Fields {
+		visit(f.Type)
+	}
+	return items
 }
 
 // splitAllocators splits p#1 (allocators apart at the first level): when n

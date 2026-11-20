@@ -466,19 +466,20 @@ func TestSTDTEXT_FromAtEveryAlignment(t *testing.T) {
 	}
 }
 
-// TestSTDTEXT_CaseMapOneConst maps every caseEdges() scalar (1,077)
-// both ways in one const. When tables were read by value, each CaseOf copied the 336-entry
+// TestSTDTEXT_CaseMapOneConst maps every caseEdges scalar (1,121)
+// both ways in one const. When tables were read by value, each CaseOf copied the 348-entry
 // table per access and one const of 240 scalars took most of the 4,000,000
 // steps of fuel, so this stopped with E0902.
 func TestSTDTEXT_CaseMapOneConst(t *testing.T) {
 	t.Parallel()
-	edges := caseEdges()
+	sc := goCase()
+	edges := caseEdges(sc)
 	var in, lo, up []string
 	for i := 0; i < len(edges); i += 120 {
 		s := string(edges[i:min(i+120, len(edges))])
 		in = append(in, mkString(s))
-		lo = append(lo, mkString(strings.ToLower(s)))
-		up = append(up, mkString(strings.ToUpper(s)))
+		lo = append(lo, mkString(sc.mapString(s, false)))
+		up = append(up, mkString(sc.mapString(s, true)))
 	}
 	n := len(in)
 	fixture := probeHeap + fmt.Sprintf(`

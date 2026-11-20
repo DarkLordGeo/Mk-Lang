@@ -14,7 +14,9 @@
 //
 // Skips: a build that stops only on a std module std does not provide yet,
 // a missing LLVM, a WSL that does not answer, and a target with no runner
-// skip in a plain run and fail under MK_GATE=1.
+// skip in a plain run and fail under MK_GATE=1. On a Windows host without
+// MK_LINUX=1 an x86_64-linux case skips before its build unless MK_SLOW=1
+// is set (the nightly gate sets it).
 
 package corpus
 
@@ -28,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -172,6 +175,69 @@ func testRunner(t *testing.T, root string, tools *toolchain.Tools) *Runner {
 	return r
 }
 
+// programsRunner is the one runner of TestPrograms, TestPanics and the
+// executable-format tests, so std is compiled once per target and profile
+// for all of them, and the format tests read the executables the program
+// tests built (a Runner builds each program, target and profile once). Its
+// cache and executables are under programsDir, which TestMain removes.
+var (
+	programsOnce   sync.Once
+	programsShared *Runner
+	programsDir    string
+	programsErr    error
+)
+
+// sharedRunner returns programsRunner, made on the first call with root
+// and tools.
+func sharedRunner(t *testing.T, root string, tools *toolchain.Tools) *Runner {
+	t.Helper()
+	programsOnce.Do(func() {
+		programsDir, programsErr = os.MkdirTemp("", "mk-corpus-programs-")
+		if programsErr != nil {
+			return
+		}
+		cache, exes := filepath.Join(programsDir, "cache"), filepath.Join(programsDir, "exe")
+		for _, d := range []string{cache, exes} {
+			if programsErr = os.MkdirAll(d, 0o755); programsErr != nil {
+				return
+			}
+		}
+		programsShared = NewRunner(root, driver.Config{Tools: tools, CacheDir: cache}, exes)
+		programsShared.WSLSlots = testWSLSlots
+	})
+	if programsErr != nil {
+		t.Fatal(programsErr)
+	}
+	return programsShared
+}
+
+// programsBuilds bounds the builds of sharedRunner's leaves in flight: a
+// release build links with ThinLTO on every core, so 48 of them at once
+// only contend for the threads and the memory. It is a semaphore, never
+// reassigned.
+var programsBuilds = make(chan struct{}, 4)
+
+// buildBounded is r.Build under programsBuilds.
+func buildBounded(r *Runner, program, target, profile string) (string, error) {
+	programsBuilds <- struct{}{}
+	defer func() { <-programsBuilds }()
+	return r.Build(program, target, profile)
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if programsDir != "" {
+		os.RemoveAll(programsDir)
+	}
+	os.Exit(code)
+}
+
+// slowLinuxBuilds reports whether MK_SLOW=1 is set: then an x86_64-linux
+// case is built on a Windows host even when it cannot run there
+// (MK_LINUX=1 not set). The nightly gate sets it; a plain run leaves those
+// builds to the Linux pass, which builds and runs them.
+func slowLinuxBuilds() bool { return os.Getenv("MK_SLOW") == "1" }
+
 // TestPrograms is every program outside panics/ (judgedStrictly says which
 // mismatches fail).
 func TestPrograms(t *testing.T) {
@@ -193,7 +259,7 @@ func runPrograms(t *testing.T, keep func(program string) bool) {
 		t.Fatal(err)
 	}
 	tools := needLLVM(t)
-	run := testRunner(t, root, tools)
+	run := sharedRunner(t, root, tools)
 	byProgram := map[string][]ProgramCase{}
 	var programs []string
 	for _, c := range cases {
@@ -254,6 +320,10 @@ func strictProgram(program string) bool {
 		ProgramsDir + "/coderegion", ProgramsDir + "/stackquery.mk", ProgramsDir + "/blockingcancel.mk",
 		ProgramsDir + "/threads.mk", ProgramsDir + "/tailchain.mk", ProgramsDir + "/linuxsyscall":
 		return true
+	// Its dev leaf checks Main's error-return trace in a program with no
+	// task.
+	case ProgramsDir + "/tracenotask.mk":
+		return true
 	}
 	return coreGateProgram(program) || strings.HasPrefix(program, ProgramsDir+"/tasks/") ||
 		strings.HasPrefix(program, ProgramsDir+"/pgo/")
@@ -293,7 +363,14 @@ func checkProgramCase(t *testing.T, r *Runner, c ProgramCase, target, prof strin
 	if _, err := runArgv(target, r.dir, "x", nil, 0); ErrNoRunner(err) {
 		skipOrFatal(t, gate, "%v", err)
 	}
-	if _, err := r.Build(c.Program, target, prof); blockedBuild(err) != "" {
+	// An x86_64-linux case on a Windows host without MK_LINUX=1 is not
+	// run, so it is built only under MK_SLOW=1; the Linux pass, which runs
+	// it, builds it (the executable-format test TestELFStatic still builds
+	// the core gate programs for x86_64-linux in every run).
+	if target == "x86_64-linux" && runtime.GOOS == "windows" && !linuxRun() && !slowLinuxBuilds() {
+		t.Skip(linuxOff)
+	}
+	if _, err := buildBounded(r, c.Program, target, prof); blockedBuild(err) != "" {
 		skipOrFatal(t, gate, "BLOCKED: %s", blockedBuild(err))
 	}
 	needWSLRun(t, target, strict)
@@ -448,10 +525,12 @@ func TestWSLKilled(t *testing.T) {
 	}
 }
 
-// builtCoreGatePrograms builds every core gate program (coreGateProgram) for target in
-// dev and release and calls check on each executable; a build that stops on
-// a std module std does not provide yet skips that program, and fails under
-// MK_GATE=1 (skipOrFatal).
+// builtCoreGatePrograms builds every core gate program (coreGateProgram)
+// for target in dev and release and calls check on each executable, the
+// leaves in parallel. The runner is sharedRunner, so an executable
+// TestPrograms or TestPanics built is read, not built again. A build that
+// stops on a std module std does not provide yet skips that program, and
+// fails under MK_GATE=1 (skipOrFatal).
 func builtCoreGatePrograms(t *testing.T, target string, check func(t *testing.T, exe string)) {
 	t.Helper()
 	root := repoRoot(t)
@@ -460,7 +539,7 @@ func builtCoreGatePrograms(t *testing.T, target string, check func(t *testing.T,
 		t.Fatal(err)
 	}
 	tools := needLLVM(t)
-	run := testRunner(t, root, tools)
+	run := sharedRunner(t, root, tools)
 	seen := map[string]bool{}
 	for _, c := range cases {
 		if !coreGateProgram(c.Program) || seen[c.Program] {
@@ -469,7 +548,8 @@ func builtCoreGatePrograms(t *testing.T, target string, check func(t *testing.T,
 		seen[c.Program] = true
 		for _, prof := range []string{"dev", "release"} {
 			t.Run(strings.TrimPrefix(c.Program, ProgramsDir+"/")+"/"+prof, func(t *testing.T) {
-				exe, err := run.Build(c.Program, target, prof)
+				t.Parallel() // each leaf builds its own program and profile, and only reads it
+				exe, err := buildBounded(run, c.Program, target, prof)
 				switch {
 				case err == nil:
 					check(t, exe)

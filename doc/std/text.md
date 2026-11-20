@@ -42,7 +42,7 @@ import std.text
 
 ## Unicode data
 
-The tables of `std.text` and `regex`'s classes come from one version of the Unicode Character Database, which `text.UnicodeVersion()` returns: `"18.0.0"`. The prelude's tables, `str`'s case mapping and `White_Space`, come from Unicode 17.0.0. Every algorithm follows Unicode's default rules; none tailors them to a language or locale (there is no Turkish dotless-i folding, for example).
+The tables of `std.text`, `regex`'s classes and the prelude's tables (`str`'s case mapping and `White_Space`) come from one version of the Unicode Character Database, which `text.UnicodeVersion()` returns: `"18.0.0"`. Every algorithm follows Unicode's default rules; none tailors them to a language or locale (there is no Turkish dotless-i folding, for example).
 
 ## Clusters and width
 

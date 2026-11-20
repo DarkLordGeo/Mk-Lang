@@ -6,9 +6,10 @@
 // which hovers every keyword, contextual word, primitive type, universe
 // name and operator; TestPreludeNamesQuoteTheReference; and
 // TestLSPLatencyLargeFile.
-// How: one generated user file per std module references each item as a
-// user writes it (`m.F()`, `v.M()`, `m.T.New()`, `v.field`, `m.E.V`); the
-// test counts the answers per kind and fails on a miss. MK_LSP_COVERAGE=1
+// How: one generated user file per part of a std module (at most covChunk
+// items) references each item as a user writes it (`m.F()`, `v.M()`,
+// `m.T.New()`, `v.field`, `m.E.V`); the test counts the answers per kind
+// and fails on a miss. MK_LSP_COVERAGE=1
 // sweeps every module (about 20 minutes here); the default run sweeps a
 // sample.
 
@@ -19,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -285,12 +287,15 @@ func TestLSPStdCoverage(t *testing.T) {
 		}
 	}
 	res := &covResult{kinds: map[string]*covTally{}, misses: map[string][]string{}}
-	// Each worker takes the next module when it finishes one, so std.core,
-	// a third of the sample's items, does not hold up the modules behind it.
+	// Each worker takes the next job when it finishes one. A job is at
+	// most covChunk items of one module, largest first, so std.core (more
+	// than half of the sample's items and most of its time) is shared by
+	// the workers instead of setting the wall time alone.
+	jobs := covJobs(t, startWith(t, Options{StdDir: std, CacheDir: testCache, Jobs: 2}), std, mods)
 	workers := 2
-	queue := make(chan string, len(mods))
-	for _, m := range mods {
-		queue <- m
+	queue := make(chan covJob, len(jobs))
+	for _, j := range jobs {
+		queue <- j
 	}
 	close(queue)
 	var wg sync.WaitGroup
@@ -300,10 +305,10 @@ func TestLSPStdCoverage(t *testing.T) {
 			defer wg.Done()
 			c := startWith(t, Options{StdDir: std, CacheDir: testCache, Jobs: 2})
 			c.init(true)
-			for m := range queue {
+			for j := range queue {
 				begin := time.Now()
-				n := covModule(t, c, std, filepath.Join(dir, fmt.Sprintf("w%d", w)), m, res)
-				t.Logf("%s: %d items in %v", m, n, time.Since(begin).Round(time.Millisecond))
+				n := covModule(t, c, std, filepath.Join(dir, fmt.Sprintf("w%d", w)), j.mod, j.items, res)
+				t.Logf("%s (part %d of %d): %d items in %v", j.mod, j.part, j.parts, n, time.Since(begin).Round(time.Millisecond))
 			}
 			c.shutdown()
 		}(w)
@@ -312,8 +317,39 @@ func TestLSPStdCoverage(t *testing.T) {
 	covReport(t, res, full)
 }
 
-// covModule writes and opens one module's file and asks about each item.
-func covModule(t *testing.T, c *client, std, dir, mod string, res *covResult) int {
+// covChunk bounds the items of one job: one generated file, opened once.
+const covChunk = 60
+
+// covJob is one part of one module's items.
+type covJob struct {
+	mod         string
+	items       []covItem
+	part, parts int
+}
+
+// covJobs reads the items of each module (c is a server that is never
+// initialized: only its std directory is read) and splits each module
+// into parts of at most covChunk items, the largest parts first. Every
+// item is in exactly one part.
+func covJobs(t *testing.T, c *client, std string, mods []string) []covJob {
+	var jobs []covJob
+	for _, mod := range mods {
+		items := covModuleItems(t, c, std, mod)
+		parts := (len(items) + covChunk - 1) / covChunk
+		if parts == 0 {
+			parts = 1
+		}
+		for p := 0; p < parts; p++ {
+			lo, hi := len(items)*p/parts, len(items)*(p+1)/parts
+			jobs = append(jobs, covJob{mod: mod, items: items[lo:hi:hi], part: p + 1, parts: parts})
+		}
+	}
+	sort.SliceStable(jobs, func(i, j int) bool { return len(jobs[i].items) > len(jobs[j].items) })
+	return jobs
+}
+
+// covModuleItems are the items of mod a user's file can refer to.
+func covModuleItems(t *testing.T, c *client, std, mod string) []covItem {
 	// The directory this OS builds (std.linux is linux/other on Windows).
 	sd := c.srv.stdModuleDir(mod)
 	if sd == "" {
@@ -329,10 +365,15 @@ func covModule(t *testing.T, c *client, std, dir, mod string, res *covResult) in
 				vis = append(vis, it)
 			}
 		}
-		items = vis
-	} else {
-		items = append(items, covAliasMembers(t, c, mod, sd)...)
+		return vis
 	}
+	return append(items, covAliasMembers(t, c, mod, sd)...)
+}
+
+// covModule writes and opens one file referring to items, all of module
+// mod, and asks about each item.
+func covModule(t *testing.T, c *client, std, dir, mod string, items []covItem, res *covResult) int {
+	items = slices.Clone(items) // covFile writes each item's reference
 	text := covFile(mod, items)
 	must(t, os.MkdirAll(dir, 0o755))
 	if _, err := os.Stat(filepath.Join(dir, "pkg.mk")); err != nil {

@@ -299,14 +299,16 @@ Other(w: mut Writer, e: NotFound | Denied): WriteError!void {
 // tests/programs and Dogfoods: on a copy of every `ok` block, every
 // single-file program and every package (a directory with a pkg.mk, copied
 // with its top directory so path deps resolve) that checks clean, mk fix
-// --canonical runs, and a second run with the same cache changes nothing. A
-// first run that rewrites is logged: the tree is meant to be a fixed point
-// of the canonical style. std is covered by TestCanonicalIdempotentOnStd (the
-// whole std, both targets) and TestCanonicalStdSubject (one module as the
-// subject).
+// --canonical runs, and a second run with the same cache changes nothing.
+// A first run that rewrites is logged: the tree is meant to be a fixed
+// point of the canonical style. A first run that stops clean with no round
+// wrote nothing, so a second run would see the same text; it runs only
+// under MK_SLOW=1 (the nightly gate sets it). std is covered by
+// TestCanonicalIdempotentOnStd (the whole std, both targets) and
+// TestCanonicalStdSubject (one module as the subject).
 func TestCanonicalIdempotentOnTree(t *testing.T) {
 	if testing.Short() {
-		t.Skip("-short: every design block and program is fixed twice")
+		t.Skip("-short: every design block and program is checked and fixed")
 	}
 	t.Parallel()
 	// A unit is one file's text, or a package: top (a directory of the
@@ -368,44 +370,71 @@ func TestCanonicalIdempotentOnTree(t *testing.T) {
 		for _, u := range units {
 			t.Run(strings.NewReplacer("/", "_", "#", "_").Replace(u.name), func(t *testing.T) {
 				t.Parallel()
-				file := filepath.Join(t.TempDir(), "main.mk")
-				if u.top != "" {
-					tmp := t.TempDir()
-					if err := copyTreeNoCache(u.top, tmp); err != nil {
+				// place writes a fresh copy of the unit and returns its root.
+				place := func() string {
+					file := filepath.Join(t.TempDir(), "main.mk")
+					if u.top != "" {
+						tmp := t.TempDir()
+						if err := copyTreeNoCache(u.top, tmp); err != nil {
+							t.Fatal(err)
+						}
+						return filepath.Join(tmp, u.rel)
+					}
+					if err := os.WriteFile(file, []byte(u.text), 0o644); err != nil {
 						t.Fatal(err)
 					}
-					file = filepath.Join(tmp, u.rel)
-				} else if err := os.WriteFile(file, []byte(u.text), 0o644); err != nil {
-					t.Fatal(err)
+					return file
 				}
-				fix := func() *FixResult {
+				file := place()
+				tryFix := func() (*FixResult, error) {
 					s, err := NewSession(Config{Root: file, CacheDir: cache})
 					if err != nil {
-						t.Fatal(err)
+						return nil, err
 					}
-					res, err := s.Fix(FixOptions{Canonical: true})
+					return s.Fix(FixOptions{Canonical: true})
+				}
+				fix := func() *FixResult {
+					res, err := tryFix()
 					if err != nil {
 						t.Fatal(err)
 					}
 					return res
 				}
-				s, err := NewSession(Config{Root: file, CacheDir: cache})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if r := s.Check(); len(r.Report.Diags) > 0 {
-					if u.top != "" {
-						t.Logf("package %s skipped: it does not check clean here: %s", u.name, r.Report.Diags[0].Diag.Message)
+				// The first fix starts with a check of the unit as it is.
+				// When it stops clean with no round and no file, that
+				// check was clean and nothing was written: the unit is
+				// already a fixed point, and a second run would see the
+				// same text, now with a warm cache (run under MK_SLOW=1).
+				// Otherwise a fresh copy says whether the unit checks clean,
+				// and a clean one is fixed a second time.
+				first, err := tryFix() // an error is judged once the unit is known to check clean
+				fixedPoint := err == nil && len(first.Rounds) == 0 && len(first.Files) == 0 && first.Stopped == "clean"
+				if fixedPoint && os.Getenv("MK_SLOW") == "1" {
+					if second := fix(); len(second.Rounds) != 0 || second.Stopped != "clean" {
+						t.Errorf("%s: second run with a warm cache %q %+v", u.name, second.Stopped, second.Rounds)
 					}
-					return // needs the test prelude, another module or a target: not a unit here
 				}
-				first := fix()
-				if len(first.Rounds) > 0 {
-					t.Logf("%s is not a fixed point: %+v", u.name, first.Rounds)
-				}
-				second := fix()
-				if len(second.Rounds) != 0 || second.Stopped != "clean" {
-					t.Errorf("%s: second run %q %+v", u.name, second.Stopped, second.Rounds)
+				if !fixedPoint {
+					s, serr := NewSession(Config{Root: place(), CacheDir: cache})
+					if serr != nil {
+						t.Fatal(serr)
+					}
+					if r := s.Check(); len(r.Report.Diags) > 0 {
+						if u.top != "" {
+							t.Logf("package %s skipped: it does not check clean here: %s", u.name, r.Report.Diags[0].Diag.Message)
+						}
+						return // needs the test prelude, another module or a target: not a unit here
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if len(first.Rounds) > 0 {
+						t.Logf("%s is not a fixed point: %+v", u.name, first.Rounds)
+					}
+					second := fix()
+					if len(second.Rounds) != 0 || second.Stopped != "clean" {
+						t.Errorf("%s: second run %q %+v", u.name, second.Stopped, second.Rounds)
+					}
 				}
 				mu.Lock()
 				checked++
@@ -419,7 +448,7 @@ func TestCanonicalIdempotentOnTree(t *testing.T) {
 			})
 		}
 	})
-	t.Logf("%d units checked clean and fixed twice (%d packages), %d rewritten by the first run", checked, pkgs, rewritten)
+	t.Logf("%d units checked clean and fixed (%d packages), %d rewritten by the first run", checked, pkgs, rewritten)
 	if pkgs < 2 {
 		t.Errorf("only %d packages checked clean: the package walk lost its subject", pkgs)
 	}

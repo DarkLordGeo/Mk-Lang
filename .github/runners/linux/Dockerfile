@@ -2,7 +2,9 @@
 # run apart from the host that serves it.
 #
 # What: an Ubuntu 24.04 image with Go, LLVM 21 (clang, lld, llvm tools) and
-# the GitHub Actions runner, running as an unprivileged user.
+# the GitHub Actions runner, running as an unprivileged user, with a
+# job-started hook (job-started.sh) that fails every job but the nightly
+# workflow of REPO on main.
 #
 # How: the Go and runner downloads are pinned and checked against their
 # SHA-256; the base image and LLVM come from the ubuntu:24.04 tag and LLVM's
@@ -26,7 +28,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # LLVM from apt.llvm.org: mk drives clang and lld from /usr/lib/llvm-21/bin.
-RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor -o /usr/share/keyrings/llvm.gpg \
+# The repository's signing key is checked against its fingerprint first.
+ARG LLVM_APT_KEY=6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
+RUN curl -fsSL -o /tmp/llvm.asc https://apt.llvm.org/llvm-snapshot.gpg.key \
+    && fpr=$(gpg --show-keys --with-colons /tmp/llvm.asc | awk -F: '$1 == "fpr" { print $10; exit }') \
+    && { [ "$fpr" = "$LLVM_APT_KEY" ] || { echo "apt.llvm.org's key has the fingerprint '$fpr', not $LLVM_APT_KEY" >&2; exit 1; }; } \
+    && gpg --dearmor -o /usr/share/keyrings/llvm.gpg /tmp/llvm.asc \
+    && rm /tmp/llvm.asc \
     && echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-${LLVM_VERSION} main" \
        > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
@@ -54,7 +62,14 @@ RUN curl -fsSL -o /tmp/runner.tgz https://github.com/actions/runner/releases/dow
     && rm -rf /var/lib/apt/lists/* \
     && chown -R runner:runner /home/runner /work
 
-COPY --chown=runner:runner entrypoint.sh /home/runner/entrypoint.sh
+# The entrypoint and the job-started hook belong to root, in a directory
+# the runner's user cannot write, so no job can change them.
+ARG REPO=zerodayokay/Mk-Lang
+COPY entrypoint.sh job-started.sh /usr/local/lib/mk-runner/
+RUN chown -R root:root /usr/local/lib/mk-runner \
+    && chmod 755 /usr/local/lib/mk-runner /usr/local/lib/mk-runner/entrypoint.sh /usr/local/lib/mk-runner/job-started.sh
+ENV MK_RUNNER_REPO=${REPO} \
+    ACTIONS_RUNNER_HOOK_JOB_STARTED=/usr/local/lib/mk-runner/job-started.sh
 
 USER runner
-ENTRYPOINT ["/bin/bash", "/home/runner/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/usr/local/lib/mk-runner/entrypoint.sh"]

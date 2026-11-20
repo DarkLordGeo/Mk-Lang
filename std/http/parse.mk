@@ -83,15 +83,15 @@ struct Chunk {
 /// and ServeWith read theirs the same way. O(n) in the request's bytes;
 /// the head and the body are allocated in a. A Content-Length body takes
 /// buffers of 16 KiB and then doubling, up to about three times its size;
-/// a chunked body grows by at most one chunk per buffer, so its cost grows
-/// with the square of its number of chunks. The request's fields are views
-/// of its head in a.
+/// a chunked body, whose size is not known before its end, the same up to
+/// about four times its size (at least 16 KiB). The request's fields are
+/// views of its head in a.
 ///
 /// The head is read one line per Reader.Until, from the reader's buffer,
 /// never a byte past the head's blank line, so no byte of a pipelined next
 /// request is taken. The body grows into a buffer as its bytes arrive
-/// (a Content-Length body from 16 KiB, doubling), so a declared length
-/// commits no memory before its bytes come.
+/// (from 16 KiB, doubling), so a declared length or chunk size commits no
+/// memory before its bytes come.
 ///
 /// Errors: limit bounds the head plus the body's bytes, and one byte over
 /// is TooLarge. End of input before the first byte is Closed, and end
@@ -146,10 +146,9 @@ ReadBody(a: &Arena, io: Io, r: mut Reader, n: int, base: int): Error![]u8 from a
 
 // GrowFor is a new arena buffer holding old's bytes with room after them:
 // twice old's length, at least BodyStep, but never more than old's length
-// plus left, the bytes still to come. Each buffer is abandoned to the arena
-// when the next is made, and arena is taken only for bytes that arrived. A
-// caller that passes one chunk's size as left grows the buffer by that
-// chunk, not by doubling.
+// plus left, the most the body may still grow by. Each buffer is abandoned
+// to the arena when the next is made, so a body of n bytes takes at most
+// about 3n when left is its exact length and 4n when left is only a limit.
 GrowFor(a: &Arena, old: []u8, left: int): OutOfMemory!mut []u8 from a {
     var c := if old.Len() * 2 < BodyStep { BodyStep } else { old.Len() * 2 }
     if c > old.Len() + left {
@@ -259,7 +258,7 @@ ReadChunked(a: &Arena, io: Io, r: mut Reader, budget: int, base: int): Error![]u
     for st.state != CkDone {
         if st.state == CkData {
             if bn == body.Len() {
-                body = try GrowFor(a, body[0..bn], st.size)
+                body = try GrowFor(a, body[0..bn], budget - bn)
             }
             top := if body.Len() > bn + st.size { bn + st.size } else { body.Len() }
             got := r.Read(mut body[bn..top]) else {

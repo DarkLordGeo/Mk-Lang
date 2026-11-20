@@ -25,10 +25,12 @@ import (
 // released gives the executable and objects of a build that keeps it, with
 // the cache off at 1 and 8 workers, cold and warm into one cache, and with
 // GenView; mk test over testsSource and mk test --prop over propClampHole
-// report the same results with and without the release.
+// report the same results with and without the release. The three
+// subtests share no tree or cache and run in parallel.
 func TestPerfMemory_ReleaseSameExe(t *testing.T) {
 	tools := needTools(t)
 	t.Run("build", func(t *testing.T) {
+		t.Parallel()
 		dir := writeTree(t, incPkg("x + 1"))
 		out := t.TempDir()
 		_, want, wantObjs := incBuild(t, Config{Root: dir, Tools: tools, NoCache: true}, filepath.Join(out, "keep"))
@@ -83,6 +85,7 @@ func TestPerfMemory_ReleaseSameExe(t *testing.T) {
 		}
 	})
 	t.Run("test", func(t *testing.T) {
+		t.Parallel()
 		dir := testPkg(t, map[string]string{"t.mk": testsSource})
 		root := filepath.Join(dir, "t.mk")
 		want := results(mkTest(t, Config{Root: root}, TestOptions{}))
@@ -118,6 +121,7 @@ func TestPerfMemory_ReleaseSameExe(t *testing.T) {
 		}
 	})
 	t.Run("prop", func(t *testing.T) {
+		t.Parallel()
 		dir := testPkg(t, map[string]string{"t.mk": propClampHole})
 		root := filepath.Join(dir, "t.mk")
 		norm := func(s string) string { return strings.ReplaceAll(s, dir, "<root>") }

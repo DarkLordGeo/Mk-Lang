@@ -5,6 +5,7 @@
 // How: builds requests by hand and checks the status and the text sent.
 
 import std.http
+import src.order
 
 const NoHeaders: []http.Header = []
 
@@ -93,6 +94,17 @@ test "the server refuses an item that breaks a rule with 422" (sys: &System) {
     req := Post("/items", "{\"name\": \"\", \"qty\": 3}")
     var res := http.Response.New(&ar)
     Handle(&app, &ar, sys.io, &req, mut res) else e {
+        Assert(StatusOf(e) == 422)
+        return
+    }
+    Assert(false)
+}
+
+test "Body and Validate of an exported type are called from another module" (sys: &System) {
+    req := Post("/orders", "{\"item\": \"nut\", \"count\": 0}")
+    o := try order.Order.FromRequest(sys.arena, &req)
+    Assert(o.Problem().IsSome())
+    _ = o.Validate() else e {
         Assert(StatusOf(e) == 422)
         return
     }

@@ -45,7 +45,7 @@ func (u *unit) iterHead(h *ast.InHead, src *ast.RefSource, xt types.TypeID) (typ
 		u.nextMiss(v)
 		return types.Poison, false
 	}
-	cs, ok := u.nextMethod(v, next)
+	cs, ok := u.nextMethod(v, next, src.X.Span())
 	if !ok {
 		return types.Poison, false
 	}
@@ -103,8 +103,9 @@ func (u *unit) iterHead(h *ast.InHead, src *ast.RefSource, xt types.TypeID) (typ
 }
 
 // nextMethod finds `Next` on v: a method of a named type, or a method of an
-// interface among a type parameter's bounds.
-func (u *unit) nextMethod(v types.TypeID, next source.Symbol) (*callee, bool) {
+// interface among a type parameter's bounds. A private Next of another
+// module's type is E0204 at at.
+func (u *unit) nextMethod(v types.TypeID, next source.Symbol, at source.Span) (*callee, bool) {
 	vt := u.tab.Get(v)
 	switch vt.Kind {
 	case types.KNamed:
@@ -122,6 +123,7 @@ func (u *unit) nextMethod(v types.TypeID, next source.Symbol) (*callee, bool) {
 		if !ok || d.Sig.Receiver == types.NoReceiver {
 			return nil, false
 		}
+		u.privateMethod(at, cands[0]) // the loop calls Next
 		return &callee{kind: UseMethod, item: it.ID, sig: &d.Sig}, true
 	case types.KParam:
 		pi := vt.Index

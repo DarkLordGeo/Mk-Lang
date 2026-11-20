@@ -2,13 +2,18 @@
 // guess how the program got there; the backtrace lists the calls.
 //
 // What: BacktraceWanted and WriteBacktrace, with FnSite (a Mk function's
-// row in Rt.func_table), ChainFrames and StackRange.
+// row in Rt.func_table), StdIn, Significant, InImage, ChainFrames and
+// StackRange.
 //
 // How: after the report's first line, one line per frame of the reporting
 // thread's stack: a Mk function's name and the file of its definition, from
 // Rt.func_table (each row site is an FnSite, internal/codegen functable.go);
-// a frame outside Mk code (C, a system DLL, a code region, a support
-// routine) prints its address. The frames come from sys.UnwindFrames
+// a frame outside the image (a system DLL, a code region) prints its
+// address. A frame in the image with no site (a support routine, a thunk,
+// a function the compiler made, such as Main's report wrapper) has no
+// line, and neither have the frames below the last one outside std.task,
+// std.rt and std.sys: the start of Main or of a task, the same in every
+// program. The frames come from sys.UnwindFrames
 // (Windows: RtlVirtualUnwind, as FaultOwner walks), or on Linux from the
 // frame chain when the build has frame pointers on; with them off the
 // report says so (there is no .eh_frame unwinder).
@@ -71,9 +76,33 @@ Under(file: str, d: str): bool {
     return true
 }
 
+// StdIn is whether row is a std function's whose file lies under std's
+// directory d ("std/rt/"). A row is std's by its empty name: codegen's
+// funcRows gives std's rows none (hello's budget) and every other Mk
+// function's row one, so a package's own std/ directory is not std.
+StdIn(row: *Site, d: str): bool {
+    unsafe "row is a Mk function's FnSite (codegen's funcRows), alive for the process" {
+        return (*raw.PtrCast[Site, FnSite](row)).nlen == 0 && Under((*row).file, d)
+    }
+}
+
+// Significant is whether a frame's row names code outside the start of
+// Main and of tasks: a site that is not std.task's, std.rt's or std.sys's.
+Significant(row: *Site): bool {
+    return !raw.IsNull(row) && !(StdIn(row, "std/task/") || StdIn(row, "std/rt/") || StdIn(row, "std/sys/"))
+}
+
+// InImage is whether pc lies in the executable image Init recorded.
+InImage(pc: uint): bool {
+    // Edge: Init's stores, before any task or report.
+    hi := Trunc[uint](Rt.image_hi.Load())
+    return hi != 0 && pc >= Trunc[uint](Rt.image_lo.Load()) && pc < hi
+}
+
 /// WriteBacktrace writes the running thread's frames to standard error:
 /// "backtrace:" then one line per frame, from the first frame outside the
-/// report's own code (std.rt and std.sys) on; or "backtrace: frame
+/// report's own code (std.rt and std.sys) to the last outside the start
+/// of Main or of a task; or "backtrace: frame
 /// pointers were off" on a target walked by the frame chain when the build
 /// has none. Reads only inside the running stack's bounds. O(frames x
 /// rows); allocates nothing (1 KiB of stack).
@@ -90,9 +119,24 @@ export WriteBacktrace() {
     // The header first: a fault in the walk (a nested panic at stage 2,
     // which only exits) leaves it and the report's line written.
     w("backtrace:\n".AsBytes())
-    var n := if chain { ChainFrames(mut pcs[..], FramePointer()) } else { sys.UnwindFrames(mut pcs[..]) }
+    n := if chain { ChainFrames(mut pcs[..], FramePointer()) } else { sys.UnwindFrames(mut pcs[..]) }
+    // The frames below the last Significant one are the start of Main or
+    // of a task, the same in every program: left out. A walk that filled
+    // pcs may have stopped short of the start, and one with no
+    // Significant frame (a panic in the start itself) is all start: both
+    // keep them.
+    var end := n
+    if n < BacktraceFrames {
+        var i := n
+        for i > 0 && !Significant(FaultSite(pcs[i - 1] -% 1, 0)) {
+            i -= 1
+        }
+        if i > 0 {
+            end = i
+        }
+    }
     var skipping := true
-    for i in 0..n {
+    for i in 0..end {
         // Every frame is a return address, past its call: the call is at
         // pc - 1, inside the caller even when the call is its last
         // instruction.
@@ -103,7 +147,10 @@ export WriteBacktrace() {
         var hex: [18]u8 = [48; 18]
         var parts: [5]str = ["  ", "", " (", "", ")\n"]
         if raw.IsNull(row) {
-            if skipping {
+            // Code of the image with no site is a support routine, a
+            // thunk or a function the compiler made (Main's report
+            // wrapper): nothing a reader wrote, so no line.
+            if skipping || InImage(pc) {
                 continue
             }
             // The digits from the last, as many as the address needs (a
@@ -138,7 +185,7 @@ export WriteBacktrace() {
                 }
             }
             if skipping {
-                if Under(parts[3], "std/rt/") || Under(parts[3], "std/sys/") {
+                if StdIn(row, "std/rt/") || StdIn(row, "std/sys/") {
                     continue
                 }
                 skipping = false

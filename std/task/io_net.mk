@@ -132,19 +132,58 @@ AcceptedPeer(a: sys.SockAddr): sys.SockAddr {
     return rt.NoPeer
 }
 
-// NativeDial connects to addr. A cancel that wins closes the socket.
+// NativeDial connects to addr. A host name is resolved first: on Windows
+// to one address (Resolve); elsewhere to every answer of the resolve entry
+// (NativeResolveAll), dialled in order until one connects, else the first
+// one's error (as Go's dialer), or Canceled. A cancel that wins closes the
+// socket.
 NativeDial(io: Io, addr: str): core.IoResult {
     if Stop(io) {
         return ErrOf(core.SysErr.Canceled)
     }
     var a := sys.SockAddr(family: sys.Inet4, port: 0, addr: [0; 16], scope_id: 0)
     if DialResolveMine() || !rt.ParseAddr(addr, false, mut a) {
-        // A host name: resolved on the pool.
+        if PollBackend() != 1 {
+            return DialAll(io, addr)
+        }
         e := Resolve(io, addr, mut a)
         if e != core.SysErr.None {
             return ErrOf(e)
         }
     }
+    return Connect(io, a)
+}
+
+// DialAll dials every address the resolve entry gives addr's host, in
+// order, with addr's port (Resolve's checks of the text first).
+DialAll(io: Io, addr: str): core.IoResult {
+    var a := sys.SockAddr(family: sys.Inet4, port: 0, addr: [0; 16], scope_id: 0)
+    colon := HostPort(addr, mut a)
+    if colon < 0 {
+        return ErrOf(core.SysErr.InvalidAddress)
+    }
+    var out: [MaxAnswers]core.IoAddr = [core.IoAddr(ip: [0; 16], port: 0, v6: false, zone: 0); MaxAnswers]
+    r := NativeResolveAll(io, str.From(addr.AsBytes()[0..colon]).Must(), mut out[..])
+    if r.err != core.SysErr.None {
+        return r
+    }
+    var first := ErrOf(core.SysErr.NotFound)
+    for i in 0..Trunc[int](r.value) {
+        var s := ToSock(out[i])
+        s.port = a.port
+        c := Connect(io, s)
+        if c.err == core.SysErr.None || c.err == core.SysErr.Canceled {
+            return c
+        }
+        if i == 0 {
+            first = c
+        }
+    }
+    return first
+}
+
+// Connect opens a TCP socket and connects it to a.
+Connect(io: Io, a: sys.SockAddr): core.IoResult {
     s := sys.SocketOpen(a.family, true)
     if s.err != core.SysErr.None {
         return rt.IoOf(s)
@@ -260,16 +299,11 @@ DialResolveMine(): bool {
 // 2.3.4: 253 characters in text form).
 const MaxHostName: int = 253
 
-// Resolve reads "host:port" with a host name into a: on Windows
-// the lookup runs on the port (sys.OpResolve, GetAddrInfoExW), so a
-// cancel ends it at once, and the first IPv4 answer is taken, else the
-// first IPv6 one; elsewhere it runs on the blocking pool
-// through sys.ResolveHost, where on Linux every name is InvalidAddress
-// (no resolver without libc; std.http and std.websocket resolve through
-// the resolve entry first; net.Dial does not). The host is one to MaxHostName bytes of letters, digits,
-// '-', '.' and '_', and the port as ParseAddr's; anything else is
-// InvalidAddress with no call. No allocation.
-Resolve(io: Io, addr: str, a: mut sys.SockAddr): core.SysErr {
+// HostPort checks "host:port" with a host name: the host is one to
+// MaxHostName bytes of letters, digits, '-', '.' and '_', and the port as
+// ParseAddr's, set in a. The colon's index (so the host ends at an ASCII
+// byte, a str boundary), or -1.
+HostPort(addr: str, a: mut sys.SockAddr): int {
     b := addr.AsBytes()
     n := b.Len()
     var colon := -1
@@ -279,17 +313,31 @@ Resolve(io: Io, addr: str, a: mut sys.SockAddr): core.SysErr {
         }
     }
     if colon < 1 || colon > MaxHostName || !rt.ParsePort(b[colon + 1..n], a) {
-        return core.SysErr.InvalidAddress
+        return -1
     }
     for i in 0..colon {
         c := b[i]
         ok := (c >= 97 && c <= 122) || (c >= 65 && c <= 90) || (c >= 48 && c <= 57) || c == 45 || c == 46 || c == 95
         if !ok {
-            return core.SysErr.InvalidAddress
+            return -1
         }
     }
-    // The bytes up to the colon are ASCII, so a str boundary.
-    host := str.From(b[0..colon]).Must()
+    return colon
+}
+
+// Resolve reads "host:port" with a host name into a: on Windows
+// the lookup runs on the port (sys.OpResolve, GetAddrInfoExW), so a
+// cancel ends it at once, and the first IPv4 answer is taken, else the
+// first IPv6 one; without sys.OpResolve it runs on the blocking pool
+// through sys.ResolveHost. NativeDial calls it on Windows only (DialAll
+// elsewhere). A text
+// HostPort refuses is InvalidAddress with no call. No allocation.
+Resolve(io: Io, addr: str, a: mut sys.SockAddr): core.SysErr {
+    colon := HostPort(addr, a)
+    if colon < 0 {
+        return core.SysErr.InvalidAddress
+    }
+    host := str.From(addr.AsBytes()[0..colon]).Must()
     if sys.PollSupports(sys.OpResolve) {
         // Windows: the lookup on the port, so a cancel ends it at once; the
         // first IPv4 answer, else the first IPv6 one, as

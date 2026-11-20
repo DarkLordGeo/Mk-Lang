@@ -754,6 +754,12 @@ func TestAppCargoBuild(t *testing.T) {
 	}
 	d := t.TempDir()
 	appCrate(t, filepath.Join(d, "rs"), map[string]string{"Cargo.toml": appCrateToml, "Cargo.lock": appCrateLock, "src/main.rs": appCrateMain})
+	// The build is --offline --locked: without cfg-if 1.0.0 in the user's
+	// registry (a fresh or emptied CARGO_HOME) it cannot run here.
+	fetch := exec.Command(cargo, "fetch", "--offline", "--locked", "--manifest-path", filepath.Join(d, "rs", "Cargo.toml"))
+	if out, err := fetch.CombinedOutput(); err != nil {
+		t.Skipf("cargo fetch --offline (the registry lacks cfg-if 1.0.0?): %v\n%s", err, out)
+	}
 	r := &row{Name: "probe", Table: "app", Dir: d, Sources: map[string]string{"rust": "rs"}, Kinds: map[string]string{"rust": "eco"},
 		Libs: map[string][]lib{"rust": {{Name: "cfg-if", Version: "1.0.0", Lang: "Rust", Inside: "none"}}}}
 	if err := checkCargoSource(r); err != nil {

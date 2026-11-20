@@ -2,3 +2,20 @@
 # the byte-exact snapshot tests read them as LF, so a Windows checkout with
 # core.autocrlf=true must not convert them.
 * text=auto eol=lf
+
+# GitHub's language statistics. Linguist takes .mk for a Makefile; Mk is not
+# a language it knows, so .mk files count as plain text and stay out of the
+# statistics.
+*.mk linguist-language=Text linguist-detectable=false
+
+# The C, Rust, Zig and Go programs the benchmarks compare Mk against.
+tests/bench/**/*.c linguist-vendored
+tests/bench/**/*.h linguist-vendored
+tests/bench/**/*.rs linguist-vendored
+tests/bench/**/*.zig linguist-vendored
+tests/bench/**/*.go linguist-vendored
+tests/bench-lanes/**/*.c linguist-vendored
+tests/bench-lanes/**/*.h linguist-vendored
+tests/bench-lanes/**/*.rs linguist-vendored
+tests/bench-lanes/**/*.zig linguist-vendored
+tests/bench-lanes/**/*.go linguist-vendored

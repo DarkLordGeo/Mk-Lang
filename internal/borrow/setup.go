@@ -315,13 +315,14 @@ func (c *checker) addRoot(ri rootInfo) rootID {
 
 func (c *checker) addAbstract(p types.ParamIndex, depth uint8, n *nodeInfo) rootID {
 	carrier, writable, view, alloc := c.w.nodeFlags(n)
-	takes, walk := false, false
+	// A referent the walk stopped at counts as its types do (cutTakes).
+	takes, walk := n.cutTakes, false
 	for _, t := range n.types {
 		// For every instance (storesFirstGen) when the type mentions a
 		// parameter: a generic body's `mut ?T`, `mut ?&T` or `&Cell[?T]` may
 		// point into such memory at some instance. A concrete type is judged
 		// as written.
-		takes = takes || c.w.storesFirst(t) || c.w.paramFrom(t, 0) && c.w.storesFirstGen(t)
+		takes = takes || c.w.takesStores(t)
 		walk = walk || !view && c.w.walkExtra(t)
 	}
 	return c.addRoot(rootInfo{kind: rkAbstract, local: mir.NoLocal, param: p, depth: depth, typ: types.NoType,

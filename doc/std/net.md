@@ -52,11 +52,11 @@ The calls that take an address string accept these forms:
 
 | Call | Forms |
 |---|---|
-| `Dial` | `"a.b.c.d:port"`, `"[v6]:port"` (a numeric `%zone` allowed), `"localhost:port"` or `":port"` (both 127.0.0.1); on Windows also `"name:port"` |
+| `Dial` | `"a.b.c.d:port"`, `"[v6]:port"` (a numeric `%zone` allowed), `"localhost:port"` or `":port"` (both 127.0.0.1), `"name:port"` |
 | `Listen`, `ListenWith`, `Bind` | `"a.b.c.d:port"`, `"[v6]:port"` (a numeric `%zone` allowed), `"localhost:port"` (127.0.0.1), `":port"` (every IPv4 interface); `"[::]:port"` is every interface of both families |
 | `ListenUnix`, `DialUnix` | a file system path |
 
-On Linux `Dial` refuses a host name with `InvalidAddress`: resolve the name with `Resolve` and dial each address, as `std.http` does. On Windows `Dial` resolves the name itself, and a name that does not resolve fails with `Os(code: 0)`, where `Resolve` reports `InvalidAddress`.
+`Dial` resolves a host name itself. On Linux it dials each answer of the lookup `Resolve` makes, in order and as the lookup gives it (a zoned or IPv4-mapped answer too, which `Resolve` refuses or unmaps), until one connects, and fails with the first one's error, as Go's dialer does; on Windows it dials the system's first IPv4 answer, else its first IPv6 one. A name that does not resolve is `InvalidAddress`, as from `Resolve`. To choose among the addresses yourself, as `std.http` does with its `allow` check, call `Resolve` and dial each one.
 
 Port 0 in `Listen` or `Bind` asks the OS for a free port; `Port()` tells which.
 
@@ -690,13 +690,17 @@ export Dial(io: Io, addr: str): Error!Stream
 - Errors: Error (Canceled, Closed, OutOfMemory, AddrInUse, InvalidAddress, Os(code: i64), Refused, Reset, SecureFailed(why: SecureFailure), Unreachable, Unsupported, time.TimedOut)
 
 Connects to addr: "a.b.c.d:port", "[v6]:port" (a numeric %zone
-allowed), "localhost:port" or ":port" (both 127.0.0.1); on Windows also
-"name:port", resolved first. On Linux a name is InvalidAddress here:
-resolve it with Resolve and dial each address, as std.http does.
+allowed), "localhost:port" or ":port" (both 127.0.0.1), or
+"name:port", resolved first: on Windows the system's first IPv4
+answer is dialled, else its first IPv6 one; on Linux each answer of the
+lookup Resolve makes (/etc/hosts, then the nameservers), in order and as
+the lookup gives it (a zoned or IPv4-mapped one too), until one connects.
 Errors: Refused when nothing listens there, Unreachable when no route
-leads there, InvalidAddress for an addr that does not parse, Canceled.
-On Windows a name that does not resolve fails with Os(code: 0), where
-Resolve reports InvalidAddress. One runtime call; allocates nothing.
+leads there, InvalidAddress for an addr that does not parse or a name
+that does not resolve (as Resolve reports it), Canceled; for a name
+dialled at several addresses, the first one's error. One runtime call
+(with a name, a lookup and a connect per address tried); allocates
+nothing.
 
 The peer's address is read once here and kept for Stream.PeerAddr:
 one system call more, which does not wait.

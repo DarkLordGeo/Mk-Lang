@@ -2,7 +2,7 @@
 // pointed diagnostic, and `into` is a flow at fn value conversions and impl
 // methods.
 // What: TestE1202_IteratorChain, TestE1204_Await, TestE0608_IntoFlow,
-// TestPoisonedArgumentNoE0711.
+// TestPoisonedArgumentNoE0711, TestE1221_MemberSynonyms.
 // How: checks small bodies and compares codes, phases and help text.
 
 package check
@@ -129,6 +129,34 @@ func TestPoisonedArgumentNoE0711(t *testing.T) {
 		{"unknown name", use + "Bad() {\n\tUse(&nope)\n}\n", "E0201@5:7"},
 		{"still E0711 with no argument", "Mk[T](): int {\n\treturn 0\n}\n\nF(): int {\n\treturn Mk()\n}\n", "E0711@6:9"},
 	})
+}
+
+// TestE1221_MemberSynonyms: a member spelled as Rust spells it is E1221
+// naming the Mk member (`.unwrap` on `?T` renamed to `.Must` by a proven
+// fix) or the Mk call; on a type without `Must`, `.unwrap` stays E0203.
+func TestE1221_MemberSynonyms(t *testing.T) {
+	const unwrap = "F(x: ?int): int {\n\treturn x.unwrap()\n}\n"
+	runBodyCases(t, []bodyCase{
+		{"unwrap", unwrap, "E1221@2:11"},
+		{"expect", "F(x: ?int): int {\n\treturn x.expect(\"no\")\n}\n", "E1221@2:11"},
+		{"clone", "F(x: int): int {\n\treturn x.clone()\n}\n", "E1221@2:11"},
+		{"to_string", "F(x: int) {\n\tx.to_string()\n}\n", "E1221@2:4"},
+		{"unwrap on an int", "F(x: int): int {\n\treturn x.unwrap()\n}\n", "E0203@2:11"},
+		{"unwrap on an error union", "error Bad\n\nG(): Bad!int {\n\treturn 1\n}\n\nF(): int {\n\treturn G().unwrap()\n}\n", "E1221@8:13"},
+		{"other member of an error union stays E0802", "error Bad\n\nG(): Bad!int {\n\treturn 1\n}\n\nF(): int {\n\treturn G().Len()\n}\n", "E0802@8:9"},
+	})
+	w := newWorld(t, true)
+	d := firstCode(t, checkBody(t, w, "E1221@2:11", unwrap).bodyDiags(t), diag.E1221)
+	if !strings.Contains(d.Message, "Mk spells it `Must`") || factText(w, d, "habits") != "[E1221]" {
+		t.Errorf("message %q habits %q", d.Message, factText(w, d, "habits"))
+	}
+	if len(d.Fixes) != 1 || d.Fixes[0].Class != diag.Proven || d.Fixes[0].Edits[0].Text != "Must" {
+		t.Errorf("fixes %+v, want one proven rename to Must", d.Fixes)
+	}
+	d = firstCode(t, checkBody(t, newWorld(t, true), "E1221@2:11", "F(x: int): int {\n\treturn x.clone()\n}\n").bodyDiags(t), diag.E1221)
+	if len(d.Fixes) != 0 || strings.Join(d.Alternatives, "|") != "try arena.Dup(s)" {
+		t.Errorf("clone: fixes %+v alternatives %q", d.Fixes, d.Alternatives)
+	}
 }
 
 func firstCode(t *testing.T, ds []*diag.Diagnostic, c diag.Code) *diag.Diagnostic {

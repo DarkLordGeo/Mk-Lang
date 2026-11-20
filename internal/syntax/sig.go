@@ -151,6 +151,9 @@ func (p *parser) parseSignature(ctx sigCtx) (*ast.Signature, bool) {
 		n.Result = p.parseType()
 		p.sigResult = false
 		p.cont(true)
+	} else if p.bareResultAhead() {
+		n.Result = p.bareResultHabit()
+		p.cont(true)
 	}
 	p.parseSigFlows(n)
 	for p.at(ast.TokRequires) || p.at(ast.TokEnsures) {

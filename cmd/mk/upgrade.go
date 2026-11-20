@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	register(command{"upgrade", "upgrade [version]              install a signed release (the newest by default) and make it current", runUpgrade})
+	register(command{"upgrade", "upgrade [version]              install a signed release (the newest by default) and make it current; needs a published release (0.1.0 or later)", runUpgrade})
 }
 
 func runUpgrade(args []string, stdout, stderr io.Writer) int {

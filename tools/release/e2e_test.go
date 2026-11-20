@@ -44,8 +44,8 @@ import (
 // synthetic release address, so the mk is a release build, which refuses
 // the test key; MK_RELEASES points it at the fake server. The versions are
 // synthetic and unrelated to the running one. An mk built
-// without the overlay trusts no key and refuses every release (fails
-// closed).
+// without the overlay trusts only the release keys and refuses a release
+// the test key signed (fails closed).
 func TestReleaseEndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("SKIP: -short (builds mk twice)")
@@ -167,7 +167,10 @@ func TestReleaseEndToEnd(t *testing.T) {
 
 	// Install 7.1.0 with the host's script.
 	home := filepath.Join(root, "mkhome")
-	env := scratchEnv(filepath.Join(root, "user"))
+	// The script trusts the synthetic key (the last MK_INSTALL_TEST_KEY
+	// wins over scratchEnv's test key).
+	pub := release.PublicOf(priv)
+	env := append(scratchEnv(filepath.Join(root, "user")), "MK_INSTALL_TEST_KEY="+pub.ID+" "+pub.Public)
 	switch host {
 	case release.HostWindows:
 		ps := powershell(t)
@@ -300,11 +303,12 @@ func TestReleaseEndToEnd(t *testing.T) {
 		}
 	}
 
-	// An mk with no release key fails closed, whatever the server holds.
+	// An mk that lists only the release keys fails closed on a release
+	// signed by a key it does not list (the synthetic key).
 	serve("7.2.0", r72, true)
 	out, err = mk(plainMk, "upgrade")
-	if err == nil || !strings.Contains(out, "trusts no release key") {
-		t.Errorf("an mk with no key: %v\n%s", err, out)
+	if err == nil || !strings.Contains(out, withoutTestKeyRefusal()) {
+		t.Errorf("an mk without the synthetic key: %v\n%s", err, out)
 	}
 	if !slices.Contains(s.requested(), "/download/v7.1.0/"+release.ArchiveName("7.1.0", host)) {
 		t.Errorf("the script did not download from the fake server: %v", s.requested())

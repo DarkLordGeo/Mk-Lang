@@ -46,8 +46,11 @@ func nutshellFile(t *testing.T) string {
 func TestNutshellCheck(t *testing.T) {
 	t.Parallel()
 	file := nutshellFile(t)
+	// One cache for both targets: every check result is keyed by the
+	// target, so each target is still checked for its own.
+	cache := t.TempDir()
 	for _, tg := range []types.Target{types.X86_64Nutshell, types.Aarch64Nutshell} {
-		r := check(t, Config{Root: file, Target: tg})
+		r := check(t, Config{Root: file, Target: tg, CacheDir: cache})
 		if len(r.Report.Diags) > 0 {
 			t.Errorf("mk check --target %s:\n%s", tg.Name, r.Report.Text(r.Sources))
 		}

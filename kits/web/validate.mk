@@ -124,13 +124,14 @@ export Validate(g: mut Gen, t: Type, rules: str) {
             return
         }
     }
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
-        $(t.Name()).Problem(&self): ?str {
+        $pub $(t.Name()).Problem(&self): ?str {
             $checks
             return none
         }
 
-        $(t.Name()).Validate(&self): http.Error!void {
+        $pub $(t.Name()).Validate(&self): http.Error!void {
             if self.Problem().IsSome() {
                 fail http.Status(code: 422)
             }

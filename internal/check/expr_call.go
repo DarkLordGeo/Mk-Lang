@@ -810,6 +810,13 @@ func (u *unit) callMethod(e *ast.CallExpr, fe *ast.FieldExpr, rt types.TypeID, i
 		u.orRemoved(e, fe)
 		return types.Poison
 	}
+	if syn, ok := resolve.MemberSynonym(nm); ok && syn.OnFallible && vt.Kind == types.KErrorUnion {
+		// `.unwrap()` on an `E!T` asks for `Must`, not for the error to be
+		// handled: E1221, not E0802.
+		u.walkArgs(e)
+		u.synonymMiss(v, fe.Name, nm, syn)
+		return types.Poison
+	}
 	if vt.Kind == types.KErrorUnion && nm != "Must" {
 		// try applies to the outermost call: in `try a.B().C()` a fallible
 		// B() is E0802.
@@ -975,6 +982,7 @@ func (u *unit) sliceMethod(fe *ast.FieldExpr, v types.TypeID, n int, idx *ast.In
 		return nil, false
 	}
 	u.x.rec.signature(it.Key)
+	u.privateMethod(fe.Name.Span(), cands[0])
 	cs := &callee{kind: UseMethod, item: it.ID, sig: &d.Sig, recv: fe.X, explicit: idx, name: fe.Name, fe: fe,
 		pre: []types.GenericArg{types.TypeArg(elem)}, preChecked: true}
 	if b, ok := c.sliceImplicit(it); ok && !c.satisfies(u.env, elem, b, u.x.rec) {

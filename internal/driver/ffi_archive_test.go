@@ -35,9 +35,12 @@ func TestFFIM_HelloSize(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// One cache per std copy: its four builds have keys of their own
+	// target and profile.
+	caches := map[string]string{with: t.TempDir(), without: t.TempDir()}
 	build := func(std string, tg types.Target, prof types.Profile) []byte {
 		t.Helper()
-		s, err := NewSession(Config{Root: helloRoot(t), StdDir: std, Target: tg, Profile: prof, Tools: tools, CacheDir: t.TempDir(), Jobs: 4})
+		s, err := NewSession(Config{Root: helloRoot(t), StdDir: std, Target: tg, Profile: prof, Tools: tools, CacheDir: caches[std], Jobs: 4})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -201,7 +204,8 @@ func runExeIn(t *testing.T, exe, dir string) (string, string, int) {
 // with thread-local storage is E0001 naming the archive and the member,
 // with a hint, on both targets, before the link: an Mk program
 // runs no constructor and sets up no TLS, so the member would build and
-// misbehave.
+// misbehave. The four cases run in parallel, each in its own directories,
+// and a case's dev and release builds share one cache.
 func TestFFI_CtorTLS(t *testing.T) {
 	for _, tc := range []struct{ name, src, what string }{
 		{"ctor", "static volatile int seed = 41;\nint ready = 1;\n__attribute__((constructor)) static void Init(void) { ready = seed + 1; }\nint Measure(void) { return ready; }\n", "constructors"},
@@ -209,9 +213,18 @@ func TestFFI_CtorTLS(t *testing.T) {
 	} {
 		for _, tg := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
 			t.Run(tc.name+" "+tg.Name, func(t *testing.T) {
+				t.Parallel()
 				root := archiveRoot(t, tg, []string{tc.src})
+				cacheDir := t.TempDir()
 				for _, prof := range []types.Profile{types.Dev, types.Release} {
-					r, _ := ffiBuild(t, root, tg, prof, TestHooks{})
+					s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: tg, Profile: prof, Tools: needTools(t), CacheDir: cacheDir, Jobs: 4})
+					if err != nil {
+						t.Fatal(err)
+					}
+					r, _, err := s.Build(filepath.Join(t.TempDir(), "ffi"+exeSuffix(tg)))
+					if err != nil {
+						t.Fatal(err)
+					}
 					got := lines(r)
 					if len(got) != 1 || !strings.HasSuffix(got[0], ":E0001") {
 						t.Fatalf("%v: want one E0001, got %q\n%s", prof, got, r.Report.Text(r.Sources))

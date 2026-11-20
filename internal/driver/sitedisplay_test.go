@@ -90,8 +90,9 @@ func TestPanicDisplay_DependencyByLocalName(t *testing.T) {
 		_, errOut, code := runExe(t, target, paths[0], "")
 		return errOut, code
 	}
-	if errOut, code := run("err"); code != 1 || strings.TrimSpace(errOut) != "error: lib.Bad(code: 7)" {
-		t.Errorf("escaped error: exit %d, stderr %q; want 1 and error: lib.Bad(code: 7)", code, errOut)
+	const escaped = "error: lib.Bad(code: 7)\n    at ../lib/lib.mk:4:5\n    at main.mk:4:10"
+	if errOut, code := run("err"); code != 1 || strings.TrimSpace(strings.ReplaceAll(errOut, "\r\n", "\n")) != escaped {
+		t.Errorf("escaped error: exit %d, stderr %q; want 1 and %q", code, errOut, escaped)
 	}
 	want := "panic: boom from lib at lib@" + sha(arch)[7:19] + "/lib.mk:9:9"
 	if errOut, code := run("pan"); code != 101 || !strings.HasPrefix(strings.TrimSpace(errOut), want) {
@@ -99,12 +100,12 @@ func TestPanicDisplay_DependencyByLocalName(t *testing.T) {
 	}
 	// The error-return trace's sites (lower's TraceFail and
 	// TraceTry, w.traceSitePath) name a fetched dependency's file by its
-	// local name too, never its canonical id. Main's own trace is not
-	// written here (it runs on no task), so the binary's site strings are
-	// read: none names lib's canonical id, and lib's file is named by its
-	// local name.
-	if _, code := run("tr"); code != 1 {
-		t.Fatalf("trace: exit %d, want 1", code)
+	// local name too, never its canonical id: in the trace Main writes
+	// (with no task, from the RtState page's header) and in the binary's
+	// site strings, where none names lib's canonical id.
+	trace := "    at lib@" + sha(arch)[7:19] + "/lib.mk:4:5\n"
+	if errOut, code := run("tr"); code != 1 || !strings.Contains(strings.ReplaceAll(errOut, "\r\n", "\n"), trace) {
+		t.Fatalf("trace: exit %d, stderr %q; want 1 and %q", code, errOut, trace)
 	}
 	cid := ""
 	for _, dp := range last.deps {

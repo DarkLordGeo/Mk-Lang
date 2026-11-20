@@ -315,7 +315,8 @@ func (p *parser) stmtHabit() ast.Stmt {
 	}
 	if k1 == ast.TokComma && p.multiAssignAhead() {
 		s0 := p.p
-		p.errHere("write `(a, b) := F()`")
+		msg, alts := p.multiAssignForm()
+		p.errHere(msg, alts...)
 		p.skip(stopStmt)
 		return p.badStmtFrom(s0)
 	}

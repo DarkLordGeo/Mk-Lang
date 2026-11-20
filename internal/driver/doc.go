@@ -4,8 +4,8 @@
 //
 // What: Session.Doc builds a DocPackage (modules, then their exported items
 // with declaration, loans, errors, fields or variants and /// text);
-// WriteMarkdown, WriteEmbed and WriteHTML render it. DocBlocksSource and
-// DocTestPrelude feed mk doc --check, which compiles the doc text's fenced
+// WriteMarkdown, WriteEmbed and WriteHTML render it. DocBlocksSource,
+// DocStdFiles and DocTestPrelude feed mk doc --check, which compiles the doc text's fenced
 // mk blocks in cmd/mk (the driver cannot import internal/corpus).
 //
 // How: the items come from the query index mk query answers from, filtered
@@ -25,6 +25,7 @@ import (
 	"html"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -550,6 +551,52 @@ func DocBlocksSource(text string) string {
 		lines[i] = strings.TrimPrefix(t, " ")
 	}
 	return strings.Join(lines, "\n")
+}
+
+// DocFile is one source file mk doc --check reads: its path as a
+// diagnostic cites it, and its text.
+type DocFile struct {
+	Path, Text string
+}
+
+// DocStdFiles is the source of std's modules under mod ("std" for all, else
+// std.<module>), from MK_STD or the embedded std, in path order, cited as
+// std/<dir>/<file>.mk. A mod no std directory holds is an error naming it,
+// so mk doc reports an unknown module instead of an empty page.
+func DocStdFiles(mod string) ([]DocFile, error) {
+	var fsys fs.FS = std.FS
+	if d := os.Getenv("MK_STD"); d != "" {
+		fsys = os.DirFS(d)
+	}
+	root := "."
+	if mod != "std" {
+		if !strings.HasPrefix(mod, "std.") || len(mod) == len("std.") {
+			return nil, fmt.Errorf("%s is not a standard-library module path (std, std.fs, ...)", mod)
+		}
+		root = strings.ReplaceAll(mod[len("std."):], ".", "/")
+	}
+	var out []DocFile
+	err := fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && p != root && (d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".")) {
+			return fs.SkipDir
+		}
+		if d.IsDir() || !strings.HasSuffix(p, ".mk") || p == "pkg.mk" {
+			return nil
+		}
+		b, err := fs.ReadFile(fsys, p)
+		if err != nil {
+			return err
+		}
+		out = append(out, DocFile{Path: "std/" + p, Text: string(b)})
+		return nil
+	})
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no standard-library module %s", mod)
+	}
+	return out, err
 }
 
 // DocTestPrelude is the test prelude std embeds (std.TestPreludePath),

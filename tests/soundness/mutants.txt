@@ -613,9 +613,9 @@ end
 mutant M-D756-gen-out
 rule R16 R9
 class R
-file internal/borrow/setup.go
-anchor \t\ttakes = takes || c.w.storesFirst(t) || c.w.paramFrom(t, 0) && c.w.storesFirstGen(t)\n
-replace \t\ttakes = takes || c.w.storesFirst(t)\n
+file internal/borrow/typewalk_nodes.go
+anchor \treturn w.storesFirst(t) || w.paramFrom(t, 0) && w.storesFirstGen(t)\n
+replace \treturn w.storesFirst(t)\n
 note a parameter node's takes judged as written: a generic body stores a fn value's result into `mut ?&T`, `mut ?T` or `&Cell[?T]`, which takes no store as written, so the caller's argument holds nothing; each witness is accepted and reads a dead frame when run; expected VDeadScope
 witness G756-gen-outparam-ref.mk G756-gen-outparam-bare.mk G756-gen-outparam-cell.mk
 end

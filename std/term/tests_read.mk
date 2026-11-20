@@ -106,6 +106,30 @@ test "a high surrogate left from before, then one record at 4 or 5 bytes free, i
     Drop(t)
 }
 
+test "a key-down with no unit is NUL for Ctrl with Space or 2, and dropped for a bare Ctrl or Space and for AltGr with either" (sys: &System) {
+    var t := Bare(0, 0, false)
+    var r := KeyRecord(0)
+    r[10] = 0x11
+    r[16] = 0x08
+    t.Record(r[..]) // Ctrl alone
+    r[10] = 0x20
+    r[16] = 0
+    t.Record(r[..]) // Space with no unit and no Ctrl
+    r[10] = 0x32
+    r[16] = 0x09
+    t.Record(r[..]) // AltGr+2 with no character
+    r[10] = 0x20
+    t.Record(r[..]) // AltGr+Space with no character
+    Assert(t.tail == 0)
+    r[16] = 0x08
+    t.Record(r[..]) // Ctrl+Space
+    r[10] = 0x32
+    r[16] = 0x04
+    t.Record(r[..]) // right Ctrl+2
+    Assert(t.tail == 2 && t.in_buf[0] == 0 && t.in_buf[1] == 0)
+    Drop(t)
+}
+
 test "a paste's end marker is found wherever the reads split it" (sys: &System) {
     a := sys.arena
     end := PasteEnd.AsBytes()

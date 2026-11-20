@@ -2,8 +2,8 @@
 // during type checking, and starting the evaluator for `N + 1` would be slow
 // and circular.
 //
-// What: folder and fval, with fold, name, variant, binary, enumBinary, fit
-// and panicAt; plainEnum, enumFval, variantConst, fvalOf and internFolded on
+// What: folder and fval, with fold, name, variant, binary, enumBinary, fit,
+// minByMinusOne and panicAt; plainEnum, enumFval, variantConst, fvalOf and internFolded on
 // the Checker.
 //
 // How: check folds integer and bool literals, named consts with a value,
@@ -80,6 +80,12 @@ type folder struct {
 	// (computedArg: the same request path as a bare const argument);
 	// on false it has reported, or chosen silence.
 	constUse func(it *types.Item, at source.Span) (types.ConstID, bool)
+	// leaf, when set, decides a node before fold does (litfold.go): handled
+	// true means v and ok are e's value as a body typed it, ok false a node
+	// that is not a constant there (a quiet failure).
+	leaf func(e ast.Expr) (v fval, ok, handled bool)
+	// panicNode is the operator of the first panic (panicAt).
+	panicNode ast.Node
 }
 
 // reject records a failure reason; the first one (the innermost) wins.
@@ -93,7 +99,7 @@ func (f *folder) reject(code diag.Code, at source.Span, msg string) *diag.Diagno
 
 // notConst is E0705 at a node check does not fold.
 func (f *folder) notConst(at ast.Node) (fval, bool, bool) {
-	f.reject(diag.E0705, at.Span(), "a const argument must be a compile-time constant").Text("param", f.param)
+	paramFact(f.reject(diag.E0705, at.Span(), "a const argument must be a compile-time constant"), f.param)
 	return fval{}, false, false
 }
 
@@ -147,6 +153,14 @@ func (f *folder) ref(n ast.Node) resolve.Ref {
 // caller then asks the evaluator or leaves it). panicked reports an E0901
 // already emitted.
 func (f *folder) fold(e ast.Expr) (v fval, ok, panicked bool) {
+	if f.leaf != nil {
+		if v, ok, handled := f.leaf(e); handled {
+			if !ok {
+				f.quiet = true
+			}
+			return v, ok, false
+		}
+	}
 	switch e := e.(type) {
 	case *ast.ParenExpr:
 		return f.fold(e.X)
@@ -518,7 +532,9 @@ func (f *folder) binary(e *ast.BinaryExpr) (fval, bool, bool) {
 	case ast.TokStar:
 		r.n.Mul(a.n, b.n)
 	case ast.TokSlash, ast.TokPercent:
-		if b.n.Sign() == 0 {
+		if b.n.Sign() == 0 || f.minByMinusOne(a, b, t) {
+			// The type's minimum by -1 is the zero divisor's panic, for
+			// `%` too, as in the evaluator and the run time.
 			f.panicAt(e, types.PanicDivideByZero)
 			return fval{}, false, true
 		}
@@ -568,6 +584,24 @@ func (f *folder) binary(e *ast.BinaryExpr) (fval, bool, bool) {
 	return f.fit(r, e)
 }
 
+// minByMinusOne reports a / b or a % b at signed type t with a the type's
+// minimum and b -1. An untyped t is the type the value takes (the wanted
+// integer type, else int), as the evaluator types it: `% -1` gives 0,
+// which fits any type, so it is judged here, not when it meets its type.
+func (f *folder) minByMinusOne(a, b fval, t types.TypeID) bool {
+	tab := f.m.c.cfg.Types
+	if t == types.NoType {
+		t = types.Int
+		if f.want != types.NoType && f.want != types.Poison && tab.Get(f.want).IsInteger() {
+			t = f.want
+		}
+	}
+	if !tab.Get(t).Signed || b.n.Cmp(big.NewInt(-1)) != 0 {
+		return false
+	}
+	return a.n.Cmp(new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), f.bits(t)-1))) == 0
+}
+
 // bits is the width of integer type t (int for an untyped literal).
 func (f *folder) bits(t types.TypeID) uint {
 	if t == types.NoType {
@@ -614,7 +648,7 @@ func (c *Checker) inRange(n *big.Int, t types.TypeID) bool {
 
 func (f *folder) panicAt(at ast.Node, code types.PanicCode) {
 	if f.panicCode == types.PanicNone {
-		f.panicCode = code
+		f.panicCode, f.panicNode = code, at
 	}
 	if f.emit != nil {
 		f.emit(diag.New(diag.E0901, at.Span(), "compile-time evaluation panicked: "+code.String()).

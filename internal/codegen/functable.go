@@ -112,7 +112,8 @@ func funcRowIn(m *llvm.Module, t types.Target, fn *llvm.Function, site llvm.Valu
 }
 
 // funcRows defines the pack's rows: its members in key order, each
-// with the site of its item's name, then its thunks and adapters in creation
+// with the site of its item's name (named as Config.Frames says, or with
+// no site when it says ""), then its thunks and adapters in creation
 // order with no site. Called after every body is emitted.
 func (g *packGen) funcRows() {
 	m := g.m
@@ -128,11 +129,19 @@ func (g *packGen) funcRows() {
 				if mod.Std {
 					// std's frames print their file only: every program
 					// carries std's rows, and hello's 64 KiB budget has no
-					// room for their names.
+					// room for their names. The empty name is also how
+					// std.rt's backtrace tells std's frames (StdIn): every
+					// other Mk function's row has a name.
 					name = ""
 				}
 			}
-			site = g.fnSite(it.Span, name, "mk.pos."+f.Symbol+".fn")
+			frame, named := g.cfg.Frames[it.Key.String()]
+			if named {
+				name = frame
+			}
+			if !named || frame != "" {
+				site = g.fnSite(it.Span, name, "mk.pos."+f.Symbol+".fn")
+			}
 		}
 		g.funcRow(g.defs[fi], site, rowMk)
 		if body, ok := g.tailDefs[fi]; ok {

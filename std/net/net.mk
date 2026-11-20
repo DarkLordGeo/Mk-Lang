@@ -286,18 +286,27 @@ TakeStash(want: int, h: mut uint, port: mut int): bool {
 }
 
 /// Connects to addr: "a.b.c.d:port", "[v6]:port" (a numeric %zone
-/// allowed), "localhost:port" or ":port" (both 127.0.0.1); on Windows also
-/// "name:port", resolved first. On Linux a name is InvalidAddress here:
-/// resolve it with Resolve and dial each address, as std.http does.
+/// allowed), "localhost:port" or ":port" (both 127.0.0.1), or
+/// "name:port", resolved first: on Windows the system's first IPv4
+/// answer is dialled, else its first IPv6 one; on Linux each answer of the
+/// lookup Resolve makes (/etc/hosts, then the nameservers), in order and as
+/// the lookup gives it (a zoned or IPv4-mapped one too), until one connects.
 /// Errors: Refused when nothing listens there, Unreachable when no route
-/// leads there, InvalidAddress for an addr that does not parse, Canceled.
-/// On Windows a name that does not resolve fails with Os(code: 0), where
-/// Resolve reports InvalidAddress. One runtime call; allocates nothing.
+/// leads there, InvalidAddress for an addr that does not parse or a name
+/// that does not resolve (as Resolve reports it), Canceled; for a name
+/// dialled at several addresses, the first one's error. One runtime call
+/// (with a name, a lookup and a connect per address tried); allocates
+/// nothing.
 ///
 /// The peer's address is read once here and kept for Stream.PeerAddr:
 /// one system call more, which does not wait.
 export Dial(io: Io, addr: str): Error!Stream {
-    h := try Check(core.IoDial(io, addr))
+    var r := core.IoDial(io, addr)
+    if r.err == core.SysErr.NotFound {
+        // A name with no answer: InvalidAddress, as Resolve reports it.
+        r.err = core.SysErr.InvalidAddress
+    }
+    h := try Check(r)
     return NewStream(io, Trunc[uint](h))
 }
 

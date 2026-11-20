@@ -57,6 +57,51 @@ func TestDocStdNeedsNoPackage(t *testing.T) {
 	}
 }
 
+// TestDocStdModuleArg: mk doc std.core is mk doc --std std.core, and
+// mk doc --check std.core checks std.core's blocks. A local directory
+// std.x, a name ending in .mk and a name with a separator stay paths. A
+// name that is no std module is refused, by either spelling, naming it.
+func TestDocStdModuleArg(t *testing.T) {
+	var want, so, se bytes.Buffer
+	if st := run([]string{"doc", "--std", "std.core"}, &want, &se); st != 0 {
+		t.Fatalf("--std std.core: status %d\n%s", st, se.String())
+	}
+	if st := run([]string{"doc", "std.core"}, &so, &se); st != 0 || so.String() != want.String() {
+		t.Errorf("mk doc std.core: status %d, output differs from --std std.core\n%s\n%.300s", st, se.String(), so.String())
+	}
+	so.Reset()
+	if st := run([]string{"doc", "--check", "std.math"}, &so, &se); st != 0 || !strings.Contains(so.String(), "doc blocks, 0 failed") {
+		t.Errorf("mk doc --check std.math: status %d\n%s\n%s", st, so.String(), se.String())
+	}
+	for _, args := range [][]string{{"doc", "std.nosuch"}, {"doc", "--std", "std.nosuch"}, {"doc", "--check", "std.nosuch"}} {
+		se.Reset()
+		if st := run(args, &so, &se); st != 2 || !strings.Contains(se.String(), "no standard-library module std.nosuch") {
+			t.Errorf("mk %v: status %d, stderr %q; want 2 naming std.nosuch", args, st, se.String())
+		}
+	}
+	t.Chdir(t.TempDir())
+	if err := os.MkdirAll(filepath.Join("std.x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join("std.x", "main.mk"), []byte("export Mine(): int {\n    return 1\n}\n\nexport Main() {\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	so.Reset()
+	se.Reset()
+	if st := run([]string{"doc", "std.x"}, &so, &se); st != 0 || !strings.Contains(so.String(), "Mine") {
+		t.Errorf("mk doc std.x over a local directory std.x: status %d\n%.300s\n%s", st, so.String(), se.String())
+	}
+	for path, want := range map[string]bool{"std.x": false, "std.mk": false, "std.fs/a": false, `std.fs\a`: false, "src": false, "std": true, "std.fs": true} {
+		if got := stdModuleArg(path); got != want {
+			t.Errorf("stdModuleArg(%q) = %v, want %v", path, got, want)
+		}
+	}
+	se.Reset()
+	if st := run([]string{"doc", "std.mk"}, &so, &se); st != 2 || strings.Contains(se.String(), "standard-library") {
+		t.Errorf("mk doc std.mk with no such file: status %d, stderr %q; want the path's read error", st, se.String())
+	}
+}
+
 // TestDocEmbed: --embed writes a module's API for a page that has its own
 // title: no top-level heading, no module heading, a stability line, items
 // at ###. It takes no --html. --std std.raw documents the std-only module.

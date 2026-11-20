@@ -2,10 +2,13 @@
 // raised and the try sites it passed through, not only its name.
 //
 // What: the error-return trace: TraceFail, TraceTry, TraceReset,
-// WriteTrace, Traced, and the build probe ProbeBuild and DevBuild.
+// WriteTrace, Traced, TraceSlot, and the build probe ProbeBuild and
+// DevBuild.
 //
 // How: dev and test builds record up to 12 rows per task in its slot
-// header. Off a task stack it records nothing. Release builds emit no calls
+// header. A program with no task runs Main on carrier 0's system stack,
+// with no slot: Main's rows go in a header of the RtState page. Any other
+// code off a task stack records nothing. Release builds emit no calls
 // (mono drops them).
 
 import std.raw
@@ -72,16 +75,40 @@ TraceOn() {
     }
 }
 
+// TraceSlot is the header the running code's trace is in: the running
+// task's slot header; in a program with no task, on Main's stack (the
+// system stack StartOn records before Main runs, as MagOf finds it), the
+// RtState page's main_trace; else null.
+TraceSlot(): *SlotHeader {
+    if UsesTasks() {
+        return CurrentSlot()
+    }
+    st := R()
+    if raw.IsNull(st) {
+        return raw.Null[SlotHeader]()
+    }
+    sp := StackPointer()
+    unsafe "st is the RtState page, mapped for the process" {
+        // Edge: StartOn's SetSysStack, on Main's thread before Main ran.
+        lo := Trunc[uint]((*st).sys_lo[0].Load())
+        if lo == 0 || sp < lo || sp >= Trunc[uint]((*st).sys_hi[0].Load()) {
+            return raw.Null[SlotHeader]()
+        }
+        return raw.OfMut(mut (*st).main_trace)
+    }
+}
+
 /// TraceFail starts the running task's trace at site, a `fail` statement's
-/// position; off a task stack it records nothing. site must be a static
-/// site constant, as codegen passes it. O(1); allocates nothing.
+/// position; off a task stack (but Main's in a program with no task) it
+/// records nothing. site must be a static site constant, as codegen passes
+/// it. O(1); allocates nothing.
 export TraceFail(site: &Site) {
     TraceOn()
-    h := CurrentSlot()
+    h := TraceSlot()
     if raw.IsNull(h) {
         return
     }
-    unsafe "h is CurrentSlot(), not null: the running task's own header, which only that task writes" {
+    unsafe "h is TraceSlot(), not null: the running task's own header, or Main's, which only it writes" {
         (*h).trace_n = 1
         (*h).trace_dropped = 0
         (*h).trace[0] = raw.Of(site)
@@ -93,11 +120,11 @@ export TraceFail(site: &Site) {
 /// allocates nothing.
 export TraceTry(site: &Site) {
     TraceOn()
-    h := CurrentSlot()
+    h := TraceSlot()
     if raw.IsNull(h) {
         return
     }
-    unsafe "h is CurrentSlot(), not null: the running task's own header, which only that task writes" {
+    unsafe "h is TraceSlot(), not null: the running task's own header, or Main's, which only it writes" {
         if (*h).trace_n < 12 {
             (*h).trace[int((*h).trace_n)] = raw.Of(site)
             (*h).trace_n += 1
@@ -121,7 +148,7 @@ export TraceReset(h: *SlotHeader, site: *Site) {
 // then "    ... <n> more". A row is one write when it fits 512 bytes,
 // else written in order in pieces, never truncated (as the panic report).
 WriteTrace() {
-    h := CurrentSlot()
+    h := TraceSlot()
     if raw.IsNull(h) {
         return
     }

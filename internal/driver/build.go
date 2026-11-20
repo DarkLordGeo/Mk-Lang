@@ -99,6 +99,10 @@ type world struct {
 	// reportMu serializes the making of Main's report wrapper (mainEntry),
 	// which bins built at once may each ask for.
 	reportMu sync.Mutex
+	// testFrames names each test clone's frame in a backtrace, by the
+	// clone's key text: `test "name"` (testMain writes it before the
+	// runner's native steps; codegen.Config.Frames).
+	testFrames map[string]string
 
 	// display maps a dependency's canonical id to the root package's
 	// local name for it (Session.displayNames), set before a bin's native

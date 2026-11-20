@@ -98,6 +98,12 @@ type parser struct {
 	// unparenthesized fn type there takes continuation lines.
 	sigResult    bool
 	sigContinued bool
+	// inHead is true while the head of an if, for, match or scope is read,
+	// where a '{' after a name opens the body, never a brace literal.
+	inHead bool
+	// litOK is true while a value (parseValue) is read, the one place a
+	// brace literal habit is looked for; parseBlock clears it.
+	litOK bool
 
 	// coverOK is true when the next operand may open a RecordPat cover;
 	// coverMarks are the cover-only forms read so far, coverPats the

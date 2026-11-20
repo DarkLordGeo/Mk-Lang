@@ -269,7 +269,7 @@ func TestPolymorphicRecursionThroughSliceAndVariant(t *testing.T) {
 //   - view: a view V[T] with next: ?&V[?T] (only LayoutPart sees it);
 //   - br2: G[T] growing along two fields at once (LayoutPart's 4096 bound);
 //   - r1: next: ?&(a: G[?T], b: int), a record between the instances
-//     (walkFrom meets only the records);
+//     (walkFrom and abstractNodes' layer-2 walk meet only the records);
 //   - h1, h3: G[int] in a module whose view keeps a value (fnStoresInto and
 //     holdsItem);
 //   - w65, n66, t4kb: a wide type, a nest that shrinks and a large closure,
@@ -310,14 +310,20 @@ func TestRecursiveTypeWalkProbes(t *testing.T) {
 				panic("TestRecursiveTypeWalkProbes/" + c.name + ": check and build did not end in 15 minutes")
 			})
 			defer watch.Stop()
-			if r := checkText(t, string(src)); len(r.Report.Diags) != 0 {
-				t.Fatalf("want clean:\n%s", diagLines(r))
-			}
-			dir := t.TempDir()
+			// The check and the build share one cache, so the build
+			// finds std checked.
+			dir, cacheDir := t.TempDir(), t.TempDir()
 			if err := os.WriteFile(filepath.Join(dir, "main.mk"), src, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if out := buildRun(t, dir, t.TempDir()); out != c.want {
+			s, err := NewSession(Config{Root: filepath.Join(dir, "main.mk"), CacheDir: cacheDir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if r := s.Check(); len(r.Report.Diags) != 0 {
+				t.Fatalf("want clean:\n%s", diagLines(r))
+			}
+			if out := buildRun(t, dir, cacheDir); out != c.want {
 				t.Errorf("got %q, want %q", out, c.want)
 			}
 		})

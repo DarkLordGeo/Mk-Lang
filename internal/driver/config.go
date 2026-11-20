@@ -322,6 +322,43 @@ func targetOS(t types.Target) string {
 	return t.Name
 }
 
+// stdTargetMissing is nil when std's manifest selects its system modules
+// for t's OS (or selects nothing per target), else one E0202, reason
+// no-std-target, naming the targets std is built for. Without it a target
+// std has no std.sys half for fails inside std, with an E0202 for every std
+// file that imports std.sys. A hosted target only: x86_64-freestanding forms
+// layers 0 and 1 of std and std.free (stdFormed), which need no selection.
+func stdTargetMissing(t types.Target, man *Manifest) *diag.Diagnostic {
+	if man == nil || len(man.Targets) == 0 || t.OS == types.OSFreestanding {
+		return nil
+	}
+	oses := map[string]bool{}
+	for _, sel := range man.Targets {
+		oses[sel.OS] = true
+	}
+	if oses[targetOS(t)] {
+		return nil
+	}
+	// The targets mk build refuses (notBuilt) are named apart: following
+	// the hint for build, run or test must not lead to E0202 not-built.
+	var built, checked []string
+	for _, x := range types.AllTargets() {
+		switch {
+		case !oses[targetOS(x)] && x.OS != types.OSFreestanding:
+		case notBuilt(x) != nil:
+			checked = append(checked, x.Name)
+		default:
+			built = append(built, x.Name)
+		}
+	}
+	msg := "the standard library has no system layer for " + t.Name + "; mk builds for " + strings.Join(built, ", ")
+	if len(checked) > 0 {
+		msg += ", and checks only for " + strings.Join(checked, ", ")
+	}
+	return diag.New(diag.E0202, source.Span{}, msg).
+		Text("target", t.Name).Text("reason", "no-std-target").Alt("pass --target with one of the targets it builds or checks for")
+}
+
 // hostArch is the architecture mk runs on, as a types.Arch.
 func hostArch() (types.Arch, bool) {
 	switch runtime.GOARCH {

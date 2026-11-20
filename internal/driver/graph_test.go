@@ -255,14 +255,30 @@ func TestScheduleIsDeterministic(t *testing.T) {
 		"e/e.mk": "import a\n\nexport C(): int {\n    return a.A() + MissingC()\n}\n",
 		"d/d.mk": "import b\nimport e\n\nexport D(): int {\n    return b.B() + e.C()\n}\n",
 	}))
+	// std is checked once, from another package, into a seed cache; each
+	// of the 8 checks starts from its own copy of it, so std's packs hit
+	// and the package's modules, whose diagnostics are compared, are
+	// checked and scheduled cold every time.
+	seed := t.TempDir()
+	other := writeTree(t, pkgFiles(map[string]string{"x/x.mk": "export X(): int {\n    return 1\n}\n"}))
+	if r := check(t, Config{Root: other, CacheDir: seed}); len(r.Report.Diags) > 0 {
+		t.Fatalf("seed check:\n%s", r.Report.Text(r.Sources))
+	}
+	caches := make([]string, 8)
+	for i := range caches {
+		caches[i] = t.TempDir()
+		if err := copyTreeNoCache(seed, caches[i]); err != nil {
+			t.Fatal(err)
+		}
+	}
 	var first string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
-		go func(jobs int) {
+		go func(jobs int, cache string) {
 			defer wg.Done()
-			r := check(t, Config{Root: dir, Jobs: jobs})
+			r := check(t, Config{Root: dir, Jobs: jobs, CacheDir: cache})
 			got := string(r.Report.WriteJSON(r.Sources))
 			mu.Lock()
 			defer mu.Unlock()
@@ -271,7 +287,7 @@ func TestScheduleIsDeterministic(t *testing.T) {
 			} else if got != first {
 				t.Errorf("jobs %d: report differs:\n%s\n%s", jobs, got, first)
 			}
-		}(i%4 + 1)
+		}(i%4+1, caches[i])
 	}
 	wg.Wait()
 }

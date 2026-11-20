@@ -62,6 +62,113 @@ func TestWalksBoundGrowthNotWidth(t *testing.T) {
 	}
 }
 
+// TestAbstractNodesBoundRecordRecursion: a parameter &G[int] of a
+// polymorphically recursive G whose next hop goes through a record (`next:
+// ?&(a: G[?T], b: int)`) reaches a new record at every hop, as `next:
+// ?&G[?T]` reaches a new G. abstractNodes' layer-2 walk stops both at ANY
+// after about as many referents, never after maxReferents of the records
+// (each a deeper instance, which every later walk over p#2 must go into).
+func TestAbstractNodesBoundRecordRecursion(t *testing.T) {
+	k := newKit(t)
+	p0 := k.tab.Param(0)
+	rec := func(name string, viaRecord bool) types.TypeID {
+		g := k.structItem(k.main, name, 1, false, false)
+		next := k.tab.Named(g, []types.GenericArg{types.TypeArg(k.tab.Optional(p0))})
+		if viaRecord {
+			next = k.tab.Record([]types.RecordField{{Name: k.in.Intern("a"), Type: next}, {Name: k.in.Intern("b"), Type: types.Int}})
+		}
+		k.items.Get(g).Decl.(*types.StructDecl).Fields = []types.FieldDecl{
+			{Name: k.in.Intern("v"), Type: p0},
+			{Name: k.in.Intern("next"), Type: k.tab.Optional(k.tab.Ref(next))},
+		}
+		return k.tab.Ref(k.named(name, types.Int))
+	}
+	direct, record := rec("G", false), rec("R", true)
+	w := walkerOf(k, nil)
+	_, nd, _ := w.abstractNodes(direct)
+	_, nr, _ := w.abstractNodes(record)
+	t.Logf("p#2 types: direct %d, through a record %d", len(nd.types), len(nr.types))
+	if !nd.any || !nr.any {
+		t.Fatalf("p#2 any: direct %v, record %v; want both true at the bound", nd.any, nr.any)
+	}
+	if len(nd.types) == 0 || len(nr.types) > 2*len(nd.types)+2 {
+		t.Errorf("p#2 types: through a record %d, direct %d; want at most twice the direct walk's", len(nr.types), len(nd.types))
+	}
+	// A wide type is no recursion: 30 referents ?&B[[i]u8], 40 records (x:
+	// B[[j]u8]) holding other instances of B, and 30 records (p: &B[[j]u8])
+	// whose B is a referent of its own stay under the bounds (60 instances
+	// of B met, 40 records holding one); p#2 has no ANY.
+	k.structItem(k.main, "B", 1, false, false, field("p", k.tab.Ref(p0)))
+	b := func(n int) types.TypeID { return k.named("B", k.tab.Array(k.lenArg(uint64(n)), types.U8)) }
+	var fs []fieldSpec
+	for i := 1; i <= 30; i++ {
+		behind := k.tab.Record([]types.RecordField{{Name: k.in.Intern("p"), Type: k.tab.Ref(b(200 + i))}})
+		fs = append(fs, field(fmt.Sprintf("b%d", i), k.tab.Optional(k.tab.Ref(b(i)))),
+			field(fmt.Sprintf("q%d", i), k.tab.Optional(k.tab.Ref(behind))))
+	}
+	for i := 1; i <= 40; i++ {
+		inline := k.tab.Record([]types.RecordField{{Name: k.in.Intern("x"), Type: b(100 + i)}})
+		fs = append(fs, field(fmt.Sprintf("r%d", i), k.tab.Optional(k.tab.Ref(inline))))
+	}
+	k.structItem(k.main, "Mixed", 0, false, false, fs...)
+	if _, nm, _ := walkerOf(k, nil).abstractNodes(k.tab.Ref(k.named("Mixed"))); nm.any {
+		t.Errorf("p#2 of &Mixed is ANY (%d types); want no ANY", len(nm.types))
+	}
+	// 69 distinct records that hold the same instance B[int] are no
+	// recursion: the walk keeps every one of them, with no ANY.
+	var shared []fieldSpec
+	for i := 1; i <= 69; i++ {
+		r := k.tab.Record([]types.RecordField{{Name: k.in.Intern("x"), Type: k.named("B", types.Int)}, {Name: k.in.Intern("k"), Type: k.tab.Array(k.lenArg(uint64(i)), types.U8)}})
+		shared = append(shared, field(fmt.Sprintf("s%d", i), k.tab.Optional(k.tab.Ref(r))))
+	}
+	k.structItem(k.main, "Shared", 0, false, false, shared...)
+	if _, ns, _ := walkerOf(k, nil).abstractNodes(k.tab.Ref(k.named("Shared"))); ns.any || len(ns.types) < 69 {
+		t.Errorf("p#2 of &Shared: any %v, %d types; want no ANY and the 69 records", ns.any, len(ns.types))
+	}
+}
+
+// TestAbstractNodesCutKeepsTakes: a referent the layer-2 walk stops at
+// still counts for the node's takes (cutTakes). 69 referents ?&B[[i]u8]
+// and then ?&B[Cell[?&Mutex[?&i32]]], or the same through records
+// (x: B[..], ...): the walk stops at ANY before the last, whose Cell holds
+// a reference to memory that takes stores, so p#2 takes stores. Without
+// the last field nothing past the stop takes any.
+func TestAbstractNodesCutKeepsTakes(t *testing.T) {
+	k := newKit(t)
+	p0 := k.tab.Param(0)
+	k.structItem(k.main, "B", 1, false, false, field("v", p0))
+	b := func(n int) types.TypeID { return k.named("B", k.tab.Array(k.lenArg(uint64(n)), types.U8)) }
+	mutex := k.tab.Named(k.known.Mutex, []types.GenericArg{types.TypeArg(k.tab.Optional(k.tab.Ref(types.I32)))})
+	cell := k.tab.Named(k.known.Cell, []types.GenericArg{types.TypeArg(k.tab.Optional(k.tab.Ref(mutex)))})
+	rec := func(x, y types.TypeID) types.TypeID {
+		return k.tab.Record([]types.RecordField{{Name: k.in.Intern("x"), Type: x}, {Name: k.in.Intern("c"), Type: y}})
+	}
+	for _, c := range []struct {
+		name string
+		hop  func(i int) types.TypeID
+		last types.TypeID
+	}{
+		{"named", b, k.named("B", cell)},
+		{"record", func(i int) types.TypeID { return rec(b(i), types.Int) }, rec(b(70), cell)},
+	} {
+		for _, withLast := range []bool{true, false} {
+			var fs []fieldSpec
+			for i := 1; i <= 69; i++ {
+				fs = append(fs, field(fmt.Sprintf("r%d", i), k.tab.Optional(k.tab.Ref(c.hop(i)))))
+			}
+			if withLast {
+				fs = append(fs, field("last", k.tab.Optional(k.tab.Ref(c.last))))
+			}
+			name := fmt.Sprintf("W%s%v", c.name, withLast)
+			k.structItem(k.main, name, 0, false, false, fs...)
+			_, n2, _ := walkerOf(k, nil).abstractNodes(k.tab.Ref(k.named(name)))
+			if !n2.any || n2.cutTakes != withLast {
+				t.Errorf("%s, last %v: p#2 any %v cutTakes %v; want ANY, cutTakes %v", c.name, withLast, n2.any, n2.cutTakes, withLast)
+			}
+		}
+	}
+}
+
 // TestRecurCountsGrowthOnThePath: recur stops a nest that grows past
 // maxRecurGrowth on one path, never siblings or a nest that shrinks, and
 // stops a walk that meets more than maxRecurInstances instances of one

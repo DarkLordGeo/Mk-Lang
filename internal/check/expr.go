@@ -35,11 +35,14 @@ type unit struct {
 	// comparison (targetfold.go); only those feed &&, || and !
 	// folds, so other constant conditions lower as they did.
 	targetFolded map[ast.NodeID]bool
-	it           *types.Item
-	fx           *fileIndex
-	x            *tctx
-	env          *Env
-	sig          *types.Signature
+	// litVals holds the value of each integer operator over constants the
+	// body has folded (litfold.go), for the operator around it.
+	litVals map[ast.NodeID]fval
+	it      *types.Item
+	fx      *fileIndex
+	x       *tctx
+	env     *Env
+	sig     *types.Signature
 	// fmtA is 1 + the generic slot of the record parameter A when the unit
 	// is a function of the Print shape, or a fn literal inside one, whose
 	// Fields[Format] env drops; fmtF is the local of that
@@ -314,9 +317,15 @@ func (u *unit) exprInner(e ast.Expr, want types.TypeID) types.TypeID {
 		}
 		return t
 	case *ast.UnaryExpr:
-		return u.unary(e, want)
+		t := u.unary(e, want)
+		if e.Op == ast.TokMinus || e.Op == ast.TokTilde {
+			u.litFold(e, t)
+		}
+		return t
 	case *ast.BinaryExpr:
-		return u.binary(e, want)
+		t := u.binary(e, want)
+		u.litFold(e, t)
+		return t
 	case *ast.CallExpr:
 		return u.call(e, want)
 	case *ast.FieldExpr:

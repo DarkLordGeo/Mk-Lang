@@ -47,10 +47,12 @@ func dirBytes(t *testing.T, dir string) int64 {
 // (which ends with MaybeGC) the cache root, the ThinLTO directory included,
 // is under the budget. The budget is the cache one cold build leaves plus
 // 1/40 of it, and the store's clock advances three hours per command
-// (CacheNow), past cache.Grace. Measured by this test with the default
-// budget on a development machine: each edit adds about 10 KB (a pack's
+// (CacheNow), past cache.Grace. Measured by this test without
+// CacheBudget (the default budget, so GC evicts nothing) on a Windows
+// development machine: one cold release build leaves
+// about 105 MB (104,663,035 bytes) and each edit adds about 77 KB (a pack's
 // object, the module entries, the ThinLTO files), so without eviction the
-// bound breaks after about 14 builds.
+// bound first breaks at build 35.
 func TestCacheStaysUnderBudget(t *testing.T) {
 	tools := needTools(t)
 	builds := 50

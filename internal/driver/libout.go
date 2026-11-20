@@ -86,7 +86,7 @@ func (s *Session) buildLibrary(bin binTarget, out string, several bool) (string,
 	k, _ := libKind(bin.kind)
 	file := libFileName(bin.name, bin.abi, k, s.cfg.Target)
 	dest := out
-	if fi, err := os.Stat(out); dest == "" || several || strings.HasSuffix(out, "/") || strings.HasSuffix(out, `\`) || err == nil && fi.IsDir() {
+	if dest == "" || several || outIsDir(out) {
 		dest = filepath.Join(out, file)
 	}
 	if d := notBuilt(s.cfg.Target); d != nil {

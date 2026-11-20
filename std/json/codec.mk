@@ -95,6 +95,7 @@ CodecStruct(g: mut Gen, t: Type) {
     src := quote { v }
     pf := F32Helper(g, t.Fields())
     dec := DecFields(g, t.Fields(), src, t.Name(), pf)
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
         impl json.Json for $(t.Name()) {
             FormatJson(&self, w: mut Writer): WriteError!void {
@@ -102,7 +103,7 @@ CodecStruct(g: mut Gen, t: Type) {
             }
         }
 
-        $(t.Name()).FromJson(a: &Arena, v: &json.Value): json.Error!$(t.Name()) from a {
+        $pub $(t.Name()).FromJson(a: &Arena, v: &json.Value): json.Error!$(t.Name()) from a {
             $dec
         }
     })
@@ -183,6 +184,7 @@ CodecEnum(g: mut Gen, t: Type) {
             }
         })
     }
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
         impl json.Json for $(t.Name()) {
             FormatJson(&self, w: mut Writer): WriteError!void {
@@ -192,7 +194,7 @@ CodecEnum(g: mut Gen, t: Type) {
             }
         }
 
-        $(t.Name()).FromJson(a: &Arena, v: &json.Value): json.Error!$(t.Name()) from a {
+        $pub $(t.Name()).FromJson(a: &Arena, v: &json.Value): json.Error!$(t.Name()) from a {
             match v {
                 .Text(s) {
                     match *s {

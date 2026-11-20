@@ -86,6 +86,7 @@ export Matcher(g: mut Gen, t: Type, pattern: str) {
     r2 := re.rdfa.starts[2]
     r3 := re.rdfa.starts[3]
     reot := Cast[int](re.rdfa.eot)
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
         const $(fc): []u8 = [
             $fcls
@@ -103,7 +104,7 @@ export Matcher(g: mut Gen, t: Type, pattern: str) {
             $rtab
         ]
 
-        $(t.Name()).IsMatch(s: str): bool {
+        $pub $(t.Name()).IsMatch(s: str): bool {
             b := s.AsBytes()
             n := b.Len()
             var st: u32 = $(f0)
@@ -141,7 +142,7 @@ export Matcher(g: mut Gen, t: Type, pattern: str) {
             return $(ft)[Cast[int](st) + $(feot)] >= 0x80000000
         }
 
-        $(t.Name()).Find(s: str): ?regex.Match {
+        $pub $(t.Name()).Find(s: str): ?regex.Match {
             b := s.AsBytes()
             n := b.Len()
             var st: u32 = $(f0)

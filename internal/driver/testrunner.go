@@ -32,6 +32,7 @@ package driver
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"mk/internal/eval"
@@ -184,8 +185,10 @@ func (w *world) testMain(runner *modNode, tests []testCase) {
 
 	clones := make([]types.ItemID, len(tests))
 	all := types.EmptyErrors
+	w.testFrames = make(map[string]string, len(tests))
 	for i, tc := range tests {
 		clones[i] = w.cloneTest(runner, tc, i)
+		w.testFrames[items.Get(clones[i]).Key.String()] = "test " + strconv.Quote(tc.name)
 		all = tab.Union(all, w.declSig(clones[i]).Errors)
 	}
 

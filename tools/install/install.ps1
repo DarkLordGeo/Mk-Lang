@@ -1,19 +1,28 @@
 # Why: a Windows user needs one command that installs a released Mk
-# toolchain, checked against its published hash, without admin rights.
+# toolchain, signed by the project, without admin rights, Go or LLVM.
 #
 # What: installs the Mk toolchain on Windows. Windows PowerShell 5.1 or
 # later; never asks for elevation.
-#   irm <release address>/latest/download/install.ps1 | iex
+#   irm https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.ps1 | iex
 #   powershell -File install.ps1 [-Version 0.1.0] [-Root <dir>] [-Releases <address>] [-NoModifyPath]
 #
-# How: it downloads the newest release (or -Version) with its SHA256SUMS
-# over https, checks the archive's SHA-256, unpacks it to
+# How: it downloads the newest release (or -Version): SHA256SUMS and
+# SHA256SUMS.sig over https. It checks the Ed25519 signature against the
+# release keys written below (the keys mk itself trusts,
+# internal/release/keys.go) before it reads the list, then the archive's
+# SHA-256 against the list. It unpacks the archive to
 # <Root>\toolchains\<version>, points the junction <Root>\current at it,
 # and adds <Root>\current\bin to the user's PATH (HKCU\Environment) unless
-# -NoModifyPath. Root defaults to %LOCALAPPDATA%\mk. A first install trusts
-# https and the release host; every later `mk upgrade` checks the release's
-# Ed25519 signature. The parameters also come from MK_VERSION, MK_HOME,
-# MK_RELEASES and MK_NO_MODIFY_PATH=1, for `irm ... | iex`.
+# -NoModifyPath. Root defaults to %LOCALAPPDATA%\mk. Every later
+# `mk upgrade` checks signatures the same way. The parameters also come
+# from MK_VERSION, MK_HOME, MK_RELEASES and MK_NO_MODIFY_PATH=1, for
+# `irm ... | iex`. MK_INSTALL_TEST_KEY ("<key id> <base64 public key>")
+# adds a trusted key, and only with a loopback release address (tests).
+#
+# The signature protects against a changed archive or list. It cannot
+# protect against a changed copy of this script: read the script first, or
+# take it from the repository at a release tag. .NET Framework has no
+# Ed25519, so Test-MkEd25519 checks it in PowerShell.
 #
 # The whole script is one script block run in its own scope, so `irm | iex`
 # leaves no preference, strict mode, function or variable in the caller's
@@ -32,10 +41,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
+# BigInteger, for Test-MkEd25519: Windows PowerShell 5.1 does not load
+# System.Numerics by itself.
+Add-Type -AssemblyName System.Numerics
 
 $MkDefaultReleases = 'https://github.com/zerodayokay/Mk-Lang/releases'
 $MkHost = 'x86_64-windows'
 $MkVersionToken = '^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$'
+
+# The release keys this script trusts: one '<key id> <base64 public key>'
+# per entry, the same keys as internal/release/keys.go (TestInstallKeys
+# checks they agree). With none, nothing can be installed.
+$MkTrustedKeys = @(
+    '7f12cb260ba04bea ykIH33Kzl3Uno3l9vL2v5oOUy/H0toVHc5giQVn4BC8='
+)
 
 # Join-MkPath is the user PATH value with entry added at the front, unless
 # it is already there (compared without case or a trailing backslash).
@@ -130,6 +149,120 @@ function Get-MkSha256([string]$File) {
     return ([BitConverter]::ToString($h) -replace '-', '').ToLowerInvariant()
 }
 
+# Add-MkEdPoint adds two points of edwards25519 in extended coordinates
+# (X, Y, Z, T), with the unified formula of RFC 8032 section 5.1.4, which
+# also doubles. $EdQ and $EdD2 are the caller's.
+function Add-MkEdPoint([object[]]$P1, [object[]]$P2) {
+    $bi = [Numerics.BigInteger]
+    $a = $bi::Remainder(($P1[1] - $P1[0] + $EdQ) * ($P2[1] - $P2[0] + $EdQ), $EdQ)
+    $b = $bi::Remainder(($P1[1] + $P1[0]) * ($P2[1] + $P2[0]), $EdQ)
+    $c = $bi::Remainder($bi::Remainder($P1[3] * $EdD2, $EdQ) * $P2[3], $EdQ)
+    $d = $bi::Remainder(($P1[2] + $P1[2]) * $P2[2], $EdQ)
+    $e = $b - $a + $EdQ
+    $f = $d - $c + $EdQ
+    $g = $d + $c
+    $h = $b + $a
+    return , @($bi::Remainder($e * $f, $EdQ), $bi::Remainder($g * $h, $EdQ), $bi::Remainder($f * $g, $EdQ), $bi::Remainder($e * $h, $EdQ))
+}
+
+# Test-MkEd25519 checks an Ed25519 signature (RFC 8032, as Go's
+# crypto/ed25519 checks it: S below the group order, [S]B - [k]A encoded
+# equal to R).
+function Test-MkEd25519([byte[]]$Public, [byte[]]$Message, [byte[]]$Signature) {
+    if ($Public.Length -ne 32 -or $Signature.Length -ne 64) { return $false }
+    $bi = [Numerics.BigInteger]
+    $EdQ = $bi::Pow(2, 255) - 19
+    $order = $bi::Parse('7237005577332262213973186563042994240857116359379907606001950938285454250989')
+    $dd = $bi::Parse('37095705934669439343138083508754565189542113879843219016388785533085940283555')
+    $EdD2 = $bi::Remainder($dd + $dd, $EdQ)
+    $sqrtm1 = $bi::Parse('19681161376707505956807079304988542015446066515923890162744021073123829784752')
+    $one = $bi::One
+    # A little-endian unsigned integer: a zero byte on top keeps it positive.
+    $num = { param([byte[]]$b, [int]$at, [int]$n) $t = [byte[]]::new($n + 1); [Array]::Copy($b, $at, $t, 0, $n); $bi::new($t) }
+
+    # A = (x, y) from the public key: y and the sign of x.
+    $yb = [byte[]]::new(32); [Array]::Copy($Public, $yb, 32)
+    $sign = ($yb[31] -shr 7) -band 1
+    $yb[31] = $yb[31] -band 0x7f
+    $y = & $num $yb 0 32
+    if ($y -ge $EdQ) { return $false }
+    $y2 = $bi::Remainder($y * $y, $EdQ)
+    $u = $bi::Remainder($y2 - $one + $EdQ, $EdQ)
+    $v = $bi::Remainder($dd * $y2 + $one, $EdQ)
+    $v3 = $bi::Remainder($v * $v * $v, $EdQ)
+    $v7 = $bi::Remainder($v3 * $v3 * $v, $EdQ)
+    $x = $bi::Remainder($u * $v3 * $bi::ModPow($bi::Remainder($u * $v7, $EdQ), ($EdQ - 5) / 8, $EdQ), $EdQ)
+    $vx2 = $bi::Remainder($v * $x * $x, $EdQ)
+    if ($vx2 -ne $u) {
+        if ($bi::Remainder($vx2 + $u, $EdQ) -ne $bi::Zero) { return $false }
+        $x = $bi::Remainder($x * $sqrtm1, $EdQ)
+    }
+    if ($x.IsZero -and $sign -eq 1) { return $false }
+    if ([int]($x % 2) -ne $sign) { $x = $EdQ - $x }
+
+    $s = & $num $Signature 32 32
+    if ($s -ge $order) { return $false }
+    $sha = [Security.Cryptography.SHA512]::Create()
+    $buf = [byte[]]::new(64 + $Message.Length)
+    [Array]::Copy($Signature, 0, $buf, 0, 32)
+    [Array]::Copy($Public, 0, $buf, 32, 32)
+    [Array]::Copy($Message, 0, $buf, 64, $Message.Length)
+    $k = $bi::Remainder((& $num $sha.ComputeHash($buf) 0 64), $order)
+    $sha.Dispose()
+
+    # [S]B + [k](-A), one double per bit (Straus).
+    $bx = $bi::Parse('15112221349535400772501151409588531511454012693041857206046113283949847762202')
+    $by = $bi::Parse('46316835694926478169428394003475163141307993866256225615783033603165251855960')
+    $pb = @($bx, $by, $one, $bi::Remainder($bx * $by, $EdQ))
+    $nx = $EdQ - $x
+    if ($x.IsZero) { $nx = $bi::Zero }
+    $pa = @($nx, $y, $one, $bi::Remainder($nx * $y, $EdQ))
+    $pba = Add-MkEdPoint $pb $pa
+    $sb = $s.ToByteArray(); $kb = $k.ToByteArray()
+    $r = @($bi::Zero, $one, $one, $bi::Zero)
+    for ($i = 255; $i -ge 0; $i--) {
+        $r = Add-MkEdPoint $r $r
+        $j = $i -shr 3
+        $sbit = ($j -lt $sb.Length) -and ((($sb[$j] -shr ($i -band 7)) -band 1) -eq 1)
+        $kbit = ($j -lt $kb.Length) -and ((($kb[$j] -shr ($i -band 7)) -band 1) -eq 1)
+        if ($sbit -and $kbit) { $r = Add-MkEdPoint $r $pba }
+        elseif ($sbit) { $r = Add-MkEdPoint $r $pb }
+        elseif ($kbit) { $r = Add-MkEdPoint $r $pa }
+    }
+    $zi = $bi::ModPow($r[2], $EdQ - 2, $EdQ)
+    $rx = $bi::Remainder($r[0] * $zi, $EdQ)
+    $ry = $bi::Remainder($r[1] * $zi, $EdQ)
+    $enc = [byte[]]::new(32)
+    $rb = $ry.ToByteArray()
+    [Array]::Copy($rb, $enc, [Math]::Min($rb.Length, 32))
+    if (-not $rx.IsEven) { $enc[31] = $enc[31] -bor 0x80 }
+    for ($i = 0; $i -lt 32; $i++) {
+        if ($enc[$i] -ne $Signature[$i]) { return $false }
+    }
+    return $true
+}
+
+# Test-MkSums checks SHA256SUMS.sig, one line '<key id> <base64 Ed25519
+# signature>', over the SHA256SUMS bytes against the trusted keys, and
+# throws unless it holds.
+function Test-MkSums([string]$SumsFile, [string]$SigFile, [string]$Base) {
+    $keys = @($MkTrustedKeys)
+    if ($env:MK_INSTALL_TEST_KEY -and $Base -match '^http://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(/|$)') {
+        $keys += $env:MK_INSTALL_TEST_KEY
+    }
+    $keys = @($keys | Where-Object { $_ -cmatch '^[0-9a-f]{16} [A-Za-z0-9+/]{43}=$' })
+    if ($keys.Count -eq 0) { throw 'this script trusts no release key yet, so it cannot check a release; nothing was installed' }
+    $text = [IO.File]::ReadAllText($SigFile)
+    if ($text -cnotmatch '\A([0-9a-f]{16}) ([A-Za-z0-9+/]{86}==)\n\z') { throw 'SHA256SUMS.sig is not "<key id> <signature>" on one line; nothing was installed' }
+    $id = $Matches[1]
+    $sig = [Convert]::FromBase64String($Matches[2])
+    $key = @($keys | Where-Object { $_.Split(' ')[0] -ceq $id })
+    if ($key.Count -eq 0) { throw "the release is signed by key $id, which this script does not trust; nothing was installed" }
+    $pub = [Convert]::FromBase64String($key[0].Split(' ')[1])
+    if (-not (Test-MkEd25519 $pub ([IO.File]::ReadAllBytes($SumsFile)) $sig)) { throw 'the signature does not match SHA256SUMS; nothing was installed' }
+    Write-Output "SHA256SUMS is signed by release key $id"
+}
+
 # Select-MkArchive reads SHA256SUMS and returns the host's archive (the
 # version asked for, or the newest listed) as name, version and hash. The
 # version is a version token only (no '/' or '..').
@@ -217,6 +350,9 @@ function Install-Mk {
     try {
         $sumsFile = Join-Path $work 'SHA256SUMS'
         Save-MkFile (Get-MkFileUrl $Releases $Version 'SHA256SUMS') $sumsFile
+        $sigFile = Join-Path $work 'SHA256SUMS.sig'
+        Save-MkFile (Get-MkFileUrl $Releases $Version 'SHA256SUMS.sig') $sigFile
+        Test-MkSums $sumsFile $sigFile $Releases
         $a = Select-MkArchive ([IO.File]::ReadAllText($sumsFile)) $Version
         $dest = Join-Path $toolchains $a.Version
         if (Test-Path -LiteralPath $dest) {

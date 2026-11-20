@@ -1,16 +1,21 @@
 // Why: a fix labelled compiles promises it was checked to compile. A fix
 // that only trades one error for others (a `try` that turns one E0802 into
-// two E0801) must not be offered as one.
+// two E0801) must not be offered as one. Nor may a proven clause fix that
+// mk fix would refuse: a clause that moves the error to a caller as an
+// E0505 no clause clears.
 //
 // What: Session.CheckVerified and verifiedReport, verifyCompiles and
 // verifyFixes, the verifier (split, settle, groupKept), and movedUp, the
-// progress rule for clause fixes.
+// progress rule for clause fixes. The clause fixes' own rule is in
+// verifyclause.go.
 //
-// How: each compiles fix is applied in an overlay and the package
-// rechecked; one whose recheck is no progress becomes one of the
-// diagnostic's alternatives. Rechecks are spent in groups that are halved
-// on failure. mk check, mk fix's final report, the compile errors of mk
-// build, run and test, and mk lsp's code actions (on request) go through it.
+// How: each compiles fix, and each proven clause fix, is applied in an
+// overlay and the package rechecked; one whose recheck is no progress
+// becomes one of the diagnostic's alternatives. Rechecks are spent in
+// groups that are halved on failure. mk check, each round of mk fix (its
+// clause fixes) and its final report, the compile errors of mk build, run
+// and test, and mk lsp's code actions (on request, for a diagnostic with a
+// compiles or a proven clause fix) go through it.
 
 package driver
 
@@ -65,7 +70,7 @@ func (s *Session) child(cfg Config) (*Session, error) {
 }
 
 // verifiedReport is r, the failed check of a build, run or test, with its
-// compiles fixes verified: the check is made again through an
+// compiles and proven clause fixes verified: the check is made again through an
 // overlay (a cache hit) and verified. When the recheck does not report the
 // same number of diagnostics, r is returned as it was.
 func (s *Session) verifiedReport(r Result) Result {
@@ -87,11 +92,12 @@ func (s *Session) verifiedReport(r Result) Result {
 	return res
 }
 
-// hasCompilesFix reports whether a diagnostic of r offers a compiles fix.
+// hasCompilesFix reports whether a diagnostic of r offers a compiles fix or
+// a proven clause fix, the fixes verifyFixes recompiles.
 func hasCompilesFix(r Result) bool {
 	for _, e := range r.Report.Diags {
 		for _, f := range e.Diag.Fixes {
-			if f.Class == diag.Compiles {
+			if f.Class == diag.Compiles || provenClause(e.Diag, f) {
 				return true
 			}
 		}
@@ -104,15 +110,17 @@ func hasCompilesFix(r Result) bool {
 // with no diagnostic cap and no gen view (mk fix's final report), which spares
 // a recheck. It is verifyFixes with the maxVerify bound.
 func (s *Session) verifyCompiles(res Result, ov *overlay, cfg Config, base *Result) {
-	s.verifyFixes(res, ov, cfg, base, maxVerify)
+	s.verifyFixes(res, ov, cfg, base, maxVerify, false)
 }
 
-// vcand is one compiles fix under verification: fix number fix of d, and
-// the one package file its edits lie in.
+// vcand is one fix under verification: fix number fix of d, the one
+// package file its edits lie in, and whether it is a proven clause fix
+// (provenClause) rather than a compiles fix.
 type vcand struct {
-	d    *diag.Diagnostic
-	fix  int
-	path string
+	d      *diag.Diagnostic
+	fix    int
+	path   string
+	proven bool
 }
 
 // verifyFixes verifies fixes: each compiles fix whose edits all lie in one
@@ -130,12 +138,18 @@ type vcand struct {
 // whose error moved up). A report whose fixes all hold costs one recheck
 // after the base. budget bounds the rechecks of a fix alone (the first
 // budget fixes are always rechecked, alone if their group fails) and half of
-// it the group rechecks; the base is not counted. It returns the rechecks
-// made.
-func (s *Session) verifyFixes(res Result, ov *overlay, cfg Config, base *Result, budget int) int {
-	var cands []vcand
+// it the group rechecks; the base is not counted. With clausesOnly only the
+// proven clause fixes are verified (mk fix's rounds). It returns the
+// rechecks made.
+func (s *Session) verifyFixes(res Result, ov *overlay, cfg Config, base *Result, budget int, clausesOnly bool) int {
+	var cands, clauses []vcand
 	bad := map[*diag.Diagnostic]map[int]string{}
 	drop := func(c vcand, why string) {
+		if c.proven && !strings.HasPrefix(why, notProvenPrefix) {
+			// A clause not recompiled, or not to the end of its chain,
+			// is not proven either.
+			why = notProvenPrefix + strings.TrimPrefix(why, notCheckedPrefix)
+		}
 		if bad[c.d] == nil {
 			bad[c.d] = map[int]string{}
 		}
@@ -143,19 +157,24 @@ func (s *Session) verifyFixes(res Result, ov *overlay, cfg Config, base *Result,
 	}
 	for _, e := range res.Report.Diags {
 		for i, f := range e.Diag.Fixes {
-			if f.Class != diag.Compiles {
+			proven := provenClause(e.Diag, f)
+			if !proven && (f.Class != diag.Compiles || clausesOnly) {
 				continue
 			}
-			c := vcand{d: e.Diag, fix: i, path: s.fixPath(res, f, ov)}
+			c := vcand{d: e.Diag, fix: i, path: s.fixPath(res, f, ov), proven: proven}
 			if c.path == "" {
 				drop(c, whyNotOneFile)
 				continue
 			}
-			cands = append(cands, c)
+			if proven {
+				clauses = append(clauses, c)
+			} else {
+				cands = append(cands, c)
+			}
 		}
 	}
 	rechecks := 0
-	if len(cands) > 0 {
+	if len(cands)+len(clauses) > 0 {
 		cfg.GenView = false
 		cfg.MaxDiags = diag.NoCap
 		check := func() (Result, bool) {
@@ -172,12 +191,20 @@ func (s *Session) verifyFixes(res Result, ov *overlay, cfg Config, base *Result,
 			b, ok = check()
 		}
 		if !ok {
-			for _, c := range cands {
+			for _, c := range append(cands, clauses...) {
 				drop(c, whyNoSession)
 			}
 		} else {
-			v := &verifier{ov: ov, check: check, res: res, base: b, budget: budget, drop: drop}
+			v := &verifier{ov: ov, check: check, res: res, base: b, budget: budget, drop: drop,
+				path: func(r Result, f diag.Fix) string { return s.fixPath(r, f, ov) }}
+			// The compiles fixes are settled first, in groups of their
+			// own, so the clauses never take a recheck one of them needs.
+			// A fix of either kind that the bound leaves unchecked is
+			// downgraded.
 			for _, g := range v.split(cands) {
+				v.settle(g, false)
+			}
+			for _, g := range v.split(clauses) {
 				v.settle(g, false)
 			}
 			rechecks = v.used + v.groups
@@ -215,6 +242,7 @@ type verifier struct {
 	used   int
 	groups int
 	drop   func(vcand, string)
+	path   func(Result, diag.Fix) string // the one package file of a fix's edits, or ""
 }
 
 // split divides cands, in report order, into groups that can be rechecked
@@ -323,7 +351,9 @@ func (v *verifier) settle(g []vcand, tried bool) {
 		return
 	}
 	if len(g) == 1 {
-		if !better(nres.Report, v.base.Report) && !movedUp(nres, v.base, g[0].d) {
+		if g[0].proven {
+			v.settleClause(g[0], nres)
+		} else if !better(nres.Report, v.base.Report) && !movedUp(nres, v.base, g[0].d) {
 			v.drop(g[0], whyNoProgress)
 		}
 		return

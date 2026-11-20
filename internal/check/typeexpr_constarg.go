@@ -52,8 +52,15 @@ func (x *tctx) constArg(e ast.Node, want types.TypeID) (types.ConstArg, bool) {
 	case *ast.Ident, *ast.FieldExpr, *ast.PathType:
 		r := x.ref(e)
 		switch r.Kind {
-		case resolve.RefPoison, resolve.RefNone:
+		case resolve.RefPoison:
 			return types.ConstArg{}, false
+		case resolve.RefNone:
+			// A field of an expression that is no name (`S[0].a`, `F().a`)
+			// has no ref, but is no more constant than `P.a`: E0705 below.
+			// A name that did not resolve was reported by resolve.
+			if fe, isField := e.(*ast.FieldExpr); !isField || x.unresolvedRoot(fe) {
+				return types.ConstArg{}, false
+			}
 		case resolve.RefUniverse:
 			if s := source.Symbol(r.A); s == source.SymTrue || s == source.SymFalse {
 				return x.boolLitArg(e, s == source.SymTrue, want) // a literal (5e)
@@ -83,11 +90,11 @@ func (x *tctx) constArg(e ast.Node, want types.TypeID) (types.ConstArg, bool) {
 				return a, ok
 			}
 			if x.payloadVariant(fe) {
-				x.errorf(diag.E0705, e.Span(), "a variant is a const argument only of an enum with no payload in any variant").Text("param", x.constParam)
+				paramFact(x.errorf(diag.E0705, e.Span(), "a variant is a const argument only of an enum with no payload in any variant"), x.constParam)
 				return types.ConstArg{}, false
 			}
 		}
-		x.errorf(diag.E0705, e.Span(), "a const argument must be a compile-time constant").Text("param", x.constParam)
+		paramFact(x.errorf(diag.E0705, e.Span(), "a const argument must be a compile-time constant"), x.constParam)
 		return types.ConstArg{}, false
 	case *ast.CallExpr:
 		if ix, ok := e.Fun.(*ast.IndexExpr); ok && len(e.Args) == 0 && len(ix.Args) == 1 {
@@ -108,6 +115,39 @@ func (x *tctx) constArg(e ast.Node, want types.TypeID) (types.ConstArg, bool) {
 		return types.ConstArg{}, false
 	}
 	return x.computedArg(e, want)
+}
+
+// paramFact adds fact param, the const parameter an argument binds, to d;
+// an array length binds none, so its diagnostic has no such fact.
+func paramFact(d *diag.Diagnostic, param string) *diag.Diagnostic {
+	if param != "" {
+		d.Text("param", param)
+	}
+	return d
+}
+
+// unresolvedRoot reports whether the name at the root of field expression
+// fe (through fields, indexes, calls and parentheses) did not resolve, so
+// that its own diagnostic stands alone.
+func (x *tctx) unresolvedRoot(fe *ast.FieldExpr) bool {
+	var e ast.Expr = fe
+	for {
+		switch y := e.(type) {
+		case *ast.FieldExpr:
+			e = y.X
+		case *ast.IndexExpr:
+			e = y.X
+		case *ast.CallExpr:
+			e = y.Fun
+		case *ast.ParenExpr:
+			e = y.X
+		case *ast.Ident:
+			k := x.ref(y).Kind
+			return k == resolve.RefNone || k == resolve.RefPoison
+		default:
+			return false
+		}
+	}
 }
 
 // judgeConstArg judges const argument a, written at at, against want, the

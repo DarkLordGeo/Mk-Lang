@@ -1,11 +1,11 @@
 // Why: str.ToLower and str.ToUpper need Unicode's case mapping without a
 // runtime table load or a dependency outside the prelude.
 // What: ToLower and ToUpper, the simple one-to-one case mapping of Unicode
-// (UnicodeData fields 12 and 13, as Go's unicode.ToLower and ToUpper apply
-// it), into a new Text in an arena (layer 1); CaseMapped, CaseOf, PutScalar
+// (UnicodeData fields 12 and 13, at the UCD version std.text's tables come
+// from), into a new Text in an arena (layer 1); CaseMapped, CaseOf, PutScalar
 // and the generated CaseTable.
 // How: ASCII maps by arithmetic; other scalars by binary search over
-// CaseTable, generated from Go's unicode.CaseRanges. A mapping can change a
+// CaseTable, generated from the UCD's UnicodeData.txt. A mapping can change a
 // scalar's encoded length (U+023A becomes U+2C65, 2 bytes to 3), so the text
 // is reserved at the input's length and grows only then.
 
@@ -19,7 +19,7 @@ struct CaseRange {
     low: i32
 }
 
-// CaseAlternate is Go's unicode.UpperLower: MaxRune + 1.
+// CaseAlternate marks an alternating row: MaxRune + 1, no real delta.
 const CaseAlternate: i32 = 0x110000
 
 /// A copy of the text in a with each scalar lowercased by Unicode's simple
@@ -84,7 +84,7 @@ CaseMapped(s: str, a: &Arena, upper: bool): OutOfMemory!str from a {
     return TextInto(t)
 }
 
-// CaseOf maps the scalar v: Go's unicode.to over CaseTable. A scalar no
+// CaseOf maps the scalar v by binary search over CaseTable. A scalar no
 // range holds maps to itself. The table is read through one reference: at
 // compile time a module const named by value is copied whole at each use;
 // natively both forms are the same load.
@@ -138,10 +138,10 @@ PutScalar(b: mut []u8, v: u32): int {
 }
 
 // BEGIN GENERATED CaseTable by TestTextTablesUpToDate (std/std-text_tables_test.go); do not edit
-// unicode.Version: 17.0.0. unicode.CaseRanges, ascending: scalars lo..=hi map
-// to scalar + up (upper) and scalar + low (lower); a delta of
+// UCD version: 18.0.0. UnicodeData's simple case mappings, ascending: lo..=hi
+// map to scalar + up (upper) and scalar + low (lower); a delta of
 // CaseAlternate means upper at even offsets from lo, lower at odd ones.
-const CaseTable: [336]CaseRange = [
+const CaseTable: [348]CaseRange = [
     CaseRange(lo: 0x0041, hi: 0x005A, up: 0, low: 32),
     CaseRange(lo: 0x0061, hi: 0x007A, up: -32, low: 0),
     CaseRange(lo: 0x00B5, hi: 0x00B5, up: 743, low: 0),
@@ -250,6 +250,8 @@ const CaseTable: [336]CaseRange = [
     CaseRange(lo: 0x0271, hi: 0x0271, up: 10749, low: 0),
     CaseRange(lo: 0x0272, hi: 0x0272, up: -213, low: 0),
     CaseRange(lo: 0x0275, hi: 0x0275, up: -214, low: 0),
+    CaseRange(lo: 0x0277, hi: 0x0277, up: 42342, low: 0),
+    CaseRange(lo: 0x027C, hi: 0x027C, up: 42342, low: 0),
     CaseRange(lo: 0x027D, hi: 0x027D, up: 10727, low: 0),
     CaseRange(lo: 0x0280, hi: 0x0280, up: -218, low: 0),
     CaseRange(lo: 0x0282, hi: 0x0282, up: 42307, low: 0),
@@ -449,8 +451,12 @@ const CaseTable: [336]CaseRange = [
     CaseRange(lo: 0xA7CB, hi: 0xA7CB, up: 0, low: -42343),
     CaseRange(lo: 0xA7CC, hi: 0xA7DB, up: 1114112, low: 1114112),
     CaseRange(lo: 0xA7DC, hi: 0xA7DC, up: 0, low: -42561),
+    CaseRange(lo: 0xA7DD, hi: 0xA7DD, up: 0, low: -42342),
+    CaseRange(lo: 0xA7E2, hi: 0xA7E2, up: 0, low: -42342),
     CaseRange(lo: 0xA7F5, hi: 0xA7F6, up: 1114112, low: 1114112),
+    CaseRange(lo: 0xAB4B, hi: 0xAB4C, up: 33, low: 0),
     CaseRange(lo: 0xAB53, hi: 0xAB53, up: -928, low: 0),
+    CaseRange(lo: 0xAB6C, hi: 0xAB6D, up: 0, low: -33),
     CaseRange(lo: 0xAB70, hi: 0xABBF, up: -38864, low: 0),
     CaseRange(lo: 0xFF21, hi: 0xFF3A, up: 0, low: 32),
     CaseRange(lo: 0xFF41, hi: 0xFF5A, up: -32, low: 0),
@@ -476,6 +482,12 @@ const CaseTable: [336]CaseRange = [
     CaseRange(lo: 0x16E60, hi: 0x16E7F, up: -32, low: 0),
     CaseRange(lo: 0x16EA0, hi: 0x16EB8, up: 0, low: 27),
     CaseRange(lo: 0x16EBB, hi: 0x16ED3, up: -27, low: 0),
+    CaseRange(lo: 0x1DF40, hi: 0x1DF41, up: 1114112, low: 1114112),
+    CaseRange(lo: 0x1DF48, hi: 0x1DF4B, up: 1114112, low: 1114112),
+    CaseRange(lo: 0x1DF4D, hi: 0x1DF4E, up: 1114112, low: 1114112),
+    CaseRange(lo: 0x1DF51, hi: 0x1DF52, up: 1114112, low: 1114112),
+    CaseRange(lo: 0x1DF68, hi: 0x1DF6F, up: 1114112, low: 1114112),
+    CaseRange(lo: 0x1DF72, hi: 0x1DF7F, up: 1114112, low: 1114112),
     CaseRange(lo: 0x1E900, hi: 0x1E921, up: 0, low: 34),
     CaseRange(lo: 0x1E922, hi: 0x1E943, up: -34, low: 0),
 ]

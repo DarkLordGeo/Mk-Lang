@@ -387,12 +387,17 @@ AppendKeys(v: mut Vec[u8], data: []u8): bool {
 // PutKey appends one key-down KEY_EVENT INPUT_RECORD carrying the UTF-16
 // unit u, into room the caller reserved: EventType 1 at 0, bKeyDown 1 at
 // 4, wRepeatCount 1 at 8, uChar at 14; no virtual key, scan code or
-// modifier.
+// modifier, except for U+0000, which is Ctrl+Space as a console gives it:
+// VK_SPACE at 10, LEFT_CTRL_PRESSED at 16, uChar 0.
 PutKey(v: mut Vec[u8], u: u32) {
     var r: [20]u8 = [0; 20]
     r[0] = 1
     r[4] = 1
     r[8] = 1
+    if u == 0 {
+        r[10] = 0x20
+        r[16] = 0x08
+    }
     r[14] = Trunc[u8](u)
     r[15] = Trunc[u8](u >> 8)
     _ = AppendBytes(v, r[..])

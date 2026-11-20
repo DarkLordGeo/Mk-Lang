@@ -81,6 +81,13 @@ func TestPackFactsConfigFields(t *testing.T) {
 			cfg.PGO = &pgo.Profile{}
 		case "Display":
 			cfg.Display = map[string]string{"lib_00000000": "lib"}
+		case "Frames":
+			// A member's frame: only the packs holding a named member move.
+			cfg.Frames = map[string]string{e.Items().Get(u.Funcs[0].Item).Key.String(): ""}
+			was, _ := pfHash(u, 1, e, base)
+			if now, _ := pfHash(u, 1, e, cfg); now != was {
+				t.Errorf("Config.Frames naming a pack 0 member moved pack 1's facts")
+			}
 		default:
 			switch v.Kind() {
 			case reflect.String:

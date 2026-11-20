@@ -468,6 +468,8 @@ func (lx *lexer) punct() {
 			three(ast.TokEllipsis)
 		case c1 == '.':
 			two(ast.TokDotDot)
+		case isDigit(c1) && !lx.operandEnded():
+			lx.leadingDotFloat(start)
 		default:
 			one(ast.TokDot)
 		}

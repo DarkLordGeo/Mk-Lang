@@ -1,0 +1,13 @@
+# Error-return trace in a program with no task. Expected stderr written by hand from
+# tracenotask.mk: the line and column of the `fail` and of each `try`.
+case dev
+profile dev
+args x
+stderr tracenotask-dev.err
+exit 1
+
+case release
+profile release
+args x
+stderr tracenotask.err
+exit 1

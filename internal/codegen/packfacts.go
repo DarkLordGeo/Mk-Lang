@@ -135,6 +135,9 @@ func PackFacts(u *Unit, p int, env Env, cfg Config, h *source.Hasher) bool {
 		h.Bool(sg != nil && sg.smallFn(fi))
 		h.Bool(sg != nil && sg.crossSole(fi))
 		pos(it.Span)
+		frame, named := cfg.Frames[it.Key.String()] // its row's name (functable.go)
+		h.Bool(named)
+		h.String(frame)
 		b := f.Body
 		if b == nil {
 			continue

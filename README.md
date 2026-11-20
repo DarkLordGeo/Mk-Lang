@@ -1,60 +1,71 @@
 # Mk
 
 [![CI](https://github.com/zerodayokay/Mk-Lang/actions/workflows/ci.yml/badge.svg)](https://github.com/zerodayokay/Mk-Lang/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zerodayokay/Mk-Lang)](https://github.com/zerodayokay/Mk-Lang/releases/latest)
 
-Memory-safe systems programming without a garbage collector.
+Mk is a small compiled language for memory-safe systems programming without a garbage collector.
 
-Mk is a small compiled language for software that has to be fast and correct: tools, servers, runtimes, kernels. The compiler checks ownership and borrowing, so a use after free or a data race does not compile, and it needs no lifetime annotations to do it. Allocation, errors and I/O are explicit: a function allocates, fails or touches the outside world only when its signature says so. Tasks run in structured scopes, and a test can replay a whole concurrent program deterministically from a seed.
+## Documentation
+
+| | |
+|---|---|
+| [Overview](doc/overview.md) | A tour of the language, one feature at a time. Start here. |
+| [Memory](doc/memory.md) | Ownership, borrowing and the rules the compiler checks. |
+| [Reference](doc/reference.md) | The language, rule by rule. |
+| [Standard library](doc/std/README.md) | What each module is for, the conventions they share, and [what a 0.x release may change](doc/std/README.md#9-stability). |
+| [Errors](doc/errors.md) | Every error code and how to fix it. `mk explain E0503` prints one. |
+| [Tools](doc/tools.md) | The `mk` command: build, run, test, format, fix, query. |
+| [Packages](doc/packages.md) | Manifests, dependencies and workspaces. |
+| [Editors](doc/editors.md) | `mk lsp` in VS Code, Neovim, Helix, Emacs and others. |
+| [Cookbook](doc/cookbook.md) and [Examples](doc/examples.md) | Short programs for everyday tasks, and complete programs from a web service to a small kernel. |
+| [All documents](doc/README.md) | Style, codebase layout, grammar, rationale and the compiler. |
+
+## Why Mk
+
+Mk is for software that has to be fast and correct: tools, servers, runtimes, kernels. The compiler checks ownership and borrowing, so a use after free or a data race does not compile, and it needs no lifetime annotations to do it. Tasks run in structured scopes, and a test can replay a whole concurrent program deterministically from a seed.
+
+More and more code is written by AI agents and read by people. Mk is designed for both:
+
+- **Small.** The whole language, borrowing rules included, fits in an agent's context window and in a person's head. A feature gets in only if it pays for itself.
+- **Explicit.** Allocation, errors, I/O and borrowing show in signatures. You never read a callee's body to know whether it allocates, fails or keeps a reference.
+- **One way to write each thing.** No macros, no inheritance, no implicit conversions, no hidden control flow. Fewer choices mean fewer ways to be wrong.
+- **Errors that lead to the fix.** Every diagnostic has a code, `mk explain` explains it, and `mk fix` applies the fixes that are certain.
+
+Code that is plain for a person to review is also code an agent gets right on the first try.
+
+## A taste of Mk
+
+`Long` returns the words of `text` longer than `n` bytes, in a list allocated in the arena `a`:
 
 ```mk
-// Count the words of a text, then print them by count.
-
-struct Entry {
-    word: str
-    count: int
-}
-
-ByCount(a: &Entry, b: &Entry): bool {
-    if a.count != b.count {
-        return a.count > b.count
-    }
-    return a.word < b.word
-}
-
-// The result borrows from the arena and from the text: `from a, text` says so,
-// and the compiler checks every caller against it.
-Count(a: &Arena, text: str into a): OutOfMemory!List[Entry] from a, text {
-    var counts := Map[str, int].New(a)
+Long(a: &Arena, text: str into a, n: int): OutOfMemory!List[str] from a, text {
+    var out := List[str].New(a)
     for word in text.Words() {
-        n := try counts.Ensure(word, 0)
-        *n += 1
+        if word.Len() > n {
+            try out.Push(word)
+        }
     }
-    var out := List[Entry].New(a)
-    for (key, value) in counts.Iter() {
-        try out.Push(Entry(word: *key, count: *value))
-    }
-    out.Sort(ByCount)
     return out
 }
 
 export Main(sys: &System): OutOfMemory|WriteError!void {
     var arena := try Arena.New(sys.heap) // freed in one step at the end
     defer arena.Free()
-    entries := try Count(&arena, "the cat saw the dog and the dog saw the cat")
-    for e in entries {
-        try sys.Print("{count} {word}\n", (count: e.count, word: e.word))
+    words := try Long(&arena, "the quick brown fox jumps over the lazy dog", 4)
+    for w in words {
+        try sys.Print("{w}\n", (w: w))
     }
 }
 ```
 
 ```text
-$ mk run words.mk
-4 the
-2 cat
-2 dog
-2 saw
-1 and
+$ mk run long.mk
+quick
+brown
+jumps
 ```
+
+`OutOfMemory!List[str]` is the signature's promise: `Long` fails only with `OutOfMemory`, and `try` passes the error up. `from a, text` says the result borrows from the arena and the text, and `into a` lets the body store words of `text` in the arena's list. The compiler checks the body and every caller against the signature.
 
 Free the arena while something still borrows from it, and the program does not compile:
 
@@ -79,31 +90,27 @@ freed.mk:4:5: E0503 move-while-borrowed: arena conflicts with a live shared loan
 1 error
 ```
 
-## Why Mk
+## Getting started
 
-More and more code is written by AI agents and read by people. Mk is designed for both:
+### Install
 
-- **Small.** The whole language, borrowing rules included, fits in an agent's context window and in a person's head. A feature gets in only if it pays for itself; most sugar and cleverness does not.
-- **Explicit.** Allocation, errors, I/O and borrowing show in signatures. You never have to read a callee's body to know whether it allocates, fails or keeps a reference.
-- **One way to write each thing.** No macros, no inheritance, no implicit conversions, no hidden control flow. Fewer choices mean fewer ways to be wrong.
-- **Errors that lead to the fix.** Every diagnostic has a code, `mk explain` explains it, and `mk fix` applies the fixes that are certain.
+A release bundle holds mk, the clang and lld it was tested with, and the documentation, so it needs neither Go nor LLVM. On Windows, in PowerShell:
 
-Code that is plain for a person to review is also code an agent gets right on the first try.
-
-## Building from source
-
-You need Go 1.27 or newer and LLVM 21 (`clang` and `lld`).
-
-```sh
-git clone https://github.com/zerodayokay/Mk-Lang
-cd Mk-Lang
-go build -o mk ./cmd/mk        # on Windows: go build -o mk.exe ./cmd/mk
-./mk version
+```powershell
+irm https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.ps1 | iex
 ```
 
-Put `mk` on your `PATH`. `mk version` shows the LLVM it found. `--llvm DIR` or `MK_LLVM` names the directory; otherwise mk looks in the default install location (`C:\Program Files\LLVM\bin` on Windows, `/usr/lib/llvm-21/bin` on Linux) and on `PATH`, in the order [LLVM and toolchains](doc/tools.md#11-llvm-and-toolchains) gives. On Windows, use the installer from the LLVM releases page; on Ubuntu and Debian, install `clang-21` and `lld-21` from apt.llvm.org.
+On Linux (with curl or wget, and OpenSSL 3 or later for the signature check):
 
-## Hello, world
+```sh
+curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh
+```
+
+The script checks the release's signature against the release key written into it, and the archive against its SHA-256, before it installs anything. It unpacks the newest release under `%LOCALAPPDATA%\mk` or `~/.local/share/mk` and puts mk on your `PATH` (the user `PATH` on Windows, `~/.profile` on Linux). Open a new terminal and run `mk version`.
+
+For a given release, set `$env:MK_VERSION = '0.1.0'` before the Windows line, or end the Linux line with `| sh -s -- --version 0.1.0`. `mk upgrade` moves to a newer release later ([mk upgrade and mk toolchain](doc/tools.md#mk-version-mk-upgrade-and-mk-toolchain)). To read a script before you run it, download it from the same address, or take it from `tools/install/` at the release's tag.
+
+### Hello, world
 
 ```mk
 export Main(sys: &System): WriteError!void {
@@ -128,24 +135,34 @@ mk run                         # prints "hello from hello"
 
 `mk test` runs the `test` blocks, `mk fmt` formats, `mk check` checks without building. [The `mk` command](doc/tools.md) lists every command, and [Packages](doc/packages.md) covers manifests and dependencies.
 
+### Building from source
+
+You need Go 1.27 or newer and LLVM 21 or newer (`clang` and `lld`).
+
+```sh
+git clone https://github.com/zerodayokay/Mk-Lang
+cd Mk-Lang
+go build -o mk ./cmd/mk        # on Windows: go build -o mk.exe ./cmd/mk
+./mk version
+```
+
+Put `mk` on your `PATH`. `mk version` shows the LLVM it found. `--llvm DIR` or `MK_LLVM` names the directory; otherwise mk looks in the default install location (`C:\Program Files\LLVM\bin` on Windows, `/usr/lib/llvm-21/bin` on Linux) and on `PATH`, in the order [LLVM and toolchains](doc/tools.md#11-llvm-and-toolchains) gives. On Windows, use the installer from the LLVM releases page; on Ubuntu and Debian, install `clang-21` and `lld-21` from apt.llvm.org.
+
 ## Editor support
 
 `mk lsp` is the language server built into `mk`: diagnostics, hover, completion, go to definition, references, rename, formatting and code actions in any editor that speaks LSP. [doc/editors.md](doc/editors.md) sets it up in VS Code, Neovim, Helix, Emacs, Sublime Text and other editors.
 
-## Documentation
-
-- [Overview](doc/overview.md): a tour of the language. Start here.
-- [Memory](doc/memory.md): ownership, borrowing and the rules the compiler checks.
-- [Reference](doc/reference.md): the language, rule by rule.
-- [Standard library](doc/std/README.md): what each module is for, and the conventions they share.
-- [Errors](doc/errors.md): every error code and how to fix it. `mk explain E0503` prints one.
-- [Contributing](CONTRIBUTING.md): how to build, test and change Mk itself.
-
-[doc/README.md](doc/README.md) lists every document: the cookbook, examples, tools, packages, style, rationale and the compiler.
-
 ## Platforms
 
-Windows and Linux on x86_64, and freestanding x86_64. macOS and AArch64 are not supported.
+Mk builds programs for Windows and Linux on x86-64, and for freestanding x86-64 (no operating system). It does not build for macOS or AArch64; both are planned. [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers how to build, test and change Mk itself.
+
+## Security
+
+Report a vulnerability as [SECURITY.md](SECURITY.md) describes.
 
 ## License
 

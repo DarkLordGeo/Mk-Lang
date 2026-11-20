@@ -275,7 +275,7 @@ func (s *Session) fuzzLoop(out *TestCase, tc testCase, argv, env []string, i int
 		sig := fuzzSignature(r)
 		if prev, ok := sigs[sig]; ok {
 			// One bug, many inputs: the first input of a failure is kept.
-			fmt.Fprintf(&log, "seed %d: %s after %d calls: the failure of %s/%s (%s), not saved again\n", seed, r.reason, r.calls, rel, prev, sig)
+			fmt.Fprintf(&log, "seed %d: %s after %s: the failure of %s/%s (%s), not saved again\n", seed, r.reason, counted(r.calls, "call"), rel, prev, sig)
 			continue
 		}
 		name, err := saveFuzzInput(dir, r, seed, sig)
@@ -287,17 +287,26 @@ func (s *Session) fuzzLoop(out *TestCase, tc testCase, argv, env []string, i int
 		if !slices.Contains(saved, name) {
 			saved = append(saved, name)
 		}
-		fmt.Fprintf(&log, "seed %d: %s after %d calls: saved %s/%s\n", seed, r.reason, r.calls, rel, name)
+		fmt.Fprintf(&log, "seed %d: %s after %s: saved %s/%s\n", seed, r.reason, counted(r.calls, "call"), rel, name)
 	}
 	out.Duration = time.Since(start)
-	fmt.Fprintf(&log, "fuzz: %d calls in %s, %d failing runs, %d inputs saved\n", calls, out.Duration.Round(time.Millisecond), found, len(saved))
+	fmt.Fprintf(&log, "fuzz: %s in %s, %s, %s saved\n", counted(calls, "call"), out.Duration.Round(time.Millisecond), counted(found, "failing run"), counted(len(saved), "input"))
 	out.Output = log.String()
 	if found == 0 {
 		out.Result, out.Status = "pass", 0
 		return
 	}
 	out.Result, out.Status = "fail", 1
-	out.Detail = fmt.Sprintf("fuzz: %d failing runs, %d inputs saved to %s/", found, len(saved), rel)
+	out.Detail = fmt.Sprintf("fuzz: %s, %s saved to %s/", counted(found, "failing run"), counted(len(saved), "input"), rel)
+}
+
+// counted is n and noun, the noun plural unless n is 1: "1 call",
+// "2 calls".
+func counted[N int | uint64](n N, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // testFileText is the text of the source file holding test tc's block.

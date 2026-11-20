@@ -4,7 +4,8 @@
 //
 // What: mainEntry and mainReport, which build a wrapper of Main as MIR
 // (`<root>.Main#report`, as the test runner's Main is built in
-// testrunner.go), and errorCodeOf.
+// testrunner.go), frameNames (the backtrace names codegen gives the
+// compiler-made functions) and errorCodeOf.
 //
 // How: the wrapper reports an error as `error: `, its display name's module
 // prefix, then the error as its `{e}` hole formats it (`error:
@@ -218,6 +219,28 @@ func (w *world) mainReport(mainID types.ItemID, key types.Key) (types.ItemID, bo
 	}
 	w.sem5.store(id, &bodyEntry{mir: b, state: eval.BodyReady, flowed: true})
 	return id, true
+}
+
+// frameNames is codegen.Config.Frames for a bin entered through entry
+// (cfg.Main, the zero key for Main itself): the compiler-made functions
+// a backtrace leaves out (Main's report wrapper; in mk test's runner, its
+// Main) and each test clone's `test "name"`. nil when there are none.
+func (w *world) frameNames(mainMod string, entry types.Key) map[string]string {
+	main := types.ItemKey(mainMod, "Main").String()
+	var out map[string]string
+	if e := entry.String(); e != "" && e != main {
+		out = map[string]string{e: ""}
+	}
+	if mainMod == testRunnerModule {
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[main] = ""
+		for k, n := range w.testFrames {
+			out[k] = n
+		}
+	}
+	return out
 }
 
 // errorCodeOf is error item e's code: its declared one, else its key's

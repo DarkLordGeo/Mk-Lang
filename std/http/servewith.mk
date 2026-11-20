@@ -541,8 +541,9 @@ ServeConnLoop[C: Share, T: Send](conn: &Mutex[?net.Conn], heap: &Heap, io: Io, o
                     k := if e - s > st.size { st.size } else { e - s }
                     if bn + k > body.Len() {
                         // k is at most HeadBuf, below BodyStep, and at most
-                        // st.size, so the new buffer holds it.
-                        body = GrowFor(&arena, body[0..bn], st.size) else {
+                        // st.size, below what the budget leaves, so the new
+                        // buffer holds it.
+                        body = GrowFor(&arena, body[0..bn], budget - bn) else {
                             fault = 500
                             break
                         }

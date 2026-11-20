@@ -1,0 +1,53 @@
+name: Feature request
+description: A change to the language, the standard library or the tools.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mk adds a language feature only when existing ones cannot express the program well. [Rationale](https://github.com/zerodayokay/Mk-Lang/blob/main/doc/rationale.md) explains the choices made so far.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Language
+        - Standard library
+        - Tools (mk build, test, fmt, lsp...)
+        - Packages
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Mk version
+      description: The first line of `mk version`.
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Windows 11, Ubuntu 24.04
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and why Mk makes it hard today.
+    validations:
+      required: true
+  - type: textarea
+    id: program
+    attributes:
+      label: A minimal program
+      description: The code you write today, or the code you would like to write.
+      render: text
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

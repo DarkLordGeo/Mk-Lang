@@ -463,8 +463,9 @@ func (m *Module) declareItem(it *types.Item) {
 }
 
 // fuel is a const's or gen line's fuel operand: a non-negative integer
-// literal (E0705 for a negative one), DefaultFuel when absent. A computed
-// fuel is not evaluated: DefaultFuel stands for it.
+// literal, or a named const read as a u64 const argument (E0301 or E0303
+// when it is no such value), DefaultFuel when absent. Any other form is
+// E0705, as on a gen line.
 func (m *Module) fuel(x *tctx, e ast.Expr) uint64 {
 	switch e := e.(type) {
 	case nil:
@@ -473,8 +474,17 @@ func (m *Module) fuel(x *tctx, e ast.Expr) uint64 {
 		if v, ok := parseIntLit(e.Raw); ok && e.Kind == ast.TokInt {
 			return v
 		}
-	case *ast.UnaryExpr:
-		x.errorf(diag.E0705, e.Span(), "fuel must be a non-negative integer constant").Text("param", "fuel")
+		x.errorf(diag.E0705, e.Span(), "fuel is a non-negative integer literal or a named const").Text("param", "fuel")
+	case *ast.Ident, *ast.FieldExpr:
+		sub := *x
+		sub.constParam = "fuel"
+		if a, ok := sub.constArg(e, types.U64); ok && a.Kind == types.CAValue {
+			if v, ok := m.c.constInt(a.Value); ok {
+				return uint64(v)
+			}
+		}
+	default:
+		x.errorf(diag.E0705, e.Span(), "fuel is a non-negative integer literal or a named const").Text("param", "fuel")
 	}
 	return types.DefaultFuel
 }

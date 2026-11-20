@@ -417,6 +417,7 @@ func TestStatementDispatch(t *testing.T) {
 		{name: "two assigns", src: "F() {\n    a = b = c\n}\n", codes: "E0101"},
 		{name: "defer assign", src: "F() {\n    defer x = 1\n}\n", codes: "E0101", msg: "an assignment needs `defer { }`"},
 		{name: "empty reason", src: "F() {\n    unsafe \"\" {\n    }\n}\n", codes: "E0101", msg: "say why"},
+		{name: "blank reason", src: "F() {\n    unsafe \" \\t\" {\n    }\n}\n", codes: "E0101", msg: "say why"},
 		{name: "two statements", src: "F() {\n    x := 1 y := 2\n}\n", codes: "E0101", msg: "one statement per line"},
 	})
 }

@@ -126,8 +126,9 @@ export Codec(g: mut Gen, t: Type) {
     }
     // One field writes no delimiter, and an unused local is E0208.
     delim := if alone { quote {} } else { quote { var d: [1]u8 = [o.delimiter] } }
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
-        $(t.Name()).FromCsv(a: &Arena, r: &csv.Record): ParseError|Utf8Error|OutOfMemory!$(t.Name()) from a {
+        $pub $(t.Name()).FromCsv(a: &Arena, r: &csv.Record): ParseError|Utf8Error|OutOfMemory!$(t.Name()) from a {
             var i := 0
             $dec
             if i != r.Len() {
@@ -136,7 +137,7 @@ export Codec(g: mut Gen, t: Type) {
             return $(t.Name())($args)
         }
 
-        $(t.Name()).WriteCsv(&self, w: mut Writer, o: &csv.Options): WriteError!void {
+        $pub $(t.Name()).WriteCsv(&self, w: mut Writer, o: &csv.Options): WriteError!void {
             $guard(o)
             $delim
             $enc
@@ -144,7 +145,7 @@ export Codec(g: mut Gen, t: Type) {
             try w.Bytes(crlf[..])
         }
 
-        $(t.Name()).WriteCsvHeader(w: mut Writer, o: &csv.Options): WriteError!void {
+        $pub $(t.Name()).WriteCsvHeader(w: mut Writer, o: &csv.Options): WriteError!void {
             $guard(o)
             $delim
             $names

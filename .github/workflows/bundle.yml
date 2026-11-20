@@ -1,0 +1,221 @@
+# Why: release.yml must sign exactly the bundle each host built, so each
+# bundle has to come out of its own job with its SHA-256 as a job output,
+# which no other job of the run can change.
+#
+# What: one release bundle, mk-<version>-<host>.zip or .tar.gz, built on the
+# runner image `os`: a release build of mk, clang, lld and clang's headers
+# from LLVM's official release, LLVM's licence and the documentation
+# (tools/release build), unpacked and run once. It uploads the bundle as
+# the artifact bundle-<runner OS> and outputs its file name and SHA-256.
+#
+# How: called only by release.yml, once per host. Everything the job writes
+# goes under RUNNER_TEMP.
+name: Bundle
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: The runner image
+        type: string
+        required: true
+      version:
+        description: The version the bundle is built for, without "v"
+        type: string
+        required: true
+    outputs:
+      file:
+        description: The bundle's file name
+        value: ${{ jobs.bundle.outputs.file }}
+      sha256:
+        description: The bundle's SHA-256
+        value: ${{ jobs.bundle.outputs.sha256 }}
+
+permissions:
+  contents: read
+
+env:
+  # The release address compiled into a release build of mk.
+  MK_RELEASES_URL: https://github.com/zerodayokay/Mk-Lang/releases
+  LLVM_VERSION: 21.1.8
+  # SHA-256 of the LLVM 21.1.8 release files, from the asset digests
+  # GitHub's API reports for llvmorg-21.1.8.
+  LLVM_WIN64_SHA256: 7a5386c26497db1691f320121e5b113364dd0274b98e55f15f4dbc00c0450113
+  LLVM_LINUX_SHA256: b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b
+  # SHA-256 of llvm/LICENSE.TXT at llvmorg-21.1.8, the licence every bundle
+  # carries as LICENSE-LLVM.txt.
+  LLVM_LICENSE_SHA256: 8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee
+
+jobs:
+  bundle:
+    name: bundle (${{ inputs.os }})
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 90
+    outputs:
+      file: ${{ steps.hash.outputs.file }}
+      sha256: ${{ steps.hash.outputs.sha256 }}
+    defaults:
+      run:
+        # Git Bash on the hosted Windows images.
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      # Everything the job writes goes under RUNNER_TEMP, so the checkout
+      # stays clean and mk's VCS stamp carries no "+dirty".
+      - name: Work directories
+        env:
+          VERSION_IN: ${{ inputs.version }}
+        run: |
+          work="$RUNNER_TEMP/rel"
+          mkdir -p "$work/build" "$work/out" "$work/tmp" "$work/cache"
+          # Git Bash on Windows: native paths, not ones with mixed
+          # separators, for Go and mk.
+          native() { if command -v cygpath >/dev/null; then cygpath -w "$1"; else printf '%s\n' "$1"; fi; }
+          {
+            echo "WORK=$(native "$work")"
+            echo "TMP=$(native "$work/tmp")"
+            echo "TEMP=$(native "$work/tmp")"
+            echo "TMPDIR=$(native "$work/tmp")"
+            echo "MK_CACHE=$(native "$work/cache")"
+            echo "VERSION=$VERSION_IN"
+          } >> "$GITHUB_ENV"
+
+      # The release build of mk, before anything else runs in the checkout.
+      - name: Build mk
+        env:
+          CGO_ENABLED: "0"
+          # Git Bash would rewrite the address's "//" as a Windows path.
+          MSYS_NO_PATHCONV: "1"
+        run: |
+          exe=""
+          [ "$RUNNER_OS" = Windows ] && exe=.exe
+          mk="$RUNNER_TEMP/rel/build/mk$exe"
+          command -v cygpath >/dev/null && mk=$(cygpath -w "$mk")
+          go build -trimpath -ldflags "-X mk/internal/release.base=$MK_RELEASES_URL" -o "$mk" ./cmd/mk
+          "$mk" version
+          echo "MK_EXE=$mk" >> "$GITHUB_ENV"
+
+      # LLVM's official Windows binaries, from its installer, into the
+      # default location. The image may carry another LLVM there: its
+      # uninstaller finishes in the background, so wait for it to remove
+      # itself.
+      - name: LLVM (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          llvm="/c/Program Files/LLVM"
+          if [ -x "$llvm/Uninstall.exe" ]; then
+            MSYS_NO_PATHCONV=1 "$llvm/Uninstall.exe" /S
+            for _ in $(seq 120); do
+              [ -e "$llvm/bin/clang.exe" ] || [ -e "$llvm/Uninstall.exe" ] || break
+              sleep 5
+            done
+          fi
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o llvm.exe "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/LLVM-$LLVM_VERSION-win64.exe"
+          echo "$LLVM_WIN64_SHA256  llvm.exe" | sha256sum -c -
+          MSYS_NO_PATHCONV=1 ./llvm.exe /S
+          rm -f llvm.exe
+          v=$("$llvm/bin/clang.exe" --version)
+          echo "$v"
+          case "$v" in
+            *"clang version $LLVM_VERSION"*) ;;
+            *) echo "::error::$llvm holds no clang $LLVM_VERSION"; exit 1 ;;
+          esac
+          echo "LLVM_DIR=C:\\Program Files\\LLVM" >> "$GITHUB_ENV"
+
+      # LLVM's official Linux binaries. The distribution packages link
+      # clang and lld against shared LLVM libraries that a user's machine
+      # may not have; these do not. Only the parts a bundle carries are
+      # unpacked.
+      - name: LLVM (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd "$RUNNER_TEMP"
+          name="LLVM-$LLVM_VERSION-Linux-X64"
+          curl -fsSL --retry 3 -o llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/$name.tar.xz"
+          echo "$LLVM_LINUX_SHA256  llvm.tar.xz" | sha256sum -c -
+          major="${LLVM_VERSION%%.*}"
+          # bin/clang is a link to bin/clang-<major>.
+          tar -xJf llvm.tar.xz "$name/bin/clang" "$name/bin/clang-$major" "$name/bin/lld" "$name/lib/clang/$major/include"
+          rm -f llvm.tar.xz
+          "$name/bin/clang" --version
+          echo "LLVM_DIR=$RUNNER_TEMP/$name" >> "$GITHUB_ENV"
+
+      - name: LLVM's licence
+        run: |
+          curl -fsSL --retry 3 -o "$WORK/LICENSE-LLVM.txt" "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-$LLVM_VERSION/llvm/LICENSE.TXT"
+          echo "$LLVM_LICENSE_SHA256  $WORK/LICENSE-LLVM.txt" | sha256sum -c -
+
+      - name: Bundle
+        run: go run ./tools/release build -mk "$MK_EXE" -llvm "$LLVM_DIR" -llvm-license "$WORK/LICENSE-LLVM.txt" -version "$VERSION" -repo . -out "$WORK/out"
+
+      # The unpacked bundle's mk must find its own LLVM and build and run a
+      # program. On Linux the bundled tools must need no library the
+      # system lacks.
+      - name: Run the bundle
+        run: |
+          cd "$WORK"
+          host=x86_64-linux
+          [ "$RUNNER_OS" = Windows ] && host=x86_64-windows
+          top="mk-$VERSION-$host"
+          mkdir smoke
+          if [ "$RUNNER_OS" = Windows ]; then
+            pwsh -NoProfile -Command "Expand-Archive -LiteralPath 'out\\$top.zip' -DestinationPath 'smoke'"
+            mk="smoke/$top/bin/mk.exe"
+          else
+            tar -xzf "out/$top.tar.gz" -C smoke
+            mk="smoke/$top/bin/mk"
+            for t in clang lld; do
+              ldd "smoke/$top/llvm/bin/$t" > ldd.txt 2>&1 || true
+              cat ldd.txt
+              if grep -q "not found" ldd.txt; then
+                echo "::error::the bundled $t needs a library this system lacks"
+                exit 1
+              fi
+            done
+          fi
+          v=$("$mk" version)
+          echo "$v"
+          case "$v" in
+            *"(bundle)"*) ;;
+            *) echo "::error::the bundle's mk did not choose the bundled LLVM"; exit 1 ;;
+          esac
+          cat > smoke/hello.mk <<'EOF'
+          export Main(sys: &System): WriteError!void {
+              try sys.Print("hello, world\n")
+          }
+          EOF
+          out=$("$mk" run smoke/hello.mk)
+          echo "$out"
+          [ "$out" = "hello, world" ] || { echo "::error::hello.mk printed the wrong text"; exit 1; }
+
+      # The bundle's name and SHA-256, for the jobs that sign and publish it.
+      - name: Hash
+        id: hash
+        run: |
+          host=x86_64-linux ext=tar.gz
+          [ "$RUNNER_OS" = Windows ] && host=x86_64-windows ext=zip
+          file="mk-$VERSION-$host.$ext"
+          sum=$(sha256sum < "$WORK/out/$file" | cut -d' ' -f1)
+          echo "$sum  $file"
+          {
+            echo "file=$file"
+            echo "sha256=$sum"
+          } >> "$GITHUB_OUTPUT"
+          echo "BUNDLE=$file" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bundle-${{ runner.os }}
+          path: ${{ env.WORK }}/out/${{ env.BUNDLE }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

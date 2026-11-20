@@ -1,6 +1,6 @@
 # The standard library
 
-The standard library is Mk code under `std/`, shipped inside the `mk` binary. It includes the runtime and the system layer: there is no C runtime and no libc. This guide covers what every module shares: its layer, the naming of its calls, how it allocates, does I/O, fails and is cancelled, and how stable it is. The [module index](#8-module-index) links each module's page. Read the [overview](../overview.md) first.
+The standard library is Mk code under `std/`, shipped inside the `mk` binary. It includes the runtime and the system layer: there is no C runtime and no libc. This guide covers what every module shares: its layer, the naming of its calls, how it allocates, does I/O, fails and is cancelled, and how stable it is, with what a release of Mk may change. The [module index](#8-module-index) links each module's page. Read the [overview](../overview.md) first.
 
 Each module's page says what the module is for, what it costs and how it fails, with examples, and ends with the module's API, generated from the doc comments in `std/`. `mk doc --std std.<module>` prints the same API, and [reference section 18](../reference.md#18-library-surface) lists every signature in one place. The prelude, the names every module sees with no import, is [std.core](core.md).
 
@@ -336,12 +336,25 @@ Each page ends with its module's API, generated from the doc comments by `mk doc
 
 ## 9. Stability
 
-Every public item of the language and of std has a stability level, which says what may change in a minor release. `mk query` and `mk doc` show an item's level.
+Every public item of the language, the tools and std has a stability level, which says how it may change from one release to the next. `mk query` and `mk doc` show an item's level, and `mk check` notes every package that imports an Experimental module, directly or through a dependency.
 
-| Level | Promise | Items |
+| Level | May change | Items |
 |---|---|---|
-| Stable | Within a major version, a minor release only adds. It never removes or changes a public fact | Language: the language of [reference](../reference.md) sections 1 to 16, the [memory model](../memory.md), the error codes, every field of `pkg.mk`. Library: everything not listed below |
-| Provisional | May change in a minor release | Language: `asm` and `naked`; the `cpu` clause; the `mk lsp` surface; the kernel forms (`align(n)`, `section`, `extern var`, `general-regs-only`, the freestanding target, `MkEntry` and `MkPanicHook`). Library: `std.simd`, `std.sim`, `std.mmio`, `std.free`, `std.dl`, `std.raw` outside std, `proc.Pty`, `Command.terminal`, `net.Transport`, `net.NewConn`, `net.ConnSlot`, `net.ReserveConn`, `encoding.Codec`, `Encoding.Of`, `runtime.ForeignIo` with `IoTable`, `mem.Custom` with `AllocTable` |
-| Experimental | May change or be withdrawn in any minor release | Library: `std.tls`, `std.x509`. Target: `x86_64-nutshell` |
+| Stable | As the [release rules](#releases-before-10) below say | Language: the language of [reference](../reference.md) sections 1 to 16, the [memory model](../memory.md), the error codes, every field of `pkg.mk`. Library: everything not listed below. Tools: the `mk` commands and their flags |
+| Provisional | In any minor release, with no deprecation first | Language: `asm` and `naked`; the `cpu` clause; the `mk lsp` surface; the kernel forms (`align(n)`, `section`, `extern var`, `general-regs-only`, the freestanding target, `MkEntry` and `MkPanicHook`). Library: `std.simd`, `std.sim`, `std.mmio`, `std.free`, `std.dl`, `std.raw` outside std, `proc.Pty`, `Command.terminal`, `net.Transport`, `net.NewConn`, `net.ConnSlot`, `net.ReserveConn`, `encoding.Codec`, `Encoding.Of`, `runtime.ForeignIo` with `IoTable`, `mem.Custom` with `AllocTable` |
+| Experimental | In any minor release, and may be withdrawn | Library: `std.tls`, `std.x509`. Target: `x86_64-nutshell` |
 
-No Stable std module imports an Experimental one, and `mk check` notes every package that imports an Experimental module, directly or through a dependency. A Stable item is deprecated before it changes, in [the steps any library follows](../codebase.md#7-stability-levels).
+### Releases before 1.0
+
+Mk is at 0.1.0, its first public release. Until 1.0:
+
+- A patch release (0.1.1) fixes bugs. It adds, removes and changes no public item.
+- A minor release (0.2.0) may change or remove a Stable item. Each such change has an entry in [CHANGELOG.md](../../CHANGELOG.md) under that release and shows in `mk apidiff`. When a source form changes, an `mk fix` rewrite comes with it wherever the rewrite is certain. When the old and new forms can live side by side, the old one is deprecated first.
+- Provisional and Experimental items may change in any minor release, with a CHANGELOG entry and no deprecation. An Experimental module may be withdrawn.
+- The JSON of `mk check --json` carries a schema version, and a version only gains fields.
+
+From 1.0, a minor release only adds to the Stable items: it never removes or changes a public fact. A Stable item that must change is deprecated for at least two minor releases and changes in the next major release, in [the steps any library follows](../codebase.md#7-stability-levels).
+
+### A Stable module over an Experimental one
+
+A level covers a module's own items. No Stable module imports an Experimental one: `std.http` and `std.websocket` speak TLS only through a `net.Secure` that the program makes with `tls.Connector` or `tls.Acceptor`. A program that uses `https`, `wss` or a TLS server therefore imports `std.tls` itself, and `mk check` notes it. The `secure` settings and `NoSecureTransport` are Stable. What happens over TLS, `https` and `wss` included, is Experimental as long as `std.tls` is.

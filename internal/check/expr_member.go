@@ -4,7 +4,8 @@
 //
 // What: memberOf, valueMemberOf and memberLookup, ambiguous (use-site
 // E0206), memberMiss (E0702, E0203), head and typeHead, field and fieldUse
-// (E0204 for another module's private field), notFieldValue, rawMember,
+// (E0204 for another module's private field), privateMethod (E0204 for
+// another module's private method), notFieldValue, rawMember,
 // builtinNames and builtinMember.
 //
 // How: the name is looked up exactly, then case-folded (a unique folded
@@ -107,7 +108,35 @@ func (u *unit) memberLookup(t types.TypeID, name *ast.Ident, v *valueSite) (Memb
 	if mb.Item != types.NoItem {
 		u.x.rec.signature(u.c.cfg.Items.Get(mb.Item).Key)
 	}
+	u.privateMethod(name.Span(), mb)
 	return mb, true
+}
+
+// privateMethod is E0204 for a `Type.Name` function without `export` named
+// from another module, by any form (`x.M()`, `T.M(..)`, `T.M` as a value,
+// the loop's `Next`). An impl's methods are as visible as the impl, so
+// only MemberFunc is checked. The lookup still resolves.
+func (u *unit) privateMethod(at source.Span, mb Member) {
+	if mb.Kind != MemberFunc || mb.Exported {
+		return
+	}
+	items := u.c.cfg.Items
+	it := items.Get(mb.Item)
+	if it.Module == u.m.ID {
+		return
+	}
+	owner := ""
+	switch {
+	case it.Owner != types.NoItem:
+		owner = u.c.cfg.Interner.Str(items.Get(it.Owner).Name)
+	case it.OwnerPrim != types.NoType:
+		owner = u.str(it.OwnerPrim)
+	}
+	spell := owner + "." + u.c.cfg.Interner.Str(it.Name)
+	mod := items.Module(it.Module).Path
+	u.err(diag.E0204, at, "`"+spell+"` is not exported by `"+mod+"`").In(diag.PhaseTypes).
+		Text("item", spell).Loc("declared_at", it.Span).Text("module", mod).
+		Alt("export `" + spell + "` from `" + mod + "`").Alt("use an exported method of `" + mod + "`")
 }
 
 // ambiguous is the use-site E0206: impl methods of two impls

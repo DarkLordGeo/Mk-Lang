@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/zerodayokay/Mk-Lang/security/advisories/new
+    about: Report it privately, not in a public issue.
+  - name: Documentation
+    url: https://github.com/zerodayokay/Mk-Lang/blob/main/doc/README.md
+    about: The language reference, the memory model, the standard library and the tools.

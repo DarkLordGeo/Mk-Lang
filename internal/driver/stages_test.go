@@ -161,14 +161,21 @@ func TestBodiesInParallelAreDeterministic(t *testing.T) {
 	files["a/a.mk"] = b.String()
 	files["b/b.mk"] = "import a\n\nexport G(): bool {\n    return a.F()\n}\n"
 	dir := writeTree(t, pkgFiles(files))
+	// Each check has a cache of its own that holds std's check results
+	// alone, so all eight check a and b from nothing at once.
+	seed := stdSeedCheck(t, Config{})
+	caches := make([]string, 8)
+	for i := range caches {
+		caches[i] = seededCache(t, seed)
+	}
 	var first string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		wg.Add(1)
-		go func(jobs int) {
+		go func(jobs int, cache string) {
 			defer wg.Done()
-			r := check(t, Config{Root: dir, Jobs: jobs})
+			r := check(t, Config{Root: dir, Jobs: jobs, CacheDir: cache})
 			if n := len(r.Report.Diags); n != 41 {
 				t.Errorf("jobs %d: %d diagnostics, want 41\n%s", jobs, n, r.Report.Text(r.Sources))
 			}
@@ -180,7 +187,7 @@ func TestBodiesInParallelAreDeterministic(t *testing.T) {
 			} else if got != first {
 				t.Errorf("jobs %d: report differs", jobs)
 			}
-		}(i%4 + 1)
+		}(i%4+1, caches[i])
 	}
 	wg.Wait()
 }

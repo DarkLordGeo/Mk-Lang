@@ -28,7 +28,13 @@ const operandIfMsg = " is a value only on the right of a binding or an assignmen
 // argument, a record field's value and an array element.
 func (p *parser) parseValue() ast.Expr {
 	if p.tooDeep || !p.at(ast.TokIf) && !p.at(ast.TokMatch) {
-		return p.parseExpr()
+		// A value position is where a brace literal habit may be read
+		// (braceLitAhead); nowhere else does a '{' after an operand fail.
+		saved := p.litOK
+		p.litOK = true
+		x := p.parseExpr()
+		p.litOK = saved
+		return x
 	}
 	s0 := p.p
 	start := p.curStart()

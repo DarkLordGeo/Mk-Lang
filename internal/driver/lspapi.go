@@ -703,6 +703,12 @@ func answerQuery(qx *queryIndex, q string, args []string, partial bool) *QueryAn
 		}
 		switch q {
 		case "members":
+			if t, ok := qx.typeNamed(args[0], e); ok {
+				// `members Eq`: the prelude interface, with the
+				// generator of that name after it.
+				lines = append(qx.members(t), "also "+lastSeg(e.mod)+"."+e.name+", a function: "+qx.sigLine(e.name, qx.funcSig(e.id)))
+				break
+			}
 			lines = qx.members(e)
 		case "sig":
 			lines = qx.sig(e)

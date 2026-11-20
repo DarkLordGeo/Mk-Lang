@@ -1,5 +1,5 @@
 // Why: past bugs in Normalize's output sizing, scratch buffer and mark sort,
-// and a Unicode version gap between two case tables, must stay fixed.
+// and two case tables at different Unicode versions, must stay fixed.
 // What: std/text/tests_text.mk's blocks, full-size adversarial inputs and
 // long mark runs against the Go models, and str.ToLower vs text.FoldCase.
 // How: Mk programs print hashes or hex scalars that the Go side compares
@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"unicode"
 )
 
 // text2StdDir is a copy of std under root with this tree's std/text, over
@@ -307,16 +306,14 @@ export Main(sys: &System): ReadError|OutOfMemory|WriteError|ParseError!void {
 }
 `
 
-var text2CaseVersionRE = regexp.MustCompile(`unicode\.Version: (\d+\.\d+\.\d+)`)
+var text2CaseVersionRE = regexp.MustCompile(`UCD version: (\d+\.\d+\.\d+)`)
 
 // TestSTDTEXT_CaseVersions checks the scalars whose simple
 // lowercase (UnicodeData field 13) is also their CaseFolding status C
 // folding, so str.ToLower and text.FoldCase must agree on them at one
-// Unicode version. std.text's tables are the UCD's (18.0.0) and
-// str.ToLower's CaseTable is Go's unicode package's (text_case.mk's
-// header). While the two versions differ, the scalars where they disagree
-// must be exactly those whose Go lowercase differs from the UCD's, the
-// version gap and nothing else; once they are equal, there must be none.
+// Unicode version. std.text's tables and str.ToLower's CaseTable are both
+// generated from the UCD, so text_case.mk's header must name std.text's
+// version and the two must agree on every such scalar.
 func TestSTDTEXT_CaseVersions(t *testing.T) {
 	u := needUCD(t)
 	dir := ucdDir()
@@ -358,12 +355,6 @@ func TestSTDTEXT_CaseVersions(t *testing.T) {
 	if len(cs) < 1000 {
 		t.Fatalf("%d scalars with a simple lowercase that is their C folding", len(cs))
 	}
-	var gap []rune
-	for _, c := range cs {
-		if unicode.ToLower(c) != lower[c] {
-			gap = append(gap, c)
-		}
-	}
 	src, err := os.ReadFile(filepath.Join("core", "text_case.mk"))
 	if err != nil {
 		t.Fatal(err)
@@ -395,14 +386,11 @@ func TestSTDTEXT_CaseVersions(t *testing.T) {
 			differ = append(differ, c)
 		}
 	}
-	t.Logf("std.text at UCD %s, str.ToLower at Go unicode %s (text_case.mk: %q): %d scalars checked, %d disagree, %d in the version gap", u.version, unicode.Version, coreVersion, len(cs), len(differ), len(gap))
-	if coreVersion == u.version {
-		if len(differ) != 0 {
-			t.Errorf("one Unicode version, yet str.ToLower and text.FoldCase disagree on %d scalars: %U", len(differ), differ)
-		}
-		return
+	t.Logf("std.text at UCD %s, str.ToLower at UCD %q (text_case.mk): %d scalars checked, %d disagree", u.version, coreVersion, len(cs), len(differ))
+	if coreVersion != u.version {
+		t.Errorf("text_case.mk's CaseTable is UCD %q, std.text's tables UCD %s: rerun go test ./std -run TestTextTablesUpToDate -update", coreVersion, u.version)
 	}
-	if !slices.Equal(differ, gap) {
-		t.Errorf("str.ToLower and text.FoldCase disagree on %U; the version gap (Go unicode %s against UCD %s) is %U", differ, unicode.Version, u.version, gap)
+	if len(differ) != 0 {
+		t.Errorf("str.ToLower and text.FoldCase disagree on %d scalars: %U", len(differ), differ)
 	}
 }

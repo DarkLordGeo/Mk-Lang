@@ -2,11 +2,14 @@
 # push, but a regression in it must still be caught within a day.
 #
 # What: the project's test gate (build, vet, gofmt, every Go test including
-# std's, the documentation tests) on the Windows and Linux runners.
+# std's, the documentation tests) on the self-hosted Windows and Linux
+# runners; the Windows one holds the evidence directory the gate reads.
 #
-# How: runs once a night on main and by hand, through tools/gate's quick
-# tier. The Linux-through-WSL, dogfood, timing and fuzz steps are skipped:
-# the Linux runner covers Linux natively, and timing needs an idle machine.
+# How: runs once a night on main and by hand on main, through tools/gate's
+# quick tier; never for a pull request. The Linux-through-WSL, dogfood,
+# timing and fuzz steps are skipped: the Linux runner covers Linux natively,
+# and timing needs an idle machine. Pushes and pull requests run ci.yml on
+# GitHub-hosted runners instead.
 name: Nightly
 
 on:
@@ -20,7 +23,7 @@ permissions:
 jobs:
   gate:
     name: gate (${{ matrix.os }})
-    if: github.repository == 'zerodayokay/Mk-Lang'
+    if: github.repository == 'zerodayokay/Mk-Lang' && github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -56,5 +59,9 @@ jobs:
           echo "TEMP=$tmp" >> "$GITHUB_ENV"
           echo "TMPDIR=$tmp" >> "$GITHUB_ENV"
 
+      # MK_SLOW=1: the tests that check a sample on every push run in
+      # full here (CONTRIBUTING.md, "Full test variants").
       - name: Gate
+        env:
+          MK_SLOW: "1"
         run: go run ./tools/gate -tier quick -skip linux,dogfood,timing,fuzz -work "${{ github.workspace }}/../.gate" -json "${{ runner.temp }}/gate.json"

@@ -1,102 +1,494 @@
 # Why: a release should come from a tagged commit that passed the checks,
-# with its notes and the editor extension attached, without hand work.
+# as signed binary bundles that need neither Go nor LLVM, without hand work.
 #
-# What: on a v* tag, the CI checks on Windows, then a draft GitHub release
-# with the tag's CHANGELOG section as notes and the VS Code extension
-# (.vsix) attached. Mk itself is built from source (see README.md).
+# What: on a v* tag of a commit on main, the CI workflow on Windows and
+# Linux (build, vet, gofmt, the documentation tests and the same test set
+# as every push); beside it, one bundle per host (bundle.yml),
+# mk-<version>-x86_64-windows.zip and mk-<version>-x86_64-linux.tar.gz,
+# and the VS Code extension (.vsix). Then one job writes SHA256SUMS over the
+# bundles, the .vsix and the install scripts, signs it with the release key
+# and checks the signature against the keys built into mk, and a last job
+# drafts a GitHub release with the tag's CHANGELOG section as notes and
+# exactly those files, SHA256SUMS and SHA256SUMS.sig attached. Run by hand
+# on main, it does everything up to SHA256SUMS and checks it, but neither
+# signs nor drafts.
 #
-# How: the release stays a draft so a maintainer reads it before
-# publishing. Only tags pushed to this repository trigger it.
+# How: GitHub-hosted runners. A first job fails the run at once when the
+# tag's commit is not on main, internal/release/keys.go lists no release
+# key, the tag is not the version mk reports, or CHANGELOG.md or the
+# extension disagree with it. Only the sign job gets the private key: the
+# secret MK_RELEASE_KEY of the release environment, which admits only v*
+# tags, in one step's environment, written to a file only the runner's
+# user can read and removed when the step ends. That job runs only the
+# pinned actions and the repository's release tool. Each bundle and the
+# extension reach it only with the SHA-256 their own job output, which no
+# other job can change, so a job that uploads an artifact of the same name
+# cannot get its file signed. Only the publish job gets a token that can
+# write, and it holds no secret. The release stays a draft so a maintainer
+# reads it before publishing; the install scripts and mk upgrade see it
+# once it is published. Only tags pushed to this repository trigger the
+# signing.
 name: Release
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  # The release address compiled into a release build of mk.
+  MK_RELEASES_URL: https://github.com/zerodayokay/Mk-Lang/releases
 
 jobs:
-  release:
+  # Fails in seconds what the bundle and sign jobs would fail after an hour.
+  preflight:
     if: github.repository == 'zerodayokay/Mk-Lang'
-    runs-on: [self-hosted, windows, x64, mk]
-    timeout-minutes: 300
-    defaults:
-      run:
-        # Git Bash by its short path: a plain `bash` on a Windows runner can
-        # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
-        # run the step's script, and CI must never start wsl.exe here.
-        shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
-    env:
-      MK_GATE: "1"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # The whole history, to check that the tag's commit is on main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      # A tag push releases the tag's version; a run by hand, on main only,
+      # builds the version internal/driver/version.go names.
+      - name: The version
+        id: version
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            if [ "$GITHUB_REF" != refs/heads/main ]; then
+              echo "::error::run the Release workflow by hand on main only, not on $GITHUB_REF"
+              exit 1
+            fi
+            version=$(sed -n 's/^const Release = "\(.*\)"$/\1/p' internal/driver/version.go)
+          fi
+          [ -n "$version" ] || { echo "::error::no version"; exit 1; }
+          echo "version $version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: The tag is on main
+        if: github.event_name == 'push'
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag $GITHUB_REF_NAME is not on main: merge the release commit to main, then tag it"
+            exit 1
+          fi
+
+      - name: The tag is mk's version
+        if: github.event_name == 'push'
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! grep -qxF "const Release = \"$version\"" internal/driver/version.go; then
+            echo "::error::tag $GITHUB_REF_NAME is not the Release constant of internal/driver/version.go"
+            exit 1
+          fi
+
+      # The heading is "## <version>" or "## <version> (<date>)"; the same
+      # section becomes the release notes.
+      - name: CHANGELOG.md has the version's section
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '
+            /^## / { if (found) exit; if ($0 == "## " v || index($0, "## " v " ") == 1) { found = 1; next } }
+            found && NF { n++ }
+            END { exit !n }
+          ' CHANGELOG.md || { echo "::error::CHANGELOG.md has no section ## $VERSION with text in it"; exit 1; }
+
+      # The version VS Code shows for the extension.
+      - name: The extension's version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          got=$(node -p "require('./editors/vscode/package.json').version")
+          [ "$got" = "$VERSION" ] || { echo "::error::editors/vscode/package.json has version $got, not $VERSION"; exit 1; }
+
+      # A release build of mk with no trusted key could never upgrade.
+      - name: keys.go lists a release key
+        run: go test -count=1 -ldflags "-X mk/internal/release.base=$MK_RELEASES_URL" -run 'TestReleaseBuildHasKey|TestTrustedKeys' ./internal/release
+
+      - name: The install scripts trust the same keys
+        run: go test -count=1 -run TestInstallKeys ./tools/release
+
+  test:
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
+  # One job per host, so each bundle's SHA-256 is an output of its own.
+  bundle-windows:
+    needs: preflight
+    uses: ./.github/workflows/bundle.yml
+    with:
+      os: windows-2025
+      version: ${{ needs.preflight.outputs.version }}
+
+  bundle-linux:
+    needs: preflight
+    uses: ./.github/workflows/bundle.yml
+    with:
+      os: ubuntu-24.04
+      version: ${{ needs.preflight.outputs.version }}
+
+  # The VS Code extension, in a job of its own: npm's packages never run
+  # beside the release key or a token that can write. --ignore-scripts keeps
+  # their install scripts from running at all; vsce packages without them.
+  vsix:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      file: ${{ steps.package.outputs.file }}
+      sha256: ${{ steps.package.outputs.sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # A temporary directory of the job's own, which the runner empties after
-      # each job: files another program left in the user's temp directory (a
-      # stray pkg.mk there once made every test fixture one package) never
-      # reach the tests.
-      - name: Temporary directory
-        run: |
-          mkdir -p "$RUNNER_TEMP/tmp"
-          tmp="$RUNNER_TEMP/tmp"
-          # Git Bash on Windows: a native path, not one with mixed separators.
-          if command -v cygpath >/dev/null; then tmp=$(cygpath -w "$tmp"); fi
-          echo "TMP=$tmp" >> "$GITHUB_ENV"
-          echo "TEMP=$tmp" >> "$GITHUB_ENV"
-          echo "TMPDIR=$tmp" >> "$GITHUB_ENV"
-
-      # Fresh caches in the job's own temporary directory, which the runner
-      # empties after each job: a release never reads entries another job
-      # wrote.
-      - name: Caches
-        run: |
-          echo "MK_CACHE=$RUNNER_TEMP/mkcache" >> "$GITHUB_ENV"
-          echo "GOCACHE=$RUNNER_TEMP/gocache" >> "$GITHUB_ENV"
-
-      - name: Build and vet
-        run: |
-          go build ./...
-          go vet ./...
-
-      - name: Test
-        run: bash tools/ci/test.sh
-        env:
-          DRIVER_SHARDS: "3"
-          OTHER_P: "2"
-          LAST_PKGS: mk/internal/corpus mk/internal/lsp
-          SHARD_MEM: 4GiB
-          LAST_MEM: 8GiB
-
-      - name: Documentation tests
-        run: go run ./cmd/mk corpus
-
       - name: Package the VS Code extension
+        id: package
         working-directory: editors/vscode
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
         run: |
-          npm ci
-          # vsce runs npm through cmd.exe, which fails on a PATH longer than
-          # 8191 characters: give it a short one. This runs the lockfile's vsce.
-          PATH="$(dirname "$(command -v node)"):/c/Windows/System32" node node_modules/@vscode/vsce/vsce package -o "${{ runner.temp }}/mk-vscode-${GITHUB_REF_NAME}.vsix"
+          mkdir -p "$RUNNER_TEMP/vsix"
+          file="mk-vscode-v$VERSION.vsix"
+          npm ci --ignore-scripts
+          node node_modules/@vscode/vsce/vsce package -o "$RUNNER_TEMP/vsix/$file"
+          {
+            echo "file=$file"
+            echo "sha256=$(sha256sum < "$RUNNER_TEMP/vsix/$file" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
 
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vsix
+          path: ${{ runner.temp }}/vsix/${{ steps.package.outputs.file }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # The only job that sees the release key, on a tag push only. It runs the
+  # pinned actions and the repository's own release tool, nothing else, with
+  # a read-only token, and hands on only SHA256SUMS and SHA256SUMS.sig, with
+  # their SHA-256 as outputs. SHA256SUMS lists every file the release
+  # attaches: the bundles, the extension (read here as data, never run) and
+  # the install scripts.
+  sign:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [test, bundle-windows, bundle-linux, vsix]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: release
+    outputs:
+      sums: ${{ steps.hash.outputs.sums }}
+      sig: ${{ steps.hash.outputs.sig }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Windows
+          path: ${{ runner.temp }}/in/bundle-Windows
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Linux
+          path: ${{ runner.temp }}/in/bundle-Linux
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vsix
+          path: ${{ runner.temp }}/in/vsix
+
+      # Into dist go only the files the jobs that built them named, each
+      # with the SHA-256 that job output, and the install scripts of this
+      # commit.
+      - name: Take the built files
+        env:
+          WIN_FILE: ${{ needs.bundle-windows.outputs.file }}
+          WIN_SHA256: ${{ needs.bundle-windows.outputs.sha256 }}
+          LINUX_FILE: ${{ needs.bundle-linux.outputs.file }}
+          LINUX_SHA256: ${{ needs.bundle-linux.outputs.sha256 }}
+          VSIX_FILE: ${{ needs.vsix.outputs.file }}
+          VSIX_SHA256: ${{ needs.vsix.outputs.sha256 }}
+        run: |
+          DIST="$RUNNER_TEMP/dist"
+          mkdir -p "$DIST"
+          echo "DIST=$DIST" >> "$GITHUB_ENV"
+          take() { # artifact file sha256
+            [ -n "$2" ] && [ -n "$3" ] || { echo "::error::no file name or SHA-256 for $1"; exit 1; }
+            case "$2" in */* | .*) echo "::error::$2 is not a plain file name"; exit 1 ;; esac
+            got=$(sha256sum < "$RUNNER_TEMP/in/$1/$2" | cut -d' ' -f1)
+            [ "$got" = "$3" ] || { echo "::error::$2 in artifact $1 has SHA-256 $got, but the job that built it reported $3"; exit 1; }
+            cp "$RUNNER_TEMP/in/$1/$2" "$DIST/$2"
+          }
+          take bundle-Windows "$WIN_FILE" "$WIN_SHA256"
+          take bundle-Linux "$LINUX_FILE" "$LINUX_SHA256"
+          take vsix "$VSIX_FILE" "$VSIX_SHA256"
+          cp tools/install/install.ps1 tools/install/install.sh "$DIST/"
+          ls -l "$DIST"
+
+      - name: Release tool
+        run: go build -o "$RUNNER_TEMP/release-tool" ./tools/release
+
+      # The release tool lists the bundles; the other files are added in
+      # the same "<sha256>  <name>" form, sorted by name. The install
+      # scripts and mk upgrade read only the bundles' lines.
+      - name: Sums
+        env:
+          VSIX_FILE: ${{ needs.vsix.outputs.file }}
+        run: |
+          "$RUNNER_TEMP/release-tool" sums -dir "$DIST"
+          cd "$DIST"
+          sha256sum install.ps1 install.sh "$VSIX_FILE" >> SHA256SUMS
+          LC_ALL=C sort -k2 -o SHA256SUMS SHA256SUMS
+          cat SHA256SUMS
+          bundles=$(grep -cE '^[0-9a-f]{64}  mk-[^ ]+-x86_64-(windows\.zip|linux\.tar\.gz)$' SHA256SUMS)
+          [ "$bundles" = 2 ] || { echo "::error::SHA256SUMS lists $bundles bundles, not 2"; exit 1; }
+          [ "$(wc -l < SHA256SUMS)" = 5 ] || { echo "::error::SHA256SUMS does not list the 2 bundles, the extension and the 2 install scripts"; exit 1; }
+
+      # The private key exists only in this step: in its environment, then
+      # in a file under a directory only the runner's user can read, removed
+      # when the step ends however it ends. It is never printed.
+      - name: Sign
+        env:
+          MK_RELEASE_KEY: ${{ secrets.MK_RELEASE_KEY }}
+        run: |
+          if [ -z "$MK_RELEASE_KEY" ]; then
+            echo "::error::the release environment has no secret MK_RELEASE_KEY"
+            exit 1
+          fi
+          umask 077
+          keydir=$(mktemp -d)
+          trap 'rm -f "$keydir/release.key"; rmdir "$keydir"' EXIT
+          printf '%s\n' "$MK_RELEASE_KEY" > "$keydir/release.key"
+          unset MK_RELEASE_KEY
+          "$RUNNER_TEMP/release-tool" sign -key "$keydir/release.key" -dir "$DIST"
+
+      # The signature against the keys built into mk (keys.go), and every
+      # file SHA256SUMS lists against it.
+      - name: Verify
+        run: |
+          "$RUNNER_TEMP/release-tool" verify -dir "$DIST"
+
+      - name: Hash
+        id: hash
+        run: |
+          {
+            echo "sums=$(sha256sum < "$DIST/SHA256SUMS" | cut -d' ' -f1)"
+            echo "sig=$(sha256sum < "$DIST/SHA256SUMS.sig" | cut -d' ' -f1)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: signature
+          path: |
+            ${{ env.DIST }}/SHA256SUMS
+            ${{ env.DIST }}/SHA256SUMS.sig
+          if-no-files-found: error
+          retention-days: 7
+
+  # A run by hand: the same files and the same SHA256SUMS as a release,
+  # checked against itself, with no key and no release.
+  check:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [test, bundle-windows, bundle-linux, vsix]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Windows
+          path: ${{ runner.temp }}/in/bundle-Windows
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Linux
+          path: ${{ runner.temp }}/in/bundle-Linux
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vsix
+          path: ${{ runner.temp }}/in/vsix
+
+      - name: Take the built files, sums
+        env:
+          WIN_FILE: ${{ needs.bundle-windows.outputs.file }}
+          WIN_SHA256: ${{ needs.bundle-windows.outputs.sha256 }}
+          LINUX_FILE: ${{ needs.bundle-linux.outputs.file }}
+          LINUX_SHA256: ${{ needs.bundle-linux.outputs.sha256 }}
+          VSIX_FILE: ${{ needs.vsix.outputs.file }}
+          VSIX_SHA256: ${{ needs.vsix.outputs.sha256 }}
+        run: |
+          DIST="$RUNNER_TEMP/dist"
+          mkdir -p "$DIST"
+          take() { # artifact file sha256
+            [ -n "$2" ] && [ -n "$3" ] || { echo "::error::no file name or SHA-256 for $1"; exit 1; }
+            case "$2" in */* | .*) echo "::error::$2 is not a plain file name"; exit 1 ;; esac
+            got=$(sha256sum < "$RUNNER_TEMP/in/$1/$2" | cut -d' ' -f1)
+            [ "$got" = "$3" ] || { echo "::error::$2 in artifact $1 has SHA-256 $got, but the job that built it reported $3"; exit 1; }
+            cp "$RUNNER_TEMP/in/$1/$2" "$DIST/$2"
+          }
+          take bundle-Windows "$WIN_FILE" "$WIN_SHA256"
+          take bundle-Linux "$LINUX_FILE" "$LINUX_SHA256"
+          take vsix "$VSIX_FILE" "$VSIX_SHA256"
+          cp tools/install/install.ps1 tools/install/install.sh "$DIST/"
+          go run ./tools/release sums -dir "$DIST"
+          cd "$DIST"
+          sha256sum install.ps1 install.sh "$VSIX_FILE" >> SHA256SUMS
+          LC_ALL=C sort -k2 -o SHA256SUMS SHA256SUMS
+          cat SHA256SUMS
+          bundles=$(grep -cE '^[0-9a-f]{64}  mk-[^ ]+-x86_64-(windows\.zip|linux\.tar\.gz)$' SHA256SUMS)
+          [ "$bundles" = 2 ] || { echo "::error::SHA256SUMS lists $bundles bundles, not 2"; exit 1; }
+          [ "$(wc -l < SHA256SUMS)" = 5 ] || { echo "::error::SHA256SUMS does not list the 2 bundles, the extension and the 2 install scripts"; exit 1; }
+          sha256sum -c SHA256SUMS
+
+  # The only job with a token that can write, and no secret, on a tag push
+  # only. It gathers the files the earlier jobs named, each checked against
+  # the SHA-256 they output, checks the signature and every file once more
+  # as its last step before the upload, and drafts the release with exactly
+  # the files SHA256SUMS lists, SHA256SUMS and SHA256SUMS.sig (a pre-release
+  # for a version with a "-" suffix, so it never becomes the latest
+  # release).
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [bundle-windows, bundle-linux, vsix, sign]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Windows
+          path: ${{ runner.temp }}/in/bundle-Windows
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: bundle-Linux
+          path: ${{ runner.temp }}/in/bundle-Linux
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: vsix
+          path: ${{ runner.temp }}/in/vsix
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: signature
+          path: ${{ runner.temp }}/in/signature
+
+      # Every file in dist is attached to the release.
+      - name: Take the built and signed files
+        env:
+          WIN_FILE: ${{ needs.bundle-windows.outputs.file }}
+          WIN_SHA256: ${{ needs.bundle-windows.outputs.sha256 }}
+          LINUX_FILE: ${{ needs.bundle-linux.outputs.file }}
+          LINUX_SHA256: ${{ needs.bundle-linux.outputs.sha256 }}
+          VSIX_FILE: ${{ needs.vsix.outputs.file }}
+          VSIX_SHA256: ${{ needs.vsix.outputs.sha256 }}
+          SUMS_SHA256: ${{ needs.sign.outputs.sums }}
+          SIG_SHA256: ${{ needs.sign.outputs.sig }}
+        run: |
+          DIST="$RUNNER_TEMP/dist"
+          mkdir -p "$DIST"
+          echo "DIST=$DIST" >> "$GITHUB_ENV"
+          take() { # artifact file sha256
+            [ -n "$2" ] && [ -n "$3" ] || { echo "::error::no file name or SHA-256 for $1"; exit 1; }
+            case "$2" in */* | .*) echo "::error::$2 is not a plain file name"; exit 1 ;; esac
+            got=$(sha256sum < "$RUNNER_TEMP/in/$1/$2" | cut -d' ' -f1)
+            [ "$got" = "$3" ] || { echo "::error::$2 in artifact $1 has SHA-256 $got, but the job that made it reported $3"; exit 1; }
+            cp "$RUNNER_TEMP/in/$1/$2" "$DIST/$2"
+          }
+          take bundle-Windows "$WIN_FILE" "$WIN_SHA256"
+          take bundle-Linux "$LINUX_FILE" "$LINUX_SHA256"
+          take vsix "$VSIX_FILE" "$VSIX_SHA256"
+          take signature SHA256SUMS "$SUMS_SHA256"
+          take signature SHA256SUMS.sig "$SIG_SHA256"
+          cp tools/install/install.ps1 tools/install/install.sh "$DIST/"
+
+      # Relative links in the CHANGELOG section point into the repository
+      # at the tag, so they resolve on the release page.
       - name: Release notes
         run: |
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '
-            /^## / { if (found) exit; if (index($0, v)) { found = 1; next } }
+            /^## / { if (found) exit; if ($0 == "## " v || index($0, "## " v " ") == 1) { found = 1; next } }
             found { print }
-          ' CHANGELOG.md > "${{ runner.temp }}/notes.md"
-          if [ ! -s "${{ runner.temp }}/notes.md" ]; then
-            echo "See CHANGELOG.md." > "${{ runner.temp }}/notes.md"
+          ' CHANGELOG.md |
+            sed -E "s|\]\(([^)#:][^):]*)\)|](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/\1)|g" > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section ## $version with text in it"
+            exit 1
           fi
 
+      - name: Release tool
+        run: go build -o "$RUNNER_TEMP/release-tool" ./tools/release
+
+      # The last step before the upload: nothing runs between this check
+      # and gh release create.
+      - name: Verify
+        run: |
+          "$RUNNER_TEMP/release-tool" verify -dir "$DIST"
+
+      # Only the files SHA256SUMS lists, SHA256SUMS and SHA256SUMS.sig, and
+      # dist must hold nothing else.
       - name: Draft the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
+          cd "$DIST"
+          listed=$(awk '{ print $2 }' SHA256SUMS)
+          want=$(printf '%s\n' $listed SHA256SUMS SHA256SUMS.sig | LC_ALL=C sort)
+          have=$(ls -A | LC_ALL=C sort)
+          if [ "$have" != "$want" ]; then
+            echo "::error::dist holds other files than SHA256SUMS lists"
+            diff <(echo "$want") <(echo "$have") || true
+            exit 1
+          fi
+          ls -l
+          pre=""
+          case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag $pre \
+            --repo "$GITHUB_REPOSITORY" \
             --title "Mk ${GITHUB_REF_NAME}" \
-            --notes-file "${{ runner.temp }}/notes.md" \
-            "${{ runner.temp }}/mk-vscode-${GITHUB_REF_NAME}.vsix"
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            $want

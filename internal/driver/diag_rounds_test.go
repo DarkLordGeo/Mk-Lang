@@ -498,7 +498,7 @@ func verifyWith(t *testing.T, src string, budget int, edit func(Result)) (Result
 	if edit != nil {
 		edit(res)
 	}
-	n := ns.verifyFixes(res, ov, cfg, nil, budget)
+	n := ns.verifyFixes(res, ov, cfg, nil, budget, false)
 	return res, n
 }
 

@@ -130,7 +130,26 @@ func s0(p *ast.RecordPat) source.Span { return p.Span() }
 // It returns S's fields with t's arguments substituted.
 func (u *unit) structPat(path *ast.Path, p *ast.RecordPat, t types.TypeID) ([]types.FieldDecl, bool) {
 	r := u.ref(path)
+	if r.Kind == resolve.RefPoison {
+		return nil, false
+	}
 	if r.Kind != resolve.RefItem {
+		if u.matchPatternPath(path, r) {
+			// An enum variant, `some`, `ok` or `err`: only a record or a
+			// struct pattern destructures, so the pattern is one that a
+			// `match` takes.
+			d := u.err(diag.E0306, p.Span(), "only a record or a struct pattern destructures: take `"+u.str(t)+"` apart with `match`").
+				Text("reason", "refutable").Alt("use `match`")
+			if u.tab.Kind(t) == types.KOptional {
+				d.Alt("use `if v := e` for an optional")
+			}
+			return nil, false
+		}
+		// Any other name (a type parameter, a primitive, a local) is no
+		// struct.
+		name := pathText(u, path)
+		u.err(diag.E0301, p.Span(), "a struct pattern names a struct: `"+name+"` is not one (the value is `"+u.str(t)+"`)").
+			Text("expected", "a struct").Text("found", name)
 		return nil, false
 	}
 	it := u.c.cfg.Items.Get(types.ItemID(r.A))
@@ -158,6 +177,43 @@ func (u *unit) structPat(path *ast.Path, p *ast.RecordPat, t types.TypeID) ([]ty
 		out[i].Type = u.c.subst(f.Type, ty.Args, types.NoType)
 	}
 	return out, true
+}
+
+// matchPatternPath reports whether a destructure's path, with ref r, names
+// what only a `match` takes apart: `some`, `none`, `ok`, `err`, or a variant
+// `E.V` of an enum or error item.
+func (u *unit) matchPatternPath(path *ast.Path, r resolve.Ref) bool {
+	switch r.Kind {
+	case resolve.RefUniverse:
+		switch source.Symbol(r.A) {
+		case source.SymSome, source.SymNone, source.SymOk, source.SymErr:
+			return true
+		}
+	case resolve.RefDeferred:
+		if len(path.Names) > 1 {
+			if root := u.ref(path.Names[0]); root.Kind == resolve.RefItem {
+				switch u.c.cfg.Items.Get(types.ItemID(root.A)).Kind {
+				case types.KindEnum, types.KindError:
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// pathText is a path as written, its names joined by dots.
+func pathText(u *unit, path *ast.Path) string {
+	s := ""
+	for i, n := range path.Names {
+		if i > 0 {
+			s += "."
+		}
+		if n != nil {
+			s += u.c.cfg.Interner.Str(n.Name)
+		}
+	}
+	return s
 }
 
 // patBind binds a destructure field: `a` binds a local of the field's

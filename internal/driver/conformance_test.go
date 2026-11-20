@@ -275,7 +275,9 @@ func checkListsName(t *testing.T, units []confUnit) {
 // E0000 and left knownICE: each goes through CheckUnit against the
 // stand-in std with no E0000, and none is back in knownICE.
 func TestFormerKnownICEUnitsHaveNoE0000(t *testing.T) {
-	former := []string{"model/H34", "model/R12.Bad", "model/X.FnCover"}
+	former := []string{"model/H34", "model/R12.Bad", "model/X.FnCover",
+		"codes/E0306_destructure_variant", "codes/E0306_destructure_some", "codes/E0908_const_sizeof_local",
+		"codes/E0705_field_of_index"}
 	byName := map[string]confUnit{}
 	for _, u := range readConfUnits(t, "../../tests/conformance") {
 		byName[u.name] = u

@@ -9,7 +9,8 @@
 // (one from declarations alone, when the package does not check as far as
 // types, ends with a "(partial: ...)" line), 1 when the subject is not found
 // or there is nothing to answer from (its diagnostics on stderr), 2 on a
-// usage error.
+// usage error. In a package that does not parse, find and members answer
+// from std alone and say so.
 
 package main
 
@@ -72,15 +73,10 @@ func runQuery(args []string, stdout, stderr io.Writer) int {
 	var ue *driver.UsageError
 	if err != nil && *root == "" && errors.As(err, &ue) && ue.NoSources {
 		// No package here: answer std's names over a one-file root of
-		// its own, removed afterwards.
-		dir, derr := os.MkdirTemp("", "mk-query-")
-		if derr == nil {
-			defer os.RemoveAll(dir)
-			cfg.Root = filepath.Join(dir, "main.mk")
-			if derr = os.WriteFile(cfg.Root, []byte("export Main(sys: &System) {\n}\n"), 0o644); derr == nil {
-				s, err = driver.NewSession(cfg)
-			}
-		}
+		// its own.
+		var done func()
+		s, done, err = stdSession(cfg)
+		defer done()
 	}
 	if err != nil {
 		fmt.Fprintf(stderr, "mk query: %v\n", err)
@@ -90,6 +86,18 @@ func runQuery(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "mk query: %v\n", err)
 		return 2
+	}
+	if ans == nil && (pos[0] == "find" || pos[0] == "members") && res.ParseFailed() {
+		// The package does not parse: std's names still answer, from a
+		// std-only session, with a note that the package's are missing.
+		if ss, done, serr := stdSession(cfg); serr == nil {
+			defer done()
+			if a, _, qerr := ss.Query(pos[0], pos[1:]); qerr == nil && a != nil {
+				_ = res.WriteReport(stderr, false)
+				a.StdOnly = true
+				ans = a
+			}
+		}
 	}
 	if ans == nil {
 		_ = res.WriteReport(stderr, false)
@@ -108,6 +116,22 @@ func runQuery(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// stdSession is a session over a one-file root of its own, in a temporary
+// directory that done removes, so std's names answer without a package.
+func stdSession(cfg driver.Config) (*driver.Session, func(), error) {
+	dir, err := os.MkdirTemp("", "mk-query-")
+	if err != nil {
+		return nil, func() {}, err
+	}
+	done := func() { os.RemoveAll(dir) }
+	cfg.Root = filepath.Join(dir, "main.mk")
+	if err = os.WriteFile(cfg.Root, []byte("export Main(sys: &System) {\n}\n"), 0o644); err != nil {
+		return nil, done, err
+	}
+	s, err := driver.NewSession(cfg)
+	return s, done, err
 }
 
 // queryMemberPanics is `mk query panics --member name`: every

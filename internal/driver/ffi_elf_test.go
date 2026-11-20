@@ -163,7 +163,28 @@ export Main(sys: &System): WriteError!void {
 // as that version does. A name with no version gets no version need, and
 // glibc 2.39's loader then binds the oldest version, not the default one
 // (measured on that loader), so std's list versions every name.
+//
+// The six builds share one cache: between them only the .def, the profile
+// and so the link change, and std's and the program's packs are reused. A
+// link that kept another .def's versions would show as a wrong version need.
 func TestFFI_Versions(t *testing.T) {
+	tools := needTools(t)
+	cache := t.TempDir()
+	build := func(root string, prof types.Profile) string {
+		t.Helper()
+		s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: types.X86_64Linux, Profile: prof, Tools: tools, CacheDir: cache, Jobs: 4})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, paths, err := s.Build(filepath.Join(t.TempDir(), "ffi"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(r.Report.Diags) > 0 || len(paths) != 1 {
+			t.Fatalf("build x86_64-linux %v:\n%s", prof, r.Report.Text(r.Sources))
+		}
+		return paths[0]
+	}
 	for _, v := range []struct{ def, ver, out string }{
 		{"realpath@GLIBC_2.2.5\n", "GLIBC_2.2.5", "null 22\n"},
 		{"realpath@GLIBC_2.3\n", "GLIBC_2.3", "allocated\n"},
@@ -175,7 +196,7 @@ func TestFFI_Versions(t *testing.T) {
 			"app/main.mk":  realpathMain,
 		})
 		for _, prof := range []types.Profile{types.Dev, types.Release} {
-			exe := mustBuild(t, root, types.X86_64Linux, prof)
+			exe := build(root, prof)
 			ver, lib := importVersion(t, exe, "realpath")
 			if ver != v.ver || v.ver != "" && lib != "libc.so.6" {
 				t.Errorf("%q %v: realpath needs version %q of %q, want %q", v.def, prof, ver, lib, v.ver)

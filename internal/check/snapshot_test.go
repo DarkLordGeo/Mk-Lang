@@ -200,6 +200,7 @@ impl I for Tok {
 	}},
 	{code: diag.E1202, src: "Double(x: &i32): i32 {\n\treturn *x * 2\n}\n\nAll(xs: []i32): int {\n\tys := xs.map(Double)\n\treturn ys.Len()\n}\n"},
 	{code: diag.E1204, src: "Wait(n: int): int {\n\treturn n.await\n}\n"},
+	{code: diag.E1221, src: "First(x: ?int): int {\n\treturn x.unwrap()\n}\n"},
 }
 
 // e0707Iface is an interface whose methods carry clauses.

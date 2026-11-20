@@ -184,7 +184,7 @@ test "median of three" {
 
 ## 7. Stability levels
 
-Mk's own levels, for the language and the standard library, are in [stability](std/README.md#9-stability). A library of your own changes its public items in the same steps.
+Mk's own levels, for the language, the tools and the standard library, and what a release of Mk may change before and after 1.0, are in [stability](std/README.md#9-stability). A library of your own changes a stable item in these steps.
 
 Before a stable item is removed or changed, it is deprecated for at least two minor releases. Its doc comment carries the line `/// Deprecated: <why>; use <what>.`, and `mk check` reports every use with a note naming the replacement. The change then comes with an `mk apidiff` entry, and with an `mk fix` rewrite when a source form changes.
 

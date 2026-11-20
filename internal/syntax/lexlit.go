@@ -40,6 +40,14 @@ func (lx *lexer) number() {
 			for i < n && (isDigit(text[i]) || text[i] == '_') {
 				i++
 			}
+		} else if i < n && text[i] == '.' && (i+1 >= n || text[i+1] != '.' && !isIdentStart(text[i+1])) && !lx.memberAfter(i+1) {
+			// `1.` with no digit after the dot: neither a range nor a
+			// member (a chain broken after the dot names one on the next
+			// line), so a float missing its fraction.
+			lx.pos = i + 1
+			lx.emit(ast.TokFloat, start, i+1)
+			lx.errAt(start, i+1, "a float needs digits on both sides of `.`: write `"+text[start:i+1]+"0`")
+			return
 		}
 		if i < n && (text[i] == 'e' || text[i] == 'E') {
 			j := i + 1
@@ -78,6 +86,56 @@ func (lx *lexer) number() {
 	if msg != "" {
 		lx.errAt(start, i, msg)
 	}
+}
+
+// memberAfter is true when the first byte after spaces and newlines at i
+// may continue a member chain: a name that is not a keyword (`1.` then
+// `Eq(&x)` on the next line is a chain broken after the dot), or a comment,
+// which leaves the dot to the parser as before.
+func (lx *lexer) memberAfter(i uint32) bool {
+	text := lx.text
+	n := uint32(len(text))
+	for i < n && (text[i] == ' ' || text[i] == '\t' || text[i] == '\r' || text[i] == '\n') {
+		i++
+	}
+	if i >= n {
+		return false
+	}
+	if text[i] == '/' {
+		return true
+	}
+	if !isIdentStart(text[i]) {
+		return false
+	}
+	e := i
+	for e < n && isIdentByte(text[e]) {
+		e++
+	}
+	return identKind(text[i:e]) == ast.TokIdent
+}
+
+// operandEnded is true when the last significant token ends an operand, so a
+// '.' after it is a member step (`t.0` stays the parser's).
+func (lx *lexer) operandEnded() bool {
+	switch lx.last {
+	case ast.TokIdent, ast.TokRParen, ast.TokRBracket, ast.TokRBrace, ast.TokQuestion:
+		return true
+	}
+	return lx.last.IsLiteral()
+}
+
+// leadingDotFloat lexes `.5` where no operand comes before the dot: a float
+// missing its integer part, kept as a TokFloat so the parser goes on.
+func (lx *lexer) leadingDotFloat(start uint32) {
+	text := lx.text
+	n := uint32(len(text))
+	i := start + 1
+	for i < n && isIdentByte(text[i]) {
+		i++
+	}
+	lx.pos = i
+	lx.emit(ast.TokFloat, start, i)
+	lx.errAt(start, i, "a float needs digits on both sides of `.`: write `0"+text[start:i]+"`")
 }
 
 // quoteChar lexes at a ': a lifetime 'a (E1203 is the parser's) or a char

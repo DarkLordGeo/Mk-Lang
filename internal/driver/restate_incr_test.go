@@ -3,8 +3,10 @@
 // meaning must recheck the caller, warm as cold.
 // What: TestInvalidation_RestateByMeaning and
 // TestInvalidation_RestateImportedAlias.
-// How: steps a small package through edits, checks each step warm and cold
-// with fresh caches per cycle, then runs a verify check.
+// How: steps a small package through edits, checks each step warm (a fresh
+// cache per cycle) and cold, then runs a verify check. The imported-alias
+// test checks each distinct tree cold once (each step with MK_SLOW=1) and
+// compares every warm step with it.
 
 package driver
 
@@ -79,17 +81,25 @@ func TestInvalidation_RestateByMeaning(t *testing.T) {
 // binding is not in the contract), so the demand is `J < lim.Lim` at every
 // step and E0706 cold. A guess by the last path segment would meet it at the
 // middle step, and a warm check would then reuse that clean body at the
-// last. Each step warm and cold, fresh caches per cycle, then a verify
-// check.
+// last. Each step is checked warm, with a fresh cache per cycle, and
+// compared with a cold check of the same tree (each step cold with
+// MK_SLOW=1); then a verify check.
 func TestInvalidation_RestateImportedAlias(t *testing.T) {
 	const at = "import lim = small\n\nexport F[const N: int](): int\n    requires N >= 0 && N < lim.Lim\n{\n    return N\n}\n"
 	const big = "import lim\n\nexport Big(): int {\n    return lim.Lim\n}\n"
 	const app = "import b\nimport q = lim\n\nK[const J: int](): int\n    requires J >= 0 && J < q.Lim\n{\n    return b.F[J]()\n}\n\nPick(): int {\n    return K[24]()\n}\n"
 	steps := []bool{false, true, false} // b/big.mk present per step
+	// The tree has two states, with and without b/big.mk. Each is checked
+	// cold once, in a fresh cache, the first time a step reaches it, and
+	// every warm step of every cycle is compared with that check. With
+	// MK_SLOW=1 every step is also checked cold, in a fresh cache.
+	// Every cache starts with std's check results alone (stdSeedCheck).
+	colds := map[bool]Result{}
+	seed := stdSeedCheck(t, Config{Target: types.X86_64Windows, BuildID: source.HashString("test", "mk"), ReleaseFront: true})
 	for k := range 4 {
 		dir := writeTree(t, map[string]string{"pkg.mk": manifest(nil), "a/main.mk": app, "b/at.mk": at,
 			"small/small.mk": "export const Lim: int = 4\n", "lim/lim.mk": "export const Lim: int = 100\n"})
-		cfg := Config{Root: dir, CacheDir: t.TempDir(), Target: types.X86_64Windows, BuildID: source.HashString("test", "mk"), ReleaseFront: true}
+		cfg := Config{Root: dir, CacheDir: seededCache(t, seed), Target: types.X86_64Windows, BuildID: source.HashString("test", "mk"), ReleaseFront: true}
 		bigPath := filepath.Join(dir, "b", "big.mk")
 		for i, withBig := range steps {
 			if withBig {
@@ -100,9 +110,13 @@ func TestInvalidation_RestateImportedAlias(t *testing.T) {
 				t.Fatal(err)
 			}
 			warm := frontCheck(t, cfg)
-			coldCfg := cfg
-			coldCfg.CacheDir = t.TempDir()
-			cold := frontCheck(t, coldCfg)
+			cold, ok := colds[withBig]
+			if !ok || os.Getenv("MK_SLOW") == "1" {
+				coldCfg := cfg
+				coldCfg.CacheDir = seededCache(t, seed)
+				cold = frontCheck(t, coldCfg)
+				colds[withBig] = cold
+			}
 			wc, cc := codes(warm), codes(cold)
 			if !slices.Equal(wc, cc) {
 				t.Errorf("cycle %d step %d: warm %q, cold %q\nwarm:\n%s", k, i, wc, cc, warm.Report.Text(warm.Sources))

@@ -243,7 +243,13 @@ func trapSites(exe []byte) (n, bad int) {
 // x86_64-windows in prof, in the trapped form or the call form.
 func trapBuild(t *testing.T, root string, prof types.Profile, size, call bool, out string) []byte {
 	t.Helper()
-	cfg := Config{Root: root, Target: types.X86_64Windows, Profile: prof, Size: size, Tools: needTools(t), CacheDir: t.TempDir()}
+	return trapBuildIn(t, t.TempDir(), root, prof, size, call, out)
+}
+
+// trapBuildIn is trapBuild into the cache directory cache.
+func trapBuildIn(t *testing.T, cache, root string, prof types.Profile, size, call bool, out string) []byte {
+	t.Helper()
+	cfg := Config{Root: root, Target: types.X86_64Windows, Profile: prof, Size: size, Tools: needTools(t), CacheDir: cache}
 	cfg.TestHooks.NoTrapForm = call
 	_, exe, _ := incBuild(t, cfg, out)
 	return exe
@@ -283,6 +289,14 @@ func TestTrapForm_SameReport(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("SKIP: x86_64-windows executables run on Windows only")
 	}
+	// Each build starts from std's packs in its form, so the program's
+	// packs are built cold; the subtests run in parallel, each in its own
+	// tree, caches and output directory.
+	tools := needTools(t)
+	trapCfg := Config{Target: types.X86_64Windows, Profile: types.Release, Tools: tools}
+	callCfg := trapCfg
+	callCfg.TestHooks.NoTrapForm = true
+	trapSeed, callSeed := stdSeedBuild(t, trapCfg), stdSeedBuild(t, callCfg)
 	type run struct {
 		args  []string
 		traps bool // the run reaches a trapped call
@@ -304,6 +318,7 @@ func TestTrapForm_SameReport(t *testing.T) {
 		{"lone-ud1", trapAsm(".byte 0x67, 0x0f, 0xb9, 0x40, 0x7f"), "", []run{{nil, false}}, true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			dir := writeTree(t, c.files)
 			root := dir
 			if c.root != "" {
@@ -312,8 +327,8 @@ func TestTrapForm_SameReport(t *testing.T) {
 			out := t.TempDir()
 			trapExe := filepath.Join(out, "trap.exe")
 			callExe := filepath.Join(out, "call.exe")
-			tb := trapBuild(t, root, types.Release, false, false, trapExe)
-			trapBuild(t, root, types.Release, false, true, callExe)
+			tb := trapBuildIn(t, seededCache(t, trapSeed), root, types.Release, false, false, trapExe)
+			trapBuildIn(t, seededCache(t, callSeed), root, types.Release, false, true, callExe)
 			n, bad := trapSites(tb)
 			// The lone ud1 is k's own asm, not a trapped call codegen
 			// emitted: it has no prefetch before it.

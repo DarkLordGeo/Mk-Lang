@@ -28,7 +28,7 @@ Mk files end in `.mk`, which many editors give to Makefiles. Each section below 
 
 ## VS Code
 
-The extension in `editors/vscode` adds highlighting, snippets, bracket and comment settings and the client for `mk lsp`. It is not on the Marketplace. Each GitHub release has it attached as a `.vsix`, which `code --install-extension <file>.vsix` installs. To build it from the checkout instead, you need Node 18 or later and the `code` command on `PATH`:
+The extension in `editors/vscode` adds highlighting, snippets, bracket and comment settings and the client for `mk lsp`. It is not on the Marketplace. Each GitHub release has it attached as a `.vsix`, which `code --install-extension <file>.vsix` installs. To build it from the checkout instead, you need Node 22 or later and the `code` command on `PATH`:
 
 ```sh
 cd editors/vscode

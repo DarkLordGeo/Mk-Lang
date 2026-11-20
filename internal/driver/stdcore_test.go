@@ -83,7 +83,11 @@ test "ZzProbe-Fails must fail" {
 // package's).
 func TestMkTestStdCore(t *testing.T) {
 	dir := stdTree(t, map[string]string{"core/tests_zzprobe.mk": coreProbe})
-	rep := mkTest(t, Config{StdTests: "std.core", StdDir: dir}, TestOptions{Run: "ZzProbe-"})
+	// One cache for the three runs: they build the same std copy, and only
+	// the selection or the root differs, so the second and third reuse
+	// what the first built (a stale entry would show as a wrong selection).
+	cache := t.TempDir()
+	rep := mkTest(t, Config{StdTests: "std.core", StdDir: dir, CacheDir: cache}, TestOptions{Run: "ZzProbe-"})
 	want := map[string]string{
 		"ZzProbe-Private uses a private std.core function": "pass",
 		"ZzProbe-Heap uses the System's heap":              "pass",
@@ -104,13 +108,13 @@ func TestMkTestStdCore(t *testing.T) {
 		t.Errorf("passed %d failed %d exit %d, want 2, 1, 1", rep.Passed, rep.Failed, rep.ExitStatus())
 	}
 
-	one := mkTest(t, Config{StdTests: "std.core", StdDir: dir}, TestOptions{Run: "ZzProbe-Private"})
+	one := mkTest(t, Config{StdTests: "std.core", StdDir: dir, CacheDir: cache}, TestOptions{Run: "ZzProbe-Private"})
 	if len(one.Tests) != 1 || one.Tests[0].Result != "pass" || one.ExitStatus() != 0 {
 		t.Errorf("-run ZzProbe-Private:\n%s", results(one))
 	}
 
 	pkg := testPkg(t, map[string]string{"t.mk": "test \"own\" {\n    Assert(true)\n}\n"})
-	own := mkTest(t, Config{Root: filepath.Join(pkg, "t.mk"), StdDir: dir}, TestOptions{})
+	own := mkTest(t, Config{Root: filepath.Join(pkg, "t.mk"), StdDir: dir, CacheDir: cache}, TestOptions{})
 	if len(own.Tests) != 1 || own.Tests[0].Module == "std.core" {
 		t.Errorf("a package's mk test ran std's blocks:\n%s", results(own))
 	}

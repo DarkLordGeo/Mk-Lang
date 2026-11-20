@@ -2,17 +2,21 @@
 // only the type checker sees these member-shaped habits, and a plain "no
 // member" error would not say what Mk wants instead.
 //
-// What: iteratorHabits, E1202's member set, and valueMiss.
+// What: iteratorHabits, E1202's member set, valueMiss and synonymMiss.
 //
 // How: a value member that fails exact and folded lookup and is spelled like
-// an iterator adapter is E1202; a postfix `.await` is E1204. Both fire only
+// an iterator adapter is E1202; a postfix `.await` is E1204; a member row of
+// resolve's synonym table (`.unwrap`, `.clone`) is E1221. Each fires only
 // after lookup failed, so no program that compiles changes.
 
 package check
 
 import (
+	"strings"
+
 	"mk/internal/ast"
 	"mk/internal/diag"
+	"mk/internal/resolve"
 	"mk/internal/types"
 )
 
@@ -50,6 +54,32 @@ func (u *unit) valueMiss(t types.TypeID, fe *ast.FieldExpr, call bool) {
 			d.Fix(diag.Fix{Class: diag.Proven, Edits: []diag.Edit{{Span: cut, Text: ""}}, Why: "a call already waits for its result"})
 		}
 	default:
+		if syn, ok := resolve.MemberSynonym(nm); ok && (!syn.OnFallible || u.tab.Kind(t) == types.KOptional || u.tab.Kind(t) == types.KErrorUnion) {
+			u.synonymMiss(t, name, nm, syn)
+			return
+		}
 		u.memberMiss(t, name)
+	}
+}
+
+// synonymMiss is E1221 for a member spelled as another language spells it
+// (`.unwrap`, `.clone`): the Mk member, renamed by a proven fix when the
+// row is a rename, or the Mk call as an alternative.
+func (u *unit) synonymMiss(t types.TypeID, name *ast.Ident, nm string, syn resolve.Synonym) {
+	mk := syn.MkName
+	msg := "`" + u.str(t) + "` has no member `" + nm + "`: Mk writes `" + mk + "`"
+	switch {
+	case strings.HasPrefix(mk, "."):
+		mk = mk[1:]
+		msg = "`" + u.str(t) + "` has no member `" + nm + "`: Mk spells it `" + mk + "`"
+	case syn.Note != "":
+		msg = "`" + u.str(t) + "` has no member `" + nm + "`: " + syn.Note
+	}
+	d := u.err(diag.E1221, name.Span(), msg).In(diag.PhaseTypes).
+		Text("type", u.str(t)).Text("mk_name", mk).Fact("habits", diag.TextList(diag.E1221.String()))
+	if syn.Rename {
+		d.Fix(diag.Fix{Class: diag.Proven, Edits: []diag.Edit{{Span: name.Span(), Text: mk}}, Why: "the Mk spelling of the member"})
+	} else {
+		d.Alt(mk)
 	}
 }

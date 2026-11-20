@@ -74,6 +74,9 @@ func NewCorpusSession(cfg Config) (*CorpusSession, error) {
 		if !p.step(StageManifest, func() []*diag.Diagnostic {
 			var ds []*diag.Diagnostic
 			stdMan, ds = c.ms.load(stdT, stdLayout.Manifest, "")
+			if d := stdTargetMissing(w.cfg.Target, stdMan); d != nil && len(ds) == 0 {
+				return []*diag.Diagnostic{d}
+			}
 			return ds
 		}) {
 			return

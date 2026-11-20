@@ -416,6 +416,16 @@ func (m *Module) declConstArg(x *tctx, it *types.Item, at source.Span) (types.Co
 		x.emit(m.c.stageDiag(at, []types.ItemID{it.ID, fn}, diag.ListFact()))
 		return types.ConstArg{}, false
 	}
+	if ty := m.sameModuleLayoutRead(it, map[types.ItemID]bool{}); ty != types.NoItem {
+		x.rec.value(it.Key)
+		d := m.c.stageDiag(at, []types.ItemID{it.ID, ty}, diag.ListFact())
+		if call := m.bareSizeOf(it); call != "" {
+			// The type itself takes `SizeOf[T]()` of a same-module T.
+			d.Alt("write `" + call + "` in the type itself, not through a const")
+		}
+		x.emit(d)
+		return types.ConstArg{}, false
+	}
 	n, fx := m.nodeOf(it.ID)
 	cd, ok := n.(*ast.ConstDecl)
 	if !ok || cd.Value == nil {
@@ -471,4 +481,113 @@ func (m *Module) sameModuleCallee(it *types.Item, seen map[types.ItemID]bool) ty
 		return found == types.NoItem
 	})
 	return found
+}
+
+// sameModuleLayoutRead is the first same-module struct, enum or error whose
+// layout a `SizeOf` or `AlignOf` in the initializer of same-module const it
+// reads, directly, through a same-module alias, or through the
+// initializers of the same-module consts it names; NoItem when there is
+// none. A declaration's type in stage 5 cannot read that layout yet, so
+// such a const in a type is E0908.
+func (m *Module) sameModuleLayoutRead(it *types.Item, seen map[types.ItemID]bool) types.ItemID {
+	if seen[it.ID] || it.Module != m.ID {
+		return types.NoItem
+	}
+	seen[it.ID] = true
+	n, fx := m.nodeOf(it.ID)
+	cd, ok := n.(*ast.ConstDecl)
+	if !ok || cd.Value == nil {
+		return types.NoItem
+	}
+	found := types.NoItem
+	ast.Inspect(cd.Value, func(n ast.Node) bool {
+		if found != types.NoItem || n == nil {
+			return false
+		}
+		if ix, ok := n.(*ast.IndexExpr); ok {
+			if r, ok := refAt(fx, ix.X); ok && r.Kind == resolve.RefUniverse &&
+				(source.Symbol(r.A) == source.SymSizeOf || source.Symbol(r.A) == source.SymAlignOf) {
+				for _, a := range ix.Args {
+					if found == types.NoItem {
+						found = m.localTypeNamed(fx, a, seen)
+					}
+				}
+				return false
+			}
+		}
+		if r, ok := refAt(fx, n); ok && r.Kind == resolve.RefItem {
+			if ref := m.c.cfg.Items.Get(types.ItemID(r.A)); ref.Kind == types.KindConst && ref.Module == m.ID {
+				found = m.sameModuleLayoutRead(ref, seen)
+			}
+		}
+		return found == types.NoItem
+	})
+	return found
+}
+
+// localTypeNamed is the first same-module struct, enum or error that type
+// expression n of file fx names, looking through same-module aliases; NoItem
+// when there is none.
+func (m *Module) localTypeNamed(fx *fileIndex, n ast.Node, seen map[types.ItemID]bool) types.ItemID {
+	found := types.NoItem
+	ast.Inspect(n, func(c ast.Node) bool {
+		if found != types.NoItem || c == nil {
+			return false
+		}
+		r, ok := refAt(fx, c)
+		if !ok || r.Kind != resolve.RefItem {
+			return true
+		}
+		ref := m.c.cfg.Items.Get(types.ItemID(r.A))
+		if ref.Module != m.ID {
+			return true
+		}
+		switch ref.Kind {
+		case types.KindStruct, types.KindEnum, types.KindError:
+			found = ref.ID
+		case types.KindAlias:
+			if !seen[ref.ID] {
+				seen[ref.ID] = true
+				if an, afx := m.nodeOf(ref.ID); an != nil {
+					found = m.localTypeNamed(afx, an, seen)
+				}
+			}
+		}
+		return found == types.NoItem
+	})
+	return found
+}
+
+// bareSizeOf is the initializer of same-module const it as written when it
+// is exactly `SizeOf[T]()` with T one name, "" otherwise.
+func (m *Module) bareSizeOf(it *types.Item) string {
+	n, fx := m.nodeOf(it.ID)
+	cd, ok := n.(*ast.ConstDecl)
+	if !ok || cd.Value == nil {
+		return ""
+	}
+	ce, ok := cd.Value.(*ast.CallExpr)
+	if !ok || len(ce.Args) != 0 {
+		return ""
+	}
+	ix, ok := ce.Fun.(*ast.IndexExpr)
+	if !ok || len(ix.Args) != 1 || ix.Args[0] == nil {
+		return ""
+	}
+	if r, ok := refAt(fx, ix.X); !ok || r.Kind != resolve.RefUniverse || source.Symbol(r.A) != source.SymSizeOf {
+		return ""
+	}
+	id, ok := ix.Args[0].(*ast.Ident)
+	if !ok {
+		return ""
+	}
+	return "SizeOf[" + m.c.cfg.Interner.Str(id.Name) + "]()"
+}
+
+// refAt is the resolved ref of node n of file fx; false when n has none.
+func refAt(fx *fileIndex, n ast.Node) (resolve.Ref, bool) {
+	if id := n.ID(); int(id) < len(fx.info.Refs) {
+		return fx.info.Refs[id], true
+	}
+	return resolve.Ref{}, false
 }

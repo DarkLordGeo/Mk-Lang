@@ -46,6 +46,10 @@ export struct RtState {
     // SysStackOf.
     sys_lo: [256]raw.Atomic[u64]
     sys_hi: [256]raw.Atomic[u64]
+    // main_trace holds Main's error-return trace in a program with no
+    // task, which has no slot header for it (trace.mk's TraceSlot); only
+    // Main's thread, on Main's stack, writes it.
+    main_trace: SlotHeader
 }
 
 // RtWords is the static part: the state page's address, the leak counters

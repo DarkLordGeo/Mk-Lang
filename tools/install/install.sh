@@ -1,22 +1,35 @@
 #!/bin/sh
 # Why: a Linux user needs one command that installs a released Mk toolchain,
-# checked against its published hash, without root.
+# signed by the project, without root, Go or LLVM.
 #
-# What: installs the Mk toolchain on Linux. POSIX sh with curl or wget, and
-# sha256sum or shasum.
-#   curl -fsSL <release address>/latest/download/install.sh | sh
+# What: installs the Mk toolchain on Linux. POSIX sh with curl or wget,
+# sha256sum or shasum, and OpenSSL 3 or later (for the signature).
+#   curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh
 #   sh install.sh [--version 0.1.0] [--root <dir>] [--releases <address>] [--no-modify-path]
 #
-# How: it downloads the newest release (or --version) with its SHA256SUMS over
-# https, checks the archive's SHA-256, unpacks it to
+# How: it downloads the newest release (or --version): SHA256SUMS and
+# SHA256SUMS.sig over https. It checks the Ed25519 signature against the
+# release keys written below (the keys mk itself trusts,
+# internal/release/keys.go) before it reads the list, then the archive's
+# SHA-256 against the list. It unpacks the archive to
 # <root>/toolchains/<version>, points the symbolic link <root>/current at
 # it, and adds `export PATH=...` to ~/.profile unless --no-modify-path; it
-# prints the line either way. root defaults to ~/.local/share/mk. A first
-# install trusts https and the release host; every later `mk upgrade`
-# checks the release's Ed25519 signature. The options also come from
-# MK_VERSION, MK_HOME, MK_RELEASES and MK_NO_MODIFY_PATH=1.
+# prints the line either way. root defaults to ~/.local/share/mk. Every
+# later `mk upgrade` checks signatures the same way. The options also come
+# from MK_VERSION, MK_HOME, MK_RELEASES and MK_NO_MODIFY_PATH=1.
+# MK_INSTALL_TEST_KEY ("<key id> <base64 public key>") adds a trusted key,
+# and only with a loopback release address (tests).
+#
+# The signature protects against a changed archive or list. It cannot
+# protect against a changed copy of this script: read the script first, or
+# take it from the repository at a release tag.
 
 set -eu
+
+# The whole script is one function, called on the last line, so a download
+# cut off part-way runs nothing: sh reads main to its closing brace before
+# it runs any of it. Its body is not indented.
+main() {
 
 version="${MK_VERSION:-}"
 root="${MK_HOME:-}"
@@ -24,6 +37,13 @@ releases="${MK_RELEASES:-https://github.com/zerodayokay/Mk-Lang/releases}"
 modify_path=1
 [ "${MK_NO_MODIFY_PATH:-}" = 1 ] && modify_path=0
 host=x86_64-linux
+
+# The release keys this script trusts: one "<key id> <base64 public key>"
+# per line, the same keys as internal/release/keys.go (TestInstallKeys
+# checks they agree). With none, nothing can be installed.
+trusted_keys='
+7f12cb260ba04bea ykIH33Kzl3Uno3l9vL2v5oOUy/H0toVHc5giQVn4BC8=
+'
 
 die() {
 	echo "install.sh: $*" >&2
@@ -66,10 +86,37 @@ if [ "$modify_path" = 1 ]; then
 	esac
 fi
 
+# loopback: whether url is plain http to 127.0.0.1, localhost or [::1],
+# with an optional port. Only the authority counts, and one with userinfo
+# (http://127.0.0.1:x@example.com/) is refused, since curl and wget connect
+# to the host after the @.
+loopback() { # url
+	case "$1" in
+	http://*) ;;
+	*) return 1 ;;
+	esac
+	a=${1#http://}
+	a=${a%%/*}
+	a=${a%%\?*}
+	a=${a%%#*}
+	case "$a" in
+	*@*) return 1 ;;
+	esac
+	case "$a" in
+	127.0.0.1 | localhost | \[::1\]) return 0 ;;
+	127.0.0.1:* | localhost:* | \[::1\]:*) ;;
+	*) return 1 ;;
+	esac
+	port=${a##*:}
+	case "$port" in
+	'' | *[!0-9]*) return 1 ;;
+	esac
+	return 0
+}
+
 case "$releases" in
 https://*) ;;
-http://127.0.0.1:* | http://127.0.0.1/* | http://localhost:* | http://localhost/* | http://\[::1\]:*) ;;
-*) die "the release address $releases is not https" ;;
+*) loopback "$releases" || die "the release address $releases is not https" ;;
 esac
 
 file_url() { # version file
@@ -80,12 +127,6 @@ file_url() { # version file
 	fi
 }
 
-loopback() { # url
-	case "$1" in
-	http://127.0.0.1:* | http://127.0.0.1/* | http://localhost:* | http://localhost/* | http://\[::1\]:* | http://\[::1\]/*) return 0 ;;
-	esac
-	return 1
-}
 
 # fetch follows at most ten redirects itself, each target checked: https,
 # or plain http only to a loopback host (tests), so a redirect cannot
@@ -136,7 +177,39 @@ mkdir -p "$toolchains"
 work=$(mktemp -d "$toolchains/.install-XXXXXX")
 trap 'rm -rf "$work"' EXIT INT TERM
 
+# verify_sums checks SHA256SUMS.sig, one line "<key id> <base64 Ed25519
+# signature>", over SHA256SUMS against trusted_keys, with openssl.
+verify_sums() { # sums sig
+	keys=$trusted_keys
+	# A key for tests, taken only with a loopback release address.
+	if [ -n "${MK_INSTALL_TEST_KEY:-}" ] && loopback "$releases"; then
+		keys="$keys
+$MK_INSTALL_TEST_KEY"
+	fi
+	printf '%s\n' "$keys" | grep -Eq '^[0-9a-f]{16} [A-Za-z0-9+/]{43}=$' ||
+		die "this script trusts no release key yet, so it cannot check a release; nothing was installed"
+	command -v openssl >/dev/null 2>&1 || die "openssl is not installed; it checks the release's signature (OpenSSL 3 or later)"
+	[ "$(grep -c '' "$2")" = 1 ] && [ "$(wc -l <"$2" | tr -d ' ')" = 1 ] ||
+		die "SHA256SUMS.sig is not one line; nothing was installed"
+	sig=$(cat "$2")
+	printf '%s\n' "$sig" | grep -Eqx '[0-9a-f]{16} [A-Za-z0-9+/]{86}==' ||
+		die "SHA256SUMS.sig is not \"<key id> <signature>\"; nothing was installed"
+	id=${sig%% *}
+	key=$(printf '%s\n' "$keys" | awk -v id="$id" '$1 == id { print $2; exit }')
+	[ -n "$key" ] || die "the release is signed by key $id, which this script does not trust; nothing was installed"
+	# An Ed25519 public key in PEM: the 12-byte DER prefix is 16 base64
+	# digits, so the key's own base64 follows it unchanged.
+	printf -- '-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA%s\n-----END PUBLIC KEY-----\n' "$key" >"$work/key.pem"
+	printf '%s' "${sig#* }" | openssl base64 -d -A >"$work/sig.bin" 2>/dev/null ||
+		die "SHA256SUMS.sig holds no base64 signature; nothing was installed"
+	openssl pkeyutl -verify -pubin -inkey "$work/key.pem" -rawin -in "$1" -sigfile "$work/sig.bin" >/dev/null 2>&1 ||
+		die "the signature does not match SHA256SUMS (or this openssl cannot check Ed25519: OpenSSL 3 or later is needed); nothing was installed"
+	echo "SHA256SUMS is signed by release key $id"
+}
+
 fetch "$(file_url "$version" SHA256SUMS)" "$work/SHA256SUMS"
+fetch "$(file_url "$version" SHA256SUMS.sig)" "$work/SHA256SUMS.sig"
+verify_sums "$work/SHA256SUMS" "$work/SHA256SUMS.sig"
 
 # The host's archives in SHA256SUMS: "<hash> <name> <version>" per line.
 tok='[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?'
@@ -197,3 +270,7 @@ if [ "$modify_path" = 1 ]; then
 else
 	echo "~/.profile was not changed; add this line to your shell profile: $line"
 fi
+
+}
+
+main "$@"

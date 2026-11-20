@@ -337,6 +337,9 @@ func (s *Session) check(p *pipeline) {
 	ok := p.step(StageManifest, func() []*diag.Diagnostic {
 		var ds []*diag.Diagnostic
 		stdMan, ds = ms.load(stdT, stdLayout.Manifest, "")
+		if d := stdTargetMissing(w.cfg.Target, stdMan); d != nil && len(ds) == 0 {
+			return []*diag.Diagnostic{d}
+		}
 		if s.root.kind == rootPackage {
 			var pds []*diag.Diagnostic
 			pkgMan, pds = ms.load(pkgT, "pkg.mk", "main")

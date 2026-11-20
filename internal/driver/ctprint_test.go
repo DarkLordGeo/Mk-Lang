@@ -250,12 +250,24 @@ func ctProgram(shapes []int) string {
 	return b.String()
 }
 
-// ctCheck builds and runs src under prof and checks every shape's line.
-func ctCheck(t *testing.T, src string, prof types.Profile, shapes []int) {
+// ctCheck builds src under prof into cacheDir, runs it and checks every
+// shape's line.
+func ctCheck(t *testing.T, src string, prof types.Profile, shapes []int, cacheDir string) {
 	t.Helper()
 	dir := writeTree(t, map[string]string{"main.mk": src})
-	exe := buildProgram(t, filepath.Join(dir, "main.mk"), types.X86_64Windows, prof, t.TempDir())
-	out, errOut, code := runExe(t, types.X86_64Windows, exe, "")
+	s, err := NewSession(Config{Root: filepath.Join(dir, "main.mk"), Target: types.X86_64Windows, Profile: prof, Tools: needTools(t), CacheDir: cacheDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, paths, err := s.Build(filepath.Join(t.TempDir(), "main"+exeSuffix(types.X86_64Windows)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Report.Diags) > 0 || len(paths) != 1 {
+		skipKnownBlockers(t, r)
+		t.Fatalf("build %v: %d paths\n%s", prof, len(paths), r.Report.Text(r.Sources))
+	}
+	out, errOut, code := runExe(t, types.X86_64Windows, paths[0], "")
 	if code != 0 {
 		t.Fatalf("%v: exit %d\n%s", prof, code, errOut)
 	}
@@ -272,17 +284,19 @@ func ctCheck(t *testing.T, src string, prof types.Profile, shapes []int) {
 
 // TestCompileTimeForwardedPrint: each shape alone in a dev build, so
 // one shape's E0000 cannot hide another's, then every shape together in a
-// release build.
+// release build. Each shape is its own program; the builds share one
+// cache, so std is compiled once per profile.
 func TestCompileTimeForwardedPrint(t *testing.T) {
+	cacheDir := t.TempDir()
 	var all []int
 	for i, s := range ctPrintShapes {
 		all = append(all, i)
 		t.Run(s.name, func(t *testing.T) {
-			ctCheck(t, ctProgram([]int{i}), types.Dev, []int{i})
+			ctCheck(t, ctProgram([]int{i}), types.Dev, []int{i}, cacheDir)
 		})
 	}
 	t.Run("release", func(t *testing.T) {
-		ctCheck(t, ctProgram(all), types.Release, all)
+		ctCheck(t, ctProgram(all), types.Release, all, cacheDir)
 	})
 }
 

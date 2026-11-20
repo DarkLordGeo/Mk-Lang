@@ -1,6 +1,6 @@
-// Why: a default for `?T` and `E!T` has one spelling, `e else { x }`; the
-// old `Or` method is gone, and code that still calls it should be fixed
-// automatically.
+// Why: a default for `?T` and `E!T` has one spelling, `e else { x }`; code
+// that calls an `Or` method on one, as other libraries spell a default,
+// should be fixed automatically.
 //
 // What: orRemoved, E0207 on `e.Or(x)` with a fix, plus wholeExpr and
 // quietArg.

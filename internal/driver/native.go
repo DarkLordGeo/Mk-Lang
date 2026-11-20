@@ -155,7 +155,7 @@ func (s *Session) Build(out string) (Result, []string, error) {
 	var ds []*diag.Diagnostic
 	for _, bin := range bins {
 		dest := out
-		if dest == "" || len(bins) > 1 {
+		if dest == "" || len(bins) > 1 || outIsDir(out) {
 			dest = filepath.Join(out, bin.name+exeSuffix(s.cfg.Target))
 		}
 		// With the cache on, the link key also names a copy of the
@@ -199,6 +199,17 @@ func (s *Session) Build(out string) (Result, []string, error) {
 	r = s.p.result(s.w, s.cfg.MaxDiags)
 	r.Reached = StageNative
 	return r, paths, nil
+}
+
+// outIsDir reports whether -o out names a directory: it ends in a path
+// separator or names an existing directory. The executable is then
+// <out>/<bin>[.exe].
+func outIsDir(out string) bool {
+	if strings.HasSuffix(out, "/") || strings.HasSuffix(out, `\`) {
+		return true
+	}
+	fi, err := os.Stat(out)
+	return out != "" && err == nil && fi.IsDir()
 }
 
 // placeExe moves the linked temporary to dest: a rename, or a copy and a
@@ -564,6 +575,7 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 	if id := w.mainEntry(j.mainMod); id != types.NoItem {
 		cfg.Main = w.items.Get(id).Key
 	}
+	cfg.Frames = w.frameNames(j.mainMod, cfg.Main)
 	if d := w.pgoConfig(&cfg, j.pkgRoot); d != nil {
 		return "", []*diag.Diagnostic{d}
 	}

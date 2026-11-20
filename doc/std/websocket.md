@@ -38,7 +38,7 @@ import std.websocket
 
 `Dial` opens a TCP connection to the URL's host, makes it secure for `wss`, and runs the opening handshake. It offers the subprotocols in `o.protocols` and adds the header fields in `o.headers` (an `Origin`, a cookie, a token). Before any I/O, it fails with `net.InvalidAddress` for a URL that is not `ws` or `wss` or has no host. It fails with `Handshake(0)` for a header field or subprotocol that is malformed, a subprotocol offered twice, or a field the handshake writes itself.
 
-A `wss` URL needs a secure connector in `o.secure`, a `net.Secure` from [`tls.Connector`](tls.md). `std.websocket` imports no TLS of its own, so a program that never names `std.tls` links none. With `o.secure` `none`, a `wss` URL fails with `http.NoSecureTransport`, which is a member of `websocket.Error`.
+A `wss` URL needs a secure connector in `o.secure`, a `net.Secure` from [`tls.Connector`](tls.md). `std.websocket` imports no TLS of its own, so a program that never names `std.tls` links none. `wss` is [Experimental](README.md#a-stable-module-over-an-experimental-one) as long as `std.tls` is. With `o.secure` `none`, a `wss` URL fails with `http.NoSecureTransport`, which is a member of `websocket.Error`.
 
 The server side starts in an HTTP handler served by `http.ServeWith`, `http.ServeOn` or `http.ServeChan`. `link.Takeover()` takes the connection out of the HTTP server, and `Accept` checks the request, answers with the 101 reply and returns the `Conn`:
 

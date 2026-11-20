@@ -244,6 +244,19 @@ test "Under std.sim, Term.Read with nothing queued, no deadline and no task to q
     t.Close(io)
 }
 
+test "Under std.sim, a queued NUL is Ctrl+Space between its neighbours, on every target" (sys: &System) {
+    var s := sim.Sim.New(sys.arena, 7).Must()
+    defer s.Free()
+    io := s.Io()
+    var t := Open(io).Must()
+    t.Raw(io).Must()
+    s.TermInput("a\x00b".AsBytes(), time.Millis(0)).Must()
+    Assert(TmIsChar(t.Read(sys.arena, io).Must(), 'a'))
+    Assert(TmDescribe(sys.arena, t.Read(sys.arena, io).Must()) == "key Char  +c")
+    Assert(TmIsChar(t.Read(sys.arena, io).Must(), 'b'))
+    t.Close(io)
+}
+
 // TsSecret reads a secret under a Sim of seed: "ab" at 0 ms, a bracketed
 // paste "c" with a line end at 5 ms, Enter at 9 ms, each ReadSecret under
 // a 1 ms deadline until the line ends. It returns the line and how many

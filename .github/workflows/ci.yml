@@ -1,15 +1,16 @@
-# Why: every change to main must build and pass its tests on both supported
-# hosts before anyone builds on top of it.
+# Why: every change to main, and every pull request, must build and pass its
+# tests on both supported hosts before anyone builds on top of it.
 #
-# What: build, vet, gofmt, the Go tests (std's long suite runs nightly) and
-# the documentation tests, on the Windows and Linux self-hosted runners.
+# What: on GitHub-hosted Windows and Linux runners, a checks job (build, vet,
+# gofmt, the documentation tests) and the Go tests of every package but std
+# (std's long suite runs nightly), split across parallel jobs:
+# internal/driver in SHARD_COUNT shards, corpus, lsp, and the rest.
 #
-# How: runs on pushes to main, on pull requests from branches of this
-# repository, and by hand. The job skips pull requests from forks, but a
-# fork can change this file, so the guard is the repository's approval
-# setting: a fork's run waits for a maintainer, and approving it runs the
-# fork's workflow files on the self-hosted runners, which run on a
-# maintainer's machine. Never approve one; see .github/runners/README.md.
+# How: runs on pushes to main, on every pull request (forks included), by
+# hand, and from release.yml as a reusable workflow. It runs with a
+# read-only token and no secrets, so a pull request from a fork runs it as
+# it is. A newer push to a pull request cancels the run it supersedes;
+# runs on main always finish. tools/ci/test.sh runs each test job's part.
 name: CI
 
 on:
@@ -17,73 +18,143 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      oses:
+        description: JSON list of runner images to test on
+        type: string
+        default: '["windows-2025", "ubuntu-24.04"]'
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Only a pull request's runs are cancelled: every commit on main keeps a
+  # complete run.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The number of internal/driver shards: keep it equal to the number of
+  # driver-N entries in the matrix below.
+  SHARD_COUNT: "8"
+  LLVM_VERSION: 21.1.8
+  # SHA-256 of LLVM-21.1.8-win64.exe, from the release's asset digest.
+  LLVM_WIN64_SHA256: 7a5386c26497db1691f320121e5b113364dd0274b98e55f15f4dbc00c0450113
 
 jobs:
-  test:
-    name: test (${{ matrix.os }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+  ci:
+    name: ${{ matrix.part }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows
-            gate: "1"
-            shards: "3"
-            otherp: "2"
-            alone: ""
-            last: "mk/internal/corpus mk/internal/lsp"
-            alonemem: ""
-            shardmem: "4GiB"
-            lastmem: "8GiB"
-            shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
-          - os: linux
-            gate: ""
-            shards: "3"
-            otherp: "2"
-            alone: "TestScheduleIsDeterministic|TestConcurrentBuildsShareCache|TestBodiesInParallelAreDeterministic"
-            last: "mk/internal/corpus mk/internal/lsp"
-            alonemem: "5GiB"
-            shardmem: "3GiB"
-            lastmem: "5GiB"
-            shell: bash
-    runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
-    timeout-minutes: 360
+        os: ${{ fromJSON(inputs.oses || '["windows-2025", "ubuntu-24.04"]') }}
+        part:
+          - checks
+          - driver-0
+          - driver-1
+          - driver-2
+          - driver-3
+          - driver-4
+          - driver-5
+          - driver-6
+          - driver-7
+          - corpus
+          - lsp
+          - others
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 150
     defaults:
       run:
-        # Git Bash by its short path: a plain `bash` on a Windows runner can
-        # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
-        # run the step's script, and CI must never start wsl.exe here.
-        shell: ${{ matrix.shell }}
+        # Git Bash on the hosted Windows images.
+        shell: bash
     env:
       # MK_GATE=1 turns a test that cannot run here into a failure; only the
-      # Windows job sets it, since on Linux the Windows legs cannot run.
-      MK_GATE: ${{ matrix.gate }}
-      MK_CACHE: ${{ github.workspace }}/../.mkcache
+      # Windows jobs set it, since on Linux the Windows legs cannot run.
+      MK_GATE: ${{ startsWith(matrix.os, 'windows') && '1' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # A temporary directory of the job's own, which the runner empties after
-      # each job: files another program left in the user's temp directory (a
-      # stray pkg.mk there once made every test fixture one package) never
-      # reach the tests.
+      # No module cache: the module has no dependencies, and a restored build
+      # cache would let `go test` report cached results.
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: 1.27.x
+          cache: false
+
+      # A temporary directory and an mk cache of the job's own, so files
+      # another program left in the image's temp directory never reach the
+      # tests.
       - name: Temporary directory
         run: |
-          mkdir -p "$RUNNER_TEMP/tmp"
           tmp="$RUNNER_TEMP/tmp"
-          # Git Bash on Windows: a native path, not one with mixed separators.
-          if command -v cygpath >/dev/null; then tmp=$(cygpath -w "$tmp"); fi
+          cache="$RUNNER_TEMP/mkcache"
+          mkdir -p "$tmp" "$cache"
+          # Git Bash on Windows: native paths, not ones with mixed separators.
+          if command -v cygpath >/dev/null; then
+            tmp=$(cygpath -w "$tmp")
+            cache=$(cygpath -w "$cache")
+          fi
           echo "TMP=$tmp" >> "$GITHUB_ENV"
           echo "TEMP=$tmp" >> "$GITHUB_ENV"
           echo "TMPDIR=$tmp" >> "$GITHUB_ENV"
+          echo "MK_CACHE=$cache" >> "$GITHUB_ENV"
+
+      # The installer from LLVM's releases page, into the default location
+      # mk searches. The image may carry another LLVM there: its uninstaller
+      # finishes in the background, so wait for it to remove itself.
+      - name: LLVM (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          llvm="/c/Program Files/LLVM"
+          if [ -x "$llvm/Uninstall.exe" ]; then
+            MSYS_NO_PATHCONV=1 "$llvm/Uninstall.exe" /S
+            for _ in $(seq 120); do
+              [ -e "$llvm/bin/clang.exe" ] || [ -e "$llvm/Uninstall.exe" ] || break
+              sleep 5
+            done
+          fi
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o llvm.exe "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/LLVM-$LLVM_VERSION-win64.exe"
+          echo "$LLVM_WIN64_SHA256  llvm.exe" | sha256sum -c -
+          MSYS_NO_PATHCONV=1 ./llvm.exe /S
+          rm -f llvm.exe
+          v=$("$llvm/bin/clang.exe" --version)
+          echo "$v"
+          case "$v" in
+            *"clang version $LLVM_VERSION"*) ;;
+            *) echo "::error::$llvm holds no clang $LLVM_VERSION"; exit 1 ;;
+          esac
+
+      # clang-21 and lld-21 from apt.llvm.org; mk finds them in
+      # /usr/lib/llvm-21/bin. The repository's signing key is checked
+      # against its fingerprint before apt trusts it.
+      - name: LLVM (Linux)
+        if: runner.os == 'Linux'
+        env:
+          LLVM_APT_KEY: 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
+        run: |
+          . /etc/os-release
+          major=${LLVM_VERSION%%.*}
+          curl -fsSL -o "$RUNNER_TEMP/llvm.asc" https://apt.llvm.org/llvm-snapshot.gpg.key
+          fpr=$(gpg --show-keys --with-colons "$RUNNER_TEMP/llvm.asc" | awk -F: '$1 == "fpr" { print $10; exit }')
+          if [ "$fpr" != "$LLVM_APT_KEY" ]; then
+            echo "::error::apt.llvm.org's key has the fingerprint '$fpr', not $LLVM_APT_KEY"
+            exit 1
+          fi
+          gpg --dearmor < "$RUNNER_TEMP/llvm.asc" | sudo tee /usr/share/keyrings/llvm.gpg >/dev/null
+          echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] https://apt.llvm.org/$VERSION_CODENAME/ llvm-toolchain-$VERSION_CODENAME-$major main" |
+            sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends "clang-$major" "lld-$major" "llvm-$major"
+          v=$("/usr/lib/llvm-$major/bin/clang" --version)
+          echo "$v"
+          case "$v" in
+            *"clang version $LLVM_VERSION"*) ;;
+            *) echo "::error::apt.llvm.org installed no clang $LLVM_VERSION"; exit 1 ;;
+          esac
 
       - name: Toolchain
         run: |
@@ -91,12 +162,15 @@ jobs:
           go run ./cmd/mk version
 
       - name: Build
+        if: matrix.part == 'checks'
         run: go build ./...
 
       - name: Vet
+        if: matrix.part == 'checks'
         run: go vet ./...
 
       - name: Format
+        if: matrix.part == 'checks'
         run: |
           out=$(gofmt -l .)
           if [ -n "$out" ]; then
@@ -105,19 +179,23 @@ jobs:
             exit 1
           fi
 
-      - name: Test
-        # tools/ci/test.sh splits internal/driver, most of the run, across
-        # processes and keeps the memory-heavy tests apart; the matrix sets
-        # its shards and Go heap caps for each runner's memory.
-        run: bash tools/ci/test.sh
-        env:
-          DRIVER_SHARDS: ${{ matrix.shards }}
-          OTHER_P: ${{ matrix.otherp }}
-          ALONE_TESTS: ${{ matrix.alone }}
-          LAST_PKGS: ${{ matrix.last }}
-          ALONE_MEM: ${{ matrix.alonemem }}
-          SHARD_MEM: ${{ matrix.shardmem }}
-          LAST_MEM: ${{ matrix.lastmem }}
-
       - name: Documentation tests
+        if: matrix.part == 'checks'
         run: go run ./cmd/mk corpus
+
+      - name: Test
+        if: matrix.part != 'checks'
+        env:
+          PART: ${{ matrix.part }}
+          OTHER_P: "2"
+          # Well below timeout-minutes, so a hung test prints its stacks.
+          TEST_TIMEOUT: 120m
+        run: |
+          case "$PART" in
+            driver-*) export CI_MODE=driver SHARD_INDEX=${PART#driver-} ;;
+            corpus) export CI_MODE=others PKGS=mk/internal/corpus ;;
+            lsp) export CI_MODE=others PKGS=mk/internal/lsp ;;
+            others) export CI_MODE=others EXCLUDE_PKGS="mk/internal/corpus mk/internal/lsp" SHORT_PKGS=mk/tools/bench ;;
+            *) echo "unknown part $PART"; exit 1 ;;
+          esac
+          bash tools/ci/test.sh

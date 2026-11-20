@@ -66,7 +66,7 @@ mk build --target x86_64-linux hello.mk
 | `--symbols` | With `--release`, keep symbols and debug information (PDB, DWARF) for profilers |
 | `--debug` | Full debug information, variables and types included, in either profile |
 | `--bin name` | Build only this bin |
-| `-o path` | The output file (one bin) or directory (several bins) |
+| `-o path` | The output file (one bin) or directory (several bins). A path that ends in `/` or names an existing directory is a directory: each bin goes to `<path>/<bin>` (`.exe` on Windows) |
 | `--cpu name` | The target CPU. The default is the target's baseline |
 | `--frame-pointers on\|off` | Keep a frame pointer in every function. The default is `MK_FRAME_POINTERS`, else the target's: off on x86_64-windows, on elsewhere |
 | `--pgo file` | With `--release`, optimize with this profile, or `off` for none. The default is `default.mkprof` in the package root, when present |
@@ -167,7 +167,10 @@ fix: Proven: remove
 mk doc -o API.md
 mk doc --html -o api.html
 mk doc --check
+mk doc std.fs           # the same as mk doc --std std.fs
 ```
+
+A path argument `std` or `std.<module>` that names no file or directory is a standard-library module, as with `--std`, with `--check` too. A name that ends in `.mk` or holds a path separator stays a path. A module the standard library does not have is an error that names it.
 
 | Flag | Does |
 |---|---|
@@ -175,7 +178,7 @@ mk doc --check
 | `--embed` | Write Markdown for a page that has its own title: no title, no module heading, items at `###` |
 | `-o file` | Write to a file |
 | `--check` | Instead, compile the fenced `mk` blocks of the `///` comments, each judged by its verdict line, and exit 1 when one fails |
-| `--std module` | Document the standard library's public modules under this path (`std` for all) |
+| `--std module` | Document the standard library's public modules under this path (`std` for all); with `--check`, check their blocks |
 
 Each item shows its signature, then a `Flows` line for what its result borrows, an `Errors` line for the errors it can return, its `///` text, and its fields or variants. For this module:
 
@@ -340,7 +343,7 @@ mk tree
 
 `mk version` prints mk's version and build, the Go version it was built with, and the LLVM tools it uses, with the rule that chose them ([section 11](#11-llvm-and-toolchains)).
 
-`mk upgrade` installs a signed release, from a release build of mk or from `MK_RELEASES`, and makes it current. `mk toolchain` lists, selects and removes installed releases. [Section 11](#11-llvm-and-toolchains) describes both.
+`mk upgrade` installs a signed release and makes it current. A release build of mk, the one the [install scripts](../README.md#install) put in place, knows where releases are; an mk built from source needs `MK_RELEASES`. `mk toolchain` lists, selects and removes installed releases. [Section 11](#11-llvm-and-toolchains) describes both.
 
 ### `mk corpus`
 
@@ -430,13 +433,15 @@ How errors are reported:
 
 `mk fix` repeats until no proven fix is left, and reports the whole chain. A fix that adds a clause to a function can move an error to that function's callers; the next round fixes that, in the same run. Each fix is checked by recompiling, so nothing unchecked is applied.
 
+A proven `from` or `into` clause (E0601, E0602, E0604) is recompiled before it is offered, by `mk check`, by each round of `mk fix`, and by `mk lsp` when code actions are asked for. It stays proven when the report gets better. When its error only moves to the callers, their own clauses are applied with it and the package is rechecked again, step by step. The clause stays proven only if that chain ends better than it started. A clause whose chain ends elsewhere is offered as an alternative, and the note names the error that is left, for example `try: write ... (not proven: recompiled, the package then reports E0505 at main.mk:16)`. That happens when a caller is left with an E0505, where the new loan meets a value that outlives it, or with an E0503. A report allows 16 rechecks. A clause not recompiled within them is an alternative too ("not proven: not recompiled"). `mk fix` writes only the clauses that are still proven, so it never writes one that `mk check` would offer as an alternative.
+
 When the package checks clean, a last round drops the empty `()` argument of each `Print`-style call whose text has no hole. It keeps the edit only if the package still checks clean.
 
 | Fix | Class | Why |
 |---|---|---|
 | Recase, unique import, `var`, `view`, removing an unused name, habit syntax | `proven` where the code's row in [the error codes](errors.md) says so | Local and mechanical |
 | `from` from a body | `proven` for a private function, `compiles` for an exported one | A new clause on a public function can move errors to callers in other packages |
-| `into` | `proven` for a private function, `compiles` for an exported one | It adds loans at callers. A private function's callers are rechecked in the same run |
+| `into` | `proven` for a private function, `compiles` for an exported one | It adds loans at callers. A private function's callers are rechecked in the same run, and a clause whose chain of callers ends in another error is an alternative |
 | `defer x.Close()` | `proven` only when one void release method exists, its arguments are unique in scope, and the value does not escape | Otherwise it could be wrong |
 | Match arms | `compiles` | Stubs compile, but do nothing useful |
 | The `_` arm of an open set (E0306 `reason: open`) | `proven` | Every member known today already has an arm, so the `_` arm runs only for a member a later release adds. It panics, naming the set |
@@ -446,12 +451,12 @@ When the package checks clean, a last round drops the empty `()` argument of eac
 
 ## 5. Query API
 
-`mk query` answers questions about the checked package, so that a tool or a person never has to guess a name. Each answer is short, at most about 200 tokens, except the listings marked "never capped". Every query takes `--json` and `--root path`.
+`mk query` answers questions about the checked package, so that a tool or a person never has to guess a name. Each answer is short, at most about 200 tokens, except the listings marked "never capped". Every query takes `--json` and `--root path`. In a package that does not parse, `members` and `find` answer from the standard library alone, print the package's diagnostics on stderr and end with a line saying so.
 
 | Query | Answers |
 |---|---|
-| `members T` | Fields and methods with their signatures |
-| `find word` | Names matching a word or a synonym: `len`, `size`, `append`, `HashMap` |
+| `members T` | Fields and methods with their signatures. A name that is both a type and a function, `Eq`, answers the type's and names the function after them |
+| `find word` | Names matching a word or a synonym: `len`, `size`, `append`, `HashMap`, `unwrap`. The compiler's members of `?T` and `E!T`, such as `?T.Must`, are listed as `builtin` |
 | `sig Name` | The full signature, with flows, error set and contracts |
 | `import Name` | The import line for an exported name |
 | `modules` | The module map |
@@ -610,7 +615,7 @@ Within the last two rules, a directory that also holds the linker wins over an e
 
 Where only `lld` is present, mk runs it as `lld -flavor link` or `lld -flavor gnu`, so one LLVM installation links Windows, Linux and freestanding executables.
 
-**Installed toolchains.** mk never downloads a toolchain by itself. These commands manage installed releases:
+**Installed toolchains.** A release is one archive per host on the [releases page](https://github.com/zerodayokay/Mk-Lang/releases), `mk-<version>-x86_64-windows.zip` or `mk-<version>-x86_64-linux.tar.gz`, with `SHA256SUMS` over the archives and `SHA256SUMS.sig`, its Ed25519 signature by the release key. An archive holds `bin/mk`, `llvm/bin/clang` and `llvm/bin/lld` from LLVM's official release with clang's headers, `doc/`, the licences and `RELEASE.txt` (mk's commit and the SHA-256 of each LLVM file). The [install scripts](../README.md#install) make the first install: they check the signature and the hash, unpack the archive into `<root>/toolchains/<version>` and point `<root>/current` at it. The root is `%LOCALAPPDATA%\mk` on Windows and `~/.local/share/mk` on Linux. mk never downloads a toolchain by itself; these commands manage the installed ones:
 
 | Command | Does |
 |---|---|

@@ -1,6 +1,7 @@
 // Why: mk query answers editors and readers; a wrong find, members, stack
 // or lookup answer sends them to the wrong code.
-// What: tests of `find` over a word that names a module, `stack` through a
+// What: tests of `find` over a word that names a module and over `unwrap`,
+// `members` of a prelude interface, `stack` through a
 // Slice[T] namespace function as mono instantiates it, `members` of one
 // module's type, and the editor's exact lookup.
 // How: runs mk query over small packages and std and compares the items
@@ -95,6 +96,31 @@ func TestMembersOfOneModule(t *testing.T) {
 	for _, l := range mem.Answer {
 		if strings.Contains(l, "certs") {
 			t.Errorf("members mem.Pool lists the package's Pool: %s", l)
+		}
+	}
+}
+
+// TestQueryFindUnwrap: `find unwrap` lands on the compiler's `Must` of
+// `?T` and `E!T`, which no source declares, and not on std.simd's `Or`.
+func TestQueryFindUnwrap(t *testing.T) {
+	dir := testPkg(t, map[string]string{"q.mk": querySource})
+	a := queryOne(t, dir, "find", "unwrap")
+	answerHas(t, a, "?T.Must  builtin", "E!T.Must  builtin")
+	if !a.Found || strings.Contains(a.Text(), ".Or  ") {
+		t.Errorf("find unwrap:\n%s", a.Text())
+	}
+}
+
+// TestQueryMembersPreludeInterface: `members Eq` answers the prelude
+// interface's methods, then names std.derive's generator Eq, a function of
+// the same name.
+func TestQueryMembersPreludeInterface(t *testing.T) {
+	dir := testPkg(t, map[string]string{"q.mk": querySource})
+	for _, c := range [][2]string{{"Eq", "Eq(&self"}, {"Hash", "Hash(&self"}, {"Format", "Format(&self"}} {
+		a := queryOne(t, dir, "members", c[0])
+		answerHas(t, a, c[1], "also derive."+c[0]+", a function: ")
+		if strings.Contains(a.Text(), "is a function, not a type") {
+			t.Errorf("members %s:\n%s", c[0], a.Text())
 		}
 	}
 }

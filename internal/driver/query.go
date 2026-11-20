@@ -2,7 +2,8 @@
 // signature, members, flows, errors, layout) and needs a short, exact answer
 // for the cost of one process start.
 //
-// What: QueryNames, QueryAnswer (Text, JSON), Session.Query, the queryIndex
+// What: QueryNames, QueryAnswer (Text, JSON), Session.Query,
+// Result.ParseFailed, the queryIndex
 // that maps written names to items, the not-found suggestions, the module
 // map and the find synonyms.
 //
@@ -20,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"mk/internal/diag"
 	"mk/internal/types"
 )
 
@@ -64,6 +66,9 @@ type QueryAnswer struct {
 	// comes from declarations alone, so signatures, shapes and bodies of the
 	// package's items may be missing. The diagnostics are in the Result.
 	Partial bool `json:"partial,omitempty"`
+	// StdOnly is true when the package does not parse and the answer comes
+	// from std's names alone (mk query's find and members).
+	StdOnly bool `json:"std_only,omitempty"`
 	// Uses is mk query uses's listing, nil for every other query; the
 	// JSON holds "uses" whenever the query is uses, empty or not.
 	Uses *[]UseEntry `json:"uses,omitempty"`
@@ -82,6 +87,9 @@ func (a *QueryAnswer) Text() string {
 	}
 	if a.Partial {
 		b.WriteString("(partial: the package does not check as far as types; run mk check)\n")
+	}
+	if a.StdOnly {
+		b.WriteString("(the package does not parse: these are std's names alone; run mk check)\n")
 	}
 	return b.String()
 }
@@ -144,6 +152,12 @@ func (s *Session) Query(q string, args []string) (*QueryAnswer, Result, error) {
 	}
 	qx := newQueryIndexOf(s, true)
 	return s.localizeAnswer(answerQuery(qx, q, args, !checkedToTypes(res))), res, nil
+}
+
+// ParseFailed reports whether the check stopped at a parse error, where
+// mk query answers std's names alone.
+func (r Result) ParseFailed() bool {
+	return r.Report.HasPhase && r.Report.Phase == diag.PhaseParse
 }
 
 // qEntry is one queryable item.
@@ -347,6 +361,32 @@ func (qx *queryIndex) match(subject string, fold bool) (qEntry, bool) {
 	return qEntry{}, false
 }
 
+// typeNamed finds, when the subject's lookup e is a function (std.derive's
+// Eq), a type the subject names as well (the prelude interface Eq): the
+// type is what `members` answers for. The package comes before std.
+func (qx *queryIndex) typeNamed(subject string, e qEntry) (qEntry, bool) {
+	if !e.std || qx.w.items.Get(e.id).Kind != types.KindFunc || qx.funcSig(e.id) == nil {
+		return qEntry{}, false
+	}
+	for pass := 0; pass < 2; pass++ {
+		for _, x := range qx.entries {
+			if x.std != (pass == 1) {
+				continue
+			}
+			it := qx.w.items.Get(x.id)
+			if it.Kind == types.KindFunc || it.Owner != types.NoItem || it.OwnerPrim != types.NoType {
+				continue
+			}
+			for _, cand := range []string{x.name, x.mod + "." + x.name, lastSeg(x.mod) + "." + x.name} {
+				if cand == subject {
+					return x, true
+				}
+			}
+		}
+	}
+	return qEntry{}, false
+}
+
 func lastSeg(p string) string {
 	if i := strings.LastIndexByte(p, '.'); i >= 0 {
 		return p[i+1:]
@@ -477,7 +517,7 @@ var synonyms = map[string][]string{
 	"sort": {"sort", "sortstable"}, "mutex": {"mutex"}, "lock": {"mutex", "lock"}, "channel": {"chan"},
 	"thread": {"scope", "go"}, "spawn": {"go", "scope"}, "sleep": {"sleep"}, "open": {"open", "readtext", "readbytes"},
 	"readfile": {"readtext", "readbytes"}, "writefile": {"writetext", "writebytes"}, "error": {"error", "fail"},
-	"unwrap": {"must", "or"}, "option": {"some", "none"}, "box": {"box"}, "free": {"free"}, "malloc": {"alloc", "heap"},
+	"unwrap": {"must"}, "expect": {"must"}, "option": {"some", "none"}, "box": {"box"}, "free": {"free"}, "malloc": {"alloc", "heap"},
 	"parse": {"parse", "parseint", "parsefloat"}, "atoi": {"parseint"}, "tostring": {"format", "fmt"},
 }
 
@@ -516,8 +556,18 @@ func (qx *queryIndex) find(word string) []string {
 			}
 		}
 	}
+	// The compiler's members of `?T` and `E!T`, which no source declares.
+	for _, b := range builtinMembers {
+		if slices.Contains(words, strings.ToLower(lastSeg(b))) {
+			exact = append(exact, b+"  builtin  "+preludeModule)
+		}
+	}
 	return append(append(exact, module...), part...)
 }
+
+// builtinMembers are the members the compiler gives `?T` and `E!T` (no
+// source declares them), as find lists them.
+var builtinMembers = []string{"?T.IsNone", "?T.IsSome", "?T.Must", "E!T.Must"}
 
 func itoaQ(n int) string {
 	if n == 0 {

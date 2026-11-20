@@ -1,5 +1,7 @@
 // Why: str.ToLower and str.ToUpper must apply Unicode's simple case mapping.
-// What: tests against Go's strings.ToLower and ToUpper, the same mapping.
+// What: tests against the UCD 18.0.0 simple mappings as goCase gives them
+// (Go's unicode with the pinned 18.0.0 changes), the mapping CaseTable holds;
+// they need no evidence directory.
 // How: at compile time over every CaseTable range's edges; natively over
 // every Unicode scalar.
 
@@ -13,9 +15,9 @@ import (
 	"unicode/utf8"
 )
 
-// caseEdges is every scalar at or next to a CaseRanges boundary, plus
+// caseEdges is every scalar at or next to a CaseTable boundary, plus
 // ASCII, the length-changing mappings and a few unmapped scalars.
-func caseEdges() []rune {
+func caseEdges(sc *simpleCase) []rune {
 	seen := map[rune]bool{}
 	var out []rune
 	add := func(r rune) {
@@ -28,8 +30,8 @@ func caseEdges() []rune {
 	for r := rune(0); r < 0x80; r++ {
 		add(r)
 	}
-	for _, c := range unicode.CaseRanges {
-		for _, r := range []rune{rune(c.Lo) - 1, rune(c.Lo), rune(c.Lo) + 1, rune(c.Hi) - 1, rune(c.Hi), rune(c.Hi) + 1} {
+	for _, c := range sc.ranges {
+		for _, r := range []rune{c.lo - 1, c.lo, c.lo + 1, c.hi - 1, c.hi, c.hi + 1} {
 			add(r)
 		}
 	}
@@ -41,16 +43,17 @@ func caseEdges() []rune {
 
 // TestCaseMapAtCompileTime maps the edge scalars, in strings of up
 // to 120 scalars, through an arena over evaluation memory, and compares
-// each with Go's strings.ToLower and ToUpper; the empty string maps to "".
+// each with the UCD's simple mappings; the empty string maps to "".
 func TestCaseMapAtCompileTime(t *testing.T) {
 	t.Parallel()
-	edges := caseEdges()
+	sc := goCase()
+	edges := caseEdges(sc)
 	var in, lo, up []string
 	for i := 0; i < len(edges); i += 120 {
 		s := string(edges[i:min(i+120, len(edges))])
 		in = append(in, mkString(s))
-		lo = append(lo, mkString(strings.ToLower(s)))
-		up = append(up, mkString(strings.ToUpper(s)))
+		lo = append(lo, mkString(sc.mapString(s, false)))
+		up = append(up, mkString(sc.mapString(s, true)))
 	}
 	n := len(in)
 	fixture := probeHeap + fmt.Sprintf(`
@@ -106,10 +109,10 @@ CaseCheck(from: int, to: int): int {
 
 // TestCaseMapAllScalars maps every Unicode scalar natively at
 // release: stdin holds them 256 to a line, the program prints each line's
-// ToLower and ToUpper, and both must equal Go's.
+// ToLower and ToUpper, and both must equal the UCD's.
 func TestCaseMapAllScalars(t *testing.T) {
 	t.Parallel()
-	p := caseProgram()
+	p := caseProgram(goCase())
 	r := runNative(t, buildWithModule(t, p.rel, p.module, p.src, "--release"), p.stdin)
 	if r.code != 0 {
 		t.Fatalf("exit %d\n%s", r.code, r.stderr)
@@ -119,13 +122,13 @@ func TestCaseMapAllScalars(t *testing.T) {
 }
 
 // caseProgram is TestCaseMapAllScalars's program.
-func caseProgram() textProgram {
+func caseProgram(sc *simpleCase) textProgram {
 	var in, want strings.Builder
 	var line []rune
 	flush := func() {
 		s := string(line)
 		in.WriteString(s + "\n")
-		want.WriteString(strings.ToLower(s) + "\n" + strings.ToUpper(s) + "\n")
+		want.WriteString(sc.mapString(s, false) + "\n" + sc.mapString(s, true) + "\n")
 		line = line[:0]
 	}
 	for r := rune(0); r <= unicode.MaxRune; r++ {

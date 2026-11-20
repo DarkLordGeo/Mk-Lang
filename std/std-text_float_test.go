@@ -697,7 +697,7 @@ func TestSTDTEXT_LinuxNative(t *testing.T) {
 	if err != nil {
 		skip(fmt.Sprintf("`wsl.exe -e true` did not answer within 30 s: %v", err))
 	}
-	for _, p := range []textProgram{g183Program(), parseProgram(), remProgram(), caseProgram(), fromAlignProgram(), lineProgram(), emptyStrProgram()} {
+	for _, p := range []textProgram{g183Program(), parseProgram(), remProgram(), caseProgram(goCase()), fromAlignProgram(), lineProgram(), emptyStrProgram()} {
 		exe := buildWithModule(t, p.rel, p.module, p.src, "--release", "--target", "x86_64-linux")
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		wslGuard()

@@ -116,6 +116,7 @@ var knownConflicts = map[string][]string{
 // one of the block's lines trimmed, so an edit that moves the block keeps
 // the key (docExcepted resolves it).
 var notJudged = map[string]string{
+	"reference.md: return xs.unwrap() // <- E1221":         "a member synonym's E1221 is check's, after the member lookup failed",
 	"reference.md: Pop = 1 // <- E0206":                    "the duplicate discriminant's E0206 is check's, after the values are known",
 	"reference.md: import std.fs // <- E0208":              "this world has no std.fs, and the resolver reports no unused import of a module it could not load",
 	"reference.md: requires Now(io) > 0 // <- E0101":       "the E0101 of a function call in a requires is check's (a contract's form)",

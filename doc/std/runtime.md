@@ -133,13 +133,9 @@ $ mk run hook.mk
 panic: bounds at hook.mk:12:9
 backtrace:
   Main (hook.mk)
-  0x7ff6806345c6
-  std/task/start.mk
-  std/task/start.mk
-  0x7ff680633e4a
 ```
 
-On Windows the hook wrote crash.dmp before the report. The addresses in the backtrace vary from run to run. `PanicInfo` holds only C ABI values (`code`, `message`, `file`, `line`, `column`), so a hook may be written in C. `PanicInfo.code` names the cause; the numbering only grows.
+On Windows the hook wrote crash.dmp before the report. `PanicInfo` holds only C ABI values (`code`, `message`, `file`, `line`, `column`), so a hook may be written in C. `PanicInfo.code` names the cause; the numbering only grows.
 
 | Code | Cause |
 |---|---|

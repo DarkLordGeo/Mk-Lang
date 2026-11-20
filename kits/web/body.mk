@@ -27,8 +27,9 @@ export Body(g: mut Gen, t: Type) {
         g.FailOn(t, "web.Body: only a struct with a json.Codec can be read from a body")
         return
     }
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
-        $(t.Name()).FromRequest(a: &Arena, req: &http.Request): http.Error!$(t.Name()) from a {
+        $pub $(t.Name()).FromRequest(a: &Arena, req: &http.Request): http.Error!$(t.Name()) from a {
             text := str.From(req.body) else {
                 fail http.Status(code: 400)
             }

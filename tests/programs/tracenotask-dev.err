@@ -1,0 +1,4 @@
+error: main.Bad
+    at tracenotask.mk:11:9
+    at tracenotask.mk:17:12
+    at tracenotask.mk:21:9

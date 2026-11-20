@@ -2,7 +2,7 @@
 
 `std.tls` turns a [`net.Conn`](net.md) into a TLS connection: TLS 1.3 as a client or a server, and TLS 1.2 as a client when you allow it. Use it directly for a TLS protocol of your own, or hand its connectors to [`std.http`](http.md) and [`std.websocket`](websocket.md) for `https` and `wss`. It checks the server's certificate chain with [`std.x509`](x509.md).
 
-`std.tls` is [Experimental](README.md#9-stability), and it has not had an outside security review. Read the [library guide](README.md) first.
+`std.tls` is [Experimental](README.md#9-stability), and it has not had an outside security review. `https` in [`std.http`](http.md) and `wss` in [`std.websocket`](websocket.md) go through it, so they are Experimental too. Read the [library guide](README.md) first.
 
 ```mk
 // verdict: parse

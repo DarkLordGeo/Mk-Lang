@@ -50,7 +50,8 @@ func sendPkg() map[string]string {
 // TestFuncReuseUnsafeImplSend: each edit of b's unsafe impls gives the warm
 // check the bytes a cold check gives, and rechecks the functions whose
 // verdict it changes. The cold check of the edited tree must report the
-// verdict change (the case is then not vacuous).
+// verdict change (the case is then not vacuous). The cases run in
+// parallel, each in its own directories.
 func TestFuncReuseUnsafeImplSend(t *testing.T) {
 	cases := []struct {
 		name string
@@ -76,6 +77,7 @@ func TestFuncReuseUnsafeImplSend(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
 			files := sendPkg()
 			if c.bound {
 				files = boundPkg()

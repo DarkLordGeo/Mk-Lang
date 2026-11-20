@@ -132,6 +132,9 @@ func (p *parser) parsePrefixType() ast.Type {
 	case ast.TokLParen:
 		return p.parseParenType()
 	case ast.TokIdent:
+		if p.atWord("dyn") && p.peekKind(1) == ast.TokIdent && !p.lineEndAt(1) {
+			p.dynHabit()
+		}
 		return p.parsePathType()
 	case ast.TokLifetime:
 		// A run of lifetimes is a loop, not a recursion: no node is made for

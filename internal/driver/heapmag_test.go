@@ -161,10 +161,10 @@ const heapMagPkg = `const Package = pkg.Package(
 `
 
 // heapMagNoTasks fails t unless the package at dir, built for target, has
-// no task (mono's UsesTasks is false).
-func heapMagNoTasks(t *testing.T, dir string, target types.Target) {
+// no task (mono's UsesTasks is false). cache is the program's cache.
+func heapMagNoTasks(t *testing.T, dir string, target types.Target, cache string) {
 	t.Helper()
-	s, err := NewSession(Config{Root: dir, Target: target, CacheDir: filepath.Join(t.TempDir(), "cache")})
+	s, err := NewSession(Config{Root: dir, Target: target, CacheDir: cache})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +209,29 @@ func heapMagCopy(t *testing.T, name string) string {
 	return dst
 }
 
+// heapMagBuild builds the program at dir for target and profile into a
+// fresh directory with the program's cache, and returns the executable.
+// The cache is shared by the program's builds and its check, which may
+// run at once (the store is content-addressed and safe for concurrent
+// sessions); keys differ by target and profile, so each build still
+// compiles and links its own executable.
+func heapMagBuild(t *testing.T, dir string, target types.Target, prof types.Profile, cache string) string {
+	t.Helper()
+	s, err := NewSession(Config{Root: dir, Target: target, Profile: prof, Tools: needTools(t), CacheDir: cache})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, paths, err := s.Build(filepath.Join(t.TempDir(), filepath.Base(dir)+exeSuffix(target)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r.Report.Diags) > 0 || len(paths) != 1 {
+		skipKnownBlockers(t, r)
+		t.Fatalf("build %s %s %v: %d paths\n%s", dir, target.Name, prof, len(paths), r.Report.Text(r.Sources))
+	}
+	return paths[0]
+}
+
 // heapMagThreads is the line testdata/heapmag/mt and mtl print when Main
 // takes magazine 0, the C thread the shared cache, and no block ever has
 // two owners.
@@ -221,7 +244,11 @@ const heapMagThreads = "bad 0 of 20 rounds; Main kept 4 of 4, the %s 0 of 4"
 // kernel32's CreateThread starts, on x86_64-windows; mtl, a pthread, on
 // x86_64-linux) that Main's frees go into a magazine and the C thread's to
 // the pages, over 20 rounds of a churn whose blocks cross between the two.
-// The x86_64-linux leaves build here and run only with MK_LINUX=1.
+// The x86_64-linux leaves build here and run only with MK_LINUX=1. Each
+// program has one cache for its check and builds, and the leaves run in
+// parallel (each with its own output directory; a program's leaves share
+// its cache), except the x86_64-linux
+// leaves under MK_LINUX=1: one wsl.exe client at a time.
 func TestHeapMainUsesMagazine(t *testing.T) {
 	needTools(t)
 	dir := filepath.Join(t.TempDir(), "heapmag")
@@ -233,21 +260,30 @@ func TestHeapMainUsesMagazine(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	heapMagNoTasks(t, dir, types.X86_64Windows)
+	cache := t.TempDir()
+	heapMagNoTasks(t, dir, types.X86_64Windows, cache)
 	threads := map[string]string{types.X86_64Windows.Name: heapMagCopy(t, "mt"), types.X86_64Linux.Name: heapMagCopy(t, "mtl")}
 	who := map[string]string{types.X86_64Windows.Name: "C thread", types.X86_64Linux.Name: "pthread"}
+	threadCache := map[string]string{types.X86_64Windows.Name: t.TempDir(), types.X86_64Linux.Name: t.TempDir()}
 	for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
-		heapMagNoTasks(t, threads[target.Name], target)
+		heapMagNoTasks(t, threads[target.Name], target, threadCache[target.Name])
+		parallel := func(t *testing.T) {
+			if target.Name != types.X86_64Linux.Name || !linuxRun() {
+				t.Parallel()
+			}
+		}
 		for _, prof := range []types.Profile{types.Dev, types.Release} {
 			t.Run(target.Name+"/"+prof.String(), func(t *testing.T) {
-				exe := buildProgram(t, dir, target, prof, t.TempDir())
+				parallel(t)
+				exe := heapMagBuild(t, dir, target, prof, cache)
 				out, stderr, code := runExe(t, target, exe, "")
 				if code != 0 || strings.TrimSpace(out) != "kept 4 of 4, bad 0" {
 					t.Errorf("exit %d, stdout %q, want \"kept 4 of 4, bad 0\"\nstderr:\n%s", code, out, stderr)
 				}
 			})
 			t.Run(target.Name+"/"+prof.String()+"/threads", func(t *testing.T) {
-				exe := buildProgram(t, threads[target.Name], target, prof, t.TempDir())
+				parallel(t)
+				exe := heapMagBuild(t, threads[target.Name], target, prof, threadCache[target.Name])
 				out, stderr, code := runExe(t, target, exe, "")
 				want := fmt.Sprintf(heapMagThreads, who[target.Name])
 				if code != 0 || strings.TrimSpace(out) != want {

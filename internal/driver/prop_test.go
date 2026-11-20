@@ -473,7 +473,10 @@ func TestPropDirectoryRoot(t *testing.T) {
 // TestPropEdgesAfterNonInt: the edge enumeration counts digits over
 // the integer parameters only, so a str parameter or a struct receiver
 // before them does not push them out of the cross product: MIN / -1 is met
-// within the first cases under every seed, not by chance.
+// within the first cases under every seed, not by chance. The seeds share
+// one cache, so only the first compiles std; the prop corpus the cache
+// keeps (a seed's shrunk finding, replayed first by the next run) is
+// removed before each seed, so every seed finds MIN / -1 by itself.
 func TestPropEdgesAfterNonInt(t *testing.T) {
 	const src = `struct Pt {
     x: int
@@ -492,8 +495,15 @@ Div3(s: str, a: i32, b: i32): i32
 }
 `
 	dir := testPkg(t, map[string]string{"t.mk": src})
+	cacheDir := t.TempDir()
 	for seed := uint64(1); seed <= 10; seed++ {
-		rep, text := propTest(t, nil, Config{Root: filepath.Join(dir, "t.mk"), NoCache: true}, TestOptions{Sim: seed, SimSet: true, PropCases: 20})
+		if err := os.RemoveAll(filepath.Join(cacheDir, "prop")); err != nil {
+			t.Fatal(err)
+		}
+		rep, text := propTest(t, nil, Config{Root: filepath.Join(dir, "t.mk"), CacheDir: cacheDir}, TestOptions{Sim: seed, SimSet: true, PropCases: 20})
+		if strings.Contains(text, "from the corpus") {
+			t.Errorf("--sim %d: a finding came from the corpus, not the generator: %s", seed, text)
+		}
 		if tc := propCaseOf(t, rep, "Div3"); tc.Result != "fail" || !strings.HasPrefix(tc.Output, `Div3("", -2147483648, -1)  at `) {
 			t.Errorf("--sim %d: Div3 not found and shrunk to (\"\", MIN, -1): %s", seed, text)
 		}

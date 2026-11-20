@@ -51,12 +51,14 @@ var corpusExcepted = map[string]string{
 	"codes/E1101_foreign_io.mk":                            "the unsafe doors are std.vm's, std.runtime's and std.mem's exports, which this harness's prelude does not load; mk corpus judges it",
 	"codes/E1101_mem_custom.mk":                            "the unsafe doors are std.vm's, std.runtime's and std.mem's exports, which this harness's prelude does not load; mk corpus judges it",
 	"codes/E0507.mk":                                       "a write through a shared reference in a body is borrow's E0507",
+	"codes/E0901_global_literal.mk":                        "a global var's overflow is an evaluation failure, reported by the evaluator; this harness has none (mk corpus judges it)",
 	"codes/E0708.mk":                                       "an instance-limit E0708 is mono's",
 	"codes/E0706_fn_value_simd.mk":                         "std.simd's lane-count requires is imported, so only the evaluator judges it at the fn value; this harness has none (mk corpus passes it; TestE0706_FnValueSimd)",
 	"codes/E0901.mk":                                       "an evaluation failure is reported by EvalConst, which needs the evaluator; this harness has none",
 	"codes/E0901_used.mk":                                  "an evaluation failure is reported by EvalConst, which needs the evaluator; this harness has none (TestE0901_ConstReadInBody runs it with one)",
 	"codes/E0902.mk":                                       "fuel exhaustion is the evaluator's; this harness has none",
 	"codes/E0902_default.mk":                               "fuel exhaustion is the evaluator's; this harness has none",
+	"codes/E0902_fuel_named.mk":                            "fuel exhaustion is the evaluator's; this harness has none",
 	"codes/E0909.mk":                                       "a const cycle is reported by EvalConst, which needs the evaluator; this harness has none",
 	"codes/E0910.mk":                                       "a data file read is the evaluator's (build.File through the Program); this harness has none",
 	"codes/E0704_gen_conflict.mk":                          "the conflicting impl is gen output; this harness runs no generator; mk corpus --all judges it, and TestE0704_GeneratedDuplicateCitesGenLine is check's half",
@@ -269,6 +271,9 @@ func TestCorpusRejectBlocksCheckCodes(t *testing.T) {
 	// E0101 is the parser's; check's E0101 (a contract's form) has
 	// its own tests, and a recovered tree's other codes are not judged.
 	delete(own, diag.E0101)
+	// E1221 is mostly the parser's (macros, `dyn I`) and resolve's (names);
+	// check's member form has its own tests.
+	delete(own, diag.E1221)
 	prelude := testPrelude(t)
 	core := corpusPrelude(t)
 	keys, texts := rejectUnits(t)

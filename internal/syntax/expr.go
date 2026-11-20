@@ -93,7 +93,11 @@ func (p *parser) parseExpr() ast.Expr {
 		return p.badExprFrom(p.p)
 	}
 	start := p.curStart()
+	s0 := p.p
 	x := p.parseBin(precOr, start)
+	if p.at(ast.TokQuestion) && p.ternaryAhead() {
+		return p.ternaryHabit(s0, start)
+	}
 	if p.at(ast.TokElse) && !(p.softTerm && p.lineEnd()) {
 		return p.parseElse(x, start)
 	}
@@ -280,6 +284,8 @@ func (p *parser) parseOperand(cover bool) ast.Expr {
 		return p.closureHabit()
 	case k == ast.TokIf || k == ast.TokMatch:
 		return p.operandIf()
+	case k == ast.TokDot && p.peekKind(1) == ast.TokLBrace:
+		return p.anonLitHabit()
 	case k == ast.TokDot:
 		p.errHere("break a method chain after the dot, not before")
 		s0 := p.p
@@ -380,6 +386,9 @@ func (p *parser) parsePostfix(x ast.Expr, start uint32, cover bool) (out ast.Exp
 			x = p.parseCall(x, start, coverCall)
 			coverCall = false
 		case ast.TokQuestion:
+			if p.ternaryAhead() {
+				return x // parseExpr reads `c ? a : b` whole
+			}
 			_, onCall := x.(*ast.CallExpr)
 			qs = append(qs, qmark{span: p.curSpan(), onCall: onCall})
 			p.next()
@@ -404,6 +413,16 @@ func (p *parser) parsePostfix(x ast.Expr, start uint32, cover bool) (out ast.Exp
 			p.hit(habitHit{code: diag.E1211, at: arrow.Span(p.file), msg: "Mk reaches a field with `.`, not `->`",
 				alts: []string{alt}})
 			x = p.parseDotSuffix(x, start)
+		case ast.TokLBrace:
+			if !p.braceLitAhead(x) {
+				return x
+			}
+			x = p.braceLitHabit(x, start)
+		case ast.TokLt:
+			if !isPathExpr(x) || !p.angleCallAhead() {
+				return x
+			}
+			x = p.angleCall(x, start)
 		case ast.TokIdent:
 			if p.atWord("as") && !p.lineEnd() {
 				x = p.asHabit(x, start)

@@ -189,9 +189,9 @@ With no saved inputs, plain `mk test` passes. The mutation loop finds the bug: `
 
 ```text
 $ mk test --fuzz payload --fuzztime 5s
-FAIL main "payload": fuzz: 20 failing runs, 1 inputs saved to testdata/fuzz/payload/
+FAIL main "payload": fuzz: 20 failing runs, 1 input saved to testdata/fuzz/payload/
     seed 1: panic after 18 calls: saved testdata/fuzz/payload/1b51a40d66121bdc
-    seed 2: panic after 1 calls: the failure of testdata/fuzz/payload/1b51a40d66121bdc (panic: bounds at header.mk:11:17), not saved again
+    seed 2: panic after 1 call: the failure of testdata/fuzz/payload/1b51a40d66121bdc (panic: bounds at header.mk:11:17), not saved again
     seed 3: panic after 151 calls: the failure of testdata/fuzz/payload/1b51a40d66121bdc (panic: bounds at header.mk:11:17), not saved again
 ```
 

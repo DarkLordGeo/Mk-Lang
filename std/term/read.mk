@@ -547,7 +547,10 @@ RecordsFor(free: int, high: u32): int {
 // down (offset 4), virtual key (10) and UTF-16 unit (14); a
 // WINDOW_BUFFER_SIZE_EVENT (4) is a resize. A key-up record counts only
 // for VK_MENU with a unit: the console types a character entered with
-// Alt and the keypad, or pasted outside bracketed paste, there.
+// Alt and the keypad, or pasted outside bracketed paste, there. A key-down
+// with no unit is dropped (a modifier, a dead key) unless it is Ctrl with
+// Space or 2 and no right Alt (control state at 16; AltGr is right Alt with
+// left Ctrl): NUL, as a terminal sends Ctrl+Space.
 Term.Record(mut self, r: []u8) {
     kind := U16At(r, 0)
     if kind == 4 {
@@ -562,7 +565,13 @@ Term.Record(mut self, r: []u8) {
     }
     down := U16At(r, 4) != 0 || U16At(r, 6) != 0
     unit := u32(U16At(r, 14))
-    if unit == 0 || !down && U16At(r, 10) != 0x12 {
+    vk := U16At(r, 10)
+    ks := U16At(r, 16)
+    if unit == 0 && down && (ks & 0x0C) != 0 && (ks & 0x01) == 0 && (vk == 0x20 || vk == 0x32) {
+        self.Unit(0)
+        return
+    }
+    if unit == 0 || !down && vk != 0x12 {
         return
     }
     self.Unit(unit)

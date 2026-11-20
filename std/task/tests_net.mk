@@ -493,7 +493,12 @@ test "RT-Net-ParseAddr IPv4, bracketed IPv6, localhost, empty hosts and malforme
 
 // NLocal writes "localhost:<port>" into b.
 NLocal(b: mut [32]u8, port: i64): str from b {
-    pre := "localhost:".AsBytes()
+    return NNamed(b, "localhost:", port)
+}
+
+// NNamed writes host (with its colon) and port into b.
+NNamed(b: mut [32]u8, host: str, port: i64): str from b {
+    pre := host.AsBytes()
     for i in 0..pre.Len() {
         b[i] = pre[i]
     }
@@ -524,7 +529,7 @@ NResolveAll(on: bool) {
     }
 }
 
-test "RT-15-Resolve a dial by name goes through the pool's resolver: Windows answers, Linux refuses, a bad name is refused with no call" (sys: &System) {
+test "RT-15-Resolve a dial by name goes through the resolver on Windows and Linux, and a bad name is refused with no call" (sys: &System) {
     // No lookup that needs the network: on Windows, "example.invalid"
     // (RFC 6761) took 11 s here (a DNS query; std.sys's Resolve probe covers
     // the refusal). Not a host name, or no port: refused before the resolver.
@@ -537,13 +542,38 @@ test "RT-15-Resolve a dial by name goes through the pool's resolver: Windows ans
     var ab: [32]u8 = [0; 32]
     d := NativeDial(sys.io, NLocal(mut ab, l.os))
     NResolveAll(false)
-    if Target.os == Os.Windows {
-        Assert(d.err == core.SysErr.None)
-        rt.Abandon(Trunc[uint](d.value))
-    } else {
-        Assert(d.err == core.SysErr.InvalidAddress)
-    }
+    Assert(d.err == core.SysErr.None)
+    rt.Abandon(Trunc[uint](d.value))
     rt.Abandon(Trunc[uint](l.value))
+}
+
+test "RT-15-DialAll on Linux a dial by name tries each answer of the resolve entry in order: ::1 is refused, then 127.0.0.1 connects" (sys: &System) {
+    if PWin() {
+        return
+    }
+    name := "mkx-dial-hosts.txt"
+    o := NativeOpen(sys.io, name, 1)
+    Assert(o.err == core.SysErr.None)
+    h := Trunc[uint](o.value)
+    _ = DPutText(sys.io, h, 0, "::1 mkx-dial.invalid\n127.0.0.1 mkx-dial.invalid\n")
+    Assert(NativeClose(sys.io, h).err == core.SysErr.None)
+    unsafe "name is static text" {
+        HostsTest.path_at.Store(u64(raw.Addr(raw.StrData(name))))
+    }
+    HostsTest.path_len.Store(Trunc[u64](name.Len()))
+    // A name under .invalid: should the file be missed, DnsLookup answers
+    // NotFound with no query.
+    defer HostsTest.path_len.Store(0)
+    l := NListen(sys.io)
+    var ab: [32]u8 = [0; 32]
+    d := NativeDial(sys.io, NNamed(mut ab, "mkx-dial.invalid:", l.os))
+    Assert(d.err == core.SysErr.None)
+    // The connection is the listener's: its peer is 127.0.0.1.
+    p := NAddrOf(sys.io, Trunc[uint](d.value), true)
+    Assert(p.addr[0] == 127 && p.addr[3] == 1 && i64(p.port) == l.os)
+    rt.Abandon(Trunc[uint](d.value))
+    rt.Abandon(Trunc[uint](l.value))
+    Assert(NativeRemove(sys.io, name).err == core.SysErr.None)
 }
 
 // NAddrOf is SockAddress of h (peer or local) as a sys.SockAddr.

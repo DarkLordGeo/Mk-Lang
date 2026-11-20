@@ -1,16 +1,21 @@
 // Why: a local name is an alias in a manifest, so a manifest edit can
 // change what a name means without touching any source file.
 // What: TestDep_WarmMatchesColdAfterManifestEdit and
-// TestDep_WarmBuildMatchesColdAfterManifestEdit over warmSteps.
+// TestDep_WarmBuildMatchesColdAfterManifestEdit over warmSteps, and the std
+// seed helpers other tests of this package use (stdSeedCheck, stdSeedBuild,
+// seededCache).
 // How: every step edits manifests (warmApply), checks or builds on one
-// cache (warm) and compares with a fresh cache (cold).
+// cache (warm) and compares with a fresh cache that holds only std's
+// entries (cold).
 
 package driver
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"testing"
 
 	"mk/internal/types"
@@ -78,14 +83,104 @@ func warmManifest(a, b string) string {
 		"deps": "[" + pathDep("a", a) + ", " + pathDep("b", b) + "]"})
 }
 
+// stdSeedCheck checks a one-module package with cfg, its Root and CacheDir
+// replaced, into a new cache and returns that cache's directory. The cache
+// holds std's check results for cfg's target, std, build ID and front-end
+// mode and nothing of the package under test, so a seededCache copy of it
+// gives a test's cold side a warm std while the package itself is checked
+// from nothing.
+func stdSeedCheck(t *testing.T, cfg Config) string {
+	t.Helper()
+	cfg.Root = writeTree(t, map[string]string{"pkg.mk": manifest(map[string]string{"name": `"seed"`}),
+		"seed/seed.mk": "export SeedOne(): int {\n    return 1\n}\n"})
+	cfg.CacheDir, cfg.NoCache = filepath.Join(t.TempDir(), "seed"), false
+	s, err := NewSession(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := s.Check(); len(r.Report.Diags) > 0 {
+		t.Fatalf("std seed check:\n%s", r.Report.Text(r.Sources))
+	}
+	return cfg.CacheDir
+}
+
+// stdSeedBuild builds a program whose Main returns 0 with each of cfgs,
+// their Root and CacheDir replaced, into one new cache and returns its
+// directory: std's packs for each configuration, as stdSeedCheck holds
+// std's check results.
+func stdSeedBuild(t *testing.T, cfgs ...Config) string {
+	t.Helper()
+	root := writeTree(t, map[string]string{
+		"pkg.mk":       manifest(map[string]string{"name": `"seed"`, "bins": `[pkg.Bin(name: "seed", root: "seed", link_script: "", cpu: "", subsystem: "console")]`}),
+		"seed/seed.mk": "export Main(sys: &System): int {\n    return 0\n}\n"})
+	dir := filepath.Join(t.TempDir(), "seed")
+	for i, cfg := range cfgs {
+		cfg.Root, cfg.CacheDir, cfg.NoCache = root, dir, false
+		s, err := NewSession(cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r, _, err := s.Build(filepath.Join(t.TempDir(), "seed"+strconv.Itoa(i)+exeSuffix(cfg.Target)))
+		if err != nil || len(r.Report.Diags) > 0 {
+			t.Fatalf("std seed build: %v\n%s", err, r.Report.Text(r.Sources))
+		}
+	}
+	return dir
+}
+
+// seededCache is a new cache directory holding the entries of seed, hard
+// links where the file system allows them, else copies. The store never
+// writes an entry in place (a write goes to tmp and is renamed in), and lld
+// renames its ThinLTO cache files in too, so the links never carry a write
+// back into seed. lld's prune timestamp, which it rewrites in place, is
+// copied; seed's tmp directories and GC lock are left out.
+func seededCache(t testing.TB, seed string) string {
+	t.Helper()
+	dst := filepath.Join(t.TempDir(), "cache")
+	err := filepath.WalkDir(seed, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(seed, p)
+		if err != nil {
+			return err
+		}
+		to := filepath.Join(dst, rel)
+		if d.IsDir() {
+			if d.Name() == "tmp" && rel != "." {
+				return filepath.SkipDir
+			}
+			return os.MkdirAll(to, 0o755)
+		}
+		if d.Name() == "gc.lock" {
+			return nil
+		}
+		if d.Name() != "llvmcache.timestamp" && os.Link(p, to) == nil {
+			return nil
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(to, b, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("seeding a cache from %s: %v", seed, err)
+	}
+	return dst
+}
+
 func TestDep_WarmMatchesColdAfterManifestEdit(t *testing.T) {
 	ws := warmWorkspace(t)
 	app := filepath.Join(ws, "app")
 	warm := t.TempDir()
+	// The cold side starts from std's check results alone: x, y, z and app
+	// are checked from nothing at every step.
+	seed := stdSeedCheck(t, Config{Target: types.X86_64Windows})
 	for i, st := range warmSteps {
 		warmApply(t, ws, i)
 		w := check(t, Config{Root: app, CacheDir: warm, Target: types.X86_64Windows})
-		c := check(t, Config{Root: app, CacheDir: t.TempDir(), Target: types.X86_64Windows})
+		c := check(t, Config{Root: app, CacheDir: seededCache(t, seed), Target: types.X86_64Windows})
 		if !slices.Equal(lines(w), lines(c)) {
 			t.Errorf("%s: warm %q, cold %q", st.name, lines(w), lines(c))
 		}
@@ -102,12 +197,15 @@ func TestDep_WarmBuildMatchesColdAfterManifestEdit(t *testing.T) {
 	ws := warmWorkspace(t)
 	app := filepath.Join(ws, "app")
 	warm := t.TempDir()
+	// The cold side starts from std's packs alone: the packages' packs are
+	// compiled from nothing at every step.
+	seed := stdSeedBuild(t, Config{Tools: tools, Target: types.X86_64Windows})
 	for i, st := range warmSteps {
 		if !st.clean {
 			continue
 		}
 		warmApply(t, ws, i)
-		for _, cache := range []string{warm, t.TempDir()} {
+		for _, cache := range []string{warm, seededCache(t, seed)} {
 			s, err := NewSession(Config{Root: app, Tools: tools, CacheDir: cache, Target: types.X86_64Windows})
 			if err != nil {
 				t.Fatal(err)

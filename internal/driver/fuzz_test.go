@@ -35,6 +35,22 @@ func TestFuzzDirName(t *testing.T) {
 	}
 }
 
+// fuzzSavedRe is the detail of a fuzz run that saved inputs for target two,
+// its nouns agreeing with their counts.
+var fuzzSavedRe = regexp.MustCompile(`^fuzz: (1 failing run|([02-9]|\d\d+) failing runs), (1 input|([02-9]|\d\d+) inputs) saved to testdata/fuzz/two/$`)
+
+// TestFuzzCounted: the fuzz log's nouns agree with their counts.
+func TestFuzzCounted(t *testing.T) {
+	for _, c := range []struct {
+		got, want string
+	}{{counted(1, "call"), "1 call"}, {counted(uint64(0), "call"), "0 calls"}, {counted(uint64(18), "call"), "18 calls"},
+		{counted(1, "input"), "1 input"}, {counted(20, "failing run"), "20 failing runs"}} {
+		if c.got != c.want {
+			t.Errorf("counted: %q, want %q", c.got, c.want)
+		}
+	}
+}
+
 func TestFuzzDictionary(t *testing.T) {
 	got := fuzzDictionary(`Parse(b: []u8) {
     if b[0] == 77 && b[1] == b'K' && b.Len() > 0x1234 && x == 0x01020304 {
@@ -214,7 +230,7 @@ func TestMkTestFuzzCorpus(t *testing.T) {
 func TestMkTestFuzzLoopSavesPanic(t *testing.T) {
 	root := testPkg(t, map[string]string{"main.mk": fuzzSource})
 	rep := mkTest(t, Config{Root: root}, TestOptions{Fuzz: "two", FuzzTime: 30 * time.Second})
-	if len(rep.Tests) != 1 || rep.Tests[0].Result != "fail" || !strings.Contains(rep.Tests[0].Detail, "inputs saved to testdata/fuzz/two/") {
+	if len(rep.Tests) != 1 || rep.Tests[0].Result != "fail" || !fuzzSavedRe.MatchString(rep.Tests[0].Detail) {
 		t.Fatalf("--fuzz two: %+v", rep.Tests)
 	}
 	dir := filepath.Join(root, "testdata", "fuzz", "two")

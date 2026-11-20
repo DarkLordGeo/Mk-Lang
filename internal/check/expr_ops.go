@@ -481,10 +481,29 @@ func (u *unit) noConversion(at source.Span, from, to types.TypeID) {
 	u.err(diag.E0302, at, "no conversion from `"+u.str(from)+"` to `"+u.str(to)+"`").Text("from", u.str(from)).Text("to", u.str(to))
 }
 
+// lossy is E0303 for `T(x)`, naming only the conversions that take the
+// pair: Cast for any castable pair, Trunc for two integers. The fix's
+// reason says what Cast does for the pair: from an integer to a float it
+// rounds and never panics.
 func (u *unit) lossy(at source.Span, from, to types.TypeID) {
-	u.err(diag.E0303, at, "`"+u.str(to)+"("+u.str(from)+")` can lose information: use `Cast` or `Trunc`").
-		Text("from", u.str(from)).Text("to", u.str(to)).
-		Fix(diag.Fix{Class: diag.Compiles, Why: "Cast panics on a value that does not fit; Trunc keeps the low bits"})
+	cast := u.castable(from) && u.castable(to)
+	trunc := u.isInt(from) && u.isInt(to)
+	use, why := "", ""
+	switch {
+	case cast && trunc:
+		use, why = ": use `Cast` or `Trunc`", "Cast panics on a value that does not fit; Trunc keeps the low bits"
+	case cast && u.isInt(from) && u.isFloat(to):
+		use, why = ": use `Cast`", "Cast rounds to the nearest value"
+	case cast:
+		use, why = ": use `Cast`", "Cast panics on a value that does not fit"
+	case trunc:
+		use, why = ": use `Trunc`", "Trunc keeps the low bits"
+	}
+	d := u.err(diag.E0303, at, "`"+u.str(to)+"("+u.str(from)+")` can lose information"+use).
+		Text("from", u.str(from)).Text("to", u.str(to))
+	if why != "" {
+		d.Fix(diag.Fix{Class: diag.Compiles, Why: why})
+	}
 }
 
 // intInfo is an integer type's width (int and uint are 64-bit) and

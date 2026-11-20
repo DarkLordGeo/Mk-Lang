@@ -14,6 +14,8 @@
 package syntax
 
 import (
+	"bytes"
+
 	"mk/internal/ast"
 )
 
@@ -21,9 +23,9 @@ import (
 func (p *parser) parseBlock() *ast.Block {
 	n := &ast.Block{}
 	p.begin(&n.Base)
-	savedBracket, savedList := p.inBracket, p.listCtx
-	p.inBracket, p.listCtx = false, false
-	defer func() { p.inBracket, p.listCtx = savedBracket, savedList }()
+	savedBracket, savedList, savedHead, savedLit := p.inBracket, p.listCtx, p.inHead, p.litOK
+	p.inBracket, p.listCtx, p.inHead, p.litOK = false, false, false, false
+	defer func() { p.inBracket, p.listCtx, p.inHead, p.litOK = savedBracket, savedList, savedHead, savedLit }()
 	if p.tooDeep {
 		p.skipBlock()
 		p.finish(n, &n.Base)
@@ -291,7 +293,9 @@ func (p *parser) parseIf() ast.Stmt {
 	if p.atWord("let") && p.peekKind(1) == ast.TokIdent {
 		n.Cond = p.ifLetHabit()
 	} else {
+		done := p.head()
 		n.Cond = p.parseCond(false)
+		done()
 	}
 	n.Then = p.parseBlockOrMissing()
 	if p.at(ast.TokElse) {
@@ -374,6 +378,7 @@ func (p *parser) parseFor(label *ast.Ident) ast.Stmt {
 		p.begin(&n.Base)
 	}
 	p.next()
+	done := p.head()
 	switch {
 	case p.at(ast.TokLBrace):
 	case p.cStyleFor():
@@ -397,6 +402,7 @@ func (p *parser) parseFor(label *ast.Ident) ast.Stmt {
 	default:
 		n.Head = p.parseCond(true)
 	}
+	done()
 	if p.fn != nil {
 		p.fn.loops++
 	}
@@ -509,7 +515,9 @@ func (p *parser) parseMatch() ast.Stmt {
 	n := &ast.MatchStmt{}
 	p.begin(&n.Base)
 	p.next()
+	done := p.head()
 	n.X = p.parseExpr()
+	done()
 	if p.expect(ast.TokLBrace) {
 		p.region()
 		for !p.at(ast.TokRBrace) && !p.at(ast.TokEOF) && !p.tooDeep {
@@ -643,7 +651,9 @@ func (p *parser) parseScope(try bool) ast.Stmt {
 	p.next()
 	n.Name = p.parseDeclName(declLocal)
 	p.expect(ast.TokColonEq)
+	done := p.head()
 	n.Value = p.parseExpr()
+	done()
 	n.Body = p.parseBlockOrMissing()
 	p.finish(n, &n.Base)
 	return n
@@ -657,7 +667,7 @@ func (p *parser) parseUnsafe() ast.Stmt {
 	switch p.kind() {
 	case ast.TokStr, ast.TokRawStr, ast.TokMultiStr:
 		n.Reason = p.basicLit()
-		if v, ok := StringValue(n.Reason.Kind, n.Reason.Raw); ok && len(v) == 0 {
+		if v, ok := StringValue(n.Reason.Kind, n.Reason.Raw); ok && len(bytes.TrimSpace(v)) == 0 {
 			p.syntaxErr(n.Reason.Sp, "say why: `unsafe \"reason\" { }`")
 		}
 	default:

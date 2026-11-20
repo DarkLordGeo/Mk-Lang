@@ -795,7 +795,7 @@ func (s *Server) codeActions(p codeActionParams) (any, *rpcError) {
 		if before(fd.diag.Range.End, p.Range.Start) || before(p.Range.End, fd.diag.Range.Start) {
 			continue
 		}
-		if !fd.verified && hasCompilesAction(fd.fixes) {
+		if !fd.verified && (hasCompilesAction(fd.fixes) || hasClauseAction(fd)) {
 			pending = append(pending, i)
 		}
 	}
@@ -826,9 +826,30 @@ func hasCompilesAction(as []codeAction) bool {
 	return false
 }
 
-// verifyActions checks fixes for the editor: a compiles
-// fix is recompiled before it is offered. It runs when code actions are
-// asked for a diagnostic that offers one, not after every check: the
+// provenTitle starts the title of a proven fix's action (mapReport).
+const provenTitle = "proven: "
+
+// hasClauseAction reports whether fd offers a proven `from` or `into`
+// clause (E0601, E0602, E0604), which the driver recompiles too: a clause
+// that clears the function may leave a caller with an error no clause
+// clears.
+func hasClauseAction(fd fixedDiag) bool {
+	switch fd.diag.Code {
+	case "E0601", "E0602", "E0604":
+	default:
+		return false
+	}
+	for _, a := range fd.fixes {
+		if strings.HasPrefix(a.Title, provenTitle) {
+			return true
+		}
+	}
+	return false
+}
+
+// verifyActions checks fixes for the editor: a compiles fix, and a proven
+// clause fix, is recompiled before it is offered. It runs when code actions
+// are asked for a diagnostic that offers one, not after every check: the
 // package is checked again through the driver's overlay (a cache hit) and
 // each compiles fix tried alone (driver CheckVerified), and the actions of
 // the diagnostics fds[pending] are replaced by the verified ones, where the

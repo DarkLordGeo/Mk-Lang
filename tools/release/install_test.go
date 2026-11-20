@@ -2,10 +2,13 @@
 // must install and refuse bad releases without touching more than their
 // root.
 // What: tests of tools/install/install.ps1 (Windows) and install.sh (Linux):
-// install, newest version, tampering, hardening and PATH handling.
+// install, newest version, signature, tampering, hardening and PATH
+// handling; TestInstallKeys, the scripts' keys against keys.go's.
 // How: each script runs against a local httptest release server into the
 // test's temporary directory, PATH changes off and every home redirected;
 // install.ps1's registry write is never run (Join-MkPath is tested instead).
+// The releases are signed with the repository's test key, which the
+// scripts take through MK_INSTALL_TEST_KEY because the server is loopback.
 
 package main
 
@@ -13,11 +16,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -73,7 +78,8 @@ func (s *scriptServer) set(p string, b []byte) {
 }
 
 // publish serves one release of host's archive under download/v<version>
-// and, when latest, under latest/download.
+// and, when latest, under latest/download, with SHA256SUMS signed by the
+// test key.
 func (s *scriptServer) publish(t *testing.T, version, host string, latest bool) []byte {
 	t.Helper()
 	exe := "mk"
@@ -97,14 +103,121 @@ func (s *scriptServer) publish(t *testing.T, version, host string, latest bool) 
 	}
 	sums := release.Sums{name: hex.EncodeToString(h[:]), release.ArchiveName("9.9.9", other): strings.Repeat("0", 64),
 		release.ArchiveName(version+"-rc1", host): strings.Repeat("1", 64)}.Format()
+	priv, err := release.ParsePrivate(testKey(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := release.Sign(priv, sums)
 	for _, d := range []string{"/download/v" + version + "/", "/latest/download/"} {
 		if d == "/latest/download/" && !latest {
 			continue
 		}
 		s.set(d+name, b.Bytes())
 		s.set(d+release.SumsFile, sums)
+		s.set(d+release.SigFile, sig)
 	}
 	return b.Bytes()
+}
+
+// testKeyEnv makes the scripts trust the test key, which they take only
+// with a loopback release address.
+const testKeyEnv = "MK_INSTALL_TEST_KEY=" + release.TestKeyID + " " + release.TestKeyPublic
+
+// withoutTestKey is env with the test key removed: the scripts then trust
+// only their own keys.
+func withoutTestKey(env []string) []string {
+	return slices.DeleteFunc(append([]string(nil), env...), func(kv string) bool { return kv == testKeyEnv })
+}
+
+// signatureLegs runs the refusals every script shares, against s's newest
+// release, each leaving the install as it was: SHA256SUMS changed after
+// signing, a signature by a key the script does not trust, a missing
+// signature, and (with the test key removed from env) no trusted key at
+// all. run runs the script with env; check reports what it changed.
+func signatureLegs(t *testing.T, s *scriptServer, env []string, run func(env []string) (string, error), check func(leg string)) {
+	t.Helper()
+	sums := s.files["/latest/download/"+release.SumsFile]
+	sig := s.files["/latest/download/"+release.SigFile]
+	defer func() {
+		s.set("/latest/download/"+release.SumsFile, sums)
+		s.set("/latest/download/"+release.SigFile, sig)
+	}()
+	other, _, err := release.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherPriv, err := release.ParsePrivate(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legs := []struct {
+		name      string
+		sums, sig []byte
+		env       []string
+		want      string
+	}{
+		{"changed list", append(append([]byte(nil), sums...), []byte(strings.Repeat("2", 64)+"  mk-0.0.1-x86_64-linux.tar.gz\n")...), sig, env, "signature does not match"},
+		{"untrusted key", sums, release.Sign(otherPriv, sums), env, "does not trust"},
+		{"truncated signature", sums, sig[:40], env, "SHA256SUMS.sig is not"},
+		{"no trusted key", sums, sig, withoutTestKey(env), withoutTestKeyRefusal()},
+	}
+	for _, l := range legs {
+		s.set("/latest/download/"+release.SumsFile, l.sums)
+		s.set("/latest/download/"+release.SigFile, l.sig)
+		out, err := run(l.env)
+		if err == nil || !strings.Contains(out, l.want) {
+			t.Errorf("%s: %v, want %q in\n%s", l.name, err, l.want, out)
+		}
+		check(l.name)
+	}
+	s.mu.Lock()
+	delete(s.files, "/latest/download/"+release.SigFile)
+	s.mu.Unlock()
+	if out, err := run(env); err == nil {
+		t.Errorf("no signature file: installed\n%s", out)
+	}
+	check("no signature file")
+}
+
+// TestInstallKeys: the release keys written into install.ps1 and
+// install.sh are exactly the ones keys.go lists, so a script checks a
+// release with the keys mk itself trusts.
+func TestInstallKeys(t *testing.T) {
+	var want []string
+	for _, k := range release.Trusted() {
+		want = append(want, k.ID+" "+k.Public)
+	}
+	line := regexp.MustCompile(`^[0-9a-f]{16} [A-Za-z0-9+/]{43}=$`)
+	for _, c := range []struct{ file, list string }{
+		{"install.ps1", `(?s)\n\$MkTrustedKeys = @\(\n(.*?)\)\n`},
+		{"install.sh", `(?s)\ntrusted_keys='\n(.*?)'\n`},
+	} {
+		b, err := os.ReadFile(scriptPath(t, c.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		m := regexp.MustCompile(c.list).FindStringSubmatch(string(b))
+		if m == nil {
+			t.Fatalf("%s has no key list (%s)", c.file, c.list)
+		}
+		var got []string
+		for _, l := range strings.Split(m[1], "\n") {
+			l = strings.TrimSpace(l)
+			if c.file == "install.ps1" {
+				l = strings.Trim(strings.TrimSuffix(l, ","), "'")
+			}
+			if l == "" || strings.HasPrefix(l, "#") {
+				continue
+			}
+			if !line.MatchString(l) {
+				t.Errorf("%s: %q is not \"<key id> <base64 public key>\"", c.file, l)
+			}
+			got = append(got, l)
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("%s trusts %q; internal/release/keys.go lists %q", c.file, got, want)
+		}
+	}
 }
 
 // scratchEnv is the child's environment: the host's, without MK_* and
@@ -129,7 +242,7 @@ func scratchEnv(dir string) []string {
 	}
 	// A script that ignored -NoModifyPath / --no-modify-path still leaves
 	// the registry and ~/.profile alone.
-	return append(env, "MK_NO_MODIFY_PATH=1")
+	return append(env, "MK_NO_MODIFY_PATH=1", testKeyEnv)
 }
 
 func powershell(t *testing.T) string {
@@ -218,6 +331,23 @@ func TestInstallPs1(t *testing.T) {
 			t.Errorf("left %s", de.Name())
 		}
 	}
+	// A bad or missing signature is refused before the archive is fetched.
+	s.set("/download/v0.5.0/"+name, good)
+	runEnv := func(env []string) (string, error) {
+		cmd := exec.Command(ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath(t, "install.ps1"),
+			"-Root", root, "-Releases", srv.URL, "-NoModifyPath")
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	signatureLegs(t, s, scratchEnv(dir), runEnv, func(leg string) {
+		if cur, _ := in.Current(); cur != "0.3.0" {
+			t.Errorf("%s moved current to %q", leg, cur)
+		}
+		if vs, _ := in.Versions(); len(vs) != 2 {
+			t.Errorf("%s left %v", leg, vs)
+		}
+	})
 	// Plain http to a host that is not loopback is refused.
 	cmd := exec.Command(ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath(t, "install.ps1"),
 		"-Root", root, "-Releases", "http://example.invalid/releases", "-NoModifyPath")
@@ -291,6 +421,7 @@ func TestInstallPs1Hardening(t *testing.T) {
 	}
 	// GitHub's newest address redirects; the script follows on loopback.
 	s.redirect("/latest/download/"+release.SumsFile, "/download/v0.4.0/"+release.SumsFile)
+	s.redirect("/latest/download/"+release.SigFile, "/download/v0.4.0/"+release.SigFile)
 	if out, err := run(dir, "-Root", root); err != nil || !strings.Contains(out, "0.4.0") {
 		t.Fatalf("a loopback redirect: %v\n%s", err, out)
 	}
@@ -421,6 +552,22 @@ func TestInstallSh(t *testing.T) {
 	if vs, _ := in.Versions(); len(vs) != 2 {
 		t.Errorf("a refused install left %v", vs)
 	}
+	// A bad or missing signature is refused before the archive is fetched.
+	s.set("/download/v0.5.0/"+name, good)
+	runEnv := func(env []string) (string, error) {
+		cmd := exec.Command("sh", scriptPath(t, "install.sh"), "--root", root, "--releases", srv.URL, "--no-modify-path")
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	signatureLegs(t, s, env, runEnv, func(leg string) {
+		if cur, _ := in.Current(); cur != "0.3.0" {
+			t.Errorf("%s moved current to %q", leg, cur)
+		}
+		if vs, _ := in.Versions(); len(vs) != 2 {
+			t.Errorf("%s left %v", leg, vs)
+		}
+	})
 }
 
 // TestInstallShHardening runs install.sh like
@@ -460,6 +607,7 @@ func TestInstallShHardening(t *testing.T) {
 		}
 	}
 	s.redirect("/latest/download/"+release.SumsFile, "/download/v0.4.0/"+release.SumsFile)
+	s.redirect("/latest/download/"+release.SigFile, "/download/v0.4.0/"+release.SigFile)
 	if out, err := run(dir, env, "--root", root); err != nil || !strings.Contains(out, "current is mk 0.4.0") {
 		t.Fatalf("a loopback redirect: %v\n%s", err, out)
 	}
@@ -471,7 +619,7 @@ func TestInstallShHardening(t *testing.T) {
 	if wget, err := exec.LookPath("wget"); err == nil {
 		bin := filepath.Join(dir, "wgetonly")
 		os.MkdirAll(bin, 0o755)
-		for _, tool := range []string{"sh", "grep", "sed", "awk", "sort", "tail", "cut", "mktemp", "rm", "mkdir", "mv", "ln", "gzip", "tar", "sha256sum", "cat", "dirname", "pwd", "tr", "head"} {
+		for _, tool := range []string{"sh", "grep", "sed", "awk", "sort", "tail", "cut", "mktemp", "rm", "mkdir", "mv", "ln", "gzip", "tar", "sha256sum", "cat", "dirname", "pwd", "tr", "head", "wc", "openssl"} {
 			if p, err := exec.LookPath(tool); err == nil {
 				os.Symlink(p, filepath.Join(bin, filepath.Base(p)))
 			}
@@ -514,4 +662,15 @@ func TestInstallShHardening(t *testing.T) {
 			t.Errorf("root %q: ~/.profile written", bad)
 		}
 	}
+}
+
+// withoutTestKeyRefusal is the refusal a script or mk without the test key
+// gives a release signed by the test key: with no release key listed it
+// trusts no key at all; once the release key is listed, it does not trust
+// the test key's signature.
+func withoutTestKeyRefusal() string {
+	if len(release.Trusted()) == 0 {
+		return "trusts no release key"
+	}
+	return "does not trust"
 }

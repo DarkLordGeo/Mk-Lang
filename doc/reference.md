@@ -626,7 +626,7 @@ export Main(sys: &System): WriteError!void {
 - An integer literal takes an integer type, else `int`. A float literal takes a float type, else `f64`.
 - An integer literal never becomes a float: `x: f64 = 1` and `f * 3` on an `f32` are E0301. Write `1.0` and `3.0`.
 - A literal whose value does not fit its type is E0303: `x: u8 = 300`, `x: i32 = 0xFFFF_FFFF`.
-- The check is on each literal. `x: u8 = 200 + 100` compiles, and the addition panics with `overflow` when it runs. In a `const`, the same overflow is E0901 at compile time.
+- An operator whose operands are all integer literals is judged by its value at its type, as it would run: `x: u8 = 200 + 100` is E0303, because the addition panics with `overflow`, and so are `0 - 1` as a `u32`, `7 / 0` and `1 << 64`. The wrapping operators `+% -% *%` never are, and any other operand, a variable, a named constant, a call or a byte literal, leaves the check to run time. The check does not depend on whether the code runs: an operator under `if false`, on the decided side of `&&` or `||`, or in a `requires` clause is judged as one that runs, as a literal that does not fit is. In the initializer of a `const` or a global `var`, which runs at compile time, the same overflow is E0901.
 - A `char` is not a number: `x: char = 65` and `x: u8 = 'a'` are E0301. Use `b'a'` for a byte.
 
 ```mk
@@ -827,7 +827,7 @@ Some tokens from other languages are recognised so the compiler can name the Mk 
 | E0207 | naming | A name in the wrong case, or spelled differently from its declaration ([names](#names)) |
 | E0209 | unused-result | A value dropped, such as a `-b` that a line break made a statement of its own ([line breaks](#line-breaks)) |
 | E0301 | type-mismatch | An integer literal where a float is expected, or a `char` where a number is ([literal types](#how-a-literal-gets-its-type)) |
-| E0303 | lossy-conversion | A literal whose value does not fit its type ([literal types](#how-a-literal-gets-its-type)) |
+| E0303 | lossy-conversion | A literal whose value does not fit its type, or an operator over literals that would panic ([literal types](#how-a-literal-gets-its-type)) |
 | E0308 | no-operator | `+` on `str`, or a `*` that a line break put at the start of a statement ([string literals](#string-literals), [line breaks](#line-breaks)) |
 | E0901 | const-failed | An overflow in a `const` initializer ([literal types](#how-a-literal-gets-its-type)) |
 | E1203 | lifetime-syntax | A lifetime such as `'a` ([characters](#character-literals)) |
@@ -911,7 +911,6 @@ export Main(sys: &System): WriteError!void {
 panic: overflow at main.mk:13:10
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 | Type | Range |
@@ -1074,7 +1073,6 @@ export Main(sys: &System): WriteError!void {
 panic: cast at main.mk:12:10
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 `T(x)` accepts these conversions, and no others:
@@ -1162,7 +1160,8 @@ export Main(sys: &System) {
 panic: not a digit at main.mk:3:5
 backtrace:
   Fatal (main.mk)
-  ...
+  Digit (main.mk)
+  Main (main.mk)
 ```
 
 - `void` appears only as a result type, as the `T` of `E!void`, and as the pointee of `*void`. A local or field of type `void` is E0301.
@@ -1205,7 +1204,6 @@ export Main(sys: &System): WriteError!void {
 panic: str boundary at main.mk:15:12
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 - `Len` counts bytes. `s[a..b]` slices by byte offsets, which must fall on a scalar boundary, else it panics with `str boundary`.
@@ -1258,7 +1256,6 @@ export Main(sys: &System): WriteError!void {
 panic: bounds at main.mk:23:32
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 - `N` is a compile-time constant: a literal, a `const`, or a const generic such as `N` in `[const N: int]` ([section 10](#const-parameters)). A run-time length is E0705; use a slice from an arena instead.
@@ -1454,7 +1451,6 @@ true 11 true 6
 panic: cast at main.mk:45:12
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 - Declaring enums, their variants and tag types, and `open enum`: [enums](#enums), [enum tags](#enum-tags). A pattern may leave the type out: `.North` ([section 6](#6-patterns)).
@@ -1576,7 +1572,6 @@ export Main(sys: &System): WriteError!void {
 panic: must at main.mk:25:10
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 | Form | Meaning |
@@ -1993,7 +1988,7 @@ export Main(sys: &System): WriteError!void {
 | E0201 | unknown-name | A `fn` type whose `from` names a parameter it does not name ([function types](#function-types)) |
 | E0301 | type-mismatch | Operands of different types; an integer literal where a float is expected; a non-`bool` condition; two different structs; a `void` local; `return` in a `never` function |
 | E0302 | no-conversion | A conversion that does not exist, such as `int(true)` ([conversions](#conversions)) |
-| E0303 | lossy-conversion | `T(x)` that can change the value, or a literal that does not fit its type ([integers](#integers)) |
+| E0303 | lossy-conversion | `T(x)` that can change the value, a literal that does not fit its type, or an operator over literals that would panic ([integers](#integers)) |
 | E0305 | field-names | A struct or variant built without naming every field ([structs](#structs)) |
 | E0308 | no-operator | `==` on a type without it; arithmetic on `char`; indexing a `str` |
 | E0401 | use-after-move | A unique or linear value used after it moved ([kinds](#kinds)) |
@@ -4219,7 +4214,7 @@ export Main(sys: &System): WriteError!void {
 - Destructuring moves the value, or copies it if it is plain. It is how a method that takes `self` consumes a [`linear`](#linear-and-view-structs) struct.
 - `var` before the pattern makes every binding `var`.
 - A pattern that can fail, such as a literal, is E0306. Use `match`.
-- Only a record or a struct pattern destructures. Take an enum or an optional apart with `match`.
+- Only a record or a struct pattern destructures. A variant, `some`, `ok` or `err` pattern on the left of `:=` is E0306: take an enum or an optional apart with `match`, or an optional with `if v := o`.
 - Outside the struct's module, a struct with private fields cannot be destructured (E0204).
 - A `for` loop may destructure each element with a record pattern: `for (key, value) in m.Iter()`. A struct pattern there is E0101. See [`for`](#for-loops).
 
@@ -4409,7 +4404,6 @@ export Main(sys: &System): int {
 panic: overflow at main.mk:5:10
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 The process exits with status 101. [Panics](#panics) lists every panic message.
@@ -5697,7 +5691,6 @@ export Main(sys: &System): WriteError!void {
 panic: must: main.Denied at main.mk:14:10
 backtrace:
   Main (main.mk)
-  ...
 ```
 
 On `none` the first line reads `panic: must at main.mk:...`. The process exits with status 101, as for every [panic](#panics).
@@ -6062,10 +6055,9 @@ export Main(sys: &System): int {
 panic: bounds at main.mk:5:12
 backtrace:
   Main (main.mk)
-  ...
 ```
 
-The first line names the cause and the position. A backtrace of the calls follows, unless the environment variable `MK_BACKTRACE` is `0` or `off`.
+The first line names the cause and the position. A backtrace of the calls follows, unless the environment variable `MK_BACKTRACE` is `0` or `off`. It names each function and its file, innermost first, down to `Main`, the task's function or the test (`test "name"`). The runtime's start below them is left out. Code in the executable that is no Mk function of the program or std gets no line of its own: the functions the compiler adds, the runtime's support routines, and C code linked into the executable. A frame outside the executable, such as one in a system DLL, prints its address.
 
 | Message | Cause |
 |---|---|
@@ -6842,7 +6834,7 @@ The argument of a `const` parameter is one of:
 - `+`, `-` and `*` over integers of these;
 - an expression over literals and named consts alone, with operators, conversions, `Cast`, `Trunc`, `SizeOf`, `AlignOf` or an array's `Len`: `2 + 3`, `-K`, `int(K8)`.
 
-Anything else is E0705: a variable, a call, `/` or another operator over a `const` parameter (`k / 2`), an index such as `Sizes[1]`, or a field of a named const such as `Default.width`.
+Anything else is E0705: a variable, a call, `/` or another operator over a `const` parameter (`k / 2`), an index such as `Sizes[1]`, or a field of a named const such as `Default.width` or of an element such as `Rows[0].width`. An array length follows the same rule.
 
 **`const` parameters of `fn` type.** `Sort`'s `const less: fn(&T, &T): bool` takes a function literal that may read the caller's locals ([function literals](#function-literals)). In exchange, the body may use such a parameter in two ways only:
 
@@ -7303,7 +7295,7 @@ main.mk:10:7: E0902 fuel-exhausted: compile-time evaluation ran out of fuel afte
 - The count is fixed for a compiler version, so a build that fits on one machine fits on every machine.
 - Running out is E0902, reported before the operation that does not fit, with the calls that led there.
 - `fuel` also follows a `gen` line: `gen derive.Eq(Big) fuel 10_000_000`.
-- The fuel is a number literal. A named constant, `fuel Limit`, is ignored, and the default applies.
+- The fuel is a number literal or a named constant, `fuel Limit`; any other expression is E0705. A gen line runs before its module's consts are evaluated, so its named constant comes from another module (E0908, [the stage rule](#the-stage-rule)).
 - An evaluation's frames, measured at the target's layout, may hold 1 MiB, or a quarter of the stated fuel in bytes when that is more, up to 256 MiB. Deeper recursion is the `stack limit` panic, reported as E0901.
 
 ### The stage rule
@@ -7322,7 +7314,7 @@ struct Buf {
 ```
 
 - Literals, const parameters, `Target`, `SizeOf` of an imported or generic type, and integer consts computed from literals and other such consts, as `N` is, are always allowed in these places.
-- `SizeOf` of a same-module type is allowed too, though it reads that type's layout. In a function signature or a type declaration, passed to a const parameter of an integer type other than `int`, it is E0301: the size is not known yet, so it cannot be judged to fit.
+- `SizeOf` of a same-module type is allowed too, though it reads that type's layout. In a function signature or a type declaration, passed to a const parameter of an integer type other than `int`, it is E0301: the size is not known yet, so it cannot be judged to fit. Written in a same-module `const` that a type then names (`const S = SizeOf[In]()`, `data: [S]u8`), it is E0908: write the `SizeOf` in the type itself.
 - A `const` may call functions of its own module, as `Fib40` does above. Such a `const` cannot then appear in a type.
 - To use a helper in a type of the same module, move the helper to a submodule.
 
@@ -7617,7 +7609,7 @@ $ mk run .
 x=3 y=4 label=corner
 ```
 
-The compiler writes what the generator emitted to `gen/<target>/gen.mk` in the module's directory, here `src/gen/x86_64-windows/gen.mk`, so you can read it:
+The compiler writes what the generator emitted to `gen/<target>/gen.mk` in the module's directory, here `src/gen/x86_64-windows/gen.mk`, so you can read it. A single file given by name (`mk run main.mk`) has no module directory of its own and gets no view; name its directory (`mk run .`) to get one:
 
 ```text
 // gen show.Describe#1 for Point
@@ -7734,7 +7726,7 @@ Names in a `quote`:
 
 #### Errors in generated code
 
-Generated code is checked as if it were handwritten. An error in it is E0905, and the report cites the generated line, the line of the generator that emitted it, and the `gen` line.
+Generated code is checked as if it were handwritten, `export` included: a method the generator emits without it is private to the module of the `gen` line. std's generators export the methods they write when the type is exported. An error in generated code is E0905, and the report cites the generated line, the line of the generator that emitted it, and the `gen` line.
 
 ```mk
 // verdict: reject E0905
@@ -8772,7 +8764,6 @@ export Main(sys: &System): WriteError!void {
 panic: bounds at main.mk:3:12
 backtrace:
   Get (main.mk)
-  ...
 ```
 
 Errors are for failures a task should report; use a `Scope[E]` for them. See [panics](#panics).
@@ -8944,7 +8935,7 @@ Kind(e: fs.Error): str {
 
 ### Exports and visibility
 
-`export` makes a function, type, constant, error, global variable or field visible outside its module. Without it, a free function, type, constant, error, global variable or field is private to the module, and the module's files share it.
+`export` makes a function, method, type, constant, error, global variable or field visible outside its module. Without it, a free function, method, type, constant, error, global variable or field is private to the module, and the module's files share it.
 
 ```mk
 // verdict: parse
@@ -8985,7 +8976,7 @@ export Main(sys: &System): WriteError!void {
 1 1
 ```
 
-- Another module may not name a private free function, type, constant, error or global variable (E0204, "is not exported by").
+- Another module may not name a private free function, type, constant, error or global variable, nor call a private method, as `c.M()`, `Counter.M(&c)`, `Counter.M` as a value or a loop's `Next` (E0204, "is not exported by").
 - A struct with a private field cannot be built outside its module (E0204). Give it an exported constructor, as `Counter.New` above. Its private fields cannot be read or written outside either (E0204).
 - An exported function, field or type alias may not name a private type (E0412). Export the type, or keep the item private. `Main` is the exception ([errors across modules](#errors-across-modules)).
 - An `impl` takes no `export` (E0101). It is visible wherever both its type and its interface are.
@@ -9050,7 +9041,7 @@ A target is the machine and system a program is built for. `--target name` picks
 | `x86_64-freestanding` | Yes | Yes: a static ELF that runs with no operating system ([below](#freestanding)) |
 | `x86_64-nutshell` | Yes | Yes ([below](#nutshell)) |
 | `aarch64-linux`, `aarch64-nutshell` | Yes | No: E0202, `reason: not-built` |
-| `aarch64-macos` | No: std has no system layer for it (E0202) | No |
+| `aarch64-macos` | No: std has no system layer for it (E0202, `reason: no-std-target`) | No |
 
 `Target`, a constant in the prelude, describes the target the code is compiled for ([branching on the target](#branching-on-the-target)). Code that needs one system's own module, such as `std.linux`, goes in a per-target module: on any other target, importing that module is E0202, `reason: target-selected`.
 
@@ -9252,7 +9243,7 @@ Name(p: *u8): str {
 }
 ```
 
-- The reason is a string literal and may not be empty: `unsafe { }` and `unsafe "" { }` are E0101. Write what makes the code correct, such as which check guards it or who owns the memory.
+- The reason is a string literal and may not be empty or only white space: `unsafe { }`, `unsafe "" { }` and `unsafe " " { }` are E0101. Write what makes the code correct, such as which check guards it or who owns the memory.
 - `unsafe` is a statement, not an expression. To compute a value, assign to a `var` declared before the block, or `return` from inside it.
 - An `unsafe` block may hold any code. Keep it to the lines that need it.
 - `unsafe` does not turn off the other rules. Types, moves and loans are checked inside it as everywhere else.
@@ -10160,7 +10151,6 @@ panic: contract: requires at main.mk:3:5
 backtrace:
   SafeDiv (main.mk)
   Main (main.mk)
-  ...
 ```
 
 - The report points at the clause that failed; the backtrace shows the caller.
@@ -10199,7 +10189,6 @@ panic: contract: ensures at main.mk:6:9
 backtrace:
   Abs (main.mk)
   Main (main.mk)
-  ...
 ```
 
 - The report points at the `return` that broke the promise.
@@ -10238,7 +10227,7 @@ export Main(sys: &System): WriteError!void {
 panic: contract: invariant at main.mk:10:1
 backtrace:
   Span:Grow (main.mk)
-  ...
+  Main (main.mk)
 ```
 
 An invariant is checked at these points:
@@ -10333,7 +10322,7 @@ PASS main "clamp inside"
 FAIL main "clamp above": panic (exit 101)
     panic: assert at clamp.mk:19:5
     backtrace:
-      ...
+      test "clamp above" (clamp.mk)
 PASS main "prints"
 2 passed, 1 failed
 ```
@@ -10500,7 +10489,7 @@ push.mk:4:5: E0802 error-unhandled: the error of `OutOfMemory!void` is not handl
 
 `l.push(1);` became `l.Push(1)`. Whether to pass the error on with `try` or handle it is your choice, so `mk fix` stops and the compiler suggests both.
 
-To find the Mk name of a library function you know from elsewhere, ask `mk query find`. It matches synonyms. Run it in a package that parses, or in an empty directory:
+To find the Mk name of a library function you know from elsewhere, ask `mk query find`. It matches synonyms. In a package that does not parse it answers from std alone, and says so:
 
 ```text
 $ mk query find append
@@ -10527,7 +10516,7 @@ In the tables below, the Code column is what the compiler reports for the habit.
 | `while c { }`, `loop { }` | `for c { }`, `for { }` | E1216 |
 | `switch x { case ... }` | `match x { ... }` ([`match`](#match)) | E0101 |
 | `x++`, `x--` | `x += 1`, `x -= 1` | E0101 |
-| `c ? a : b` | `if c { a } else { b }` ([`if` as a value](#if-match-and-else-as-values)) | E1208, E0101 |
+| `c ? a : b` | `if c { a } else { b }` ([`if` as a value](#if-match-and-else-as-values)) | E1208 |
 | `null`, `nil` | `none` ([optionals](#optionals-t)) | E1209 |
 | `panic(...)`, `panic!(...)` | `Panic("...")`, which returns `never` ([panics](#panics)) | E0207, E1210 |
 | `assert x == y`, `assert!(...)` | `Assert(x == y)` | E1223 |
@@ -10827,8 +10816,8 @@ Move `Area` into `impl Shape for Tile { Area(&self): int { ... } }`, in place of
 | `impl T { fn m(&self) }` | `T.M(&self)` | E1219, E1205 |
 | `trait I { }` | `interface I { }`. `impl I for T { }` is the same | E0101 |
 | `#[derive(PartialEq, Hash)]` | `gen derive.Eq(T)`, `gen derive.Hash(T)` ([generators](#11-compile-time)) | E0101 |
-| `&dyn I`, `&mut dyn I` | `IDyn`, the type `gen dyn.Of(I)` declares: `IDyn.Of(mut x)` borrows `x` ([`dyn.Of`](#values-of-an-interface-dynof), [std.dyn](std/dyn.md)) | E0101; E1212 for `&mut` |
-| `Vec<Box<dyn I>>` | An `enum` with a variant per type, or a `List` of `IDyn` while the objects live elsewhere | E0101 |
+| `dyn I`, `&dyn I`, `&mut dyn I` | `IDyn`, the type `gen dyn.Of(I)` declares: `IDyn.Of(mut x)` borrows `x` ([`dyn.Of`](#values-of-an-interface-dynof), [std.dyn](std/dyn.md)) | E1221; E1212 for `&mut` |
+| `Vec<Box<dyn I>>` | An `enum` with a variant per type, or a `List` of `IDyn` while the objects live elsewhere | E0101, E1221 |
 | `'a` | Nothing, or a `from` or `into` clause ([section 8](#8-ownership-and-borrowing)) | E1203 |
 | `a == b` on a struct | `a.Eq(&b)`, after `gen derive.Eq(T)`; `==` works on numbers, `bool`, `char`, `str` and enums without payloads | E0308 |
 | `&[T]` | `[]T`, or `mut []T` to write | E0101 |
@@ -10841,9 +10830,9 @@ Move `Area` into `impl Shape for Tile { Area(&self): int { ... } }`, in place of
 | `.iter().map(...).filter(...).collect()` | A `for` loop | E1202 |
 | `.len()`, `.push(x)` | `.Len()`, `try .Push(x)` | E0207 |
 | `.unwrap_or(x)` | `e else { x }` ([`else`](#else)) | E0203 |
-| `.unwrap()`, `.expect("...")` | `.Must()` | E0203 |
-| `.clone()` | A plain value copies; `try arena.Dup(s)` copies text | E0203 |
-| `.to_string()`, `format!` | `try arena.Fmt("{x}", (x))` | E0203, E1221 |
+| `.unwrap()`, `.expect("...")` | `.Must()` | E1221 |
+| `.clone()` | A plain value copies; `try arena.Dup(s)` copies text | E1221 |
+| `.to_string()`, `format!` | `try arena.Fmt("{x}", (x))` | E1221 |
 | `println!`, `vec!` | `sys.Print(...)`, `List` | E1221 |
 | `Vec`, `String`, `HashMap` | `List`, `Text`, `Map` | E1221 |
 | `Rc`, `Arc` | `sync.Shared` | E1221 |
@@ -10921,23 +10910,25 @@ first 4
 9 -1 ferris true
 ```
 
-There is no `Clone` or `Copy` to derive. A struct of plain fields is plain and copies; a struct that owns something moves ([value kinds](memory.md#r1-value-kinds)). `.unwrap()` is reported as an unknown member, and the message lists what the type has:
+There is no `Clone` or `Copy` to derive. A struct of plain fields is plain and copies; a struct that owns something moves ([value kinds](memory.md#r1-value-kinds)). `.unwrap()` is reported with the Mk member, and the fix renames it:
 
 ```mk
-// verdict: reject E0203
+// verdict: reject E1221
 First(xs: ?int): int {
-    return xs.unwrap() // <- E0203
+    return xs.unwrap() // <- E1221
 }
 ```
 
 ```text
 $ mk check first.mk
-first.mk:3:15: E0203 unknown-member: `?int` has no member `unwrap`
-    |     return xs.unwrap() // <- E0203
+first.mk:3:15: E1221 foreign-name: `?int` has no member `unwrap`: Mk spells it `Must`
+    |     return xs.unwrap() // <- E1221
     |               ^^^^^^
     type: ?int
-    members: ["Format","IsNone","IsSome","Must"]
-    explain: mk explain E0203
+    mk_name: Must
+    habits: ["E1221"]
+    fix (proven): the Mk spelling of the member
+    explain: mk explain E1221
 1 error
 ```
 
@@ -10947,7 +10938,7 @@ first.mk:3:15: E0203 unknown-member: `?int` has no member `unwrap`
 |---|---|---|
 | `const x = 1;` in a function | `x := 1`. A top-level `const X = 1` is Mk | E0101 |
 | `var x: i32 = 0;` | `var x: i32 = 0` | E1206 |
-| `pub fn f() T` | `export F(): T` | E1215, E0101 |
+| `pub fn f() T` | `export F(): T` | E1215 |
 | `const P = struct { x: i32 };` | `struct P { x: i32 }` | E0101 |
 | `error{ A, B }` | `error A`, `error B`, then `type E = A \| B` ([error sets](#error-sets)) | E0101 |
 | `!T`, an inferred error set | `E!T`: every signature names its set | E0101 |
@@ -11075,7 +11066,7 @@ error: Empty
 | E1217 | if-let | `if let` ([Rust](#from-rust)) |
 | E1219 | impl-block | `impl T { }` ([Rust](#from-rust)) |
 | E1220 | inclusive-range | `..=` ([Rust](#from-rust)) |
-| E1221 | foreign-name | `Vec`, `String`, `HashMap`, `Rc`, `Arc`, `usize`, `fmt.Println`, `println!`, `format!`, `vec!` ([common](#common-to-several-languages), [Go](#from-go), [Rust](#from-rust)) |
+| E1221 | foreign-name | `Vec`, `String`, `HashMap`, `Rc`, `Arc`, `usize`, `fmt.Println`, `println!`, `format!`, `vec!`, `dyn I`, `.unwrap()`, `.expect()`, `.clone()`, `.to_string()` ([common](#common-to-several-languages), [Go](#from-go), [Rust](#from-rust)) |
 | E1222 | as-cast | `as` ([Rust](#from-rust)) |
 | E1223 | assert-statement | `assert x`, `assert!` ([common](#common-to-several-languages)) |
 
@@ -11141,7 +11132,7 @@ This table lists the importable modules and the names each one exports. The [lib
 
 The modules `std.core`, `std.raw`, `std.rt`, `std.sys`, `std.task`, `std.target` and `std.simd.kernel` hold the library's own internals. Only standard library modules may import them, except `std.raw` ([who may write unsafe code](#who-may-write-unsafe-code)). Any other import of one is E0202.
 
-Every public item of std has a stability level, which says what may change in a minor release. The [library guide](std/README.md#9-stability) lists the modules and items that are not Stable.
+Every public item of std has a stability level, which says how it may change from one release to the next. The [library guide](std/README.md#9-stability) lists the modules and items that are not Stable and what each level allows before and after 1.0.
 
 ## 18. Library surface
 

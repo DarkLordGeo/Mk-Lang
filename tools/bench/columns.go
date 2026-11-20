@@ -16,6 +16,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -161,14 +162,40 @@ func (t *toolchain) goos() string {
 	return runtime.GOOS
 }
 
-// The pinned MSVC and Windows SDK versions, which clang does not find alone
-// on the benchmark machine.
+// The MSVC toolset and Windows SDK, which clang does not find alone on the
+// benchmark machine. msvcPinned is the benchmark machine's toolset, taken
+// when vswhere finds none (msvcToolset).
 const (
-	msvcDir    = `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231`
+	msvcPinned = `C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231`
 	sdkDir     = `C:\Program Files (x86)\Windows Kits\10`
 	sdkVersion = "10.0.26100.0"
 	llvmBin    = `C:\Program Files\LLVM\bin`
 )
+
+// msvcToolset is the MSVC toolset directory: the default toolset of the
+// newest Visual Studio with the x64 C++ tools, as vswhere reports it, or
+// msvcPinned when vswhere, that Visual Studio or its toolset is missing.
+func msvcToolset() string {
+	vswhere := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Microsoft Visual Studio", "Installer", "vswhere.exe")
+	out, err := exec.Command(vswhere, "-latest", "-products", "*",
+		"-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath").Output()
+	if err != nil {
+		return msvcPinned
+	}
+	inst := strings.TrimSpace(string(out))
+	if inst == "" {
+		return msvcPinned
+	}
+	v, err := os.ReadFile(filepath.Join(inst, "VC", "Auxiliary", "Build", "Microsoft.VCToolsVersion.default.txt"))
+	if err != nil {
+		return msvcPinned
+	}
+	dir := filepath.Join(inst, "VC", "Tools", "MSVC", strings.TrimSpace(string(v)))
+	if _, err := os.Stat(filepath.Join(dir, "include")); err != nil {
+		return msvcPinned
+	}
+	return dir
+}
 
 // mkStd is the -mk-std flag: the MK_STD of every Mk build.
 var mkStd string
@@ -202,6 +229,7 @@ func findToolchain(work, mk string) (*toolchain, error) {
 	t.Hyperfine = look("hyperfine")
 	t.Cargo = look("cargo")
 	if runtime.GOOS == "windows" {
+		msvcDir := msvcToolset()
 		inc := []string{filepath.Join(msvcDir, "include")}
 		for _, d := range []string{"ucrt", "um", "shared"} {
 			inc = append(inc, filepath.Join(sdkDir, "Include", sdkVersion, d))

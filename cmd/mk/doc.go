@@ -5,8 +5,10 @@
 // What: runDoc, mk doc [--html | --embed] [-o file] [--std module] [path]:
 // the public surface of the package, or of std's modules under a path, as
 // Markdown, as HTML, or as the API section a module page embeds
-// (driver/doc.go). docCheck, mk doc --check [path]: compiles the fenced mk
-// blocks of the package's /// text instead.
+// (driver/doc.go). A path std or std.<module> that names nothing on disk
+// is --std's module (stdModuleArg), and an unknown module is refused.
+// docCheck, mk doc --check [path]: compiles the fenced mk blocks of the
+// package's /// text instead, or of std's modules under --std.
 //
 // How: --check judges each block by its verdict line as the corpus judges
 // doc/'s blocks (internal/corpus: Extract, BlockUnit, JudgeUnit), with the
@@ -48,16 +50,26 @@ func runDoc(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return usageErr(stderr, fs, err)
 	}
+	if *stdMod == "" && stdModuleArg(path) {
+		*stdMod, path = path, ""
+	}
+	var stdFiles []driver.DocFile
+	if *stdMod != "" {
+		if path != "" {
+			return usageErr(stderr, fs, fmt.Errorf("--std takes no path"))
+		}
+		if stdFiles, err = driver.DocStdFiles(*stdMod); err != nil {
+			fmt.Fprintf(stderr, "mk doc: %v\n", err)
+			return 2
+		}
+	}
 	if *check {
-		return docCheck(path, cf, stdout, stderr)
+		return docCheck(path, stdFiles, cf, stdout, stderr)
 	}
 	if *embed && *asHTML {
 		return usageErr(stderr, fs, fmt.Errorf("--embed writes Markdown; it takes no --html"))
 	}
 	if *stdMod != "" {
-		if path != "" {
-			return usageErr(stderr, fs, fmt.Errorf("--std takes no path"))
-		}
 		// std's surface needs no package: check from an empty file.
 		dir, err := os.MkdirTemp("", "mk-doc-")
 		if err != nil {
@@ -117,6 +129,19 @@ func runDoc(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// stdModuleArg reports whether mk doc's path argument names std's modules
+// rather than a package: std or std.<module>, with no path separator, no
+// .mk suffix (a mistyped file name stays a path) and nothing of that name
+// on disk. mk doc std.fs is then mk doc --std std.fs; runDoc refuses a name
+// that is no std module (driver.DocStdFiles).
+func stdModuleArg(path string) bool {
+	if path != "std" && !strings.HasPrefix(path, "std.") || strings.HasSuffix(path, ".mk") || strings.ContainsAny(path, `/\`) {
+		return false
+	}
+	_, err := os.Stat(path)
+	return err != nil
+}
+
 // docCompiler is corpus.Compiler over a corpus session, with the test
 // prelude std embeds (std.TestPreludePath), so mk doc --check needs no
 // repository.
@@ -157,34 +182,18 @@ func fileLines(s string, b *corpus.Block) string {
 func (d *docCompiler) Available() driver.StageSet { return driver.Available() }
 
 // docCheck is mk doc --check: every .mk file under the package root (a
-// directory, or one file), testdata and dot directories left out.
-func docCheck(path string, cf compileFlags, stdout, stderr io.Writer) int {
-	root := path
-	if root == "" {
-		root = "."
-	}
-	var files []string
-	if st, err := os.Stat(root); err == nil && !st.IsDir() {
-		files = []string{root}
-	} else {
-		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() && p != root && (d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".")) {
-				return filepath.SkipDir
-			}
-			if !d.IsDir() && strings.HasSuffix(p, ".mk") {
-				files = append(files, p)
-			}
-			return nil
-		})
-		if err != nil {
+// directory, or one file), testdata and dot directories left out, or the
+// files of std's modules when stdFiles is set (--std, or a std.<module>
+// path).
+func docCheck(path string, stdFiles []driver.DocFile, cf compileFlags, stdout, stderr io.Writer) int {
+	files := stdFiles
+	if files == nil {
+		var err error
+		if files, err = packageDocFiles(path); err != nil {
 			fmt.Fprintf(stderr, "mk doc --check: %v\n", err)
 			return 2
 		}
 	}
-	slices.Sort(files)
 	prelude, err := driver.DocTestPrelude()
 	if err != nil {
 		fmt.Fprintf(stderr, "mk doc --check: the test prelude: %v\n", err)
@@ -200,16 +209,11 @@ func docCheck(path string, cf compileFlags, stdout, stderr io.Writer) int {
 	info, _ := comp.Start()
 	failed, n := 0, 0
 	for _, f := range files {
-		text, err := os.ReadFile(f)
-		if err != nil {
-			fmt.Fprintf(stderr, "mk doc --check: %v\n", err)
-			return 2
-		}
 		// One block at a time: a malformed one (no verdict line, no
 		// closing fence) is reported and the others still run.
-		for _, doc := range driver.DocBlockSources(string(text)) {
+		for _, doc := range driver.DocBlockSources(f.Text) {
 			n++
-			blocks, err := corpus.Extract(filepath.ToSlash(f), doc)
+			blocks, err := corpus.Extract(filepath.ToSlash(f.Path), doc)
 			if err != nil || len(blocks) != 1 {
 				failed++
 				fmt.Fprintf(stdout, "FAIL %v\n", err)
@@ -243,4 +247,44 @@ func docCheck(path string, cf compileFlags, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// packageDocFiles is every .mk file under the package root path (a
+// directory, or one file; "" is the working directory), testdata and dot
+// directories left out, in path order.
+func packageDocFiles(path string) ([]driver.DocFile, error) {
+	root := path
+	if root == "" {
+		root = "."
+	}
+	var names []string
+	if st, err := os.Stat(root); err == nil && !st.IsDir() {
+		names = []string{root}
+	} else {
+		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() && p != root && (d.Name() == "testdata" || strings.HasPrefix(d.Name(), ".")) {
+				return filepath.SkipDir
+			}
+			if !d.IsDir() && strings.HasSuffix(p, ".mk") {
+				names = append(names, p)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	slices.Sort(names)
+	files := make([]driver.DocFile, 0, len(names))
+	for _, n := range names {
+		b, err := os.ReadFile(n)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, driver.DocFile{Path: n, Text: string(b)})
+	}
+	return files, nil
 }

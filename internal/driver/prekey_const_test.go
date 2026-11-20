@@ -7,8 +7,9 @@
 // asm sym shapes (wrapperFiles, declFiles, linearFiles, asmSymFiles,
 // asmSymExternFiles), and TestSupportPackKeyedByIR.
 // How: builds each program with a narrow and a wide layout of shape.S into
-// one cache and requires the warm build to miss and link the bytes of a
-// fresh build; MK_CACHE_VERIFY builds check the keys.
+// one cache that starts with std's packs and requires the warm build to
+// miss and link the bytes of a --no-cache build; MK_CACHE_VERIFY builds
+// check the keys. The subtests run in parallel.
 
 package driver
 
@@ -168,8 +169,15 @@ func asmSymExternFiles(wide bool) map[string]string {
 // const or a declare), link the bytes of a --no-cache build of the edited
 // tree, and its MK_CACHE_VERIFY build must report no stale memo; a second
 // build with no change emits only the support pack.
+//
+// The cold builds start from std's packs (stdSeedBuild), so the program's
+// packs are the ones built cold. The subtests run in parallel, at most
+// constLayoutJobs at once, each in its own tree and cache.
 func TestGlobalConstLayout(t *testing.T) {
 	tools := needTools(t)
+	seed := stdSeedBuild(t, Config{Target: pkTarget(), Profile: types.Dev, Tools: tools},
+		Config{Target: pkTarget(), Profile: types.Release, Tools: tools})
+	slots := make(chan struct{}, constLayoutJobs)
 	for _, c := range []struct {
 		name  string
 		files func(bool) map[string]string
@@ -179,9 +187,12 @@ func TestGlobalConstLayout(t *testing.T) {
 		{"asm-sym", asmSymFiles}, {"asm-sym-extern", asmSymExternFiles}} {
 		for _, prof := range []types.Profile{types.Dev, types.Release} {
 			t.Run(c.name+"/"+prof.String(), func(t *testing.T) {
+				t.Parallel()
+				slots <- struct{}{}
+				defer func() { <-slots }()
 				dir := writeTree(t, c.files(false))
 				out := t.TempDir()
-				cfg := Config{Root: dir, Target: pkTarget(), Profile: prof, Tools: tools, CacheDir: filepath.Join(t.TempDir(), "cache")}
+				cfg := Config{Root: dir, Target: pkTarget(), Profile: prof, Tools: tools, CacheDir: seededCache(t, seed)}
 				cold := pkBuild(t, cfg, filepath.Join(out, "narrow.exe"))
 				pkVerify(t, cfg, filepath.Join(out, "narrow-verify.exe"), cold.exe)
 				pkWrite(t, dir, c.files(true))
@@ -211,6 +222,11 @@ func TestGlobalConstLayout(t *testing.T) {
 	}
 }
 
+// constLayoutJobs bounds TestGlobalConstLayout's subtests that run at
+// once: each builds std three times (two verify builds and a --no-cache
+// build), and eighteen at once would hold eighteen such builds in memory.
+const constLayoutJobs = 4
+
 // supportFiles is a program whose Main fails with the error name: the
 // support pack's ErrorName rows print the error's key and display form.
 func supportFiles(name string) map[string]string {
@@ -230,11 +246,12 @@ func supportFiles(name string) map[string]string {
 // no pre-emission key and finds its object by the IR's key, so clang does
 // not run on it; an edit that changes its IR (an error renamed) gives
 // another object key, compiles it again, and links the bytes of a --no-cache
-// build. Dev and release.
+// build. Dev and release, in parallel.
 func TestSupportPackKeyedByIR(t *testing.T) {
 	tools := needTools(t)
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
 		t.Run(prof.String(), func(t *testing.T) {
+			t.Parallel()
 			dir := writeTree(t, supportFiles("Bad"))
 			out := t.TempDir()
 			cfg := Config{Root: dir, Target: pkTarget(), Profile: prof, Tools: tools, CacheDir: filepath.Join(t.TempDir(), "cache")}

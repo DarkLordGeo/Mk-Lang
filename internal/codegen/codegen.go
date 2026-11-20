@@ -58,6 +58,12 @@ type Config struct {
 	// the driver's report wrapper around it, with Main's result and
 	// one parameter, the System. The zero key calls Main itself.
 	Main types.Key
+	// Frames names a function's frame in a panic's backtrace by its item
+	// key text, in place of the key's own name: the test runner's
+	// `test "name"` for a test's clone. "" leaves the frame out: its row
+	// has no site, so the backtrace skips it (Main's report wrapper, the
+	// test runner's Main). A key not in it keeps its name.
+	Frames map[string]string
 	// TestNoOverflowChecks and TestNoBoundsChecks are test-only (never set
 	// by mk's commands): they measure what the checks cost, against the
 	// budgets "overflow checks at most 5% median" and "bounds checks at

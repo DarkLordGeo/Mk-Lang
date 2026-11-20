@@ -6,7 +6,7 @@
 // open or closed, directly or through an open alias that holds its members.
 // How: builds small std or package trees in temporary directories, compares
 // apidiff severities by line, and compares each cached verdict with a
-// fresh cache's.
+// fresh cache's (one that holds only std's check results).
 
 package driver
 
@@ -307,10 +307,13 @@ func TestSetHoldingAliasRechecks(t *testing.T) {
 		{"mid's own open alias of lib.A | lib.B", md(mid + "\nexport open type MX = lib.A | lib.B\n"), []string{"E0706 7"}},
 		{"mid re-exports ext's open alias", map[string]string{"ext/ext.mk": ext, "mid/mid.mk": "import lib\nimport ext\n\nexport error Mine\n\nexport type PErr = lib.QErr | Mine\n\nexport type Ext = ext.X\n"}, []string{"E0706 3"}},
 	}
+	// The fresh cache holds std's check results alone: the package is
+	// checked from nothing at every step.
+	seed := stdSeedCheck(t, Config{})
 	for i, st := range steps {
 		writeFiles(t, dir, st.files)
 		got := check(cache)
-		fresh := check(t.TempDir())
+		fresh := check(seededCache(t, seed))
 		if !slices.Equal(got, st.want) || !slices.Equal(fresh, st.want) {
 			t.Fatalf("step %d (%s): cached %v, fresh %v, want %v", i, st.name, got, fresh, st.want)
 		}
@@ -418,10 +421,13 @@ func TestPackageOpenSetRechecks(t *testing.T) {
 		{"ext's open alias of lib's errors", map[string]string{"ext/ext.mk": "import lib\n\nexport open type X = lib.A | lib.B\n", "mid/mid.mk": "import lib\nimport ext\n\nexport error Mine\n\nexport type PErr = lib.QErr | Mine\n\nHidden(v: ext.X): int {\n    return 0\n}\n"}, []string{"E0706 ext.mk:3"}},
 		{"mid without ext, ext closed", map[string]string{"mid/mid.mk": mid, "ext/ext.mk": "import lib\n\nexport type X = lib.A | lib.B\n"}, nil},
 	}
+	// The fresh cache holds std's check results alone: the package is
+	// checked from nothing at every step.
+	seed := stdSeedCheck(t, Config{})
 	for i, st := range steps {
 		writeFiles(t, dir, st.files)
 		got := check(cache)
-		fresh := check(t.TempDir())
+		fresh := check(seededCache(t, seed))
 		if !slices.Equal(got, st.want) || !slices.Equal(fresh, st.want) {
 			t.Fatalf("step %d (%s): cached %v, fresh %v, want %v", i, st.name, got, fresh, st.want)
 		}

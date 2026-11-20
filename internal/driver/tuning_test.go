@@ -69,11 +69,14 @@ func tuneTargets() []types.Target {
 // new and has the first build's bytes; then the default once more with
 // the stored link and lld's own ThinLTO cache removed, so the backends
 // rerun on objects that all hit, which must still equal --no-cache.
+// The targets run in parallel: each has its own cache and output
+// directory, and the builds only read the source tree.
 func TestTuningKeysSeparate(t *testing.T) {
 	tools := needTools(t)
 	dir := writeTree(t, tuneFiles())
 	for _, target := range tuneTargets() {
 		t.Run(target.Name, func(t *testing.T) {
+			t.Parallel()
 			out := t.TempDir()
 			cacheDir := filepath.Join(t.TempDir(), "cache")
 			base := Config{Root: dir, Target: target, Profile: types.Release, Tools: tools, CacheDir: cacheDir}
@@ -218,7 +221,7 @@ func TestMultiBinColdEqualsNoCache(t *testing.T) {
 	// build builds both bins into cacheDir ("" for --no-cache) as the
 	// compiler id (zero: the test binary's own); with prune, lld's
 	// ThinLTO cache is removed before the second link.
-	build := func(label, cacheDir string, id source.Hash, prune bool) (Result, map[string][]byte) {
+	build := func(t *testing.T, label, cacheDir string, id source.Hash, prune bool) (Result, map[string][]byte) {
 		t.Helper()
 		cfg := Config{Root: dir, Target: types.X86_64Linux, Profile: types.Release, Tools: tools, CacheDir: cacheDir, NoCache: cacheDir == "", BuildID: id}
 		if cfg.NoCache {
@@ -286,21 +289,26 @@ func TestMultiBinColdEqualsNoCache(t *testing.T) {
 	for k := range 4 {
 		cases = append(cases, buildCase{fmt.Sprintf("cold-lld-cache-emptied-%d", k), source.HashString("TestMultiBinColdEqualsNoCache", fmt.Sprint(k)), true})
 	}
+	// The cases run in parallel: each has its own store and output
+	// directories, and the builds only read the source tree.
 	for _, c := range cases {
-		_, fresh := build(c.label+"-nocache", "", c.id, false)
-		r, cold := build(c.label, filepath.Join(t.TempDir(), "cache"), c.id, c.prune)
-		// Bin b took bin a's stored packs: the case is not vacuous.
-		if !slices.ContainsFunc(r.Trace.PacksFromCache, func(p string) bool { return p != "support" }) {
-			t.Fatalf("%s: packs from the store %v, want bin b to find bin a's shared packs", c.label, r.Trace.PacksFromCache)
-		}
-		for _, bin := range []string{"a", "b"} {
-			if cold[bin] == nil || fresh[bin] == nil {
-				t.Fatalf("%s: bin %s missing: %d bytes, --no-cache %d bytes", c.label, bin, len(cold[bin]), len(fresh[bin]))
+		t.Run(c.label, func(t *testing.T) {
+			t.Parallel()
+			_, fresh := build(t, c.label+"-nocache", "", c.id, false)
+			r, cold := build(t, c.label, filepath.Join(t.TempDir(), "cache"), c.id, c.prune)
+			// Bin b took bin a's stored packs: the case is not vacuous.
+			if !slices.ContainsFunc(r.Trace.PacksFromCache, func(p string) bool { return p != "support" }) {
+				t.Fatalf("%s: packs from the store %v, want bin b to find bin a's shared packs", c.label, r.Trace.PacksFromCache)
 			}
-			if !bytes.Equal(cold[bin], fresh[bin]) {
-				t.Errorf("%s: bin %s differs from its --no-cache build", c.label, bin)
+			for _, bin := range []string{"a", "b"} {
+				if cold[bin] == nil || fresh[bin] == nil {
+					t.Fatalf("%s: bin %s missing: %d bytes, --no-cache %d bytes", c.label, bin, len(cold[bin]), len(fresh[bin]))
+				}
+				if !bytes.Equal(cold[bin], fresh[bin]) {
+					t.Errorf("%s: bin %s differs from its --no-cache build", c.label, bin)
+				}
 			}
-		}
+		})
 	}
 }
 

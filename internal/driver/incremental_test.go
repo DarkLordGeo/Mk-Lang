@@ -227,6 +227,12 @@ func objsEqual(a, b [][]byte) bool {
 // directories, give byte-identical objects, executables and --json reports;
 // so does a warm build from a cache filled at GOMAXPROCS 1. Dev and release,
 // both targets (cross builds; nothing runs).
+//
+// A build at one worker compiles the whole of std on one core, so only
+// fizz, x86_64-windows, release starts at GOMAXPROCS 1; the other seven
+// combinations start at 2, which still interleaves the workers, and are
+// compared with 8 the same way. With MK_SLOW=1 every combination starts
+// at 1.
 func TestDeterminismGOMAXPROCS(t *testing.T) {
 	tools := needTools(t)
 	fizz, err := filepath.Abs(filepath.Join("..", "..", "tests", "programs", "fizz.mk"))
@@ -239,6 +245,10 @@ func TestDeterminismGOMAXPROCS(t *testing.T) {
 	for _, name := range []string{"fizz", "pkg"} {
 		for _, target := range []types.Target{types.X86_64Windows, types.X86_64Linux} {
 			for _, prof := range []types.Profile{types.Dev, types.Release} {
+				low := 2
+				if os.Getenv("MK_SLOW") == "1" || name == "fizz" && target.Name == types.X86_64Windows.Name && prof == types.Release {
+					low = 1
+				}
 				t.Run(fmt.Sprintf("%s/%s/%v", name, target.Name, prof), func(t *testing.T) {
 					type run struct {
 						exe  []byte
@@ -263,10 +273,10 @@ func TestDeterminismGOMAXPROCS(t *testing.T) {
 						}
 						return run{exe, objs, buf.Bytes(), lls}
 					}
-					one := build(1, Config{NoCache: true})
+					one := build(low, Config{NoCache: true})
 					eight := build(8, Config{NoCache: true})
 					cacheDir := filepath.Join(t.TempDir(), "cache")
-					build(1, Config{CacheDir: cacheDir})
+					build(low, Config{CacheDir: cacheDir})
 					// The cache's copy of the executable goes, so
 					// the warm build links the cached objects; the next
 					// one's link key hits, and it links nothing.

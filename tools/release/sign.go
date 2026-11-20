@@ -40,6 +40,8 @@ func runKeygen(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "wrote the private key to %s; keep it outside the repository, two copies offline\n", *out)
 	fmt.Fprintln(stdout, "add this line to trusted in internal/release/keys.go:")
 	fmt.Fprintf(stdout, "\t{ID: %q, Public: %q},\n", pub.ID, pub.Public)
+	fmt.Fprintln(stdout, "and this line to $MkTrustedKeys in tools/install/install.ps1 (in quotes) and trusted_keys in tools/install/install.sh:")
+	fmt.Fprintf(stdout, "\t%s %s\n", pub.ID, pub.Public)
 	return 0
 }
 

@@ -2,7 +2,7 @@
 
 `std.http` is an HTTP/1.1 client and server. The client keeps a pool of connections that every task of a program shares. The server runs one task per connection and calls your handler with each request, either directly or through a table of routes. Use it for web services, web clients and anything that speaks HTTP/1.1. For a plain byte stream use [`std.net`](net.md); for WebSockets, [`std.websocket`](websocket.md), whose server side takes its connections from this module's server.
 
-`std.http` does not import `std.tls`. A client speaks `https`, and a server TLS, when its settings name a connector from [`std.tls`](tls.md), so `import std.tls` is the opt-in. Read the [library guide](README.md) first.
+`std.http` does not import `std.tls`. A client speaks `https`, and a server TLS, when its settings name a connector from [`std.tls`](tls.md), so `import std.tls` is the opt-in. `std.http` is Stable, but `https` and a TLS server are [Experimental](README.md#a-stable-module-over-an-experimental-one) as long as `std.tls` is. Read the [library guide](README.md) first.
 
 ```mk
 // verdict: parse
@@ -207,7 +207,7 @@ Every function fails with members of one error set, `http.Error`:
 
 - The server gives each connection one arena from the heap, reset after each response. The request, its fields and its body live there, and the response copies what the handler gives it there. A connection's read and write buffers are on its task's stack.
 - A client's pooled connections live on the process heap, so a pooled connection outlives every request's arena. `Client.Do` puts the reply's head, fields and read buffer in the arena you pass, and that arena holds the connection until the `Exchange` ends.
-- `Client.Fetch` and `ReadRequest` read a body into a buffer that grows as its bytes arrive, so a declared length commits no memory before its bytes come. The outgrown buffers stay in the arena. A body with a `Content-Length` of n bytes takes up to about 3n of it through `ReadRequest` and the server. A reply body takes up to about 4n (at least 16 KiB) through `Client.Fetch`, which grows its buffer without the declared length. A chunked request body grows its buffer by at most one chunk at a time, so its arena use and copying grow with the square of its number of chunks.
+- `Client.Fetch` and `ReadRequest` read a body into a buffer that grows as its bytes arrive, so a declared length commits no memory before its bytes come. The outgrown buffers stay in the arena. A body with a `Content-Length` of n bytes takes up to about 3n of it through `ReadRequest` and the server. A reply body takes up to about 4n (at least 16 KiB) through `Client.Fetch`, which grows its buffer without the declared length. A chunked request body of n bytes, whose size is not known before its end, takes up to about 4n (at least 16 KiB), as a reply body does.
 - `Client`, `Exchange` and `Taken` own a connection or a pool and do not implement `Free`. End them with their own `Close` or `Abandon`, which take no allocator. A container of them is released with `FreeEach`.
 - Each function's doc states its cost; most are O(bytes sent and read).
 
@@ -916,15 +916,15 @@ chunked body. Use it to read requests from a stream of your own; Serve
 and ServeWith read theirs the same way. O(n) in the request's bytes;
 the head and the body are allocated in a. A Content-Length body takes
 buffers of 16 KiB and then doubling, up to about three times its size;
-a chunked body grows by at most one chunk per buffer, so its cost grows
-with the square of its number of chunks. The request's fields are views
-of its head in a.
+a chunked body, whose size is not known before its end, the same up to
+about four times its size (at least 16 KiB). The request's fields are
+views of its head in a.
 
 The head is read one line per Reader.Until, from the reader's buffer,
 never a byte past the head's blank line, so no byte of a pipelined next
 request is taken. The body grows into a buffer as its bytes arrive
-(a Content-Length body from 16 KiB, doubling), so a declared length
-commits no memory before its bytes come.
+(from 16 KiB, doubling), so a declared length or chunk size commits no
+memory before its bytes come.
 
 Errors: limit bounds the head plus the body's bytes, and one byte over
 is TooLarge. End of input before the first byte is Closed, and end

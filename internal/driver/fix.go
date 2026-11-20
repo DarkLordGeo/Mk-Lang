@@ -118,6 +118,9 @@ func (s *Session) Fix(opt FixOptions) (*FixResult, error) {
 			out.Stopped = "round bound"
 			break
 		}
+		// A clause fix is written only when mk check would label it
+		// proven: its callers' errors, followed, must end in progress.
+		cur.verifyFixes(res, ov, cfg, &res, maxVerify, true)
 		cands := s.provenFixes(res, ov)
 		// Once std has removed fs.Info's 1.1 fields, their reads are
 		// E0203; their rewrite is proven by this loop's recompile.

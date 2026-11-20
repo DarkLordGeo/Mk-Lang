@@ -6,6 +6,7 @@
 // dev and release, with the counting heap.
 
 import std.core
+import std.mem
 import std.net
 import std.raw
 
@@ -204,6 +205,56 @@ test "GrowFor never commits more than the bytes still to come" (sys: &System) {
     Assert(b2.Len() == 15)
     b3 := try GrowFor(&ar, "".AsBytes(), 7)
     Assert(b3.Len() == 7)
+}
+
+// ThChunks is a chunked POST of n one-byte chunks, made as it is read:
+// ThChunkHead, then "1\r\nx\r\n" n times, then "0\r\n\r\n". pos is the
+// next byte's offset.
+struct ThChunks {
+    n: int
+    pos: raw.Atomic[i64]
+}
+
+const ThChunkHead: str = "POST /up HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+ThChunksFill(s: &ThChunks, io: Io, dst: mut []u8): ReadError!int {
+    head := ThChunkHead.AsBytes()
+    one := "1\r\nx\r\n".AsBytes()
+    last := "0\r\n\r\n".AsBytes()
+    total := head.Len() + s.n * one.Len() + last.Len()
+    var p := Trunc[int](s.pos.Load())
+    var k := 0
+    for k < dst.Len() && p < total {
+        dst[k] = if p < head.Len() {
+            head[p]
+        } else if p < head.Len() + s.n * one.Len() {
+            one[(p - head.Len()) % one.Len()]
+        } else {
+            last[p - head.Len() - s.n * one.Len()]
+        }
+        k += 1
+        p += 1
+    }
+    s.pos.Store(i64(p))
+    return k
+}
+
+const ThChunksReads = core.ReadPort[ThChunks].New(ThChunksFill)
+
+test "ReadRequest's arena use for a chunked body of many small chunks is linear in the body" (sys: &System) {
+    // Past two doublings of the body's buffer (16, 32, then 64 KiB).
+    n := 40000
+    c := mem.Counting.New(sys.heap.Alloc())
+    var ar := try Arena.NewIn(c.Alloc())
+    defer ar.Free()
+    src := ThChunks(n: n, pos: raw.Atomic[i64].New(0))
+    var rb: [256]u8 = [0; 256]
+    var r := (&ThChunksReads).Reader(sys.io, &src, mut rb[..])
+    req := try ReadRequest(&ar, sys.io, mut r, 1 << 20)
+    Assert(req.body.Len() == n && req.body[0] == 120 && req.body[n - 1] == 120)
+    // The body's buffer doubles from BodyStep, so the arena holds a few
+    // times the body; one chunk more per buffer would be n * n / 2 bytes.
+    Assert(c.Peak() > n && c.Peak() < 8 * n)
 }
 
 // The serving path over a real loopback connection: Conn,

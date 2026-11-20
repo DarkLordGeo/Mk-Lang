@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	register(command{"toolchain", "toolchain list | use <version> | remove <version>   the installed versions and current", runToolchain})
+	register(command{"toolchain", "toolchain list | use <version> | remove <version>   the installed versions and current; needs a published release (0.1.0 or later)", runToolchain})
 }
 
 func runToolchain(args []string, stdout, stderr io.Writer) int {

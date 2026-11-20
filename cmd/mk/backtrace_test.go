@@ -101,13 +101,101 @@ func TestBacktrace(t *testing.T) {
 				if got != first+"backtrace: frame pointers were off\n" {
 					t.Errorf("%v: stderr %q, want the report's line and the frame-pointers line", args, got)
 				}
-			} else if !strings.HasPrefix(got, first+"backtrace:\n  Third (main.mk)\n  Second (main.mk)\n  First (main.mk)\n  Main (main.mk)\n") {
-				t.Errorf("%v: stderr\n%s\nwant the report's line, then Third, Second, First and Main", args, got)
+			} else if got != first+"backtrace:\n  Third (main.mk)\n  Second (main.mk)\n  First (main.mk)\n  Main (main.mk)\n" {
+				// Nothing below Main: not its report wrapper, the support
+				// routines (an address each) or std.task's start.
+				t.Errorf("%v: stderr\n%s\nwant the report's line, then Third, Second, First and Main, and no frame below Main", args, got)
 			}
 			if plain := runPanic(t, dir, "plain"+name, args, "MK_BACKTRACE=0"); plain != first {
 				t.Errorf("%v with MK_BACKTRACE=0: stderr %q, want %q", args, plain, first)
 			}
 		}
+	}
+}
+
+// btTask panics in a spawned task, and its test panics two frames deep.
+const btTask = `Get(xs: []int, i: int, out: mut int) {
+    *out = xs[i]
+}
+
+Div(a: int, b: int): int {
+    return a / b
+}
+
+export Main(sys: &System): WriteError!void {
+    xs := [1, 2, 3]
+    var v := 0
+    scope s := sys.io.Scope() {
+        s.go Get(xs[..], sys.args.Len() + 5, mut v)
+    }
+    try sys.Print("{v}\n", (v,))
+}
+
+test "divides by zero" {
+    var z := 0
+    _ = Div(1, z)
+}
+`
+
+// btStdTask panics inside std.task: a scope with a task limit of 0.
+const btStdTask = `Nop() {
+}
+
+Run(sys: &System, n: int) {
+    scope s := sys.io.ScopeWith(Limits(tasks: n, stack: StackSize.Default)) {
+        s.go Nop()
+    }
+}
+
+export Main(sys: &System) {
+    Run(sys, sys.args.Len() - 1)
+}
+`
+
+// btStdColl panics inside std.coll: a Bitset index out of range.
+const btStdColl = `import std.coll
+
+Use(sys: &System, i: int): OutOfMemory!void {
+    var b := try coll.Bitset.New(sys.arena, 8)
+    b.Set(i)
+}
+
+export Main(sys: &System): OutOfMemory!void {
+    try Use(sys, sys.args.Len() + 20)
+}
+`
+
+// TestBacktraceTaskAndTest: a spawned task's backtrace ends at the task's
+// function, a panic inside std keeps std's frames above the user's, and
+// in mk test a test's frame is named as the test, with the
+// runner's Main left out; neither prints an address.
+func TestBacktraceTaskAndTest(t *testing.T) {
+	dir := t.TempDir()
+	writeTree(t, dir, map[string]string{"main.mk": btTask})
+	const task = "panic: bounds at main.mk:2:12\nbacktrace:\n  Get (main.mk)\n"
+	// A dev build: release inlines Get into the spawn's thunk, which has
+	// no site, so only the site line names main.mk there.
+	if got := runPanic(t, dir, "task", nil, "MK_BACKTRACE="); got != task {
+		t.Errorf("stderr\n%s\nwant\n%s", got, task)
+	}
+	// A panic inside std keeps std's frames and the user frames that
+	// called them; std.task's (Enter, a scope's) is above Run, so it is no
+	// part of the start. The std site's line is not compared.
+	for _, c := range []struct{ name, src, want string }{
+		{"taskpan", btStdTask, "backtrace:\n  std/task/scope.mk\n  Run (main.mk)\n  Main (main.mk)\n"},
+		{"stdpan", btStdColl, "backtrace:\n  std/coll/bitset.mk\n  std/coll/bitset.mk\n  Use (main.mk)\n  Main (main.mk)\n"},
+	} {
+		d := t.TempDir()
+		writeTree(t, d, map[string]string{"main.mk": c.src})
+		got := runPanic(t, d, c.name, nil, "MK_BACKTRACE=")
+		if i := strings.Index(got, "backtrace:"); i < 0 || got[i:] != c.want {
+			t.Errorf("%s: stderr\n%s\nwant it to end\n%s", c.name, got, c.want)
+		}
+	}
+	st, out, errOut := mk("test", dir)
+	const want = "    backtrace:\n      Div (main.mk)\n      test \"divides by zero\" (main.mk)\n0 passed, 1 failed"
+	if st != 1 || !strings.Contains(out, want) || strings.Contains(out, "0x") {
+		t.Errorf("mk test: status %d, stdout\n%s%s\nwant status 1 and\n%s", st, out, errOut, want)
 	}
 }
 

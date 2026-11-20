@@ -3,7 +3,9 @@
 // must be pinned.
 // What: SIM-Accept-Peer: natively the accepted stream names the dialler;
 // under a Sim, a Recorder over the native Io and its Replayer it has no
-// peer (the zero Addr, Conn.PeerAddr none). Helper PeerRun.
+// peer (the zero Addr, Conn.PeerAddr none). SIM-Dial-Unknown: a host the
+// Sim does not know is InvalidAddress to net.Dial, as to net.Resolve.
+// Helper PeerRun.
 // How: PeerRun dials and accepts once on each Io and codes what the
 // accepted stream reports. Run by mk test --std=std.sim.
 
@@ -75,4 +77,21 @@ test "SIM-Accept-Peer natively an accepted stream names the dialler; under a Sim
     Assert(PeerRun(sys.arena, rp.Io()) == 2)
     Assert(!rp.Diverged())
     rp.Free()
+}
+
+test "SIM-Dial-Unknown net.Dial of a host name the Sim does not know is InvalidAddress, as net.Resolve reports it" (sys: &System) {
+    var s := Sim.New(sys.arena, 7) else {
+        Assert(false)
+        return
+    }
+    defer s.Free()
+    c := net.Dial(s.Io(), "nowhere.test:80") else e {
+        Assert(match e {
+            net.InvalidAddress { true }
+            _ { false }
+        })
+        return
+    }
+    c.Close()
+    Assert(false)
 }

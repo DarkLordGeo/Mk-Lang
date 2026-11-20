@@ -122,8 +122,9 @@ export Args(g: mut Gen, t: Type) {
     }
     EmitParse(g, t, fs, npos == 1)
     text := UsageText(&*g, fs)
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
-        $(t.Name()).Usage(w: mut Writer): WriteError!void {
+        $pub $(t.Name()).Usage(w: mut Writer): WriteError!void {
             try w.Str($(g.Str(text)))
         }
     })
@@ -331,8 +332,9 @@ EmitParse(g: mut Gen, t: Type, fs: []Field, takes_pos: bool) {
             }
         }
     }
+    pub := if t.Exported() { quote { export } } else { quote {} } // export as T is
     g.Emit(quote {
-        $(t.Name()).Parse(a: &Arena, args: []str): cli.Error!$(t.Name()) from a, args {
+        $pub $(t.Name()).Parse(a: &Arena, args: []str): cli.Error!$(t.Name()) from a, args {
             $decls
             var $rest := false
             var $i := 0
