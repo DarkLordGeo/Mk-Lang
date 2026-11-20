@@ -2,11 +2,11 @@
 # Why: a Linux or macOS user needs one command that installs a released Mk
 # toolchain, signed by the project, without root, Go or LLVM.
 #
-# What: installs the Mk toolchain on x86_64 Linux and on Apple silicon
-# Macs. On an Intel Mac it installs nothing and says how to build mk from
-# source, since releases carry no Intel Mac archive yet. POSIX sh with curl or wget, sha256sum or shasum, and
-# OpenSSL 3 or later or Perl (for the signature): what macOS ships is
-# enough.
+# What: installs the Mk toolchain on x86_64 and AArch64 Linux and on
+# Apple silicon Macs. On an Intel Mac it installs nothing and says how to
+# build mk from source, since releases carry no Intel Mac archive yet.
+# POSIX sh with curl or wget, sha256sum or shasum, and OpenSSL 3 or later
+# or Perl (for the signature): what macOS ships is enough.
 #   curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh
 #   sh install.sh [--version 0.1.0] [--root <dir>] [--releases <address>] [--no-modify-path]
 #
@@ -129,7 +129,7 @@ https://*) ;;
 *) loopback "$releases" || die "the release address $releases is not https" ;;
 esac
 
-# The host's archive: x86_64 Linux or Apple silicon macOS. x86_64-macos is
+# The host's archive: x86_64 or AArch64 Linux, or Apple silicon macOS. x86_64-macos is
 # named here so an Intel Mac gets its own refusal below.
 os=$(uname -s)
 arch=$(uname -m)
@@ -138,6 +138,7 @@ case "$os" in
 Linux)
 	case "$arch" in
 	x86_64 | amd64) host=x86_64-linux ;;
+	aarch64 | arm64) host=aarch64-linux ;;
 	esac
 	;;
 Darwin)
@@ -157,7 +158,7 @@ esac
 # A host for tests, taken only with a loopback release address.
 if [ -n "${MK_INSTALL_HOST:-}" ] && loopback "$releases"; then
 	case "$MK_INSTALL_HOST" in
-	x86_64-linux | x86_64-macos | aarch64-macos) host=$MK_INSTALL_HOST ;;
+	x86_64-linux | aarch64-linux | x86_64-macos | aarch64-macos) host=$MK_INSTALL_HOST ;;
 	*) die "MK_INSTALL_HOST=$MK_INSTALL_HOST is not a host install.sh installs" ;;
 	esac
 fi
@@ -168,7 +169,7 @@ if [ -z "$host" ]; then
 	case "$os" in
 	MINGW* | MSYS* | CYGWIN*) die "on Windows, install with install.ps1" ;;
 	esac
-	die "releases carry no archive for $os $arch (only x86_64 Linux, x86_64 Windows and Apple silicon macOS); build mk from source"
+	die "releases carry no archive for $os $arch (only x86_64 and AArch64 Linux, x86_64 Windows and Apple silicon macOS); build mk from source"
 fi
 
 file_url() { # version file

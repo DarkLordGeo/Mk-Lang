@@ -72,11 +72,12 @@ func TestVersions(t *testing.T) {
 	if ArchiveName("0.3.0", HostWindows) != "mk-0.3.0-x86_64-windows.zip" || ArchiveName("0.3.0", HostLinux) != "mk-0.3.0-x86_64-linux.tar.gz" {
 		t.Error("archive names")
 	}
-	if ArchiveName("0.3.0", HostMacOS) != "mk-0.3.0-x86_64-macos.tar.gz" || ArchiveName("0.3.0", HostMacOSARM64) != "mk-0.3.0-aarch64-macos.tar.gz" {
+	if ArchiveName("0.3.0", HostMacOS) != "mk-0.3.0-x86_64-macos.tar.gz" || ArchiveName("0.3.0", HostMacOSARM64) != "mk-0.3.0-aarch64-macos.tar.gz" ||
+		ArchiveName("0.3.0", HostLinuxARM64) != "mk-0.3.0-aarch64-linux.tar.gz" {
 		t.Error("macOS archive names")
 	}
 	for _, n := range []string{"SHA256SUMS", "mk-0.3-x86_64-linux.tar.gz", "mk-0.3.0-x86_64-linux.zip", "mk-0.3.0-arm64-linux.tar.gz",
-		"mk-0.3.0-aarch64-linux.tar.gz", "mk-0.3.0-aarch64-macos.zip", "mk-0.3.0-arm64-macos.tar.gz", "mk-0.3.0-x86_64-darwin.tar.gz"} {
+		"mk-0.3.0-aarch64-macos.zip", "mk-0.3.0-arm64-macos.tar.gz", "mk-0.3.0-x86_64-darwin.tar.gz", "mk-0.3.0-aarch64-linux.zip"} {
 		if _, _, ok := ParseArchiveName(n); ok {
 			t.Errorf("ParseArchiveName(%s) accepted", n)
 		}
@@ -90,7 +91,7 @@ func TestVersions(t *testing.T) {
 	for _, c := range []struct{ goos, goarch, host string }{
 		{"windows", "amd64", HostWindows}, {"linux", "amd64", HostLinux},
 		{"darwin", "amd64", HostMacOS}, {"darwin", "arm64", HostMacOSARM64},
-		{"linux", "arm64", ""}, {"windows", "arm64", ""}, {"freebsd", "amd64", ""},
+		{"linux", "arm64", HostLinuxARM64}, {"linux", "386", ""}, {"windows", "arm64", ""}, {"freebsd", "amd64", ""},
 	} {
 		if got := HostOf(c.goos, c.goarch); got != c.host {
 			t.Errorf("HostOf(%s, %s) = %q, want %q", c.goos, c.goarch, got, c.host)

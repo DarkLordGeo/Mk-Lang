@@ -5,8 +5,8 @@
 # What: one release bundle, mk-<version>-<host>.zip or .tar.gz, built on the
 # runner image `os`: a release build of mk, clang, lld and clang's headers,
 # LLVM's licence and the documentation (tools/release build), unpacked and
-# run once. The hosts are x86_64 Windows and Linux and aarch64 macOS, each
-# with LLVM's official release binaries. There is no x86_64 macOS bundle:
+# run once. The hosts are x86_64 Windows, x86_64 and aarch64 Linux and
+# aarch64 macOS, each with LLVM's official release binaries. There is no x86_64 macOS bundle:
 # LLVM publishes no Intel macOS binaries, and Homebrew's link against its
 # own shared libraries. It uploads the bundle as the artifact bundle-<host>
 # and outputs its file name and SHA-256.
@@ -50,6 +50,7 @@ env:
   # GitHub's API reports for llvmorg-21.1.8.
   LLVM_WIN64_SHA256: 7a5386c26497db1691f320121e5b113364dd0274b98e55f15f4dbc00c0450113
   LLVM_LINUX_SHA256: b3b7f2801d15d50736acea3c73982994d025b01c2f035b91ae3b49d1b575732b
+  LLVM_LINUX_ARM64_SHA256: 65ce0b329514e5643407db2d02a5bd34bf33d159055dafa82825c8385bd01993
   LLVM_MACOS_ARM64_SHA256: b95bdd32a33a81ee4d40363aaeb26728a26783fcef26a4d80f65457433ea4669
   # SHA-256 of llvm/LICENSE.TXT at llvmorg-21.1.8, the licence every bundle
   # carries as LICENSE-LLVM.txt.
@@ -89,6 +90,7 @@ jobs:
           case "$RUNNER_OS/$RUNNER_ARCH" in
             Windows/X64) host=x86_64-windows ext=zip ;;
             Linux/X64) host=x86_64-linux ext=tar.gz ;;
+            Linux/ARM64) host=aarch64-linux ext=tar.gz ;;
             macOS/ARM64) host=aarch64-macos ext=tar.gz ;;
             *) echo "::error::releases carry no bundle for $RUNNER_OS $RUNNER_ARCH"; exit 1 ;;
           esac
@@ -170,17 +172,20 @@ jobs:
           esac
           echo "LLVM_DIR=C:\\Program Files\\LLVM" >> "$GITHUB_ENV"
 
-      # LLVM's official Linux binaries. The distribution packages link
-      # clang and lld against shared LLVM libraries that a user's machine
-      # may not have; these do not. Only the parts a bundle carries are
-      # unpacked.
+      # LLVM's official Linux binaries, X64 or ARM64 as the runner is. The
+      # distribution packages link clang and lld against shared LLVM
+      # libraries that a user's machine may not have; these do not. Only
+      # the parts a bundle carries are unpacked.
       - name: LLVM (Linux)
         if: runner.os == 'Linux'
         run: |
           cd "$RUNNER_TEMP"
-          name="LLVM-$LLVM_VERSION-Linux-X64"
+          name="LLVM-$LLVM_VERSION-Linux-X64" sum="$LLVM_LINUX_SHA256"
+          if [ "$RUNNER_ARCH" = ARM64 ]; then
+            name="LLVM-$LLVM_VERSION-Linux-ARM64" sum="$LLVM_LINUX_ARM64_SHA256"
+          fi
           curl -fsSL --retry 3 -o llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-$LLVM_VERSION/$name.tar.xz"
-          echo "$LLVM_LINUX_SHA256  llvm.tar.xz" | sha256sum -c -
+          echo "$sum  llvm.tar.xz" | sha256sum -c -
           major="${LLVM_VERSION%%.*}"
           # bin/clang is a link to bin/clang-<major>.
           tar -xJf llvm.tar.xz "$name/bin/clang" "$name/bin/clang-$major" "$name/bin/lld" "$name/lib/clang/$major/include"

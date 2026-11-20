@@ -4,8 +4,8 @@
 // What: the hosts (Hosts, HostOf), TopDir, ArchiveName and ParseArchiveName; Version with
 // ParseVersion, String and Compare; Base, the compiled-in release address.
 //
-// How: the hosts are x86_64 Windows and Linux and both macOS
-// architectures; an archive is mk-<version>-<host>.zip on Windows and
+// How: the hosts are x86_64 Windows, x86_64 and aarch64 Linux and both
+// macOS architectures; an archive is mk-<version>-<host>.zip on Windows and
 // .tar.gz elsewhere; a version is Major.Minor.Patch with an optional pre-release
 // suffix, which sorts before its release.
 
@@ -33,12 +33,13 @@ const (
 const (
 	HostWindows    = "x86_64-windows"
 	HostLinux      = "x86_64-linux"
+	HostLinuxARM64 = "aarch64-linux"
 	HostMacOS      = "x86_64-macos"  // Intel Macs
 	HostMacOSARM64 = "aarch64-macos" // Apple silicon
 )
 
 // Hosts lists every host a release has an archive for.
-var Hosts = []string{HostWindows, HostLinux, HostMacOS, HostMacOSARM64}
+var Hosts = []string{HostWindows, HostLinux, HostLinuxARM64, HostMacOS, HostMacOSARM64}
 
 // HostOf is the release host of a Go GOOS and GOARCH, or "" when releases
 // carry no archive for it.
@@ -48,6 +49,8 @@ func HostOf(goos, goarch string) string {
 		return HostWindows
 	case "linux/amd64":
 		return HostLinux
+	case "linux/arm64":
+		return HostLinuxARM64
 	case "darwin/amd64":
 		return HostMacOS
 	case "darwin/arm64":

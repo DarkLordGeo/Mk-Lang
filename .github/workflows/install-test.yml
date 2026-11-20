@@ -1,11 +1,11 @@
 # Why: a published release must install the way README.md says, on every
 # host it ships a bundle for, from the release page and nothing else.
 #
-# What: run by hand after a release is published. On Windows, Linux and an
-# Apple silicon Mac, the one-line installer of README.md installs the
-# release (the newest one, or the version given), and the installed mk
-# builds and runs a hello program. On an Intel Mac the installer must
-# refuse and install nothing.
+# What: run by hand after a release is published. On Windows, x86_64 and
+# AArch64 Linux and an Apple silicon Mac, the one-line installer of
+# README.md installs the release (the newest one, or the version given),
+# and the installed mk builds and runs a hello program. On an Intel Mac
+# the installer must refuse and install nothing.
 #
 # How: GitHub-hosted runners, read-only, no secrets, no checkout: the
 # scripts come from the release itself, as a user gets them. The installer
@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-15]
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:

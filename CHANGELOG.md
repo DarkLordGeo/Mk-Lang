@@ -2,6 +2,12 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## 0.2.1 (2026-11-20)
+
+### Platforms
+
+- Releases carry an AArch64 Linux bundle, `mk-<version>-aarch64-linux.tar.gz`, with LLVM's official ARM64 Linux build; `install.sh` and `mk upgrade` pick it on an AArch64 Linux machine.
+
 ## 0.2.0 (2026-11-20)
 
 ### Targets

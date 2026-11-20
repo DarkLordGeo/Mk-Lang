@@ -100,7 +100,7 @@ A release bundle holds mk, the clang and lld it was tested with, and the documen
 irm https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.ps1 | iex
 ```
 
-On x86_64 Linux and on Apple silicon Macs, in a terminal (the macOS bundle needs macOS 14 Sonoma or later and is tested on macOS 15):
+On Linux (x86_64 or AArch64) and on Apple silicon Macs, in a terminal (the macOS bundle needs macOS 14 Sonoma or later and is tested on macOS 15):
 
 ```sh
 curl -fsSL https://github.com/zerodayokay/Mk-Lang/releases/latest/download/install.sh | sh
@@ -165,7 +165,7 @@ export MK_LLVM=~/.local/llvm-21/bin      # add this line to ~/.zprofile too
 
 ## Platforms
 
-Mk builds programs for Windows and Linux on x86-64, for Linux on AArch64 (built and run natively on GitHub's ARM runner), for macOS 13 or later on Apple silicon and Intel, and for freestanding x86-64 (no operating system). Releases carry a bundle for Windows and Linux on x86-64 and for Apple silicon Macs; on an Intel Mac or AArch64 Linux, [build mk from source](#building-from-source). [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
+Mk builds programs for Windows and Linux on x86-64, for Linux on AArch64 (tested natively on GitHub's ARM runner), for macOS 13 or later on Apple silicon and Intel, and for freestanding x86-64 (no operating system). Releases carry a bundle for Windows on x86-64, for Linux on x86-64 and AArch64, and for Apple silicon Macs; on an Intel Mac, [build mk from source](#building-from-source). [Targets](doc/reference.md#targets) lists every target and what `mk check` and `mk build` do on each.
 
 ## Contributing
 
