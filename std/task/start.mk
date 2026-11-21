@@ -26,6 +26,13 @@ import std.sys
 // with tasks.
 const MainStackBytes: int = 16 << 20
 
+// StartCommit is how much of carrier 0's Windows stack Start commits at its
+// top (64 KiB). A fault there, as in an extern Main calls, needs the room
+// below for the exception frame the kernel writes; with one page committed
+// that frame passed the guard page on hosts with CET shadow stacks, whose
+// frame is larger, and the process died before any handler ran.
+const StartCommit: int = 64 << 10
+
 const TaskStateBytes: int = 65536
 const BucketBytes: int = 4096 * 64
 
@@ -227,10 +234,11 @@ export Start(sp: *u8): never {
         // With no task, Main runs on this stack instead of a Large
         // slot, so it is a Large slot's size on both targets, and how deep
         // Main may recurse does not depend on whether the program
-        // has tasks. On Windows it is mapped as a fresh slot is (Prepare):
-        // the top page committed, a PAGE_GUARD page below it, and the TEB's
-        // stack words in the context, so the kernel grows it on touch and
-        // reports EXCEPTION_STACK_OVERFLOW at its bottom.
+        // has tasks. On Windows it is mapped as a fresh slot is (Prepare),
+        // but with StartCommit committed at the top: then a PAGE_GUARD page
+        // below it, and the TEB's stack words in the context, so the kernel
+        // grows it on touch and reports EXCEPTION_STACK_OVERFLOW at its
+        // bottom.
         size := if rt.UsesTasks() { SystemStackSize } else { MainStackBytes }
         ps := sys.PageSize()
         g := if ps > 4096 { ps } else { 4096 }
@@ -244,8 +252,8 @@ export Start(sp: *u8): never {
         var to: Context = [0; 8]
         unsafe "base is a fresh reservation of size + 4 KiB" {
             if Target.os == Os.Windows {
-                top := raw.FromAddr[u8](boot.hi - 4096)
-                if !sys.Commit(top, 4096) || !sys.GuardPage(raw.Offset(top, -4096)) {
+                top := raw.FromAddr[u8](boot.hi - Trunc[uint](StartCommit))
+                if !sys.Commit(top, StartCommit) || !sys.GuardPage(raw.Offset(top, -4096)) {
                     rt.Fatal("cannot reserve task stacks")
                 }
             } else if !sys.CommitStack(raw.Offset(base, g), size) {
@@ -258,7 +266,7 @@ export Start(sp: *u8): never {
                 // StackBase, StackLimit, DeallocationStack and
                 // GuaranteedStackBytes, as Context1 sets a task's.
                 to[1] = u64(boot.hi)
-                to[2] = u64(boot.hi - 4096)
+                to[2] = u64(boot.hi - Trunc[uint](StartCommit))
                 to[3] = u64(raw.Addr(base))
                 to[4] = TaskGuarantee
             }
