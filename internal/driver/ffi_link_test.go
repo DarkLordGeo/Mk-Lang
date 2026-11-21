@@ -294,7 +294,7 @@ var helloLinkGolden = map[string]string{
 
 // Hello world's import table from before links existed (kernel32.dll
 // only), dev and release, read with llvm-readobj --coff-imports from the
-// mk build of tag v1.1.0.
+// mk build of tag v1.1.0, with TerminateProcess since (sys.FatalExit).
 var (
 	helloImportsDev = []string{"AddVectoredExceptionHandler", "CloseHandle", "CreateEventW", "CreateFileW", "CreateSemaphoreW",
 		"DeleteFileW", "ExitProcess", "FreeEnvironmentStringsW", "GetCommandLineW", "GetConsoleMode", "GetCurrentProcessId",
@@ -303,13 +303,14 @@ var (
 		"GetNamedPipeInfo", "GetOverlappedResult", "GetStdHandle", "MoveFileExW", "QueryPerformanceCounter",
 		"QueryPerformanceFrequency", "ReadFile", "RemoveDirectoryW", "RtlLookupFunctionEntry", "RtlVirtualUnwind",
 		"SetFileInformationByHandle", "SetFilePointerEx", "SetThreadStackGuarantee", "SetUnhandledExceptionFilter", "Sleep",
-		"SwitchToThread", "VirtualAlloc", "VirtualFree", "WaitForSingleObject", "WriteConsoleW", "WriteFile"}
+		"SwitchToThread", "TerminateProcess", "VirtualAlloc", "VirtualFree", "WaitForSingleObject", "WriteConsoleW",
+		"WriteFile"}
 	helloImportsRelease = []string{"AddVectoredExceptionHandler", "CloseHandle", "CreateEventW", "CreateSemaphoreW",
 		"ExitProcess", "FreeEnvironmentStringsW", "GetCommandLineW", "GetConsoleMode", "GetCurrentThreadId",
 		"GetCurrentThreadStackLimits", "GetEnvironmentStringsW", "GetFileType", "GetLastError", "GetModuleHandleW",
 		"GetNamedPipeInfo", "GetOverlappedResult", "GetStdHandle", "ReadFile", "RtlLookupFunctionEntry", "RtlVirtualUnwind",
 		"SetFilePointerEx", "SetThreadStackGuarantee", "SetUnhandledExceptionFilter", "Sleep", "SwitchToThread",
-		"VirtualAlloc", "VirtualFree", "WaitForSingleObject", "WriteConsoleW", "WriteFile"}
+		"TerminateProcess", "VirtualAlloc", "VirtualFree", "WaitForSingleObject", "WriteConsoleW", "WriteFile"}
 )
 
 // normLinkArg is one link argument with its paths replaced as the golden

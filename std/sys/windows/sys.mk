@@ -192,6 +192,22 @@ export Exit(code: i32): never {
     }
 }
 
+/// FatalExit ends the process with code after a panic or fault report:
+/// TerminateProcess on the current process, so no DLL's detach runs. A
+/// report may run on the last bytes of an overflowed stack, and ExitProcess
+/// runs every loaded DLL's detach there (KernelBase's records feature usage
+/// in a 4 KiB frame on some hosts), which faults past the stack's end.
+/// Never returns; allocates nothing.
+export FatalExit(code: i32): never {
+    unsafe "a kernel32 call that passes no memory, only values and handles" {
+        for {
+            // The current process's pseudo-handle (-1), as GetCurrentProcess
+            // returns it, without that import in every program.
+            _ = TerminateProcess(0xFFFF_FFFF_FFFF_FFFF, Trunc[u32](code))
+        }
+    }
+}
+
 /// Pid is the process id.
 /// O(1); allocates nothing.
 export Pid(): u64 {

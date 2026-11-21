@@ -206,6 +206,12 @@ export Pid(): u64 {
     return 0
 }
 
+/// FatalExit ends the process with code after a panic or fault report: Exit
+/// (Windows' runs no DLL detach). Never returns; allocates nothing.
+export FatalExit(code: i32): never {
+    Exit(code)
+}
+
 /// ThreadId has std/sys/linux's contract; this placeholder returns `0`.
 /// O(1); allocates nothing.
 export ThreadId(): u64 {

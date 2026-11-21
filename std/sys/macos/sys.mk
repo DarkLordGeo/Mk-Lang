@@ -199,6 +199,12 @@ export Exit(code: i32): never {
     }
 }
 
+/// FatalExit ends the process with code after a panic or fault report: Exit
+/// (Windows' runs no DLL detach). Never returns; allocates nothing.
+export FatalExit(code: i32): never {
+    Exit(code)
+}
+
 /// Pid is the process id.
 /// O(1); allocates nothing.
 export Pid(): u64 {

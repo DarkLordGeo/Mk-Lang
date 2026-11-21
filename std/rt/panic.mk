@@ -143,7 +143,7 @@ export Reporting(site: *Site, a: str, b: str, c: str): never {
                     WriteReport(raw.FromAddr[Site](Trunc[uint](Panics.site.Load())), Kept(0), Kept(1), Kept(2))
                 }
             }
-            sys.Exit(101)
+            sys.FatalExit(101)
         }
         // Another thread reports and exits the process: park for good.
         var s := sys.NewSem()
@@ -180,7 +180,7 @@ export Reporting(site: *Site, a: str, b: str, c: str): never {
     if BacktraceWanted() {
         WriteBacktrace()
     }
-    sys.Exit(101)
+    sys.FatalExit(101)
 }
 
 /// Digits writes n in decimal at buf[at..] and returns the new end

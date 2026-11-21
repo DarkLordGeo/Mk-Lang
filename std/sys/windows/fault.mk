@@ -249,7 +249,7 @@ Report(f: FaultInfo): never {
         }
     }
     FatalWrite("panic: fault\n".AsBytes())
-    Exit(101)
+    FatalExit(101)
 }
 
 // Words reads the exception code, pc, sp and the access address of the
