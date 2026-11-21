@@ -3,8 +3,8 @@
 // text without allocating.
 //
 // What: str.Len and str.AsBytes (intrinsics), Byte, Find, Has, StartsWith,
-// EndsWith, Trim, Split, Lines, Words and Scalars, and the helpers FindFrom,
-// TwoWay, MaxSuffix, BytesEqual, SpaceAt and LoadWord.
+// EndsWith, Trim, Split, SplitOnce, Lines, Words and Scalars, and the helpers
+// FindFrom, TwoWay, MaxSuffix, BytesEqual, SpaceAt and LoadWord.
 //
 // How: a one-byte search is IndexByteIn's memchr; a longer one is
 // core_find.mk's vector pair prefilter, handing over to the Two-Way
@@ -106,6 +106,16 @@ export str.Split(self, sep: str): Split from self, sep {
         raw.Fail(8, "str.Split: empty separator")
     }
     return Split(text: self, sep: sep, pos: 0, done: false)
+}
+
+/// The text before and after the first occurrence of sep, or none if absent.
+/// An empty sep gives ("", self). Both views borrow self. O(n + m) in the
+/// worst case for n bytes of text and m bytes of separator. Allocates nothing.
+export str.SplitOnce(self, sep: str): ?(before: str, after: str) from self {
+    i := self.Find(sep) else {
+        return none
+    }
+    return some((before: self[..i], after: self[i + sep.Len()..]))
 }
 
 /// An iterator over the lines, each without its \n or \r\n; a final newline

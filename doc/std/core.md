@@ -94,7 +94,7 @@ A `str` is a view of UTF-8 bytes: it borrows the bytes and never owns them. `Tex
 |---|---|
 | Measure and index | `Len`, `Byte(i)`, `AsBytes`, `s[i..j]` (byte offsets) |
 | Search | `Find`, `Has`, `StartsWith`, `EndsWith` |
-| Cut | `Trim`, `Lines`, `Split`, `Words`, `Scalars` |
+| Cut | `Trim`, `Lines`, `Split`, `SplitOnce`, `Words`, `Scalars` |
 | Build | `Text.New(a)`, then `Push`, `PushChar`, `PushReplaced`; `Replace`, `ToLower`, `ToUpper`, `Arena.Fmt` |
 | Parse | `ParseInt`, `ParseFloat`, `ParseFloatPrefix` |
 | Bytes from outside | `str.From`, `str.FromC`, `Path` |
@@ -104,6 +104,7 @@ A `str` is a view of UTF-8 bytes: it borrows the bytes and never owns them. `Tex
 - `Trim` strips Unicode White_Space at both ends, and `Words` splits on it.
 - `Lines` strips `\n` and `\r\n`. A final newline ends the last line without starting an empty one, and a lone `\r` is kept.
 - `Split` keeps empty pieces: `"a,,b"` gives three, and `""` gives one. An empty separator panics (code 8).
+- `"name=a=b".SplitOnce("=")` gives `some((before: "name", after: "a=b"))`. A missing separator gives `none`. An empty separator matches at the start. Both fields borrow the input, so a temporary separator can go out of scope immediately.
 - `Lines`, `Split`, `Words` and `Scalars` are iterators that borrow the string. Each is O(1) to make and allocates nothing.
 
 **Replacing.** `s.Replace(a, old, new)` returns a copy of `s` in `a` with every match of `old` replaced by `new`. `Text.PushReplaced(s, old, new)` appends the same bytes to a text.
@@ -4753,6 +4754,18 @@ export str.Split(self, sep: str): Split from self, sep
 
 An iterator over the pieces between occurrences of sep, empty pieces kept.
 An empty sep panics here (code 8). O(1); allocates nothing.
+
+### `str.SplitOnce`
+
+```
+export str.SplitOnce(self, sep: str): ?(before: str, after: str) from self
+```
+
+- Flows: The result borrows from self.
+
+The text before and after the first occurrence of sep, or none if absent.
+An empty sep gives ("", self). Both views borrow self. O(n + m) in the
+worst case for n bytes of text and m bytes of separator. Allocates nothing.
 
 ### `str.StartsWith`
 

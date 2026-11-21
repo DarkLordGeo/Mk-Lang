@@ -11277,6 +11277,7 @@ str.StartsWith(self, prefix: str): bool
 str.EndsWith(self, suffix: str): bool
 str.Trim(self): str
 str.Split(self, sep: str): Split from self, sep
+str.SplitOnce(self, sep: str): ?(before: str, after: str) from self
 str.Lines(self): Lines
 str.Words(self): Words
 str.Scalars(self): Scalars
