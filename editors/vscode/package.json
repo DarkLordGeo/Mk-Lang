@@ -2,7 +2,7 @@
   "name": "mk-lang",
   "displayName": "Mk",
   "description": "Mk language support: highlighting, and navigation, hover and diagnostics through mk lsp.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "zerodayokay",
   "license": "MIT",
   "repository": {

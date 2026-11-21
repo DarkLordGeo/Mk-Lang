@@ -2,7 +2,7 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
-## Unreleased
+## 0.3.0 (2026-11-21)
 
 ### Standard library
 
@@ -16,6 +16,10 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 - `TextMap` keeps a key of up to 15 bytes inside its table instead of copying it into memory from the allocator: such a key costs no allocation, and `Remove` and `Free` have no copy of it to give back. Keys of 16 bytes or more are copied as before. Hashes, iteration order, results and the allocator checks (code 12) are unchanged.
 - `hash.Crc32` and `Crc32State` fold 256 bytes at a time with VPCLMULQDQ on 512-bit registers on x86_64 CPUs with AVX-512 and VPCLMULQDQ, from 256 bytes of input; other CPUs keep the 128-bit fold or the table. The checksums are unchanged.
 - A heap block over 1 MiB (a growing `HeapList`, `HeapText` or map buffer, or C `realloc` through `std.libc`) grows in place instead of moving: its reservation spans up to 16 times its first pages (at most 16 GiB more per block, 64 GiB for all blocks together), and growth commits more of it. A list that doubles from a huge block's first size grows in place four times before it moves, instead of copying its elements and touching fresh pages at each growth; once the 64 GiB budget is spent, new blocks reserve no spare and move as before. Virtual size grows with it, also for requests aligned over 4 KiB (100 bytes at an alignment of 8 KiB reserve 2 MiB). On Linux, where `RLIMIT_AS` is finite (`ulimit -v`) when the program starts (it is read once, at heap start), a block reserves only its own pages. On Linux such a block is two mappings, one more against `vm.max_map_count`.
+
+### Fixed
+
+- The borrow checker keeps a view's or allocator's loans on its backing buffer or parent allocator across `Reset` (`Arena.Reset` of an arena from `Arena.NewIn` or `Arena.Sub`, `mem.Fixed.Reset`, `mem.FixedHeap.Reset`, `mem.Fallback.Reset`). Before, `Reset` ended them, so a reset allocator could outlive its buffer's frame or its freed parent, or let the buffer be written while it was still in use. Such programs are now rejected (E0501, E0502, E0503, E0504, E0603).
 
 ### Performance
 
