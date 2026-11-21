@@ -2,6 +2,13 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## 0.3.1 (2026-11-21)
+
+### Fixed
+
+- On Windows, a panic, fault or stack-overflow report ends the process with `TerminateProcess` instead of `ExitProcess`, so no DLL detach code runs on the overflowed thread's stack. Before, on CPUs with hardware-enforced stack protection, a stack overflow could end in an access violation instead of exit code 101.
+- On Windows, the main thread's stack has its top 64 KiB committed at start instead of one page, so a fault taken near the top of the stack is reported. Before, on CPUs with hardware-enforced stack protection, the larger exception frame ran past the guard page and the process died without a report.
+
 ## 0.3.0 (2026-11-21)
 
 ### Standard library
