@@ -131,6 +131,30 @@ test "Split keeps empty pieces" {
     Assert(StrSplitCount("aaaa", "aa") == 3)
 }
 
+test "SplitOnce returns the first split and keeps empty sides" {
+    for c in [(s: "name=a=b", sep: "=", left: "name", right: "a=b"),
+        (s: "aaa", sep: "aa", left: "", right: "a"),
+        (s: "x=", sep: "=", left: "x", right: ""),
+        (s: "=", sep: "=", left: "", right: ""),
+        (s: "abc", sep: "", left: "", right: "abc"),
+        (s: "", sep: "", left: "", right: ""),
+        (s: "é☃尾", sep: "☃", left: "é", right: "尾")] {
+        parts := c.s.SplitOnce(c.sep).Must()
+        Assert(parts.before == c.left && parts.after == c.right)
+    }
+    Assert("abc".SplitOnce("x").IsNone())
+    Assert("".SplitOnce("x").IsNone())
+    Assert("ab".SplitOnce("abc").IsNone())
+}
+
+test "SplitOnce releases the separator" (sys: &System) {
+    var sep := Text.New(sys.arena)
+    try sep.Push("::")
+    parts := "a::b".SplitOnce(sep.Str()).Must()
+    sep.Clear()
+    Assert(parts.before == "a" && parts.after == "b")
+}
+
 test "Lines, Words and Scalars start at the text" {
     Assert(StrLineCount("") == 0)
     Assert(StrWordCount("") == 0)

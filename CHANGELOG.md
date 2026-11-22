@@ -2,6 +2,12 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## Unreleased
+
+### Standard library
+
+- `str.SplitOnce(sep)` returns borrowed views before and after the first match, or `none` if the separator is absent.
+
 ## 0.3.1 (2026-11-21)
 
 ### Fixed
