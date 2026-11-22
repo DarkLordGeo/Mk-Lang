@@ -16,6 +16,7 @@ var surfaceDocs3 = map[string]surfaceDoc{
 	"str.Replace":                {Module: "", Lines: []string{"str.Replace(self, a: &Arena, old: str, new: str): OutOfMemory!str from a"}},
 	"str.Scalars":                {Module: "", Lines: []string{"str.Scalars(self): Scalars"}},
 	"str.Split":                  {Module: "", Lines: []string{"str.Split(self, sep: str): Split from self, sep"}, Notes: []string{"| `str.Split(self, sep: str): Split from self, sep` | `from` names the parameters the result borrows from (section 8)."}},
+	"str.SplitOnce":              {Module: "", Lines: []string{"str.SplitOnce(self, sep: str): ?(before: str, after: str) from self"}},
 	"str.StartsWith":             {Module: "", Lines: []string{"str.StartsWith(self, prefix: str): bool"}},
 	"str.ToLower":                {Module: "", Lines: []string{"str.ToLower(self, a: &Arena): OutOfMemory!str from a"}},
 	"str.ToUpper":                {Module: "", Lines: []string{"str.ToUpper(self, a: &Arena): OutOfMemory!str from a"}},
