@@ -1238,7 +1238,7 @@ The rules for allocators (`Arena`, `Alloc`, `Heap`):
 
 - An allocator the argument holds, directly or on a later step, receives the store. The walk does not go on past it, except into what was stored in its memory.
 - An allocator reached through the loan another allocator holds by its making (a sub-arena's parent, an arena's heap) is skipped, since nothing in the first one lives in it.
-- A store into an allocator drops the loans it holds by being itself, such as a loan of the arena stored into its own memory. So does a store into the memory of an arena that a parameter `a: &Arena` refers to, so `a` need not be declared `into a`.
+- A store into an allocator drops the loans it holds by being itself, such as a loan of the arena stored into its own memory. So does a store into the memory of an arena that a parameter `a: &Arena` refers to, so `a` need not be declared `into a`. With `a` a reference to an allocator, `*a into a` stores the handle's loans, which the allocator holds by its making, into the allocator itself: they are dropped too, so its heap or parent stays skipped.
 - The allocators a parameter reaches are tracked apart from what a `mut` reference or a view beside them reaches, never merged with it.
 
 A view made in an arena and stored next to the arena's own loan is therefore no store of the arena into itself:

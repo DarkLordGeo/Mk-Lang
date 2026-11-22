@@ -283,6 +283,8 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 		own := entryH
 		reads := make([]setID, len(fv.stores))
 		readSh := make([]setID, len(fv.stores))
+		drops := make([]setID, len(fv.stores))
+		dropAt := make([]rootID, len(fv.stores))
 		// Step 2's shallow marks (marks.go): argSh[i] is the shallow part of
 		// argH[i], from argument i's type as passed; a loan steps 3 and 4
 		// add to argH[i] keeps the mark it was stored with (addMarked).
@@ -298,7 +300,7 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 				if p == types.NoParam || x >= len(args) || int(p) > len(args) {
 					continue
 				}
-				if c.storeArg(st, ctx, argH, argSh, own, round, int(p)-1, argH[x], argSh[x], endsRoots, endsStored) {
+				if c.storeArg(st, ctx, argH, argSh, own, round, int(p)-1, argH[x], argSh[x], endsRoots, endsStored, emptySet, noRoot) {
 					grew = true
 				}
 			}
@@ -321,6 +323,18 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 				} else {
 					reads[i] = c.sets.unite(c.behindKeep(st, own[q], alloc), c.sets.minus(argH[q], own[q]))
 				}
+				drops[i], dropAt[i] = emptySet, noRoot
+				if !alloc && int(s.Into) <= len(args) {
+					// `*a into a`, a and p both references to the same one
+					// allocator: what the handle holds is what the allocator
+					// holds by its making (its heap's loan, a sub-arena's
+					// parent's), and a store into an allocator drops the
+					// loans it holds by being itself. The drop applies to the
+					// store into that allocator alone (storeArg).
+					if r := c.handleOf(own[q]); r != noRoot && r == c.handleOf(own[s.Into-1]) {
+						drops[i], dropAt[i] = c.allocMaking(st, r), r
+					}
+				}
 				if c.referentShallow(args[q], reads[i]) {
 					// `*q into p` judges q's referent, for what the
 					// argument's referents held at the call. A loan this
@@ -333,7 +347,7 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 				}
 			}
 			for i, s := range fv.stores {
-				if int(s.Into) <= len(args) && c.storeArg(st, ctx, argH, argSh, own, round, int(s.Into)-1, reads[i], readSh[i], endsRoots, endsStored) {
+				if int(s.Into) <= len(args) && c.storeArg(st, ctx, argH, argSh, own, round, int(s.Into)-1, reads[i], readSh[i], endsRoots, endsStored, drops[i], dropAt[i]) {
 					grew = true
 				}
 			}
@@ -525,7 +539,7 @@ func (c *checker) mentionsParam(t types.TypeID) bool {
 // records S in full (memSelf). The self-reach rule: what the stored loans
 // themselves make writable (a mut reference among them) is reachable from p
 // once they are in it, so it receives S too, with the same self filter.
-func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, round, p int, S, sh setID, endsRoots []rootID, stored []setID) bool {
+func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, round, p int, S, sh setID, endsRoots []rootID, stored []setID, drop setID, dropAt rootID) bool {
 	if S == emptySet {
 		return false
 	}
@@ -551,7 +565,11 @@ func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, ro
 		// A split frame root reached through a loan on one of its fields
 		// takes S in that field.
 		if later[r] || c.roots[r].allocator {
-			c.storeInto(st, ctx, r, c.allocSelf(r, S), fld[i])
+			Sr := c.allocSelf(r, S)
+			if r == dropAt {
+				Sr = c.sets.minus(Sr, drop)
+			}
+			c.storeInto(st, ctx, r, Sr, fld[i])
 		} else if a, ok := mem[r]; ok {
 			// Judged without the allocator's own loans, recorded in
 			// full, so the state is the one the full store leaves. r is an
@@ -591,7 +609,14 @@ func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, ro
 	// loan-holding field of a split frame root (-1): no field is tracked
 	// for them, as a store through a whole loan.
 	c.csrConst = true
+	// When the allocator dropAt was the only root written, what it took is
+	// S without drop, and the rule walks from that; its roots take S.
+	full := S
+	if drop != emptySet && len(roots) > 0 && !slices.ContainsFunc(roots, func(r rootID) bool { return r != dropAt }) {
+		S = c.sets.minus(S, drop)
+	}
 	csr := c.writable(st, S)
+	S = full
 	c.csrConst = false
 	for _, r := range csr {
 		before := c.held(st, r)
@@ -791,4 +816,26 @@ func (c *checker) allocReferent(a mir.Arg) bool {
 		return c.w.factsOf(ty.Elem).Allocator
 	}
 	return false
+}
+
+// handleOf is the allocator root that every loan of S targets, when S is
+// not empty and there is one such root, else noRoot: S is the set of a
+// reference to that allocator alone.
+func (c *checker) handleOf(S setID) rootID {
+	r := noRoot
+	for _, l := range c.sets.get(S) {
+		t := c.loans[l].target
+		if t == noRoot || !c.roots[t].allocator || r != noRoot && t != r {
+			return noRoot
+		}
+		r = t
+	}
+	return r
+}
+
+// allocMaking is what allocator root r holds by its making (its heap's
+// loan, a sub-arena's parent's): its held set less what was stored into its
+// contents (allocStored).
+func (c *checker) allocMaking(st *state, r rootID) setID {
+	return c.sets.minus(c.held(st, r), c.allocStored[r])
 }
