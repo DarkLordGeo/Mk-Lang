@@ -4,9 +4,31 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 
 ## Unreleased
 
+### Language
+
+- A receiver takes `into` like any parameter: `Names.Keys(&self into arena, arena: &Arena)`, `mut self into p`, `self into p`. Adding or removing the clause on a public method is a breaking change, and `mk apidiff` reports it.
+
 ### Loan checker
 
 - A spawned task's clauses hold until its scope joins. A later store into what a task's `*q into p` reads, or into what its `x into p` receives (another task's send, the parent's own `Chan.Send`, a plain call), also reaches `p`. This rejects, with E0505 or E0604, programs 0.4.1 accepted: a task that moves a value out of a channel into a reference that outlives what a later send put there.
+
+The following accept programs 0.4.1 rejected, and reject none it accepted.
+
+- `*a into a` on an arena no longer makes the loans the arena holds by its making (its heap, its parent) a store target, so two calls `Keep(a into o)` then `Tidy(*a into a)` with a local `Arena.New(sys.heap)` check. One call declaring both still chains them into `*a into o` and stays E0505.
+- A call that stores a shallow value beside an arena, such as `Keep(a: &Arena into out, names: []str, out: mut List[str]) *names into out` called with `sys.args[1..]`, is accepted, as two sequential calls were.
+- A value read back out of a sub-arena holds no loan of the sub-arena's parent, so storing it through a call no longer makes the sub-arena's earlier `Put` reach the parent (E0505). A store into the memory of an arena parameter `a: &Arena` no longer asks for `*a into a` when it stores the arena's own loans.
+- The checker's walk over a body's reference types is linear in its depth: a body with 64,000 nested references checks in under a second, where 0.4.1 took minutes.
+
+### Diagnostics
+
+- E0301 for a `mut T` where a `&T` is expected names the shared reborrow `&*p` (`&x` for a loan `mut x`); `mk fix` applies it as the whole operand of `return` in a body with no `defer`, reading through a parameter or a call result.
+- E0604 on a store of a receiver's own loan offers `&self into p`, and `mk fix` writes it.
+- E0604 at a store into the state a `Ctx` parameter refers to names the field, says to pass it beside the `Ctx`, and gives the clause that then checks (`*c into st`).
+- E0604 judged where the walk over a parameter's referents stopped (more than 64 instances of one generic type, or 4,096 referents) names the bound and the parameter.
+
+### Tools
+
+- The soundness generator draws an arena reset under a live reset arena (shape S89, generator version 15), and `MK_SOUND_GENERATED` bounds a rejection sample by the number of programs generated.
 
 ## 0.4.1 (2026-11-22)
 
