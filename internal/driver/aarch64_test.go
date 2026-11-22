@@ -1,7 +1,7 @@
 // Why: some targets (aarch64-nutshell) are checked only; building for
 // them must fail clearly instead of producing a broken executable.
-// What: TestAArch64NotBuilt, TestAArch64LinuxELF and
-// TestBuildRunTestVerified.
+// What: TestAArch64NotBuilt, TestAArch64LinuxELF, TestAArch64LibcMode,
+// TestAArch64Library and TestBuildRunTestVerified.
 // How: mk build, run and test refuse such a target with E0202 reason
 // not-built and write no executable, while mk check still type-checks for
 // it; aarch64-linux, which is built, gives a static AArch64 ELF; the last
@@ -11,9 +11,13 @@
 package driver
 
 import (
+	"bytes"
 	"debug/elf"
+	"encoding/binary"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 
 	"mk/internal/diag"
@@ -180,4 +184,119 @@ func TestBuildRunTestVerified(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("test", r)
+}
+
+// TestAArch64LibcMode: an aarch64-linux bin with a dynamic libc.so.6 link
+// is in system-libc mode, cross-linked from any host, dev and release: an
+// EM_AARCH64 executable with PT_INTERP /lib/ld-linux-aarch64.so.1, DT_NEEDED
+// libc.so.6 only, __libc_start_main and dlopen at GLIBC_2.34 and malloc at
+// aarch64's base version GLIBC_2.17, entered at mk_libc_start, and
+// exporting nothing. The ARM runner runs such bins (TestFFI_*).
+func TestAArch64LibcMode(t *testing.T) {
+	root := writeTree(t, map[string]string{
+		"pkg.mk":      ffiManifest([]string{linkLit("libc.so.6", "dynamic", "", types.Aarch64Linux.Name)}),
+		"app/main.mk": "import std.dl\n\nexport Main(sys: &System): WriteError!void {\n    lib := dl.Open(sys.io, \"libm.so.6\", dl.Search.System) else e {\n        try sys.Print(\"{e}\\n\", (e))\n        return\n    }\n    lib.Close(sys.io)\n    try sys.Print(\"open ok\\n\")\n}\n",
+	})
+	for _, prof := range []types.Profile{types.Dev, types.Release} {
+		exe := mustBuild(t, root, types.Aarch64Linux, prof)
+		interp, needed := elfDyn(t, exe)
+		if interp != "/lib/ld-linux-aarch64.so.1" || !slices.Equal(needed, []string{"libc.so.6"}) {
+			t.Errorf("%v: PT_INTERP %q, DT_NEEDED %q", prof, interp, needed)
+		}
+		for name, want := range map[string]string{"__libc_start_main": "GLIBC_2.34", "dlopen": "GLIBC_2.34", "pthread_create": "GLIBC_2.34", "__errno_location": "GLIBC_2.17"} {
+			if ver, lib := importVersion(t, exe, name); ver != want || lib != "libc.so.6" {
+				t.Errorf("%v: %s needs %q of %q, want %s of libc.so.6", prof, name, ver, lib, want)
+			}
+		}
+		if d := definedDynsyms(t, exe); len(d) > 0 {
+			t.Errorf("%v: .dynsym defines %q", prof, d)
+		}
+		f, err := elf.Open(exe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Machine != elf.EM_AARCH64 {
+			t.Errorf("%v: machine %v", prof, f.Machine)
+		}
+		if prof == types.Dev {
+			syms, _ := f.Symbols()
+			var entry uint64
+			for _, s := range syms {
+				if s.Name == "mk_libc_start" {
+					entry = s.Value
+				}
+			}
+			if entry == 0 || f.Entry != entry {
+				t.Errorf("entry %#x, mk_libc_start %#x", f.Entry, entry)
+			}
+		}
+		f.Close()
+	}
+}
+
+// TestAArch64Library: an aarch64-linux library bin builds, cross-linked
+// from any host: the shared object is EM_AARCH64 with soname libmlib.so.1,
+// exports what x86_64-linux's does (TestLibOutput_LinuxShared) and has no
+// _start; the static library is a GNU archive of EM_AARCH64 objects. A
+// library in system-libc mode stays refused (E0202 reason not-built).
+func TestAArch64Library(t *testing.T) {
+	so := buildLib(t, libPackage(t, "dynamic"), types.Aarch64Linux, types.Dev, t.TempDir())
+	f, err := elf.Open(so)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if f.Machine != elf.EM_AARCH64 || f.Type != elf.ET_DYN {
+		t.Errorf("machine %v type %v", f.Machine, f.Type)
+	}
+	if s, _ := f.DynString(elf.DT_SONAME); !slices.Equal(s, []string{"libmlib.so.1"}) {
+		t.Errorf("soname %q", s)
+	}
+	dyn, err := f.DynamicSymbols()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var defs []string
+	for _, s := range dyn {
+		if s.Section != elf.SHN_UNDEF && elf.ST_TYPE(s.Info) == elf.STT_FUNC {
+			defs = append(defs, s.Name)
+		}
+	}
+	slices.Sort(defs)
+	if want := []string{"Len", "Next", "Sum", "Twice", "Wait", "mlib_mk_start", "mlib_mk_stop"}; !slices.Equal(defs, want) {
+		t.Errorf("exported functions %q, want %q", defs, want)
+	}
+	syms, _ := f.Symbols()
+	for _, s := range syms {
+		if s.Name == "_start" {
+			t.Errorf("the library defines _start")
+		}
+	}
+	a := buildLib(t, libPackage(t, "static"), types.Aarch64Linux, types.Dev, t.TempDir())
+	raw, err := os.ReadFile(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(raw), "!<arch>\n") || !bytes.Contains(raw, []byte("\x7fELF")) {
+		t.Fatalf("%s is not a GNU archive of ELF objects", a)
+	}
+	// The first member's ELF header: e_machine at offset 18.
+	i := bytes.Index(raw, []byte("\x7fELF"))
+	if m := elf.Machine(binary.LittleEndian.Uint16(raw[i+18:])); m != elf.EM_AARCH64 {
+		t.Errorf("archive member machine %v", m)
+	}
+	root := writeTree(t, map[string]string{
+		"pkg.mk": manifest(map[string]string{"name": `"mlib"`,
+			"bins":  `[pkg.Bin(name: "mlib", root: ".", link_script: "", cpu: "", subsystem: "", kind: "dynamic", abi: "")]`,
+			"links": `[pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "aarch64-linux")]`}),
+		"lib.mk": libSource,
+	})
+	s, err := NewSession(Config{Root: root, Target: types.Aarch64Linux, Profile: types.Dev, Tools: needTools(t), CacheDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, paths, err := s.Build(t.TempDir() + string(filepath.Separator))
+	if err != nil || len(paths) != 0 || len(r.Report.Diags) != 1 || factText(r.Report.Diags[0].Diag, "reason") != "not-built" {
+		t.Errorf("a system-libc library: err %v, paths %v\n%s", err, paths, r.Report.Text(r.Sources))
+	}
 }

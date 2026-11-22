@@ -1,0 +1,4 @@
+close@GLIBC_2.17
+getpid@GLIBC_2.17
+gettid@GLIBC_2.30
+qsort@GLIBC_2.17

@@ -396,6 +396,15 @@ jobs:
         if: matrix.part == 'checks'
         run: go test -p 2 ./internal/toolchain ./internal/driver -run 'MachO|TBD|FormatOfMacOS|TestStdTargetMissing|TestAArch64'
 
+      # System-libc mode and libraries, built for aarch64-linux and run
+      # natively: the FFI tests build for the host's Linux target, and
+      # MK_LINUX=1 runs what they build.
+      - name: System-libc and library tests
+        if: matrix.part == 'checks'
+        env:
+          MK_LINUX: '1'
+        run: go test -p 2 -timeout 60m ./internal/driver -run 'TestFFI_(Entry|Versions|Libm|Threads|Runtime|CMix|ExternVar|DlSearch|NoExports|CAddr|FabsHint|StaticThreads|LibcBuildCache|DirectRefs|DirectRefsAArch64|LinuxLibcExample)$|TestLibGate_Linux|TestLibOutput_LinuxShared|TestLibHeader'
+
       # The Go harnesses judge std's blocks as the gate does: a name's
       # "[exit N: text]" and "[env K=V]" are honoured there, not by a bare
       # mk test. The host's own target runs natively, dev profile.

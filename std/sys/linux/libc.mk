@@ -1,10 +1,10 @@
-// Why: a bin that links a dynamic library for x86_64-linux must call libc
+// Why: a bin that links a dynamic library for its Linux target must call libc
 // for threads and the loader, while every other bin links no libc at all.
 //
 // What: std's libc table Libc, the slot indexes (Lc...) and LibcFn.
 //
 // How: such a bin is in system-libc mode: it enters through the driver's
-// libc-mode entry (internal/codegen support_x64linux.go, LibcEntryAsm),
+// libc-mode entry (internal/codegen LibcEntryAsm),
 // whose main writes the libc functions' addresses into Libc before mk_start
 // runs and before any other thread exists, then never again. Elsewhere the
 // table stays zero, std names no libc symbol and LibcBuild is false. Slot i

@@ -49,8 +49,8 @@ const (
 )
 
 // linkTargets are the targets a pkg.Link may name: one per link, never
-// ""; a freestanding or aarch64 link is refused.
-var linkTargets = []string{types.X86_64Windows.Name, types.X86_64Linux.Name}
+// ""; a freestanding, Nutshell or macOS link is refused.
+var linkTargets = []string{types.X86_64Windows.Name, types.X86_64Linux.Name, types.Aarch64Linux.Name}
 
 // validateLinks checks the manifest's links against pkg.Link's table of
 // kinds and targets: each fault is E0202 at the field with reason link. A
@@ -78,7 +78,7 @@ func validateLinks(m *Manifest, t *srcTree) []*diag.Diagnostic {
 			continue
 		}
 		if !slices.Contains(linkTargets, l.Target) {
-			fail(f+".target", "link %s: target %q is not \"x86_64-windows\" or \"x86_64-linux\" (one target per link, never \"\")", l.Name, l.Target)
+			fail(f+".target", "link %s: target %q is not \"x86_64-windows\", \"x86_64-linux\" or \"aarch64-linux\" (one target per link, never \"\")", l.Name, l.Target)
 			continue
 		}
 		ext := strings.ToLower(path.Ext(l.Path))
@@ -172,7 +172,7 @@ func validDLLName(n string) bool {
 }
 
 // parseLinkDef reads a link's .def name list: std's format, one name per
-// line (toolchain.ParseDefList); on x86_64-linux a name may carry
+// line (toolchain.ParseDefList); on Linux a name may carry
 // @VERSION, kept in the returned name.
 func parseLinkDef(text, target string) ([]string, error) {
 	if target == types.X86_64Windows.Name {
@@ -341,9 +341,12 @@ type linkPlan struct {
 	// weak 128-bit routines (compilerWeak), which p.defs also holds.
 	memberDefs map[string]bool
 	// sos are the shared objects of a Linux bin in system-libc mode,
-	// libc.so.6 first (links_libc.go); triple is the target's.
+	// libc.so.6 first (links_libc.go); triple is the target's, and libc
+	// and arch the mode's facts for it (set with sos[0]).
 	sos    []*soLib
 	triple string
+	libc   libcSpec
+	arch   types.Arch
 }
 
 // empty reports whether the plan changes nothing in the link.

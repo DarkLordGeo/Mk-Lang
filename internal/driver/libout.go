@@ -78,6 +78,13 @@ func libFileName(name, abi string, k toolchain.OutputKind, t types.Target) strin
 	return "lib" + name + ".a"
 }
 
+// libTarget reports whether mk builds a library output for t: x86_64
+// Windows and Linux, and aarch64 Linux.
+func libTarget(t types.Target) bool {
+	return t.Arch == types.ArchX64 && (t.OS == types.OSWindows || t.OS == types.OSLinux) ||
+		t.Arch == types.ArchArm64 && t.OS == types.OSLinux
+}
+
 // buildLibrary builds one library bin: out names the library file (one
 // bin) or the directory for every output (several bins, or "": the
 // current directory). The library is never stored under <cache>/bin: its
@@ -92,15 +99,15 @@ func (s *Session) buildLibrary(bin binTarget, out string, several bool) (string,
 	if d := notBuilt(s.cfg.Target); d != nil {
 		return "", []*diag.Diagnostic{d}
 	}
-	if s.cfg.Target.Arch != types.ArchX64 || s.cfg.Target.OS != types.OSWindows && s.cfg.Target.OS != types.OSLinux {
-		return "", []*diag.Diagnostic{diag.New(diag.E0202, source.Span{}, "a library output is built for x86_64-windows and x86_64-linux only").
-			Text("target", s.cfg.Target.Name).Text("reason", "not-built").Alt("build for x86_64-windows or x86_64-linux")}
+	if !libTarget(s.cfg.Target) {
+		return "", []*diag.Diagnostic{diag.New(diag.E0202, source.Span{}, "a library output is built for x86_64-windows, x86_64-linux and aarch64-linux only").
+			Text("target", s.cfg.Target.Name).Text("reason", "not-built").Alt("build for x86_64-windows, x86_64-linux or aarch64-linux")}
 	}
 	if s.cfg.Target.OS == types.OSLinux && s.libcMode() {
 		// A library links no C library and has no interpreter: a dynamic
-		// links entry for x86_64-linux (system-libc mode) is a
-		// hosted executable's (never E0001 at the link).
-		return "", []*diag.Diagnostic{diag.New(diag.E0202, source.Span{}, "bin "+bin.name+": a library is not built in system-libc mode: the package has a dynamic links entry for x86_64-linux, which only an executable takes").
+		// links entry for the target (system-libc mode) is a hosted
+		// executable's (never E0001 at the link).
+		return "", []*diag.Diagnostic{diag.New(diag.E0202, source.Span{}, "bin "+bin.name+": a library is not built in system-libc mode: the package has a dynamic links entry for "+s.cfg.Target.Name+", which only an executable takes").
 			Text("target", s.cfg.Target.Name).Text("reason", "not-built").Alt("link the shared object into the host program instead, or use a static links entry")}
 	}
 	tools, d := s.tools()

@@ -33,13 +33,24 @@ const PthreadDetached: uint = 1
 // 2.39 takes a few KiB).
 const PthreadSlack: int = 65536
 
+// PthreadStackMin is glibc's PTHREAD_STACK_MIN, the smallest stack
+// pthread_attr_setstack takes: 16 KiB on x86_64, 128 KiB on aarch64.
+PthreadStackMin(): int {
+    return if Target.arch == Arch.Arm64 { 131072 } else { 16384 }
+}
+
 // PthreadStart is ThreadStart's system-libc branch (stack already checked):
-// a guard page, then the stack, then PthreadSlack, all committed but the
-// guard, handed to pthread_create detached. value is the new thread's tid.
+// a guard page, then the stack, then PthreadSlack (more when the two are
+// under PthreadStackMin), all committed but the guard, handed to
+// pthread_create detached. value is the new thread's tid.
 // O(1) system calls; maps the thread's stack, kept for the thread's life.
 PthreadStart(entry: fn(*u8), arg: *u8, stack: int): OsResult {
     size := (stack + 4095) / 4096 * 4096
-    total := 4096 + size + PthreadSlack
+    var total := 4096 + size + PthreadSlack
+    if total - 4096 < PthreadStackMin() {
+        // More slack, above the recorded stack, for glibc's floor.
+        total = 4096 + PthreadStackMin()
+    }
     base := Reserve(total, 4096)
     if raw.IsNull(base) {
         return FailWith(MapError(12))

@@ -5,12 +5,18 @@
 // What: the aarch64 (AAPCS64) support routines as module assembly:
 // arm64Switch (mk_switch), arm64TaskStart (mk_task_start), arm64CallSystem
 // (mk_call_system), and on Linux arm64ELFStart (_start), arm64Clone
-// (mk_clone) and arm64Sigreturn (mk_sigreturn).
+// (mk_clone) and arm64Sigreturn (mk_sigreturn); and arm64LibcEntryAsm,
+// the system-libc entry.
 //
 // How: each is a Go string of assembly that support.go puts in the support
 // pack. aarch64 is assembled and inspected, not run.
 
 package codegen
+
+import (
+	"strconv"
+	"strings"
+)
 
 // arm64ELFStart passes the initial stack pointer to mk_start.
 const arm64ELFStart = `
@@ -110,3 +116,47 @@ mov x8, #139
 svc #0
 brk #1
 `
+
+// arm64LibcEntryAsm is LibcEntryAsm for aarch64-linux: mk_libc_start is
+// glibc's aarch64 start.S (x0 is ld.so's rtld_fini, sp points at argc,
+// then argv, envp and auxv): __libc_start_main(main: x0, argc: x1,
+// argv: x2, init: x3, fini: x4, rtld_fini: x5, stack_end: x6), init and
+// fini null (GLIBC_2.34), called through the GOT, with mk_libc_main as
+// main. mk_libc_main(argc: w0, argv: x1) fills std's libc table through
+// the GOT (each address the loader bound, -z now) and calls mk_start with
+// argv - 8, the original stack pointer, where argc still lies, as the
+// static entry passes it. Neither returns.
+func arm64LibcEntryAsm() string {
+	var b strings.Builder
+	b.WriteString("\t.text\n\t.globl " + LibcEntry + "\n\t.type " + LibcEntry + ",@function\n\t.p2align 4\n" + LibcEntry + ":\n")
+	for _, l := range strings.Split(strings.Trim(arm64LibcStart, "\n"), "\n") {
+		b.WriteString("\t" + l + "\n")
+	}
+	b.WriteString("\t.size " + LibcEntry + ", .-" + LibcEntry + "\n")
+	b.WriteString("\t.globl mk_libc_main\n\t.type mk_libc_main,@function\n\t.p2align 4\nmk_libc_main:\n")
+	b.WriteString("\tmov x29, #0\n\tadrp x9, \"" + LibcTableSymbol + "\"\n\tadd x9, x9, :lo12:\"" + LibcTableSymbol + "\"\n")
+	for i, n := range LibcSlotNames {
+		b.WriteString("\tadrp x10, :got:" + n + "\n\tldr x10, [x10, :got_lo12:" + n + "]\n")
+		b.WriteString("\tstr x10, [x9, #" + strconv.Itoa(8*i) + "]\n")
+	}
+	b.WriteString("\tsub x0, x1, #8\n\tbl " + symStart + "\n\tbrk #1\n")
+	b.WriteString("\t.size mk_libc_main, .-mk_libc_main\n")
+	libcWeakTable(&b)
+	return b.String()
+}
+
+// arm64LibcStart is mk_libc_start's body: glibc's aarch64 start.S, with
+// mk_libc_main as main.
+const arm64LibcStart = `mov x29, #0
+mov x30, #0
+mov x5, x0
+ldr x1, [sp]
+add x2, sp, #8
+mov x6, sp
+mov x3, #0
+mov x4, #0
+adr x0, mk_libc_main
+adrp x16, :got:__libc_start_main
+ldr x16, [x16, :got_lo12:__libc_start_main]
+blr x16
+brk #1`

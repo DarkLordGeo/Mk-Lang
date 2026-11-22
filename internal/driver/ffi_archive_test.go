@@ -355,19 +355,19 @@ func copyFileT(t *testing.T, src, dst string) {
 }
 
 // TestFFI_LinuxLibcExample: the reference manual's own system-libc example, the
-// libc.so.6 link with a Main that uses std.dl, builds for x86_64-linux in
-// system-libc mode (PT_INTERP, DT_NEEDED libc.so.6 only) and, on Linux,
+// libc.so.6 link with a Main that uses std.dl, builds for the host's Linux
+// target (linuxT) in system-libc mode (PT_INTERP, DT_NEEDED libc.so.6 only) and, on Linux,
 // opens libm.so.6 and closes it, in dev and release. While libcModeBuilt
 // is false it is E0202 reason link. If system-libc mode is removed, the
 // reference's example goes and so does this test.
 func TestFFI_LinuxLibcExample(t *testing.T) {
 	root := writeTree(t, map[string]string{
-		"pkg.mk":      ffiManifest([]string{`pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "x86_64-linux")`}),
+		"pkg.mk":      ffiManifest([]string{`pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "` + linuxT.Name + `")`}),
 		"app/main.mk": "import std.dl\n\nexport Main(sys: &System): WriteError!void {\n    lib := dl.Open(sys.io, \"libm.so.6\", dl.Search.System) else e {\n        try sys.Print(\"{e}\\n\", (e))\n        return\n    }\n    lib.Close(sys.io)\n    try sys.Print(\"open ok\\n\")\n}\n",
 	})
 	if libcModeBuilt {
 		for _, prof := range []types.Profile{types.Dev, types.Release} {
-			exe := mustBuild(t, root, types.X86_64Linux, prof)
+			exe := mustBuild(t, root, linuxT, prof)
 			if interp, needed := elfDyn(t, exe); interp == "" || !slices.Equal(needed, []string{"libc.so.6"}) {
 				t.Errorf("%v: PT_INTERP %q, DT_NEEDED %q", prof, interp, needed)
 			}
@@ -379,7 +379,7 @@ func TestFFI_LinuxLibcExample(t *testing.T) {
 		}
 		return
 	}
-	r, _ := ffiBuild(t, root, types.X86_64Linux, types.Dev, TestHooks{})
+	r, _ := ffiBuild(t, root, linuxT, types.Dev, TestHooks{})
 	got := lines(r)
 	if len(got) != 1 || !strings.HasSuffix(got[0], ":E0202") || fact(r.Report.Diags[0].Diag, "reason") != "link" ||
 		!strings.Contains(r.Report.Diags[0].Diag.Message, "system-libc mode") {

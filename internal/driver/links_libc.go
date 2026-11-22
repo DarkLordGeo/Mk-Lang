@@ -49,13 +49,33 @@ const safeDLLSearch = 0xA00
 // that target is built.
 const libcModeBuilt = true
 
-// The system-libc mode's fixed names: the libc soname, the dynamic linker
-// and std's name list for libc.so.6.
-const (
-	libcSoname = "libc.so.6"
-	libcInterp = "/lib64/ld-linux-x86-64.so.2"
-	libcList   = "sys/linux/libc.so.6.def" // std's list, in the std tree
-)
+// libcSoname is the system-libc mode's libc, the first shared object of
+// every bin in the mode.
+const libcSoname = "libc.so.6"
+
+// libcSpec is a target's system-libc facts: the dynamic linker (PT_INTERP),
+// std's name list for libc.so.6 (in the std tree) and glibc's base symbol
+// version there, the version of every name the C standard library had
+// before glibc 2.34 moved libpthread and libdl into libc.
+type libcSpec struct {
+	interp, list, base string
+}
+
+// libcSpecs are the targets that have system-libc mode.
+var libcSpecs = map[string]libcSpec{
+	types.X86_64Linux.Name:  {interp: "/lib64/ld-linux-x86-64.so.2", list: "sys/linux/libc.so.6.def", base: "GLIBC_2.2.5"},
+	types.Aarch64Linux.Name: {interp: "/lib/ld-linux-aarch64.so.1", list: "sys/linux/libc.so.6.aarch64.def", base: "GLIBC_2.17"},
+}
+
+// libcFor is t's system-libc facts; ok is false for a target with no
+// system-libc mode.
+func libcFor(t types.Target) (libcSpec, bool) {
+	if !libcModeBuilt {
+		return libcSpec{}, false
+	}
+	sp, ok := libcSpecs[t.Name]
+	return sp, ok
+}
 
 // testLinks are links the root package's graph gains in every session,
 // set only by internal/driver's tests, never in parallel with another
@@ -85,11 +105,11 @@ type soLib struct {
 	labels []string
 }
 
-// libcMode reports whether the session's package graph holds a dynamic
-// link for x86_64-linux and the build is for that target: the bin is in
-// system-libc mode, so std.libc is not linked (deps.go).
+// libcMode reports whether the build's target has system-libc mode
+// (libcSpecs) and the session's package graph holds a dynamic link for it:
+// the bin is in system-libc mode, so std.libc is not linked (deps.go).
 func (s *Session) libcMode() bool {
-	if !libcModeBuilt || s.cfg.Target.Name != types.X86_64Linux.Name {
+	if _, ok := libcFor(s.cfg.Target); !ok {
 		return false
 	}
 	has := func(m *Manifest) bool {
@@ -97,7 +117,7 @@ func (s *Session) libcMode() bool {
 			return false
 		}
 		for _, l := range m.Links {
-			if l.Kind == linkDynamic && l.Target == types.X86_64Linux.Name {
+			if l.Kind == linkDynamic && l.Target == s.cfg.Target.Name {
 				return true
 			}
 		}
@@ -122,7 +142,7 @@ func (s *Session) libcMode() bool {
 // Session.libcMode for a package session; a session with no package (a
 // file, a std test, the corpus) has only testLinks.
 func (w *world) libcBuild() bool {
-	if !libcModeBuilt || w.cfg.Target.Name != types.X86_64Linux.Name {
+	if _, ok := libcFor(w.cfg.Target); !ok {
 		return false
 	}
 	for _, l := range linksFor(append(append([]pkgLink(nil), w.links...), testPkgLinks()...), w.cfg.Target.Name) {
@@ -143,14 +163,20 @@ func (p *linkPlan) addShared(w *world, l pkgLink) *diag.Diagnostic {
 		return linkFail(l, ".kind", "link %s: a dynamic link on %s needs system-libc mode, which this build of mk does not have", l.Name, l.Target)
 	}
 	if len(p.sos) == 0 {
-		raw, err := w.stdTree().readFile(libcList)
-		if err != nil {
-			return diag.Toolchain("fs", "read std/"+libcList, err.Error(), "cannot read std's libc.so.6 list")
+		sp, ok := libcFor(w.cfg.Target)
+		if !ok {
+			return linkFail(l, ".target", "link %s: %s has no system-libc mode", l.Name, w.cfg.Target.Name)
 		}
-		names, err := parseLinkDef(string(raw), types.X86_64Linux.Name)
+		raw, err := w.stdTree().readFile(sp.list)
 		if err != nil {
-			return diag.Toolchain("ld.lld", "", err.Error(), "std/"+libcList+" is not a name list")
+			return diag.Toolchain("fs", "read std/"+sp.list, err.Error(), "cannot read std's libc.so.6 list")
 		}
+		names, err := parseLinkDef(string(raw), w.cfg.Target.Name)
+		if err != nil {
+			return diag.Toolchain("ld.lld", "", err.Error(), "std/"+sp.list+" is not a name list")
+		}
+		p.libc = sp
+		p.arch = w.cfg.Target.Arch
 		p.sos = []*soLib{{name: libcSoname, seen: map[string]bool{}, from: map[string]*pkgLink{}, labels: []string{"std's " + libcSoname}}}
 		p.sos[0].add(names, nil)
 		p.searched = append(p.searched, "std's "+libcSoname)
@@ -252,7 +278,7 @@ func (p *linkPlan) apply(ctx context.Context, tools *toolchain.Tools, work strin
 		}
 		return obj, nil
 	}
-	entry, d := asm("entry", codegen.LibcEntryAsm())
+	entry, d := asm("entry", codegen.LibcEntryAsm(p.arch))
 	if d != nil {
 		return []*diag.Diagnostic{d}
 	}
@@ -284,7 +310,7 @@ func (p *linkPlan) apply(ctx context.Context, tools *toolchain.Tools, work strin
 		return []*diag.Diagnostic{diag.Toolchain("fs", "write "+ver, err.Error(), "cannot write "+ver)}
 	}
 	job.Objects = append(append([]string(nil), job.Objects...), entry)
-	job.Entry, job.Interp, job.Shared, job.VersionScript = codegen.LibcEntry, libcInterp, shared, ver
+	job.Entry, job.Interp, job.Shared, job.VersionScript = codegen.LibcEntry, p.libc.interp, shared, ver
 	return nil
 }
 
@@ -343,8 +369,8 @@ func (p *linkPlan) optionKeys() []source.Hash {
 	}
 	if len(p.sos) > 0 {
 		h := source.NewHasher("mk.driver.libcmode.v2")
-		h.String(libcInterp)
-		h.String(codegen.LibcEntryAsm())
+		h.String(p.libc.interp)
+		h.String(codegen.LibcEntryAsm(p.arch))
 		h.String(exeVersionScript)
 		for _, so := range p.sos {
 			h.String(so.name)
@@ -484,7 +510,7 @@ func (p *linkPlan) soAddrFaults(cobjs []string, pulled []pulledMember) []*diag.D
 		file, refs := directRefs(b, func(n string) bool { return supplier(n) != nil })
 		for _, r := range refs {
 			so := supplier(r.sym)
-			ds = append(ds, diag.New(diag.E0001, source.Span{}, fmt.Sprintf("%s takes the address of %s, which the shared object %s supplies, in code that is not position-independent (%s): ld.lld would point it at a PLT entry, which is wrong if %s is data, and a list cannot say which it is (only functions resolve to a library); build it position-independent (clang's default for x86_64-linux: drop -fno-pic), or only call %s", label(file), r.sym, so.name, r.typ, r.sym, r.sym)).
+			ds = append(ds, diag.New(diag.E0001, source.Span{}, fmt.Sprintf("%s takes the address of %s, which the shared object %s supplies, in code that is not position-independent (%s): ld.lld would point it at a PLT entry, which is wrong if %s is data, and a list cannot say which it is (only functions resolve to a library); build it position-independent (clang's default for Linux: drop -fno-pic), or only call %s", label(file), r.sym, so.name, r.typ, r.sym, r.sym)).
 				Text("tool", "mk").Text("symbol", r.sym).Text("library", so.name))
 		}
 	}
@@ -506,22 +532,26 @@ func (p *linkPlan) soAddrFaults(cobjs []string, pulled []pulledMember) []*diag.D
 	return ds
 }
 
-// addrRef is one direct reference directRefs finds.
+// addrRef is one direct reference directRefs finds; typ is the
+// relocation's name (R_X86_64_32, R_AARCH64_ADR_PREL_PG_HI21).
 type addrRef struct {
 	sym string
-	typ elf.R_X86_64
+	typ string
 }
 
 // directRefs lists, once per name and type, the relocations of an x86_64
-// ELF object b against an undefined name that want holds, of a kind that
-// makes ld.lld emit a canonical PLT entry or a copy relocation for a
-// shared symbol in a non-PIE executable: R_X86_64_32, 32S, 16, 8, PC16 and
-// PC8 anywhere; PC32 unless the byte before it is a call (0xE8) or jump
-// (0xE9) opcode; 64 and PC64 outside a writable section. Only allocated
-// sections count. file is the object's STT_FILE name, or "".
+// or AArch64 ELF object b against an undefined name that want holds, of a
+// kind that makes ld.lld emit a canonical PLT entry or a copy relocation
+// for a shared symbol in a non-PIE executable. On x86_64: R_X86_64_32,
+// 32S, 16, 8, PC16 and PC8 anywhere; PC32 unless the byte before it is a
+// call (0xE8) or jump (0xE9) opcode; 64 and PC64 outside a writable
+// section. On AArch64 (aarch64Direct): an absolute or PC-relative address
+// that is not a branch (CALL26, JUMP26) or a GOT load (ADR_GOT_PAGE,
+// LD64_GOT_LO12_NC). Only allocated sections count. file is the object's
+// STT_FILE name, or "".
 func directRefs(b []byte, want func(string) bool) (file string, out []addrRef) {
 	f, err := elf.NewFile(bytes.NewReader(b))
-	if err != nil || f.Machine != elf.EM_X86_64 {
+	if err != nil || f.Machine != elf.EM_X86_64 && f.Machine != elf.EM_AARCH64 {
 		return "", nil
 	}
 	syms, _ := f.Symbols()
@@ -544,11 +574,12 @@ func directRefs(b []byte, want func(string) bool) (file string, out []addrRef) {
 		if err != nil {
 			continue
 		}
+		writable := tgt.Flags&elf.SHF_WRITE != 0
 		var body []byte // the target's bytes, read once a PC32 needs them
 		for i := 0; i+24 <= len(data); i += 24 {
 			off := binary.LittleEndian.Uint64(data[i:])
 			info := binary.LittleEndian.Uint64(data[i+8:])
-			si, typ := int(info>>32), elf.R_X86_64(info&0xffffffff)
+			si, rt := int(info>>32), uint32(info&0xffffffff)
 			if si < 1 || si > len(syms) {
 				continue
 			}
@@ -556,23 +587,34 @@ func directRefs(b []byte, want func(string) bool) (file string, out []addrRef) {
 			if s.Section != elf.SHN_UNDEF || !want(s.Name) {
 				continue
 			}
-			switch typ {
-			case elf.R_X86_64_32, elf.R_X86_64_32S, elf.R_X86_64_16, elf.R_X86_64_8, elf.R_X86_64_PC16, elf.R_X86_64_PC8:
-			case elf.R_X86_64_PC32:
-				if body == nil && tgt.Type != elf.SHT_NOBITS {
-					body, _ = tgt.Data()
-				}
-				if off >= 1 && off <= uint64(len(body)) && (body[off-1] == 0xE8 || body[off-1] == 0xE9) {
+			var name string
+			if f.Machine == elf.EM_AARCH64 {
+				typ := elf.R_AARCH64(rt)
+				if !aarch64Direct(typ, writable) {
 					continue
 				}
-			case elf.R_X86_64_64, elf.R_X86_64_PC64:
-				if tgt.Flags&elf.SHF_WRITE != 0 {
+				name = typ.String()
+			} else {
+				typ := elf.R_X86_64(rt)
+				switch typ {
+				case elf.R_X86_64_32, elf.R_X86_64_32S, elf.R_X86_64_16, elf.R_X86_64_8, elf.R_X86_64_PC16, elf.R_X86_64_PC8:
+				case elf.R_X86_64_PC32:
+					if body == nil && tgt.Type != elf.SHT_NOBITS {
+						body, _ = tgt.Data()
+					}
+					if off >= 1 && off <= uint64(len(body)) && (body[off-1] == 0xE8 || body[off-1] == 0xE9) {
+						continue
+					}
+				case elf.R_X86_64_64, elf.R_X86_64_PC64:
+					if writable {
+						continue
+					}
+				default:
 					continue
 				}
-			default:
-				continue
+				name = typ.String()
 			}
-			r := addrRef{sym: s.Name, typ: typ}
+			r := addrRef{sym: s.Name, typ: name}
 			if !seen[r] {
 				seen[r] = true
 				out = append(out, r)
@@ -582,12 +624,35 @@ func directRefs(b []byte, want func(string) bool) (file string, out []addrRef) {
 	return file, out
 }
 
+// aarch64Direct reports whether an AArch64 relocation of type typ in a
+// section (writable or not) addresses its symbol directly in a way ld.lld
+// serves, for a shared symbol in a non-PIE executable, with a copy
+// relocation or a canonical PLT entry: ABS32 and ABS16, PREL32 and PREL16,
+// the MOVW_UABS group, ADR_PREL_LO21, ADR_PREL_PG_HI21 (the
+// ADRP of an ADRP + ADD or load pair; its low-12 half is not counted again)
+// and LD_PREL_LO19 anywhere; ABS64 and PREL64 outside a writable section,
+// where ld.lld cannot leave a dynamic relocation.
+func aarch64Direct(typ elf.R_AARCH64, writable bool) bool {
+	switch typ {
+	case elf.R_AARCH64_ABS32, elf.R_AARCH64_ABS16, elf.R_AARCH64_PREL32, elf.R_AARCH64_PREL16,
+		elf.R_AARCH64_MOVW_UABS_G0, elf.R_AARCH64_MOVW_UABS_G0_NC, elf.R_AARCH64_MOVW_UABS_G1,
+		elf.R_AARCH64_MOVW_UABS_G1_NC, elf.R_AARCH64_MOVW_UABS_G2, elf.R_AARCH64_MOVW_UABS_G2_NC,
+		elf.R_AARCH64_MOVW_UABS_G3, elf.R_AARCH64_ADR_PREL_LO21,
+		elf.R_AARCH64_ADR_PREL_PG_HI21, elf.R_AARCH64_ADR_PREL_PG_HI21_NC, elf.R_AARCH64_LD_PREL_LO19:
+		return true
+	case elf.R_AARCH64_ABS64, elf.R_AARCH64_PREL64:
+		return !writable
+	}
+	return false
+}
+
 // libcModeHint is the hint for an undefined symbol of a libc-mode bin
 // that std.libc may supply outside the mode: the mode does not link
 // std.libc, so a C function std's libc.so.6 list does not name needs a
-// link of its own. glibc 2.39 puts each of these at GLIBC_2.2.5, the
-// <math.h> ones in libm.so.6 (read with llvm-nm -D from Ubuntu's libc.so.6
-// and libm.so.6). "" otherwise.
+// link of its own. glibc 2.39 puts each of these at the target's base
+// version (GLIBC_2.2.5 on x86_64, GLIBC_2.17 on aarch64), the <math.h> ones
+// in libm.so.6 (read with llvm-nm -D from Ubuntu's libc.so.6 and
+// libm.so.6). "" otherwise.
 func (p *linkPlan) libcModeHint(sym string) string {
 	fn, ok := c17Libc[sym]
 	if len(p.sos) == 0 || !ok || p.sos[0].supplies(sym) {
@@ -597,6 +662,6 @@ func (p *linkPlan) libcModeHint(sym string) string {
 	if fn.header == "math.h" {
 		lib = "libm.so.6"
 	}
-	return fmt.Sprintf("system-libc mode does not link std.libc, and std's %s list does not name %s: glibc has it in %s, so add a link to %s whose .def lists %s@GLIBC_2.2.5",
-		libcSoname, sym, lib, lib, sym)
+	return fmt.Sprintf("system-libc mode does not link std.libc, and std's %s list does not name %s: glibc has it in %s, so add a link to %s whose .def lists %s@%s",
+		libcSoname, sym, lib, lib, sym, p.libc.base)
 }

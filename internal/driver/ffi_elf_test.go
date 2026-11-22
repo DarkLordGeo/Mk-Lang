@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,7 +28,27 @@ import (
 )
 
 // libcLink is the reference manual's own libc.so.6 link, no names of its own.
-var libcLink = linkLit("libc.so.6", "dynamic", "", "x86_64-linux")
+var libcLink = linkLit("libc.so.6", "dynamic", "", linuxT.Name)
+
+// linuxT is the Linux target these tests build for and run on: the host's
+// own on an AArch64 Linux host, so they run natively there, else
+// x86_64-linux (natively, or under WSL). linuxBase is glibc's base symbol
+// version for it, linuxInterp its dynamic linker and linuxMultiarch its
+// library directory under /lib; linuxMemcpy is memcpy's default version.
+var (
+	linuxT         = hostLinux()
+	linuxBase      = libcSpecs[linuxT.Name].base
+	linuxInterp    = libcSpecs[linuxT.Name].interp
+	linuxMemcpy    = map[string]string{types.X86_64Linux.Name: "GLIBC_2.14", types.Aarch64Linux.Name: "GLIBC_2.17"}[linuxT.Name]
+	linuxMultiarch = map[string]string{types.X86_64Linux.Name: "x86_64-linux-gnu", types.Aarch64Linux.Name: "aarch64-linux-gnu"}[linuxT.Name]
+)
+
+func hostLinux() types.Target {
+	if runtime.GOOS == "linux" && runtime.GOARCH == "arm64" {
+		return types.Aarch64Linux
+	}
+	return types.X86_64Linux
+}
 
 // elfDyn is an executable's PT_INTERP ("" for none) and DT_NEEDED list.
 func elfDyn(t *testing.T, exe string) (string, []string) {
@@ -76,7 +97,7 @@ func importVersion(t *testing.T, exe, name string) (string, string) {
 // quoting needed) given to the program.
 func runLinuxEnv(t *testing.T, exe string, env []string, args ...string) (string, int) {
 	t.Helper()
-	prefix := runner(t, types.X86_64Linux)
+	prefix := runner(t, linuxT)
 	tmp := "/tmp/mk-ffi4-" + strings.ReplaceAll(filepath.Base(filepath.Dir(exe)), " ", "_") + "-" + filepath.Base(exe)
 	sh := `src="$1"; dst="$2"; shift 2; cp "$src" "$dst" && chmod +x "$dst" && env ` + strings.Join(env, " ") +
 		` "$dst" "$@"; rc=$?; rm -f "$dst"; exit $rc`
@@ -100,7 +121,7 @@ func runLinuxEnv(t *testing.T, exe string, env []string, args ...string) (string
 }
 
 // TestFFI_Entry: a libc-mode bin has PT_INTERP
-// /lib64/ld-linux-x86-64.so.2 and DT_NEEDED libc.so.6 only, and runs with
+// the target's dynamic linker (linuxInterp) and DT_NEEDED libc.so.6 only, and runs with
 // its arguments, environment and exit status intact, in dev and release,
 // at 1 and 16 carriers. The same package with links: [] is static.
 func TestFFI_Entry(t *testing.T) {
@@ -111,12 +132,12 @@ func TestFFI_Entry(t *testing.T) {
 	static := writeTree(t, map[string]string{"pkg.mk": ffiManifest(nil), "app/main.mk": main})
 	root := writeTree(t, map[string]string{"pkg.mk": ffiManifest([]string{libcLink}), "app/main.mk": main})
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		if interp, needed := elfDyn(t, mustBuild(t, static, types.X86_64Linux, prof)); interp != "" || len(needed) > 0 {
+		if interp, needed := elfDyn(t, mustBuild(t, static, linuxT, prof)); interp != "" || len(needed) > 0 {
 			t.Errorf("%v: links: [] gave PT_INTERP %q, DT_NEEDED %q", prof, interp, needed)
 		}
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		interp, needed := elfDyn(t, exe)
-		if interp != "/lib64/ld-linux-x86-64.so.2" || !slices.Equal(needed, []string{"libc.so.6"}) {
+		if interp != linuxInterp || !slices.Equal(needed, []string{"libc.so.6"}) {
 			t.Errorf("%v: PT_INTERP %q, DT_NEEDED %q", prof, interp, needed)
 		}
 		if d := definedDynsyms(t, exe); len(d) > 0 {
@@ -168,11 +189,14 @@ export Main(sys: &System): WriteError!void {
 // and so the link change, and std's and the program's packs are reused. A
 // link that kept another .def's versions would show as a wrong version need.
 func TestFFI_Versions(t *testing.T) {
+	if linuxT != types.X86_64Linux {
+		t.Skip("SKIP: x86_64's glibc has two realpath versions (GLIBC_2.2.5 and GLIBC_2.3); aarch64's has one")
+	}
 	tools := needTools(t)
 	cache := t.TempDir()
 	build := func(root string, prof types.Profile) string {
 		t.Helper()
-		s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: types.X86_64Linux, Profile: prof, Tools: tools, CacheDir: cache, Jobs: 4})
+		s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: linuxT, Profile: prof, Tools: tools, CacheDir: cache, Jobs: 4})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +215,7 @@ func TestFFI_Versions(t *testing.T) {
 		{"realpath\n", "", "null 22\n"},
 	} {
 		root := writeTree(t, map[string]string{
-			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", "x86_64-linux")}),
+			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", linuxT.Name)}),
 			"lib/libc.def": v.def,
 			"app/main.mk":  realpathMain,
 		})
@@ -223,16 +247,16 @@ func programDir(t *testing.T, name string) string {
 // TestFFI_Libm: cos and hypot from libm.so.6 named in links match Go's math
 // within one unit in the last place, and cos again through std.dl;
 // arguments, environment and exit status 7, dev and release, 1 and 16
-// carriers. DT_NEEDED is libc.so.6 and libm.so.6 and hypot needs
-// GLIBC_2.2.5.
+// carriers. DT_NEEDED is libc.so.6 and libm.so.6 and hypot needs glibc's
+// base version (linuxBase).
 func TestFFI_Libm(t *testing.T) {
 	root := programDir(t, "libm")
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		if _, needed := elfDyn(t, exe); !slices.Equal(needed, []string{"libc.so.6", "libm.so.6"}) {
 			t.Errorf("%v: DT_NEEDED %q", prof, needed)
 		}
-		if ver, _ := importVersion(t, exe, "hypot"); ver != "GLIBC_2.2.5" {
+		if ver, _ := importVersion(t, exe, "hypot"); ver != linuxBase {
 			t.Errorf("%v: hypot needs %q", prof, ver)
 		}
 		if d := definedDynsyms(t, exe); len(d) > 0 {
@@ -276,7 +300,7 @@ func TestFFI_Libm(t *testing.T) {
 func TestFFI_Threads(t *testing.T) {
 	root := programDir(t, "libc")
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		// LibcBuild() folds to true, so the clone path's ThreadMain is not
 		// compiled in.
 		if got := buildStarts(t, root, prof, exe); !startsAre(got, prof, "PthreadMain", "ThreadMain") {
@@ -303,12 +327,12 @@ func TestFFI_Threads(t *testing.T) {
 // an environment runs alone with it, as in TestStdRuntimeTests (its own
 // MK_CARRIERS wins). Each profile's links are checked to be libc-mode ones.
 func TestFFI_Runtime(t *testing.T) {
-	prefix := runner(t, types.X86_64Linux)
+	prefix := runner(t, linuxT)
 	// MK_FFI4_BASELINE=1 runs the same blocks static (links: []), the comparison
 	// a failure here is judged against.
 	baseline := os.Getenv("MK_FFI4_BASELINE") == "1"
 	if !baseline {
-		testLinks = []Link{{Name: "libc.so.6", Kind: linkDynamic, Target: types.X86_64Linux.Name, Field: "links (FFI4-Runtime)"}}
+		testLinks = []Link{{Name: "libc.so.6", Kind: linkDynamic, Target: linuxT.Name, Field: "links (FFI4-Runtime)"}}
 	}
 	t.Cleanup(func() { testLinks = nil })
 	wslenv := func(t *testing.T, keys []string) {
@@ -330,7 +354,7 @@ func TestFFI_Runtime(t *testing.T) {
 				t.Setenv("MK_CARRIERS", c)
 				wslenv(t, []string{"MK_CARRIERS"})
 				for _, mod := range []string{"std.rt", "std.task"} {
-					cfg := Config{StdTests: mod, StdDir: ffiStd(), Target: types.X86_64Linux, Profile: prof, CacheDir: cache, TestHooks: hooks}
+					cfg := Config{StdTests: mod, StdDir: ffiStd(), Target: linuxT, Profile: prof, CacheDir: cache, TestHooks: hooks}
 					rep := mkTest(t, cfg, TestOptions{})
 					if len(rep.Tests) == 0 {
 						t.Errorf("%s: no test blocks", mod)
@@ -448,13 +472,13 @@ export Main(sys: &System): WriteError!void {
 // main thread at 16 carriers); dev and release, 1 and 16 carriers.
 func TestFFI_CMix(t *testing.T) {
 	root := writeTree(t, map[string]string{
-		"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", "x86_64-linux")}, `pkg.CSource(path: "csrc/cmix.c", flags: [])`),
+		"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", linuxT.Name)}, `pkg.CSource(path: "csrc/cmix.c", flags: [])`),
 		"lib/libc.def": "gettid@GLIBC_2.30\n",
 		"csrc/cmix.c":  cmixC,
 		"app/main.mk":  cmixMain,
 	})
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		f, err := elf.Open(exe)
 		if err != nil {
 			t.Fatal(err)
@@ -466,8 +490,8 @@ func TestFFI_CMix(t *testing.T) {
 				t.Errorf("%v: the executable defines malloc (std.libc linked in system-libc mode)", prof)
 			}
 		}
-		if ver, _ := importVersion(t, exe, "malloc"); ver != "GLIBC_2.2.5" {
-			t.Errorf("%v: malloc needs %q, want GLIBC_2.2.5 from libc.so.6", prof, ver)
+		if ver, _ := importVersion(t, exe, "malloc"); ver != linuxBase {
+			t.Errorf("%v: malloc needs %q, want %s from libc.so.6", prof, ver, linuxBase)
 		}
 		if os.Getenv("MK_LINUX") != "1" {
 			continue
@@ -487,11 +511,11 @@ func TestFFI_CMix(t *testing.T) {
 // naming the shared object; ld.lld would bind it to the stub's function.
 func TestFFI_ExternVar(t *testing.T) {
 	root := writeTree(t, map[string]string{
-		"pkg.mk":       ffiManifest([]string{linkLit("libdata.so.1", "dynamic", "lib/data.def", "x86_64-linux")}),
+		"pkg.mk":       ffiManifest([]string{linkLit("libdata.so.1", "dynamic", "lib/data.def", linuxT.Name)}),
 		"lib/data.def": "Counter\n",
 		"app/main.mk":  ffiMain("extern var Counter: i32", "int(Counter)"),
 	})
-	r, exe := ffiBuild(t, root, types.X86_64Linux, types.Dev, TestHooks{})
+	r, exe := ffiBuild(t, root, linuxT, types.Dev, TestHooks{})
 	got := lines(r)
 	if exe != "" || len(got) != 1 || !strings.HasSuffix(got[0], ":E0001") || fact(r.Report.Diags[0].Diag, "library") != "libdata.so.1" {
 		t.Errorf("want one E0001 naming libdata.so.1, got %q\n%s", got, r.Report.Text(r.Sources))
@@ -513,13 +537,13 @@ Try(sys: &System, name: str, search: dl.Search): WriteError!void {
 }
 
 export Main(sys: &System): WriteError!void {
-    try Try(sys, "/lib/x86_64-linux-gnu/libm.so.6", dl.Search.Path)
+    try Try(sys, "/lib/@MULTI@/libm.so.6", dl.Search.Path)
     try Try(sys, "/nonexistent-zz/libm.so.6", dl.Search.Path)
     try Try(sys, "/etc/passwd", dl.Search.Path)
     try Try(sys, "libm.so.6", dl.Search.Path)
     try Try(sys, "libnope-zz.so.9", dl.Search.System)
     try Try(sys, "libnope-zz.so.9", dl.Search.Application)
-    try Try(sys, "x86_64-linux-gnu/libm.so.6", dl.Search.System)
+    try Try(sys, "@MULTI@/libm.so.6", dl.Search.System)
     try Try(sys, "", dl.Search.System)
 }
 `
@@ -531,10 +555,10 @@ export Main(sys: &System): WriteError!void {
 // bare name ld.so does not find is NotFound under System and under
 // Application (the executable's directory, stat). Dev and release.
 func TestFFI_DlSearch(t *testing.T) {
-	root := writeTree(t, map[string]string{"pkg.mk": ffiManifest([]string{libcLink}), "app/main.mk": dlSearchMain})
+	root := writeTree(t, map[string]string{"pkg.mk": ffiManifest([]string{libcLink}), "app/main.mk": strings.ReplaceAll(dlSearchMain, "@MULTI@", linuxMultiarch)})
 	want := "open true true\nNotFound\nInvalid\nBadName\nNotFound\nNotFound\nBadName\nBadName\n"
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		if os.Getenv("MK_LINUX") != "1" {
 			continue
 		}
@@ -618,7 +642,7 @@ export Main(sys: &System): WriteError!int {
 func TestFFI_NoExports(t *testing.T) {
 	withList := func(def, main string, extra ...string) string {
 		files := map[string]string{
-			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", "x86_64-linux")}, extra...),
+			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", linuxT.Name)}, extra...),
 			"lib/libc.def": def,
 			"app/main.mk":  main,
 		}
@@ -628,7 +652,7 @@ func TestFFI_NoExports(t *testing.T) {
 		return writeTree(t, files)
 	}
 	useLibc := writeTree(t, map[string]string{
-		"pkg.mk": ffiManifest([]string{linkLit("libm.so.6", "dynamic", "", "x86_64-linux")}),
+		"pkg.mk": ffiManifest([]string{linkLit("libm.so.6", "dynamic", "", linuxT.Name)}),
 		"app/main.mk": "import std.libc\n\nexport Main(sys: &System): WriteError!void {\n    var n: uint = 0\n" +
 			"    unsafe \"std.libc's malloc and free\" {\n        p := libc.malloc(32)\n        n = libc.malloc_usable_size(p)\n        libc.free(p)\n    }\n" +
 			"    try sys.Print(\"usable {n}\\n\", (n))\n}\n",
@@ -638,18 +662,18 @@ func TestFFI_NoExports(t *testing.T) {
 		want       []string
 	}{
 		{"std.libc", useLibc, []string{"free std.libc"}},
-		{"memcpy", withList("close@GLIBC_2.2.5\nmemcpy@GLIBC_2.14\nmemset@GLIBC_2.2.5\n", noExportsMain), []string{"memcpy libc.so.6", "memset libc.so.6"}},
-		{"C strlen", withList("close@GLIBC_2.2.5\n", ffiMain("extern CStrlen(): i32", "CStrlen()"), `pkg.CSource(path: "csrc/s.c", flags: [])`), []string{"strlen libc.so.6"}},
-		{"export extern", withList("close@GLIBC_2.2.5\n", ffiMain("export extern close(fd: i32): i32 {\n    return fd\n}", "close(3)")), []string{"close libc.so.6"}},
+		{"memcpy", withList("close@"+linuxBase+"\nmemcpy@"+linuxMemcpy+"\nmemset@"+linuxBase+"\n", noExportsMain), []string{"memcpy libc.so.6", "memset libc.so.6"}},
+		{"C strlen", withList("close@"+linuxBase+"\n", ffiMain("extern CStrlen(): i32", "CStrlen()"), `pkg.CSource(path: "csrc/s.c", flags: [])`), []string{"strlen libc.so.6"}},
+		{"export extern", withList("close@"+linuxBase+"\n", ffiMain("export extern close(fd: i32): i32 {\n    return fd\n}", "close(3)")), []string{"close libc.so.6"}},
 	} {
-		r, exe := ffiBuild(t, c.root, types.X86_64Linux, types.Dev, TestHooks{})
+		r, exe := ffiBuild(t, c.root, linuxT, types.Dev, TestHooks{})
 		if got := libcFaults(t, r, exe); !slices.Equal(got, c.want) {
 			t.Errorf("%s: E0001 for %q, want %q\n%s", c.name, got, c.want, r.Report.Text(r.Sources))
 		}
 	}
-	root := withList("close@GLIBC_2.2.5\n", noExportsMain)
+	root := withList("close@"+linuxBase+"\n", noExportsMain)
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
+		exe := mustBuild(t, root, linuxT, prof)
 		if d := definedDynsyms(t, exe); len(d) > 0 {
 			t.Errorf("%v: .dynsym defines %q", prof, d)
 		}
@@ -674,7 +698,8 @@ int CAddrKeep(void) { keep = free; return keep != 0; }
 
 // TestFFI_CAddr (only functions resolve to a library): a list cannot say
 // whether a name is data, so a C source that is not position-independent
-// and takes a listed name's address directly (R_X86_64_32S here) is E0001
+// and takes a listed name's address directly (R_X86_64_32S, or
+// R_AARCH64_ADR_PREL_PG_HI21 on aarch64) is E0001
 // for each name, data (stderr, environ) or function (free): ld.lld would
 // give it a canonical PLT entry, which reads code for data. A call
 // (fileno) is not refused. Built position-independent, clang's default,
@@ -683,20 +708,20 @@ int CAddrKeep(void) { keep = free; return keep != 0; }
 func TestFFI_CAddr(t *testing.T) {
 	tree := func(flags string) string {
 		return writeTree(t, map[string]string{
-			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", "x86_64-linux")}, `pkg.CSource(path: "csrc/a.c", flags: [`+flags+`])`),
-			"lib/libc.def": "stderr@GLIBC_2.2.5\nenviron@GLIBC_2.2.5\nfileno@GLIBC_2.2.5\n",
+			"pkg.mk":       ffiManifest([]string{linkLit("libc.so.6", "dynamic", "lib/libc.def", linuxT.Name)}, `pkg.CSource(path: "csrc/a.c", flags: [`+flags+`])`),
+			"lib/libc.def": "stderr@" + linuxBase + "\nenviron@" + linuxBase + "\nfileno@" + linuxBase + "\n",
 			"csrc/a.c":     cAddrC,
 			"app/main.mk":  ffiMain("extern CAddrFd(): i32\nextern CAddrEnv(): i32\nextern CAddrKeep(): i32", "CAddrFd() * 100 + CAddrEnv() * 10 + CAddrKeep()"),
 		})
 	}
-	r, exe := ffiBuild(t, tree(`"-fno-pic"`), types.X86_64Linux, types.Dev, TestHooks{})
+	r, exe := ffiBuild(t, tree(`"-fno-pic"`), linuxT, types.Dev, TestHooks{})
 	if got, want := libcFaults(t, r, exe), []string{"environ libc.so.6", "free libc.so.6", "stderr libc.so.6"}; !slices.Equal(got, want) {
 		t.Errorf("-fno-pic: E0001 for %q, want %q\n%s", got, want, r.Report.Text(r.Sources))
 	}
 	root := tree("")
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
-		if ver, lib := importVersion(t, exe, "stderr"); ver != "GLIBC_2.2.5" || lib != "libc.so.6" {
+		exe := mustBuild(t, root, linuxT, prof)
+		if ver, lib := importVersion(t, exe, "stderr"); ver != linuxBase || lib != "libc.so.6" {
 			t.Errorf("%v: stderr needs %q of %q", prof, ver, lib)
 		}
 		if os.Getenv("MK_LINUX") == "1" {
@@ -713,28 +738,29 @@ const fabsC = "double fabs(double);\nvoid *malloc(unsigned long);\nvoid free(voi
 
 // TestFFI_FabsHint: a C source that calls fabs links statically, where
 // std.libc supplies it; in system-libc mode std.libc is not linked, so the
-// undefined fabs is E0001 with a hint naming libm.so.6 and fabs@GLIBC_2.2.5.
-// With that link the bin builds, imports fabs@GLIBC_2.2.5 from libm.so.6,
+// undefined fabs is E0001 with a hint naming libm.so.6 and fabs at glibc's
+// base version. With that link the bin builds, imports that fabs from
+// libm.so.6,
 // and on Linux prints 2. Dev and release.
 func TestFFI_FabsHint(t *testing.T) {
 	tree := func(links ...string) string {
 		return writeTree(t, map[string]string{
 			"pkg.mk":       ffiManifest(links, `pkg.CSource(path: "csrc/f.c", flags: [])`),
-			"lib/libm.def": "fabs@GLIBC_2.2.5\n",
+			"lib/libm.def": "fabs@" + linuxBase + "\n",
 			"csrc/f.c":     fabsC,
 			"app/main.mk":  ffiMain("extern CFabs(): i32", "CFabs()"),
 		})
 	}
-	mustBuild(t, tree(), types.X86_64Linux, types.Dev)
-	r, exe := ffiBuild(t, tree(libcLink), types.X86_64Linux, types.Dev, TestHooks{})
+	mustBuild(t, tree(), linuxT, types.Dev)
+	r, exe := ffiBuild(t, tree(libcLink), linuxT, types.Dev, TestHooks{})
 	if got := libcFaults(t, r, exe); !slices.Equal(got, []string{"fabs "}) ||
-		!strings.Contains(r.Report.Diags[0].Diag.Message, "libm.so.6") || !strings.Contains(r.Report.Diags[0].Diag.Message, "fabs@GLIBC_2.2.5") {
-		t.Errorf("want one E0001 for fabs naming libm.so.6 and fabs@GLIBC_2.2.5\n%s", r.Report.Text(r.Sources))
+		!strings.Contains(r.Report.Diags[0].Diag.Message, "libm.so.6") || !strings.Contains(r.Report.Diags[0].Diag.Message, "fabs@"+linuxBase) {
+		t.Errorf("want one E0001 for fabs naming libm.so.6 and fabs@"+linuxBase+"\n%s", r.Report.Text(r.Sources))
 	}
-	root := tree(libcLink, linkLit("libm.so.6", "dynamic", "lib/libm.def", "x86_64-linux"))
+	root := tree(libcLink, linkLit("libm.so.6", "dynamic", "lib/libm.def", linuxT.Name))
 	for _, prof := range []types.Profile{types.Dev, types.Release} {
-		exe := mustBuild(t, root, types.X86_64Linux, prof)
-		if ver, lib := importVersion(t, exe, "fabs"); ver != "GLIBC_2.2.5" || lib != "libm.so.6" {
+		exe := mustBuild(t, root, linuxT, prof)
+		if ver, lib := importVersion(t, exe, "fabs"); ver != linuxBase || lib != "libm.so.6" {
 			t.Errorf("%v: fabs needs %q of %q", prof, ver, lib)
 		}
 		if os.Getenv("MK_LINUX") == "1" {
@@ -762,7 +788,7 @@ func TestFFI_StaticThreads(t *testing.T) {
 	for _, c := range []struct{ name, main string }{{"tasks", tasks}, {"hello", hello}} {
 		root := writeTree(t, map[string]string{"pkg.mk": ffiManifest(nil), "app/main.mk": c.main})
 		for _, prof := range []types.Profile{types.Dev, types.Release} {
-			exe := mustBuild(t, root, types.X86_64Linux, prof)
+			exe := mustBuild(t, root, linuxT, prof)
 			f, err := elf.Open(exe)
 			if err != nil {
 				t.Fatal(err)
@@ -809,7 +835,7 @@ func TestFFI_LibcBuildCache(t *testing.T) {
 		want []string
 		hit  bool // std.sys from the cache: only a build of the same mode stored it
 	}{{static, []string{"ThreadMain"}, false}, {libc, pth, false}, {static, []string{"ThreadMain"}, true}, {libc, pth, true}} {
-		s, err := NewSession(Config{Root: c.root, StdDir: ffiStd(), Target: types.X86_64Linux, Profile: types.Dev, Tools: tools, CacheDir: cache, Jobs: 4})
+		s, err := NewSession(Config{Root: c.root, StdDir: ffiStd(), Target: linuxT, Profile: types.Dev, Tools: tools, CacheDir: cache, Jobs: 4})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -867,7 +893,7 @@ func TestFFI_LibcBuildCache(t *testing.T) {
 func buildStarts(t *testing.T, root string, prof types.Profile, exe string) []string {
 	t.Helper()
 	if prof == types.Release {
-		s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: types.X86_64Linux, Profile: prof, Debug: true, Tools: needTools(t), CacheDir: t.TempDir(), Jobs: 4})
+		s, err := NewSession(Config{Root: root, StdDir: ffiStd(), Target: linuxT, Profile: prof, Debug: true, Tools: needTools(t), CacheDir: t.TempDir(), Jobs: 4})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -958,10 +984,54 @@ func TestFFI_DirectRefs(t *testing.T) {
 	file, refs := directRefs(b, func(n string) bool { return listed[n] })
 	var got []string
 	for _, r := range refs {
-		got = append(got, r.sym+" "+r.typ.String())
+		got = append(got, r.sym+" "+r.typ)
 	}
 	slices.Sort(got)
 	want := []string{"absname R_X86_64_32S", "pcname R_X86_64_PC32", "roword R_X86_64_64"}
+	if file != "r.c" || !slices.Equal(got, want) {
+		t.Errorf("file %q, refs %q; want r.c, %q", file, got, want)
+	}
+}
+
+// TestFFI_DirectRefsAArch64: directRefs on an AArch64 object reports, for
+// listed names only, an ADRP to the name's page (ADR_PREL_PG_HI21, once:
+// its ADD half is not counted again), an absolute MOVW group and a 64-bit
+// word in a read-only section. A BL call (CALL26), a B tail jump (JUMP26),
+// a GOT load (ADR_GOT_PAGE, LD64_GOT_LO12_NC), a 64-bit word in a writable
+// section and an unlisted name are not reported.
+func TestFFI_DirectRefsAArch64(t *testing.T) {
+	tools := needTools(t)
+	dir := t.TempDir()
+	src := filepath.Join(dir, "r.s")
+	text := "\t.file \"r.c\"\n\t.text\n\t.globl f\nf:\n" +
+		"\tbl callee\n" +
+		"\tadrp x0, :got:gotname\n\tldr x0, [x0, :got_lo12:gotname]\n" +
+		"\tadrp x1, pcname\n\tadd x1, x1, :lo12:pcname\n" +
+		"\tmovz x2, #:abs_g1:absname\n\tmovk x2, #:abs_g0_nc:absname\n" +
+		"\tadrp x3, other\n" + // unlisted
+		"\tb tail\n" +
+		"\t.data\n\t.quad dataword\n" +
+		"\t.section .rodata\n\t.quad roword\n" +
+		"\t.section .note.GNU-stack,\"\",@progbits\n"
+	if err := os.WriteFile(src, []byte(text), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	obj := filepath.Join(dir, "r.o")
+	if err := tools.CompileAsm(context.Background(), toolchain.CJob{Triple: types.Aarch64Linux.LLVMTriple, Input: src, Output: obj}); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(obj)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed := map[string]bool{"callee": true, "gotname": true, "absname": true, "pcname": true, "tail": true, "dataword": true, "roword": true}
+	file, refs := directRefs(b, func(n string) bool { return listed[n] })
+	var got []string
+	for _, r := range refs {
+		got = append(got, r.sym+" "+r.typ)
+	}
+	slices.Sort(got)
+	want := []string{"absname R_AARCH64_MOVW_UABS_G0_NC", "absname R_AARCH64_MOVW_UABS_G1", "pcname R_AARCH64_ADR_PREL_PG_HI21", "roword R_AARCH64_ABS64"}
 	if file != "r.c" || !slices.Equal(got, want) {
 		t.Errorf("file %q, refs %q; want r.c, %q", file, got, want)
 	}

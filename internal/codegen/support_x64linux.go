@@ -16,6 +16,8 @@ package codegen
 import (
 	"strconv"
 	"strings"
+
+	"mk/internal/types"
 )
 
 // sysvELFStart passes the initial stack pointer (argc, argv, envp) to
@@ -158,8 +160,8 @@ const LibcTableSymbol = "mk.std.sys.Libc"
 const LibcEntry = "mk_libc_start"
 
 // LibcEntryAsm is the system-libc entry,
-// one x86_64 Linux assembly file the driver assembles into a bin in that
-// mode, beside the support pack's static _start, which then stays unused.
+// one Linux assembly file for arch (x86_64 here, AArch64 in
+// arm64LibcEntryAsm) the driver assembles into a bin in that mode, beside the support pack's static _start, which then stays unused.
 // mk_libc_start is glibc's own start sequence: rdx is ld.so's rtld_fini,
 // the stack holds argc, argv, envp and auxv; it calls __libc_start_main
 // (GLIBC_2.34: init and fini are null, the library runs the executable's
@@ -169,7 +171,10 @@ const LibcEntry = "mk_libc_start"
 // still lies, so std reads argc, argv, envp and auxv as on the static
 // entry. mk_start never returns. The file also holds a weak, zero copy of
 // the table, so a program that reaches no std code reading it still links.
-func LibcEntryAsm() string {
+func LibcEntryAsm(arch types.Arch) string {
+	if arch == types.ArchArm64 {
+		return arm64LibcEntryAsm()
+	}
 	var b strings.Builder
 	b.WriteString("\t.text\n\t.globl " + LibcEntry + "\n\t.type " + LibcEntry + ",@function\n\t.p2align 4\n" + LibcEntry + ":\n")
 	for _, l := range strings.Split(strings.Trim(libcStart, "\n"), "\n") {
@@ -184,14 +189,19 @@ func LibcEntryAsm() string {
 	}
 	b.WriteString("\tleaq -8(%rsi), %rdi\n\tcallq " + symStart + "\n\tud2\n")
 	b.WriteString("\t.size mk_libc_main, .-mk_libc_main\n")
-	// A weak table for a program that never reads std's (no thread, no
-	// std.dl: mono does not instantiate std's Libc then); std's own
-	// definition wins whenever it exists.
+	libcWeakTable(&b)
+	return b.String()
+}
+
+// libcWeakTable writes the entry file's tail: a weak table for a program
+// that never reads std's (no thread, no std.dl: mono does not instantiate
+// std's Libc then), which std's own definition replaces whenever it
+// exists, and the non-executable stack note.
+func libcWeakTable(b *strings.Builder) {
 	n := strconv.Itoa(8 * len(LibcSlotNames))
 	b.WriteString("\t.bss\n\t.weak \"" + LibcTableSymbol + "\"\n\t.p2align 3\n\"" + LibcTableSymbol + "\":\n\t.zero " + n + "\n")
 	b.WriteString("\t.size \"" + LibcTableSymbol + "\", " + n + "\n")
 	b.WriteString("\t.section .note.GNU-stack,\"\",@progbits\n")
-	return b.String()
 }
 
 // libcStart is mk_libc_start's body: glibc's x86_64 start.S, with

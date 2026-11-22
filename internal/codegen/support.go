@@ -724,7 +724,9 @@ func (s *support) targetRoutines() {
 		s.asmFunc(symTaskStart, arm64TaskStart)
 		s.asmFunc(symCallSystem, arm64CallSystem)
 		if s.t.OS == types.OSLinux { // macOS: dyld calls main (entry)
-			s.asmFunc(symELFStart, arm64ELFStart)
+			if !s.cfg.Library { // a library has no process entry: a C host's crt1 has _start
+				s.asmFunc(symELFStart, arm64ELFStart)
+			}
 			s.asmFunc(symClone, arm64Clone)
 			s.asmFunc(symSigreturn, arm64Sigreturn)
 		}
