@@ -40,6 +40,13 @@ type walker struct {
 	keepsBusy bool
 	mutexNP   map[types.TypeID]memoBit
 	walk      map[types.TypeID]memoBit
+	// walkExact holds walkFrom's answers that hold in every walk: t's walk
+	// met no type recur counts and every successor walked was itself exact
+	// (answered here or by an exact walk), so the answer is plain
+	// reachability and skipping t's closure changes no other walk's bound.
+	walkExact map[types.TypeID]bool
+	// walkCalls counts walkFrom calls (read by tests).
+	walkCalls int
 	refs      map[types.TypeID]*refInfo
 	readDecl  map[types.ItemID]bool
 	// mod is the body's module, whose import closure holds the impls a
@@ -78,20 +85,21 @@ type refInfo struct {
 
 func newWalker(env *Env, reads *types.ReadSet) *walker {
 	w := &walker{
-		tab:      env.Types,
-		known:    env.Known,
-		envF:     env.Facts,
-		reads:    reads,
-		facts:    make(map[types.TypeID]types.Facts),
-		fields:   make(map[types.TypeID][]types.TypeID),
-		view:     make(map[types.TypeID]memoBit),
-		keeps:    make(map[viewKey]memoBit),
-		mutexNP:  make(map[types.TypeID]memoBit),
-		walk:     make(map[types.TypeID]memoBit),
-		refs:     make(map[types.TypeID]*refInfo),
-		readDecl: make(map[types.ItemID]bool),
-		mod:      env.Module,
-		impls:    env.Impls,
+		tab:       env.Types,
+		known:     env.Known,
+		envF:      env.Facts,
+		reads:     reads,
+		facts:     make(map[types.TypeID]types.Facts),
+		fields:    make(map[types.TypeID][]types.TypeID),
+		view:      make(map[types.TypeID]memoBit),
+		keeps:     make(map[viewKey]memoBit),
+		mutexNP:   make(map[types.TypeID]memoBit),
+		walk:      make(map[types.TypeID]memoBit),
+		walkExact: make(map[types.TypeID]bool),
+		refs:      make(map[types.TypeID]*refInfo),
+		readDecl:  make(map[types.ItemID]bool),
+		mod:       env.Module,
+		impls:     env.Impls,
 	}
 	if w.impls == nil {
 		w.impls = &ImplCache{}
@@ -924,10 +932,11 @@ func (w *walker) rawParam(ps []types.TypeID) bool {
 // view, through which a guard or a Shared clone writes (&Shared[Mutex[?&i32]]
 // and &Box[Mutex[?&i32]] held in a struct). A shared reference to anything
 // else is followed into its referent's own references. Memoized at the top
-// level; a type met again in one walk adds nothing (a cycle reaches nothing
-// new). On a polymorphically recursive type (struct G[T] { next: ?&G[?T] })
-// the walk stops at recur's bound and answers as an ANY step would, that it
-// walks on.
+// level (walk) and, inside a walk, for every type whose answer holds in every
+// walk (walkExact); a type met again in one walk adds nothing (a cycle reaches
+// nothing new). On a polymorphically recursive type
+// (struct G[T] { next: ?&G[?T] }) the walk stops at recur's bound and answers
+// as an ANY step would, that it walks on.
 func (w *walker) walkExtra(t types.TypeID) bool {
 	if t == types.NoType {
 		return false
@@ -935,39 +944,52 @@ func (w *walker) walkExtra(t types.TypeID) bool {
 	if b, ok := w.walk[t]; ok {
 		return b == memoTrue
 	}
-	r := w.walkFrom(t, map[types.TypeID]bool{}, w.newRecur())
+	r, _ := w.walkFrom(t, map[types.TypeID]bool{}, w.newRecur())
 	w.walk[t] = bitOf(r)
 	return r
 }
 
-func (w *walker) walkFrom(t types.TypeID, seen map[types.TypeID]bool, r *recur) bool {
+// walkFrom is walkExtra's walk from t; exact reports that the answer is
+// t's in every walk (walkExact).
+func (w *walker) walkFrom(t types.TypeID, seen map[types.TypeID]bool, r *recur) (res, exact bool) {
+	w.walkCalls++
+	if b, ok := w.walkExact[t]; ok {
+		return b, true
+	}
 	if seen[t] {
-		return false
+		return false, false
 	}
 	seen[t] = true
-	if stop, leave := r.enter(t); stop {
-		return true
+	stop, leave := r.enter(t)
+	if stop {
+		return true, false
 	} else if leave != nil {
 		defer leave()
 	}
+	exact = leave == nil
 	for _, s := range w.refSteps(t).steps {
 		if s.excl || s.any {
-			return true
+			res = true
+			break
 		}
 		if w.factsOf(s.referent).Allocator {
 			continue
 		}
 		if w.writableByType(s.referent) {
-			return true
+			res = true
+			break
 		}
-		if seen[s.referent] {
-			continue
-		}
-		if w.walkFrom(s.referent, seen, r) {
-			return true
+		b, ex := w.walkFrom(s.referent, seen, r)
+		exact = exact && ex
+		if b {
+			res = true
+			break
 		}
 	}
-	return false
+	if exact {
+		w.walkExact[t] = res
+	}
+	return res, exact
 }
 
 // holdsMutexNonPlain reports whether some type in inline(t) is Mutex[T] with

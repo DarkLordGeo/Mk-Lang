@@ -864,7 +864,7 @@ mutant M-D790-walk
 rule R11
 class R
 file internal/borrow/typewalk.go
-anchor \tr := w.walkFrom(t, map[types.TypeID]bool{}, w.newRecur())\n
+anchor \tr, _ := w.walkFrom(t, map[types.TypeID]bool{}, w.newRecur())\n
 replace \tr := false\n
 note the direct write rule walks on from views only: a write through a result that holds a loan of a plain local one level above a mut reference, or of a shared reference to a Mutex, lands on the local and never on the referent; P5-CR1-x02mutfield, x02slice, mutslicederef, x01fromp, P5-C2F2-holder and P5-F2-sharedholder are accepted, each reads a dead frame when run; expected VDeadScope
 witness P5-CR1-x02mutfield.mk P5-CR1-x02slice.mk P5-CR1-mutslicederef.mk P5-CR1-x01fromp.mk P5-C2F2-holder.mk P5-F2-sharedholder.mk G756-holder.mk
@@ -874,8 +874,8 @@ mutant M-D790-views
 rule R11
 class R
 file internal/borrow/typewalk.go
-anchor \t\tif w.writableByType(s.referent) {\n\t\t\treturn true\n\t\t}\n\t\tif seen[s.referent] {\n\t\t\tcontinue\n\t\t}\n\t\tif w.walkFrom(s.referent, seen, r) {\n
-replace \t\tif w.factsOf(s.referent).Interior {\n\t\t\treturn true\n\t\t}\n\t\tif seen[s.referent] {\n\t\t\tcontinue\n\t\t}\n\t\tif !w.factsOf(s.referent).View && w.walkFrom(s.referent, seen, r) {\n
+anchor \t\tif w.writableByType(s.referent) {\n\t\t\tres = true\n\t\t\tbreak\n\t\t}\n\t\tb, ex := w.walkFrom(s.referent, seen, r)\n
+replace \t\tif w.factsOf(s.referent).Interior {\n\t\t\tres = true\n\t\t\tbreak\n\t\t}\n\t\tb, ex := false, false\n\t\tif !w.factsOf(s.referent).View {\n\t\t\tb, ex = w.walkFrom(s.referent, seen, r)\n\t\t}\n
 note the walk on from a plain root stops at a shared reference to a view: a guard write through a struct that holds &Shared[Mutex[?&i32]] stays on the struct; P5-F2-sharedholder is accepted and reads a dead frame when run (32758); expected VDeadScope
 witness P5-F2-sharedholder.mk
 end
