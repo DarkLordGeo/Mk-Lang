@@ -529,12 +529,16 @@ func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, ro
 	if S == emptySet {
 		return false
 	}
+	// The walk does not start from a loan this call stored into p from a
+	// shallow value (argSh[p]): nothing can be written through it, and a
+	// root that holds it shallow is not hopped through either (shallowHop).
+	added := c.sets.minus(c.sets.minus(argH[p], own[p]), argSh[p])
 	var roots []rootID
 	var fld []int
 	if round == 0 {
-		roots, fld = c.writableSkip(st, argH[p], emptySet, noRoot)
+		roots, fld = c.writableSkip(st, c.sets.unite(own[p], added), emptySet, noRoot)
 	} else {
-		roots, fld = c.writableSkip(st, c.sets.unite(own[p], c.sets.minus(argH[p], S)), S, c.argRoot(st, own[p]))
+		roots, fld = c.writableSkip(st, c.sets.unite(own[p], c.sets.minus(added, S)), S, c.argRoot(st, own[p]))
 	}
 	grew := false
 	c.taskGrew = false
