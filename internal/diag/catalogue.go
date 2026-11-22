@@ -168,7 +168,7 @@ var catalogue = [...]Entry{
 	{E0215, "grant-missing", "Alternatives: the grant line the message gives"},
 	{E0216, "mk-too-old", "Alternatives: `mk upgrade`"},
 	{E0217, "test-dep-outside-test", "Alternatives"},
-	{E0301, "type-mismatch", "Proven if one `*`, `&` or swap type-checks"},
+	{E0301, "type-mismatch", "Proven: `&*p` for a `mut T` where a `&T` is expected, when it is the whole operand of `return` in a body with no `defer` or `onerr` and reads through a parameter or is a call or `try` result; compiles: the same elsewhere, `&x` for a loan `mut x`, and `xs[..]` for a `mut []T` where a `[]T` is expected"},
 	{E0302, "no-conversion", "Alternatives"},
 	{E0303, "lossy-conversion", "Compiles: `Cast`, or `Trunc` between integers"},
 	{E0304, "argument-count", "Proven if each missing parameter has one in-scope candidate"},

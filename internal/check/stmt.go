@@ -328,7 +328,11 @@ func (u *unit) returnStmt(s *ast.ReturnStmt) {
 	case s.Value == nil && res != types.Void && res != types.Poison:
 		u.err(diag.E0301, s.Span(), "`return` needs a `"+u.str(res)+"` value").Text("expected", u.str(res)).Text("found", "void").Text("result", u.str(res))
 	case s.Value != nil:
-		u.scopeEscapes(s.Value, u.expr(s.Value, res))
+		saved := u.returnAt
+		u.returnAt = s.Value
+		t := u.expr(s.Value, res)
+		u.returnAt = saved
+		u.scopeEscapes(s.Value, t)
 	}
 }
 

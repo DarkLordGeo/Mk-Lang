@@ -4,7 +4,8 @@
 //
 // What: unit (the checking context of one stage-6 unit), newUnit, expr and
 // exprInner (the bidirectional checker), assignable and widens, mismatchExpr
-// (E0301), literal, name (a bare name's meaning), needsBound (E0703).
+// (E0301; reborrowHint and plainText for a `mut T` met by a `&T`),
+// literal, name (a bare name's meaning), needsBound (E0703).
 //
 // How: expr checks e against want and records e's own type; a mismatch is
 // E0301 at e. The only implicit conversion is widening an error value to a
@@ -69,6 +70,12 @@ type unit struct {
 	// (`_ = e`), a value position.
 	dropAt    ast.Expr
 	discardAt ast.Expr
+	// returnAt is the operand of the `return` being checked, and punAt the
+	// name of the record shorthand field being checked (reborrowHint).
+	returnAt ast.Expr
+	punAt    ast.Expr
+	// defers caches bodyDefers: 0 not yet looked, 1 no, 2 yes.
+	defers uint8
 	// loopPat is set while a for head's destructured variable is checked:
 	// its E0305 offers no `..`, which the loop head refuses.
 	loopPat bool
@@ -270,14 +277,19 @@ func (u *unit) mismatch(at source.Span, want, got types.TypeID) *diag.Diagnostic
 		Text("expected", u.str(want)).Text("found", u.str(got))
 }
 
-// mismatchExpr is E0301 for expression e; where a `mut []T` meets a `[]T`
-// it offers `e[..]`, the shared view no conversion gives,
-// parenthesised unless e is a name, a field, an index, a call or already
-// parenthesised. Compiles: a shared re-slice can meet another loan of the
-// call, so mk check's recompile settles it.
+// mismatchExpr is E0301 for expression e. Where a `mut U` meets a `&U` it
+// names the shared reborrow (reborrowHint). Where a `mut []T` meets a `[]T`
+// it offers `e[..]`, the shared view no conversion gives, parenthesised
+// unless e is a name, a field, an index, a call or already parenthesised.
+// Compiles: a shared re-slice can meet another loan of the call, so mk
+// check's recompile settles it.
 func (u *unit) mismatchExpr(e ast.Expr, want, got types.TypeID) {
 	d := u.mismatch(e.Span(), want, got)
 	w, g := u.tab.Get(want), u.tab.Get(got)
+	if w.Kind == types.KRef && g.Kind == types.KMut && w.Elem == g.Elem {
+		u.reborrowHint(d, e)
+		return
+	}
 	if w.Kind != types.KSlice || g.Kind != types.KMutSlice || w.Elem != g.Elem {
 		return
 	}
@@ -293,6 +305,154 @@ func (u *unit) mismatchExpr(e ast.Expr, want, got types.TypeID) {
 		edits = []diag.Edit{{Span: source.Span{File: sp.File, Start: sp.Start, End: sp.Start}, Text: "("}, {Span: end, Text: ")[..]"}}
 	}
 	d.Fix(diag.Fix{Class: diag.Compiles, Edits: edits, Why: "a `mut []T` is passed where a `[]T` is expected as its shared view `xs[..]`"})
+}
+
+// reborrowHint completes E0301 for a `mut T` where a `&T` is expected, which
+// no conversion bridges: a try line names the shared reborrow `&*e`, or `&x`
+// for a loan `mut x`, and a fix writes it. The fix is a prefix on a name, a
+// field, an index, a call, a `try` or a `*`; `name: &*` on a record
+// shorthand field; `&*(e)` around an `else` or any other form. A
+// parenthesised expression gets the try line alone, since the expression
+// inside it carries the fix. The fix is proven only where no loan can meet
+// the new shared one (reborrowProven); elsewhere it is compiles.
+func (u *unit) reborrowHint(d *diag.Diagnostic, e ast.Expr) {
+	sp := e.Span()
+	class := diag.Compiles
+	if u.reborrowProven(e) {
+		class = diag.Proven
+	}
+	ok := sp.File != source.NoFile && sp.End > sp.Start
+	if x, isLoan := e.(*ast.UnaryExpr); isLoan && x.Op == ast.TokMut {
+		t, plain := u.plainText(x.X)
+		if plain {
+			d.Alt("write `&" + t + "`, a shared loan, for `mut " + t + "`")
+		} else {
+			d.Alt("write `&` for `mut`, a shared loan")
+			t = "x"
+		}
+		xs := x.X.Span()
+		if ok && xs.File == sp.File && sp.Start < xs.Start {
+			d.Fix(diag.Fix{Class: class, Edits: []diag.Edit{{Span: source.Span{File: sp.File, Start: sp.Start, End: xs.Start}, Text: "&"}},
+				Why: "a shared loan `&" + t + "` where a `&T` is expected, for the exclusive `mut " + t + "`"})
+		}
+		return
+	}
+	at := source.Span{File: sp.File, Start: sp.Start, End: sp.Start}
+	end := source.Span{File: sp.File, Start: sp.End, End: sp.End}
+	t, plain := u.plainText(e)
+	var edits []diag.Edit
+	switch x := e.(type) {
+	case *ast.Ident, *ast.FieldExpr, *ast.IndexExpr, *ast.CallExpr:
+		edits = []diag.Edit{{Span: at, Text: "&*"}}
+		if e == u.punAt {
+			edits[0].Text = t + ": &*" // the shorthand `(n)` is `(n: n)`
+			t = t + ": &*" + t
+		}
+	case *ast.ParenExpr:
+	case *ast.UnaryExpr:
+		if x.Op == ast.TokTry || x.Op == ast.TokStar {
+			edits = []diag.Edit{{Span: at, Text: "&*"}}
+		} else {
+			edits = []diag.Edit{{Span: at, Text: "&*("}, {Span: end, Text: ")"}}
+		}
+	default:
+		edits = []diag.Edit{{Span: at, Text: "&*("}, {Span: end, Text: ")"}}
+	}
+	if el, isElse := e.(*ast.ElseExpr); isElse {
+		if o, p := u.plainText(el.X); p {
+			d.Alt("write `&*(" + o + " else { .. })`, a shared reborrow of the `mut` reference")
+		} else {
+			d.Alt("reborrow the `mut` reference shared: write `&*(` before it and `)` after it")
+		}
+	} else if plain && e == u.punAt {
+		d.Alt("write `" + t + "`, a shared reborrow of the `mut` reference")
+	} else if plain {
+		d.Alt("write `&*" + t + "`, a shared reborrow of the `mut` reference")
+	} else if len(edits) == 2 {
+		d.Alt("reborrow the `mut` reference shared: write `&*(` before it and `)` after it")
+	} else {
+		d.Alt("reborrow the `mut` reference shared: write `&*` before it")
+	}
+	if len(edits) == 0 || !ok {
+		return
+	}
+	shown := "`&*` before it"
+	if plain && e == u.punAt {
+		shown = "`" + t + "`"
+	} else if plain {
+		shown = "`&*" + t + "`"
+	} else if len(edits) == 2 {
+		shown = "`&*(` and `)` around it"
+	}
+	d.Fix(diag.Fix{Class: class, Edits: edits, Why: "a `mut T` where a `&T` is expected is reborrowed shared: " + shown})
+}
+
+// reborrowProven reports whether the reborrow of e is certain to check where
+// the mismatch did: e is the whole operand of a `return`, so nothing after it
+// in the statement uses the reference; the body has no `defer` or `onerr`,
+// which would run after the result exists; and e reads through a parameter
+// or is a call or `try` result, so the reborrow points at no local's own
+// storage. A loan `mut x` is never proven: x may be a local.
+func (u *unit) reborrowProven(e ast.Expr) bool {
+	if e != u.returnAt || u.bodyDefers() {
+		return false
+	}
+	var rooted func(e ast.Expr) bool
+	rooted = func(e ast.Expr) bool {
+		switch x := e.(type) {
+		case *ast.CallExpr:
+			return true
+		case *ast.UnaryExpr:
+			return x.Op == ast.TokTry || (x.Op == ast.TokStar && rooted(x.X))
+		case *ast.FieldExpr:
+			return rooted(x.X)
+		case *ast.IndexExpr:
+			return rooted(x.X)
+		case *ast.Ident:
+			r := u.ref(x)
+			if r.Kind == resolve.RefParam {
+				return types.ItemID(r.B) == u.it.ID // a parameter of this unit
+			}
+			if r.Kind != resolve.RefLocal {
+				return false
+			}
+			id := u.local(LocalID(r.A))
+			return int(id) < len(u.b.Locals) && u.b.Locals[id].Param != 0
+		}
+		return false
+	}
+	return rooted(e)
+}
+
+// bodyDefers reports whether the unit's body holds a `defer` or `onerr`
+// anywhere, nested literals included.
+func (u *unit) bodyDefers() bool {
+	if u.defers == 0 {
+		u.defers = 1
+		if u.b.Node != nil {
+			ast.Inspect(u.b.Node, func(n ast.Node) bool {
+				if _, ok := n.(*ast.DeferStmt); ok {
+					u.defers = 2
+				}
+				return u.defers != 2
+			})
+		}
+	}
+	return u.defers == 2
+}
+
+// plainText spells a name or a chain of fields on a name, the forms a try
+// line quotes; anything else is not spelled.
+func (u *unit) plainText(e ast.Expr) (string, bool) {
+	switch x := e.(type) {
+	case *ast.Ident:
+		return u.c.cfg.Interner.Str(x.Name), true
+	case *ast.FieldExpr:
+		if s, ok := u.plainText(x.X); ok {
+			return s + "." + u.c.cfg.Interner.Str(x.Name.Name), true
+		}
+	}
+	return "", false
 }
 
 // exprInner dispatches on the expression form.

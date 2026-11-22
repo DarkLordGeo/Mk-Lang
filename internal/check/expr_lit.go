@@ -301,7 +301,9 @@ func (u *unit) recordLit(e *ast.RecordLit, want types.TypeID) types.TypeID {
 		if f.Value != nil {
 			t = u.expr(f.Value, w)
 		} else {
+			u.punAt = f.Name
 			t = u.expr(f.Name, w)
+			u.punAt = nil
 		}
 		if f.Value != nil {
 			u.scopeEscapes(f.Value, t)

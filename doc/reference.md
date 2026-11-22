@@ -1641,6 +1641,36 @@ export Main(sys: &System): WriteError!void {
 - A reference is 8 bytes. It has no arithmetic. For a reference that may be missing, use `?&T`.
 - The compiler checks that no reference outlives its value and that no two references conflict. The rules are in [the memory model](memory.md), and [section 8](#8-ownership-and-borrowing) summarizes them.
 
+A `mut T` is not a `&T`: no conversion turns one into the other. Where a `&T` is expected, write the shared reborrow `&*p`. E0301 names it. `mk fix` writes it when it is the whole operand of `return`, the function has no `defer` or `onerr`, and the reference is read through a parameter or is a call or `try` result; elsewhere a later use may conflict with the new shared loan, or the loan may be of a local, so it is offered, not applied:
+
+```mk
+// verdict: reject E0301
+struct Node {
+    next: ?&Node
+    v: int
+}
+
+Push(a: &Arena, head: ?&Node into a, v: int): OutOfMemory!&Node from a, head {
+    p := try a.Put(Node(next: head, v: v))
+    return p // <- E0301
+}
+```
+
+Write `return &*p`:
+
+```mk
+// verdict: ok
+struct Node {
+    next: ?&Node
+    v: int
+}
+
+Push(a: &Arena, head: ?&Node into a, v: int): OutOfMemory!&Node from a, head {
+    p := try a.Put(Node(next: head, v: v))
+    return &*p
+}
+```
+
 ### Raw pointer types: `*T`
 
 `*T` is an address with no checks: it may be null, dangle or alias. You need one only to talk to C, to hardware, or to build a container the borrow rules cannot express. A raw pointer is plain and 8 bytes; `*void` is an untyped address.
