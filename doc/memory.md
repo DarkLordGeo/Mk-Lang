@@ -1241,6 +1241,40 @@ The rules for allocators (`Arena`, `Alloc`, `Heap`):
 - A store into an allocator drops the loans it holds by being itself, such as a loan of the arena stored into its own memory. So does a store into the memory of an arena that a parameter `a: &Arena` refers to, so `a` need not be declared `into a`. With `a` a reference to an allocator, `*a into a` stores the handle's loans, which the allocator holds by its making, into the allocator itself: they are dropped too, so its heap or parent stays skipped.
 - The allocators a parameter reaches are tracked apart from what a `mut` reference or a view beside them reaches, never merged with it.
 
+The drop covers only the store into the allocator itself. With `a into o` in the same signature, `*a into a` chains into `*a into o`, so the heap's loan reaches `o`, and the store of the arena into `o` reaches the heap:
+
+```mk
+// verdict: reject E0505
+B(a: &Arena into o, o: mut List[str]) *a into a {
+}
+
+Run(h: &Heap): OutOfMemory!void {
+    var ar := try Arena.New(h)
+    defer ar.Free()
+    var o := List[str].New(&ar)
+    B(&ar, mut o) // <- E0505
+}
+```
+
+Fix: split the clauses into two calls, so nothing chains:
+
+```mk
+// verdict: ok
+B1(a: &Arena) *a into a {
+}
+
+B2(a: &Arena into o, o: mut List[str]) {
+}
+
+Run(h: &Heap): OutOfMemory!void {
+    var ar := try Arena.New(h)
+    defer ar.Free()
+    var o := List[str].New(&ar)
+    B1(&ar)
+    B2(&ar, mut o)
+}
+```
+
 A view made in an arena and stored next to the arena's own loan is therefore no store of the arena into itself:
 
 ```mk
