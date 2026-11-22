@@ -136,8 +136,6 @@ test "SplitOnce returns the first split and keeps empty sides" {
         (s: "aaa", sep: "aa", left: "", right: "a"),
         (s: "x=", sep: "=", left: "x", right: ""),
         (s: "=", sep: "=", left: "", right: ""),
-        (s: "abc", sep: "", left: "", right: "abc"),
-        (s: "", sep: "", left: "", right: ""),
         (s: "é☃尾", sep: "☃", left: "é", right: "尾")] {
         parts := c.s.SplitOnce(c.sep).Must()
         Assert(parts.before == c.left && parts.after == c.right)

@@ -109,9 +109,13 @@ export str.Split(self, sep: str): Split from self, sep {
 }
 
 /// The text before and after the first occurrence of sep, or none if absent.
-/// An empty sep gives ("", self). Both views borrow self. O(n + m) in the
-/// worst case for n bytes of text and m bytes of separator. Allocates nothing.
+/// An empty sep panics (code 8), as Split's does. Both views borrow self.
+/// O(n + m) in the worst case for n bytes of text and m bytes of separator.
+/// Allocates nothing.
 export str.SplitOnce(self, sep: str): ?(before: str, after: str) from self {
+    if sep.Len() == 0 {
+        raw.Fail(8, "str.SplitOnce: empty separator")
+    }
     i := self.Find(sep) else {
         return none
     }

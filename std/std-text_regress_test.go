@@ -637,14 +637,15 @@ func TestSTDTEXT_MkTestBlocks(t *testing.T) {
 
 // TestSTDTEXT_StrPanics: the documented str and Text panics, each in its own
 // process, since a panic fails a test block: Byte out of range is a bounds
-// panic (code 2), an empty Split separator code 8, Text.Drain off a scalar
-// boundary code 10.
+// panic (code 2), an empty Split or SplitOnce separator code 8, Text.Drain
+// off a scalar boundary code 10.
 func TestSTDTEXT_StrPanics(t *testing.T) {
 	t.Parallel()
 	cases := []struct{ name, body, want string }{
 		{"Byte out of range", "s := \"abc\"\n    _ = s.Byte(sys.args.Len() + 2)", "panic: bounds"},
 		{"Byte below zero", "s := \"abc\"\n    _ = s.Byte(sys.args.Len() - 2)", "panic: bounds"},
 		{"Split with an empty separator", "var it := \"a,b\".Split(\"\")\n    _ = it.Next()", "str.Split: empty separator"},
+		{"SplitOnce with an empty separator", "_ = \"a,b\".SplitOnce(\"\")", "str.SplitOnce: empty separator"},
 		{"Drain off a scalar boundary", "var t := Text.New(sys.arena)\n    t.Push(\"\\u{E9}\") else {\n        return\n    }\n    t.Drain(1)", "Text.Drain: not on a scalar boundary"},
 	}
 	for _, c := range cases {
