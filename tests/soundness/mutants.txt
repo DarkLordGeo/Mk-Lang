@@ -933,7 +933,7 @@ class P
 file internal/borrow/call.go
 anchor \t\t\t\talloc := !c.allocReferent(args[q])\n
 replace \t\t\t\talloc := true\n
-note a precision row: the call rule's `*q into p` step keeps the allocator's loan when q refers to an allocator, so std's Swap of two local arenas is E0505 at the call and E0503 at the Free, and a local arena passed to a `*a into xs` parameter is E0505 at the call, whatever the order
+note a precision row: the call rule's `*q into p` step keeps the allocator's loan when q refers to an allocator, so std's Swap of two local arenas is E0505 at the call and E0503 at the Free, and a local arena passed to a `*a into xs` parameter is E0505 once the list is read after the arena is freed
 witness P5-K4-swaparenas-ok.mk P5-K4-starainto-ok.mk
 end
 

@@ -755,16 +755,17 @@ func (c *checker) arenaRef(t types.TypeID) bool {
 	return e.Kind == types.KNamed && e.Item == c.env.Known.Arena
 }
 
-// memSelf is S without the loans of allocator node a itself, for a store
-// into a's memory node t that the writable walk reached only through a's own
-// memory hop (memHop): a loan of the arena stored into the arena's
-// memory dies with it. A loan of anything else, a deeper part of the arena
-// included, is stored as usual, and so is every loan stored into t when a
-// hop of another kind also reaches t.
+// memSelf is S without the loans allocator node a holds by being itself, for
+// a store into a's memory node t that the writable walk reached only through
+// a's own memory hop (memHop): a loan of the arena, and the parameter's own
+// inner loan (what a value read back out of the arena's memory holds), stored
+// into the arena's memory die with it. A loan of anything else is stored as
+// usual, and so is every loan stored into t when a hop of another kind also
+// reaches t.
 func (c *checker) memSelf(a rootID, S setID) setID {
 	var drop []uint32
 	for _, l := range c.sets.get(S) {
-		if c.loans[l].target == a {
+		if lo := &c.loans[l]; lo.target == a || lo.abstract && lo.inner && lo.param == c.roots[a].param {
 			drop = append(drop, l)
 		}
 	}

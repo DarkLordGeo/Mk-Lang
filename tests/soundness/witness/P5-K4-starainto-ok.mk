@@ -1,8 +1,8 @@
 // verdict: ok
-// note: the narrowing of B's keep: a call passing a local arena to a `*a into xs` parameter, with an empty callee; arr is read while sa lives and sa freed after. Sound (result 321). A rejection, E0505 at the call, means the narrowing is gone (mutant M-D791-narrow)
+// note: the narrowing of B's keep: a call passing a local arena to a `*a into xs` parameter, with an empty callee; sa is freed and arr read after, since what the call stored into arr is the arena's handle, not its memory. Sound (result 321). A rejection, E0503 at the free, means the narrowing is gone (mutant M-D791-narrow)
 // One clause, `*a into xs`; the callee does
-// nothing; the caller passes a local arena, reads arr while sa
-// lives and frees sa after. Sound (result 321). Shows what the clause means at the call.
+// nothing; the caller passes a local arena, frees sa, then
+// reads arr. Sound (result 321). Shows what the clause means at the call.
 Reverse(xs: mut []str, a: &Arena): int *a into xs {
     return 0
 }
@@ -17,9 +17,8 @@ Run(sys: &System): int {
         sa.Free()
         return r
     }
-    t := arr[0].Len() * 100 + arr[1].Len() * 10 + arr[2].Len()
     sa.Free()
-    return t
+    return arr[0].Len() * 100 + arr[1].Len() * 10 + arr[2].Len()
 }
 
 export Main(sys: &System): WriteError!void {

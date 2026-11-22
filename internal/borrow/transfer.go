@@ -74,7 +74,15 @@ func (c *checker) behindKeep(st *state, s setID, alloc bool) setID {
 	for _, l := range c.sets.get(s) {
 		lo := &c.loans[l]
 		if t := lo.target; t != noRoot {
-			out = c.sets.unite(out, c.held(st, t))
+			h := c.held(st, t)
+			if ti := &c.roots[t]; alloc && ti.allocator && ti.kind != rkAbstract {
+				// What is read out of an allocator's memory is what was
+				// stored into it, never the loans the allocator holds by its
+				// making (a sub-arena's parent, an arena's heap): the value
+				// borrows the allocator itself (the keep below).
+				h = c.sets.minus(h, c.allocMaking(st, t))
+			}
+			out = c.sets.unite(out, h)
 			if ti := &c.roots[t]; alloc && ti.allocator || lo.static && ti.kind == rkStatic && ti.carrier {
 				keep = append(keep, l)
 				continue

@@ -1358,7 +1358,7 @@ Run(h: &Heap, o: &Arena): OutOfMemory!int {
 }
 ```
 
-Fix: use such values before the scratch arena ends. The same cost applies to a call that copies out of scratch memory through a `*q into p` clause. `Slice.CopyFrom` from a scratch list into a frame array is E0505 at the call; copy element by element instead (`out[0] = d[0]`). `Swap` of two arenas is accepted, since there `*q` is the arena's handle, not its memory.
+Fix: use such values before the scratch arena ends. The same cost applies to a call that copies out of scratch memory through a `*q into p` clause. `Slice.CopyFrom` from a scratch list into a frame array keeps the scratch arena borrowed while the array is used, as copying element by element (`out[0] = d[0]`) does. `Swap` of two arenas is accepted, since there `*q` is the arena's handle, not its memory.
 
 **Shallow loans.** A type is **shallow** when nothing can be written through it:
 

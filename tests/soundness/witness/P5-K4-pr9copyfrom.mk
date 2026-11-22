@@ -1,5 +1,5 @@
-// verdict: reject E0503 E0505
-// note: through std's Slice.CopyFrom (`*src into self`), reachable from std as P5-K4-n41jsonlit and P5-K4-n43urlquery are. A string of sa is pushed into a List in sa (the self filter drops its loan of sa), Done's slice is copied into a frame array, sa is freed and out[0] read: E0505 at the push and the copy, E0503 at the free. If accepted, a run prints result 47 (a dead read). Mutant M-D791-keep accepts it
+// verdict: reject E0503
+// note: through std's Slice.CopyFrom (`*src into self`), reachable from std as P5-K4-n41jsonlit and P5-K4-n43urlquery are. A string of sa is pushed into a List in sa (the self filter drops its loan of sa), Done's slice is copied into a frame array, sa is freed and out[0] read: E0503 at the free, since out holds what was read back out of sa. If accepted, a run prints result 47 (a dead read). Mutant M-D791-keep accepts it
 // A hole check through std's Slice.CopyFrom (`*src into self`):
 // a string Dup'd from sa is pushed into a List in sa (the self filter drops its loan of sa), the list's Done
 // slice is copied into a frame array, sa is freed and the heap refilled with 'X'; the X bytes out[0] reads are
@@ -13,13 +13,13 @@ Run(h: &Heap): int {
         return -2
     }
     var l := List[str].New(&sa)
-    l.Push(s) else { // <- E0505
+    l.Push(s) else {
         sa.Free()
         return -3
     }
     d := l.Done()
     var out: [1]str = [""]
-    (mut out[..]).CopyFrom(d[..]) // <- E0505
+    (mut out[..]).CopyFrom(d[..])
     sa.Free() // <- E0503
     return Refill(h, out[0].AsBytes())
 }
