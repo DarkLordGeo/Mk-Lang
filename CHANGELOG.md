@@ -2,6 +2,12 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## 0.4.1 (2026-11-22)
+
+### Changed
+
+- `str.SplitOnce` panics on an empty separator (code 8), as `str.Split` does. In 0.4.0 it returned `("", self)`.
+
 ## 0.4.0 (2026-11-22)
 
 ### Standard library
