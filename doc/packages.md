@@ -18,7 +18,7 @@ It writes two files. The manifest:
 // verdict: parse
 const Package = pkg.Package(
     name: "notes",
-    mk: "0.3",
+    mk: "0.4",
     bins: [pkg.Bin(name: "notes", root: "src", subsystem: "console")],
 )
 ```

@@ -2,11 +2,17 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
-## Unreleased
+## 0.4.0 (2026-11-22)
 
 ### Standard library
 
 - `str.SplitOnce(sep)` returns borrowed views before and after the first match, or `none` if the separator is absent.
+
+### Platforms
+
+- `aarch64-linux` builds libraries: `pkg.Bin` with `kind: "dynamic"` gives a shared object a glibc host loads, and `kind: "static"` an archive of AArch64 objects, as on `x86_64-linux`.
+- `pkg.Link` takes `target: "aarch64-linux"`, static and dynamic. A bin with a dynamic link for `aarch64-linux` is built in system-libc mode: it loads `/lib/ld-linux-aarch64.so.1`, starts through `__libc_start_main` and makes its threads with `pthread_create`. std's `libc.so.6` list there pins glibc's aarch64 versions (`GLIBC_2.17`, and `GLIBC_2.34` for the names glibc 2.34 moved into libc), and the check that C built without `-fPIC` only calls a listed name reads AArch64 relocations.
+- In system-libc mode a thread's stack is at least glibc's `PTHREAD_STACK_MIN` (128 KiB on aarch64).
 
 ## 0.3.1 (2026-11-21)
 
