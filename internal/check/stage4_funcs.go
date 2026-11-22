@@ -70,6 +70,9 @@ func (v *GenView) flowsAST(s *ast.Signature) []GenFlow {
 		return strings.Join(parts, ".")
 	}
 	var out []GenFlow
+	if s.Self != nil && s.Self.Into != nil {
+		out = append(out, GenFlow{Kind: FlowInto, Param: name(s.Self.Into), Path: "self"})
+	}
 	for _, p := range s.Params {
 		if p != nil && p.Into != nil {
 			out = append(out, GenFlow{Kind: FlowInto, Param: name(p.Into), Path: name(p.Name)})

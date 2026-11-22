@@ -17,7 +17,8 @@ import (
 // TestLSPClauseActionsVerified: the clause E0604 names for Keys leaves Main
 // with an E0505 (the map's loan into `sys.arena`), so no proven action is
 // offered; the clause on Index.Add, whose caller then checks, stays a
-// preferred proven action.
+// preferred proven action, and so does the receiver's `&self into arena`
+// on Names.Keys.
 func TestLSPClauseActionsVerified(t *testing.T) {
 	for _, c := range []struct {
 		name, text string
@@ -25,6 +26,7 @@ func TestLSPClauseActionsVerified(t *testing.T) {
 	}{
 		{"downgraded", "Keys(m: &TextMap[int], arena: &Arena): OutOfMemory!List[str] from arena, m {\n    var out := List[str].New(arena)\n    for (key, value) in m.Iter() {\n        _ = value\n        try out.Push(key)\n    }\n    return out\n}\n\nexport Main(sys: &System): OutOfMemory|WriteError!void {\n    a := sys.heap.Alloc()\n    var m := TextMap[int].New(a)\n    defer m.Free(a)\n    try m.Set(a, \"x\", 1)\n    keys := try Keys(&m, sys.arena)\n    try sys.Print(\"{n}\\n\", (n: keys.Len()))\n}\n", false},
 		{"kept", "struct Index {\n    words: List[str]\n}\n\nIndex.Add(mut self, word: str): OutOfMemory!void {\n    try self.words.Push(word)\n}\n\nexport Main(sys: &System): OutOfMemory!void {\n    var ix := Index(words: List[str].New(sys.arena))\n    try ix.Add(\"x\")\n}\n", true},
+		{"receiver", "struct Names {\n    map: TextMap[int]\n}\n\nNames.Keys(&self, arena: &Arena): OutOfMemory!List[str] from arena, self {\n    var out := List[str].New(arena)\n    for (key, value) in self.map.Iter() {\n        _ = value\n        try out.Push(key)\n    }\n    return out\n}\n\nexport Main(sys: &System): OutOfMemory|WriteError!void {\n    var ar := try Arena.New(sys.heap)\n    a := sys.heap.Alloc()\n    var m := TextMap[int].New(a)\n    m.Set(a, \"x\", 1) else {}\n    n := Names(map: m)\n    keys := n.Keys(&ar) else { List[str].New(&ar) }\n    count := keys.Len()\n    ar.Free()\n    Names(map) := n\n    map.Free(a)\n    try sys.Print(\"{n}\\n\", (n: count))\n}\n", true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "main.mk")

@@ -252,10 +252,12 @@ const (
 	ByMut
 )
 
-// SelfParam is [ "&" | "mut" ] "self".
+// SelfParam is [ "&" | "mut" ] "self" [ ParamFlow ], where ParamFlow is
+// "into" Name, as on a Param.
 type SelfParam struct {
 	Base
 	Mode ReceiverMode
+	Into *Ident // nil when absent
 }
 
 // Param is [ "const" | "var" ] Name ":" Type [ ParamFlow ], where ParamFlow

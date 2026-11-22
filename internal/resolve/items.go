@@ -195,7 +195,7 @@ func (w *walker) function(r *itemRec, sig *ast.Signature, body *ast.Block) {
 		w.declareParam(p.Name, p.Var, p.Const, p.Type)
 	}
 	w.typ(sig.Result)
-	w.paramFlows(sig.Self != nil, sig.Params)
+	w.paramFlows(sig.Self, sig.Params)
 	w.flows(sig.Flows, sig.Self != nil)
 	for _, dep := range r.deps {
 		c, ok := dep.node.(*ast.Contract)
@@ -249,7 +249,7 @@ func (w *walker) interfaceMethod(r *itemRec, sig *ast.Signature) {
 		}
 	}
 	w.typ(sig.Result)
-	w.paramFlows(sig.Self != nil, sig.Params)
+	w.paramFlows(sig.Self, sig.Params)
 	w.flows(sig.Flows, sig.Self != nil)
 	for _, c := range sig.Contracts {
 		if c.Kind == ast.Ensures {
@@ -262,8 +262,13 @@ func (w *walker) interfaceMethod(r *itemRec, sig *ast.Signature) {
 	w.tparams = w.tparams[:mark]
 }
 
-// paramFlows checks each "p: T into q": q is a parameter or self.
-func (w *walker) paramFlows(hasSelf bool, params []*ast.Param) {
+// paramFlows checks each "p: T into q", and a receiver's "self into q":
+// q is a parameter or self.
+func (w *walker) paramFlows(self *ast.SelfParam, params []*ast.Param) {
+	hasSelf := self != nil
+	if hasSelf && self.Into != nil {
+		w.flowName(self.Into, hasSelf)
+	}
 	for _, p := range params {
 		if p != nil && p.Into != nil {
 			w.flowName(p.Into, hasSelf)

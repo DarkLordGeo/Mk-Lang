@@ -1080,6 +1080,7 @@ Fix: declare the store, `word: str into self`, as the accepted `Index.Add` does.
 | Form | Effect at the call |
 |---|---|
 | `x: T into p` | Every carrier root reachable from `p`'s argument that can be written also holds `H(x)` |
+| `&self into p`, `mut self into p`, `self into p` | The same, with `x` the receiver |
 | `*q into p`, written after the parameter list | What `q` points at is written into `p`: the same, with `B(q)`. `q` may be `p` |
 
 `*q into p` needs `p` to be `mut`, or to have interior mutability, and `q` must be a reference or a slice. One word, `into`, covers every store; `from` only ever says where a result comes from.
@@ -1102,6 +1103,26 @@ Stash(h: &Holder, v: &i32) {
 ```
 
 Fix: `Stash(h: &Holder, v: &i32 into h)`.
+
+The receiver is the first parameter, so its clause is written on it. Here the keys of `self.map` are views of `self`'s own bytes (R10), and they are stored into a list in `arena`:
+
+```mk
+// verdict: ok
+struct Names {
+    map: TextMap[int]
+}
+
+Names.Keys(&self into arena, arena: &Arena): OutOfMemory!List[str] from arena, self {
+    var out := List[str].New(arena)
+    for (key, value) in self.map.Iter() {
+        _ = value
+        try out.Push(key)
+    }
+    return out
+}
+```
+
+Without the clause, `out.Push(key)` is E0604, and its fix writes `&self into arena`.
 
 At the caller, the clause is what keeps the stored value's source alive. Here `Store` keeps a reference into `pt` inside `cell`, which outlives `pt`:
 
@@ -2132,6 +2153,7 @@ A signature is the whole contract between a function and its callers. These are 
 | `: T from a, b` | The result may come from either | R9 |
 | `: S from (x: a, y: b)` | Each field of the result comes from its own sources | R9 |
 | `x: T into p` | The function may store `x` somewhere inside `p` | R11 |
+| `&self into p` | The method may store `self` somewhere inside `p` | R11 |
 | `*q into p`, after the parameters | The function may store what `q` points at somewhere inside `p` | R11 |
 | `ends self` | The call ends every loan on `self` | R18 |
 | `view struct` | The type borrows, though no field shows it | R18 |

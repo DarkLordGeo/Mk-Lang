@@ -433,7 +433,7 @@ func (w *walker) literal(lit *ast.FnLit) {
 			w.declareParam(p.Name, p.Var, p.Const, p.Type)
 		}
 	}
-	w.paramFlows(lit.Self != nil, lit.Params)
+	w.paramFlows(lit.Self, lit.Params)
 	w.typ(lit.Result)
 	w.block(lit.Body)
 	w.lits = w.lits[:len(w.lits)-1]

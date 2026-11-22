@@ -51,6 +51,11 @@ func (x *tctx) signature(item types.ItemID, name source.Symbol, s *ast.Signature
 			sig.Receiver = types.ByMut
 			p.Type = x.wrap(tab.Mut, self)
 		}
+		if s.Self.Into != nil {
+			if r := x.ref(s.Self.Into); r.Kind == resolve.RefParam {
+				p.Into = types.ParamIndex(r.A)
+			}
+		}
 		sig.Params = append(sig.Params, p)
 	}
 	for _, p := range s.Params {
@@ -488,13 +493,13 @@ func (c *Checker) sigHead(s *types.Signature) string {
 		}
 		if i == 0 && s.Receiver != types.NoReceiver {
 			out += [...]string{"", "self", "&self", "mut self"}[min(int(s.Receiver), 3)]
-			continue
+		} else {
+			if p.Const {
+				// sameSig compares const-ness, so E0707's two lines must show it.
+				out += "const "
+			}
+			out += c.cfg.Interner.Str(p.Name) + ": " + tab.TypeString(p.Type, s.Generics)
 		}
-		if p.Const {
-			// sameSig compares const-ness, so E0707's two lines must show it.
-			out += "const "
-		}
-		out += c.cfg.Interner.Str(p.Name) + ": " + tab.TypeString(p.Type, s.Generics)
 		if p.Into != types.NoParam {
 			out += " into " + c.sigParam(s, p.Into)
 		}

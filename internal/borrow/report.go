@@ -208,11 +208,11 @@ func (c *checker) sigString(s *types.Signature) string {
 		}
 		if i == 0 && s.Receiver != types.NoReceiver {
 			b.WriteString([...]string{"", "self", "&self", "mut self"}[s.Receiver])
-			continue
+		} else {
+			b.WriteString(c.symbol(p.Name))
+			b.WriteString(": ")
+			b.WriteString(c.tab.TypeString(p.Type, s.Generics))
 		}
-		b.WriteString(c.symbol(p.Name))
-		b.WriteString(": ")
-		b.WriteString(c.tab.TypeString(p.Type, s.Generics))
 		if p.Into != types.NoParam {
 			b.WriteString(" into " + sigParam(c, s, p.Into))
 		}

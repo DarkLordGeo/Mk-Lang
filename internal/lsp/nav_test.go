@@ -91,6 +91,9 @@ func TestLSPSignatureHelp(t *testing.T) {
 	if got := paramLabels("F[T: Hash](a: int, f: fn(int, int): int, xs: []T): int"); strings.Join(got, "|") != "a: int|f: fn(int, int): int|xs: []T" {
 		t.Errorf("paramLabels: %q", got)
 	}
+	if got := paramLabels("Names.Keys(&self into arena, arena: &Arena): List[str]"); strings.Join(got, "|") != "&self into arena|arena: &Arena" {
+		t.Errorf("paramLabels with a receiver's into: %q", got)
+	}
 	// Outside any call: no help.
 	m := c.call("textDocument/signatureHelp", at(mainURI, 0, 3))
 	if string(m.Result) != "null" {

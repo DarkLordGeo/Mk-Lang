@@ -182,7 +182,7 @@ func everyNode() *File {
 		TypeParams: &TypeParams{Base: b.base(), Params: []*TypeParam{
 			{Base: b.base(), Name: id(source.SymSelfType), Bounds: []Type{pt(source.SymPlain)}},
 			{Base: b.base(), Const: true, Name: id(source.SymFuel), Type: pt(source.SymInt)}}},
-		Self:   &SelfParam{Base: b.base(), Mode: ByMut},
+		Self:   &SelfParam{Base: b.base(), Mode: ByMut, Into: id(source.SymFrom)},
 		Params: []*Param{{Base: b.base(), Var: true, Name: id(source.SymFrom), Type: pt(source.SymInt), Into: id(source.SymSelf)}},
 		Result: &ErrorType{Base: b.base(), Errors: &UnionType{Base: b.base(), Types: []Type{pt(source.SymOk), pt(source.SymErr)}},
 			Ok: &RefType{Base: b.base(), Elem: &MutType{Base: b.base(), Elem: &MutSliceType{Base: b.base(),

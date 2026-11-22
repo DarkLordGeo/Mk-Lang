@@ -3,7 +3,7 @@
 // What: TestSliceMethodReceiverReborrows,
 // TestLenStaysBuiltinUnderSliceLen, TestR12_ReborrowThroughFnValue,
 // TestSliceMethodShapesTrimmed, TestMutSelfOnSharedSliceIsExclusiveView,
-// and lowerCorpusSrc.
+// TestReceiverIntoKeepsReceiverForm, and lowerCorpusSrc.
 // How: check records UseMethod of the method std declares on Slice[T], with
 // the receiver passed with its own type; a mut []T local is reborrowed, not
 // moved. Each test checks the receiver operand in the MIR.
@@ -219,5 +219,48 @@ Bad(xs: []i32): bool {
 	}
 	if views != 2 {
 		t.Fatalf("%d exclusive views, want 2 (Swap, Reverse):\n%s", views, f)
+	}
+}
+
+// TestReceiverIntoKeepsReceiverForm: a receiver's `into` changes how
+// neither receiver rule forms the receiver. Over a prelude whose Swap and
+// Has take `mut self into self` and `&self into self`, a mut []T local
+// is still reborrowed into Swap and viewed shared for Has, and a []T is
+// still the exclusive view for Swap.
+func TestReceiverIntoKeepsReceiverForm(t *testing.T) {
+	pre := corpusPrelude(t)
+	for _, r := range [][2]string{
+		{"Slice[T].Swap(mut self, i: int, j: int)", "Slice[T].Swap(mut self into self, i: int, j: int)"},
+		{"Slice[T].Has(&self, x: &T): bool", "Slice[T].Has(&self into self, x: &T): bool"},
+	} {
+		if !strings.Contains(pre, r[0]) {
+			t.Fatalf("the prelude has no %q", r[0])
+		}
+		pre = strings.Replace(pre, r[0], r[1], 1)
+	}
+	w := newWorldCore(t, true, pre)
+	b := w.add("m", opt{}, `F(xs: mut []int): bool {
+	xs.Swap(0, 1)
+	xs.Swap(1, 0)
+	return xs.Has(&1)
+}
+
+Bad(xs: []i32) {
+	xs.Swap(0, 1)
+}
+`)
+	b.wantClean(t)
+	l := lowerModule(t, w, b)
+	id, ok := l.w.items.ByKey(types.KeyFromString("std.core.Slice:Swap"))
+	if fd, isFn := l.w.items.Get(id).Decl.(*types.FuncDecl); !ok || !isFn || fd.Sig.Params[0].Into != 1 {
+		t.Fatalf("std.core.Slice:Swap: no signature whose receiver flows into itself")
+	}
+	f := l.print("F")
+	if count(f, "call std.core.Slice:Swap[int](reborrow copy _1, ") != 2 || strings.Contains(f, "move _1") {
+		t.Fatalf("a mut []T receiver with into is not reborrowed:\n%s", f)
+	}
+	wantIn(t, f, "= &_1[..]", "call std.core.Slice:Has[int](copy _")
+	if g := l.print("Bad"); count(g, "mut _1[..]") != 1 || count(g, "Swap[i32](copy _1") != 0 {
+		t.Fatalf("a []T receiver with into is not the exclusive view:\n%s", g)
 	}
 }

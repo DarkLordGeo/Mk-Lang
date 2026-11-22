@@ -249,6 +249,26 @@ func TestRoundTripSignatures(t *testing.T) {
 	}
 }
 
+// TestRoundTripReceiverInto: a receiver's `into` is Params[0].Into, kept
+// by the interface and counted by the signature hash like any parameter's.
+func TestRoundTripReceiverInto(t *testing.T) {
+	a := withDecls(newGeo(false))
+	plain := divSig(a)
+	sig := divSig(a)
+	sig.Params[0].Into = 2
+	var got types.Signature
+	read := func(r *reader, d *Decoder) { got = r.readSig(d) }
+	if _, err := storeTrip(a, a.env, func(w *walker) { w.writeSig(&sig, false) }, read); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, sig) || got.Params[0].Into != 2 {
+		t.Errorf("receiver into:\n got %+v\nwant %+v", got, sig)
+	}
+	if a.h.Signature(&sig) == a.h.Signature(&plain) {
+		t.Error("the receiver's into left the signature hash equal")
+	}
+}
+
 // fixtureDeclList is one declaration of every kind.
 func fixtureDeclList(s *session) []types.Decl {
 	t := s.tab

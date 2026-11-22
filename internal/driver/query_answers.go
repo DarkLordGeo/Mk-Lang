@@ -102,15 +102,15 @@ func (qx *queryIndex) sigLine(display string, s *types.Signature) string {
 		}
 		if i == 0 && s.Receiver != types.NoReceiver {
 			b.WriteString([...]string{"", "self", "&self", "mut self"}[min(int(s.Receiver), 3)])
-			continue
+		} else {
+			if p.Const {
+				b.WriteString("const ")
+			}
+			if p.Var {
+				b.WriteString("var ")
+			}
+			b.WriteString(qx.str(p.Name) + ": " + tab.TypeString(p.Type, s.Generics))
 		}
-		if p.Const {
-			b.WriteString("const ")
-		}
-		if p.Var {
-			b.WriteString("var ")
-		}
-		b.WriteString(qx.str(p.Name) + ": " + tab.TypeString(p.Type, s.Generics))
 		if p.Into != types.NoParam {
 			b.WriteString(" into " + qx.paramName(s, p.Into))
 		}

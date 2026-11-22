@@ -157,7 +157,7 @@ var keywordDocs = map[string][]keywordDoc{
 		{Section: "reference: Errors", Text: "`e else { ... }` handles a failure where it happens. When `e` succeeds, the result is its value. When it fails, the block runs. `else` works on `E!T` and on an optional `?T`, where `none` is the failure."},
 	},
 	"ends": {
-		{Section: "reference: Ownership and borrowing", Text: "`from`, `into`, `ends`, `view struct`, `linear struct`: What signatures and type declarations promise about loans and consumption | Signatures at a glance"},
+		{Section: "reference: Ownership and borrowing", Text: "`from`, `into`, `ends`, `view struct`, `linear struct`: What signatures and type declarations promise about loans and consumption. A receiver takes `into` like a parameter: `Names.Keys(&self into arena, arena: &Arena)` | Signatures at a glance"},
 		{Section: "memory model: Signatures at a glance", Text: "`ends self`: The call ends every loan on `self` | R18"},
 	},
 	"ensures": {
@@ -194,7 +194,7 @@ var keywordDocs = map[string][]keywordDoc{
 		{Section: "reference: Statements", Text: "`for` is Mk's only loop. Its header says what it repeats over."},
 	},
 	"from": {
-		{Section: "reference: Ownership and borrowing", Text: "`from`, `into`, `ends`, `view struct`, `linear struct`: What signatures and type declarations promise about loans and consumption | Signatures at a glance"},
+		{Section: "reference: Ownership and borrowing", Text: "`from`, `into`, `ends`, `view struct`, `linear struct`: What signatures and type declarations promise about loans and consumption. A receiver takes `into` like a parameter: `Names.Keys(&self into arena, arena: &Arena)` | Signatures at a glance"},
 		{Section: "memory model: Rules", Text: "`from p`: Borrows `p`: the result holds `H(p)`, and `p` stays borrowed, whatever the table above says | Several parameters could supply the result"},
 	},
 	"gen": {

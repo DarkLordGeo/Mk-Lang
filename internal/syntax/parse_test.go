@@ -273,6 +273,11 @@ func TestReceivers(t *testing.T) {
 		{name: "self param", src: "P.F(self: P) {\n}\n", codes: "E0101"},
 		{name: "underscore param", src: "F(_: int) {\n}\n", codes: "E0101"},
 		{name: "fn literal receiver", src: "F() {\n    g := fn(self) { }\n}\n", codes: "E0101"},
+		{name: "into", src: "P.A(self into a, a: &Arena) {\n}\nP.B(&self into a, a: &Arena) {\n}\nP.C(mut self into self) {\n}\n",
+			tree: []string{"SelfParam self\n        Ident a", "SelfParam &self\n        Ident a", "SelfParam mut self\n        Ident self"}},
+		{name: "into alone", src: "P.A(&self into a) {\n}\n"},
+		{name: "into member", src: "interface K {\n    Keys(&self into a, a: &Arena)\n}\n", tree: []string{"SelfParam &self\n        Ident a"}},
+		{name: "into no name", src: "P.A(&self into ) {\n}\n", codes: "E0101", msg: "a parameter name"},
 	})
 }
 

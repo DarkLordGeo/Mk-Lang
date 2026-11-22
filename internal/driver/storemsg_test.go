@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"mk/internal/diag"
 )
 
 // TestE0604NamesHolder: a str read from a shared parameter whose
@@ -61,17 +63,15 @@ func TestE0604NamesHolder(t *testing.T) {
 	}
 }
 
-// TestE0604NoClauseForReceiver: a key of `self.map.Iter()`
-// pushed into a local list is E0604 on a method (no clause stores the
-// receiver's own loan), and the diagnostic now says so and names the way
-// out; on a free function the message names the local list. That store
-// reaches `arena` (the list's arena). The walk stops at the shallow `str`
-// and does not reach `m` (a parameter takes one `into`), so the function's
-// E0604 offers `m: &TextMap[int] into arena` and that clause clears its
-// body; a caller whose arena dies before the map then checks, and one
-// passing `sys.arena` with a local map is E0505 (the arena outlives the
-// map). The method keeps its E0604 with no clause.
-func TestE0604NoClauseForReceiver(t *testing.T) {
+// TestE0604ReceiverClause: a key of `self.map.Iter()` pushed into a list
+// in `arena` is E0604 on a method, and its fix is the receiver's clause
+// `&self into arena`, as the free function's is `m: &TextMap[int] into
+// arena`: the receiver is the first parameter. Both fixes are proven
+// (private functions) and the written clause clears each body. A caller
+// whose arena dies before the map checks; one passing `sys.arena` with a
+// local map is E0505, and one taking a Names apart while the arena holds
+// its keys is E0503.
+func TestE0604ReceiverClause(t *testing.T) {
 	t.Parallel()
 	src := "struct Names {\n    map: TextMap[int]\n}\n\n" +
 		"Names.Keys(&self, arena: &Arena): OutOfMemory!List[str] from arena, self {\n    var out := List[str].New(arena)\n    for (key, value) in self.map.Iter() {\n        _ = value\n        try out.Push(key)\n    }\n    return out\n}\n\n" +
@@ -81,8 +81,19 @@ func TestE0604NoClauseForReceiver(t *testing.T) {
 		t.Fatalf("want two E0604:\n%s", diagLines(r))
 	}
 	m, f := r.Report.Diags[0].Diag, r.Report.Diags[1].Diag
-	if len(m.Fixes) != 0 || len(m.Alternatives) == 0 || !strings.Contains(m.Alternatives[0], "no clause stores the receiver's own loan") {
-		t.Errorf("method: fixes %v alternatives %q", m.Fixes, m.Alternatives)
+	if !strings.HasSuffix(m.Message, "(`out` holds a loan of `arena`, so the store reaches it); write `&self into arena`") || len(m.Alternatives) != 0 {
+		t.Errorf("method: %q alternatives %q", m.Message, m.Alternatives)
+	}
+	if len(m.Fixes) != 1 || m.Fixes[0].Class != diag.Proven || len(m.Fixes[0].Edits) != 1 || m.Fixes[0].Edits[0].Text != " into arena" {
+		t.Errorf("method: want one proven fix writing ` into arena`, got %+v", m.Fixes)
+	}
+	if len(f.Fixes) == 1 && f.Fixes[0].Class != diag.Proven {
+		t.Errorf("function: fix class %v, want proven as the method's", f.Fixes[0].Class)
+	}
+	const method = "struct Names {\n    map: TextMap[int]\n}\n\n" +
+		"Names.Keys(&self into arena, arena: &Arena): OutOfMemory!List[str] from arena, self {\n    var out := List[str].New(arena)\n    for (key, value) in self.map.Iter() {\n        _ = value\n        try out.Push(key)\n    }\n    return out\n}\n\n"
+	if ok := checkText(t, method); len(ok.Report.Diags) != 0 {
+		t.Errorf("the clause E0604 names does not clear the method:\n%s", diagLines(ok))
 	}
 	if !strings.HasSuffix(f.Message, "(`out` holds a loan of `arena`, so the store reaches it); write `m: &TextMap[int] into arena`") {
 		t.Errorf("function: %q", f.Message)
@@ -103,6 +114,18 @@ func TestE0604NoClauseForReceiver(t *testing.T) {
 	long := checkText(t, fn+head+"    keys := try Keys(&m, sys.arena)\n"+tail)
 	if got := codes(long); !slices.Equal(got, []string{"E0505"}) {
 		t.Errorf("the clause with `sys.arena` and a local map: codes %q, want [E0505]:\n%s", got, diagLines(long))
+	}
+	// The method with its clause, called as the function is: a Names
+	// that owns the map is taken apart only after the arena is freed.
+	const mhead = "export Main(sys: &System): OutOfMemory|WriteError!void {\n    a := sys.heap.Alloc()\n    var m := TextMap[int].New(a)\n    m.Set(a, \"x\", 1) else {}\n    n := Names(map: m)\n"
+	const mtail = "    count := keys.Len()\n    la.Free()\n    Names(map) := n\n    map.Free(a)\n    try sys.Print(\"{n}\\n\", (n: count))\n}\n"
+	if ok := checkText(t, method+mhead+"    var la := Arena.New(sys.heap) else { Names(map) := n\n        map.Free(a)\n        return }\n    keys := n.Keys(&la) else { List[str].New(&la) }\n"+mtail); len(ok.Report.Diags) != 0 {
+		t.Errorf("the method's clause, with an arena freed before the map: want clean:\n%s", diagLines(ok))
+	}
+	const late = "    count := keys.Len()\n    Names(map) := n\n    map.Free(a)\n    la.Free()\n    try sys.Print(\"{n}\\n\", (n: count))\n}\n"
+	mlong := checkText(t, method+mhead+"    var la := Arena.New(sys.heap) else { Names(map) := n\n        map.Free(a)\n        return }\n    keys := n.Keys(&la) else { List[str].New(&la) }\n"+late)
+	if got := codes(mlong); !slices.Equal(got, []string{"E0503"}) {
+		t.Errorf("the method's clause, with the map taken apart while the arena holds its keys: codes %q, want [E0503]:\n%s", got, diagLines(mlong))
 	}
 }
 
@@ -157,6 +180,22 @@ func TestE0505NamesHolder(t *testing.T) {
 	ok := checkText(t, keep+"Count(sys: &System): int *sys into sys {\n    var out := List[str].New(sys.arena)\n    Keep(sys.arena, sys.args[1..], mut out) else {\n        return 2\n    }\n    return out.Len()\n}\n")
 	if len(ok.Report.Diags) != 0 {
 		t.Errorf("the clause E0604 names does not clear it:\n%s", diagLines(ok))
+	}
+}
+
+// TestE0604SecondIntoReceiver: a receiver that already flows into d and is
+// stored into c gets no clause (it takes one `into`, as a parameter does),
+// and E0604 says to keep c and d in one struct that self flows into.
+func TestE0604SecondIntoReceiver(t *testing.T) {
+	t.Parallel()
+	r := checkText(t, "struct Ref {\n    p: &i32\n}\n\nRef.Put(self into d, c: &Cell[?&i32], d: &Cell[?&i32]) {\n    c.Store(some(self.p))\n    d.Store(some(self.p))\n}\n")
+	if len(r.Report.Diags) != 1 {
+		t.Fatalf("want one E0604:\n%s", diagLines(r))
+	}
+	d := r.Report.Diags[0].Diag
+	const want = "`self` already flows into `d`, and the receiver takes one `into`: keep `c` and `d` in one struct and let `self` flow into it"
+	if d.Code.String() != "E0604" || len(d.Fixes) != 0 || len(d.Alternatives) != 1 || d.Alternatives[0] != want {
+		t.Errorf("got %v fixes %+v alternatives %q", d.Code, d.Fixes, d.Alternatives)
 	}
 }
 

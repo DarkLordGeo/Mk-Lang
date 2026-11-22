@@ -302,6 +302,13 @@ func (g *gctx) method(it *types.Item, s *ast.Signature, owner []types.GenericPar
 			}
 		}
 	}
+	if s.Self != nil && s.Self.Into != nil {
+		for k, q := range sig.Params {
+			if q.Name == s.Self.Into.Name {
+				sig.Params[0].Into = types.ParamIndex(k + 1)
+			}
+		}
+	}
 	sig.Variadic = s.Ellipsis.End > s.Ellipsis.Start
 	sig.Flows.Declared = len(s.Flows) > 0
 	if s.Result != nil {

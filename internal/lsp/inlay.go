@@ -237,9 +237,11 @@ func paramName(label string) string {
 	return n
 }
 
-// receiverParam reports whether a parameter label is a method's receiver.
+// receiverParam reports whether a parameter label is a method's receiver,
+// with or without its `into` clause.
 func receiverParam(label string) bool {
-	switch strings.TrimSpace(label) {
+	head, _, _ := strings.Cut(strings.TrimSpace(label), " into ")
+	switch head {
 	case "self", "&self", "mut self":
 		return true
 	}

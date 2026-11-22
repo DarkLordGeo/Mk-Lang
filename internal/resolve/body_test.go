@@ -36,6 +36,31 @@ Store(a: mut Buf, b: &u8) *b into a { }
 	}
 }
 
+// TestReceiverFlowNamesParameter: a receiver's `into q` binds q as a
+// parameter's does, so the method and the free function with the receiver
+// as its first parameter name the same index.
+func TestReceiverFlowNamesParameter(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t, true)
+	b := w.add("main", opt{}, `struct Names {
+    all: List[str]
+}
+Names.Keys(&self into arena, arena: &Arena) { }
+Keys(n: &Names into arena, arena: &Arena) { }
+Names.Own(mut self into self) { }
+Names.Bad(self into c) { }
+`)
+	b.want(t, "E0201@7:21")
+	for k := 0; k < 2; k++ {
+		if r := b.ref("arena", 2*k); r.Kind != RefParam || r.A != 2 {
+			t.Errorf("into arena #%d: %+v", k, r)
+		}
+	}
+	if r := b.ref("self", 0); r.Kind != RefParam || r.A != 1 {
+		t.Errorf("self into self: %+v", r)
+	}
+}
+
 func TestSelfWithoutReceiver(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t, false)

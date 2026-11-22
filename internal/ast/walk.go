@@ -51,7 +51,9 @@ func EachChild(n Node, f func(Node)) {
 			f(x)
 		}
 	case *Ident, *BasicLit, *BadItem, *BadType, *BadExpr, *BadStmt, *BadPattern,
-		*SelfParam, *WildcardPattern, *NonePattern:
+		*WildcardPattern, *NonePattern:
+	case *SelfParam:
+		opt(f, n.Into)
 	case *Path:
 		for _, x := range n.Names {
 			f(x)

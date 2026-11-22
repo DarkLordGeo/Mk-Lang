@@ -8,7 +8,8 @@
 // parseFlow, parseFieldSrcs and parseTypeParams.
 //
 // How: a signature continues on a line that starts with from, ends, *,
-// requires or ensures (cont). A receiver is `self`, `&self` or `mut self`.
+// requires or ensures (cont). A receiver is `self`, `&self` or `mut self`,
+// and takes `into Name` as a parameter does.
 // At signature level a ',' between flows is optional; inside a comma list a
 // ',' after a fn type's flow continues it only as more Sources.
 
@@ -555,7 +556,8 @@ func (p *parser) parseParams(n *ast.Signature, recvOK, fnLit bool) {
 	}
 }
 
-// selfParamAhead is true at self, &self or mut self followed by ',' or ')'.
+// selfParamAhead is true at self, &self or mut self followed by ',', ')'
+// or `into`.
 func (p *parser) selfParamAhead() bool {
 	i := 0
 	if p.at(ast.TokAmp) || p.at(ast.TokMut) {
@@ -566,7 +568,7 @@ func (p *parser) selfParamAhead() bool {
 		return false
 	}
 	k := p.peekKind(i + 1)
-	return k == ast.TokComma || k == ast.TokRParen || i > 0
+	return k == ast.TokComma || k == ast.TokRParen || i > 0 || p.peekWord(i+1, "into")
 }
 
 func (p *parser) parseSelfParam() *ast.SelfParam {
@@ -581,6 +583,10 @@ func (p *parser) parseSelfParam() *ast.SelfParam {
 		p.next()
 	}
 	p.next()
+	if p.atWord("into") {
+		p.next()
+		n.Into = p.parseName("a parameter name")
+	}
 	p.finish(n, &n.Base)
 	return n
 }

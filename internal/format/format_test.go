@@ -45,6 +45,7 @@ func TestFormatGolden(t *testing.T) {
 		{"brace after bracket", "A() {\nfor x in [1,\n2] {\nc()\n}\n}\n", "A() {\n    for x in [1,\n        2] {\n        c()\n    }\n}\n"},
 		{"contract lines", "Clamp(x: i32): i32\nrequires x >= 0\nensures result >= 0\n{\nreturn x\n}\n", "Clamp(x: i32): i32\n    requires x >= 0\n    ensures result >= 0\n{\n    return x\n}\n"},
 		{"flow", "Exchange[T](a: mut T, b: mut T) *a into b, *b into a {\n}\n", "Exchange[T](a: mut T, b: mut T) *a into b, *b into a {\n}\n"},
+		{"receiver into", "N.K(&self   into arena,arena: &Arena) {\n}\nN.L(mut self into  self) {\n}\nN.M(self into a,\na: &Arena) {\n}\n", "N.K(&self into arena, arena: &Arena) {\n}\nN.L(mut self into self) {\n}\nN.M(self into a,\n    a: &Arena) {\n}\n"},
 		{"impl", "impl[T: Eq] Eq for &T {\n    Eq(&self, other: &&T): bool {\n        return true\n    }\n}\n", "impl[T: Eq] Eq for &T {\n    Eq(&self, other: &&T): bool {\n        return true\n    }\n}\n"},
 		{"deref statement", "A(p: *int) {\n    x()\n    *p = 1\n}\n", "A(p: *int) {\n    x()\n    *p = 1\n}\n"},
 		{"range and index", "A(xs: []int) {\n    for i in 0 .. 3 {\n        f(xs [ i ], xs[..])\n    }\n}\n", "A(xs: []int) {\n    for i in 0..3 {\n        f(xs[i], xs[..])\n    }\n}\n"},

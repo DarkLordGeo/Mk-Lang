@@ -519,9 +519,11 @@ func (bl *builder) isReborrow(e ast.Expr, p *types.Param) bool {
 // instead, RvSlice{Shared} into a []T temporary (as a for loop's view
 // does), so it is passed as a []T receiver is; a &self
 // receiver of a whole mut T reborrows. A move would end the local. A self
-// receiver, or one with into, takes the value by the argument rules.
+// receiver takes the value by the argument rules. The receiver's `into`
+// changes neither rule, as a dot call's automatic `mut *c` reborrows
+// whatever the clause.
 func (bl *builder) isRecvReborrow(e ast.Expr, sig *types.Signature) bool {
-	if sig == nil || len(sig.Params) == 0 || sig.Params[0].Into != types.NoParam {
+	if sig == nil || len(sig.Params) == 0 {
 		return false
 	}
 	if sig.Receiver != types.ByMut && sig.Receiver != types.ByShared {
@@ -557,7 +559,7 @@ func (bl *builder) isRecvReborrow(e ast.Expr, sig *types.Signature) bool {
 // mut []T, a var array, a List or a HeapList). A plain copy xs, a []T into
 // a mut []T, would pass check and borrow and fail only in mono.
 func (bl *builder) isRecvExclView(e ast.Expr, sig *types.Signature) bool {
-	if sig == nil || sig.Receiver != types.ByMut || len(sig.Params) == 0 || sig.Params[0].Into != types.NoParam {
+	if sig == nil || sig.Receiver != types.ByMut || len(sig.Params) == 0 {
 		return false
 	}
 	return bl.tab.Kind(bl.typeOf(e)) == types.KSlice

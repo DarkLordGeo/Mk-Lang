@@ -24,10 +24,11 @@ import (
 )
 
 // storeClause is the clause E0604 asks for: storing loan l (of parameter
-// x) into parameter p. An outer loan of x is `x: T into p`, written at x;
-// an inner loan (what x's reference holds) is `*x into p`, written after
-// the signature's result. ok is false when no clause can say it: a
-// receiver's own outer loan, or x already stores into another parameter.
+// x) into parameter p. An outer loan of x is `x: T into p`, written at x,
+// or for the receiver `&self into p` (`self`, `mut self`), written at the
+// receiver; an inner loan (what x's reference holds) is `*x into p`,
+// written after the signature's result. ok is false when no clause can
+// say it: x already stores into another parameter.
 func (c *checker) storeClause(l loanID, p types.ParamIndex) (text string, edit diag.Edit, ok bool) {
 	s := c.env.Sig
 	lo := &c.loans[l]
@@ -51,14 +52,15 @@ func (c *checker) storeClause(l loanID, p types.ParamIndex) (text string, edit d
 		}
 		return text, diag.Edit{Span: at, Text: sep + text}, true
 	}
-	if recv(x) {
-		return "", diag.Edit{}, false
-	}
 	px := &s.Params[x-1]
 	if px.Into != types.NoParam {
 		return "", diag.Edit{}, false
 	}
-	text = sigParam(c, s, x) + ": " + c.tab.TypeString(px.Type, s.Generics) + " into " + sigParam(c, s, p)
+	if recv(x) {
+		text = [...]string{"", "self", "&self", "mut self"}[min(int(s.Receiver), 3)] + " into " + sigParam(c, s, p)
+	} else {
+		text = sigParam(c, s, x) + ": " + c.tab.TypeString(px.Type, s.Generics) + " into " + sigParam(c, s, p)
+	}
 	if px.Span.File == source.NoFile || px.Span.End <= px.Span.Start {
 		return text, diag.Edit{}, true
 	}
@@ -166,7 +168,7 @@ func lastStoreInto(c *checker, s *types.Signature) string {
 func (c *checker) storeFix(d *diag.Diagnostic, l loanID, p types.ParamIndex) {
 	text, edit, ok := c.storeClause(l, p)
 	if !ok {
-		c.noClauseAlt(d, l)
+		c.noClauseAlt(d, l, p)
 		return
 	}
 	d.Message += "; write `" + text + "`"
@@ -213,9 +215,8 @@ func mergeStoreFix(k, d *diag.Diagnostic) {
 			// Two `x: T into p` on one parameter: no clause says both, so
 			// k offers none (a free function whose `out` holds both `arena`
 			// and `m`), as noClauseAlt does for a second `into`.
-			x, p1, _ := strings.Cut(kc, ":")
-			_, p2, _ := strings.Cut(dc, ":")
-			p1, p2 = p1[strings.LastIndex(p1, " into ")+len(" into "):], p2[strings.LastIndex(p2, " into ")+len(" into "):]
+			x, p1 := intoParts(kc)
+			_, p2 := intoParts(dc)
 			k.Message = strings.TrimSuffix(k.Message, "; write `"+kc+"`")
 			k.Facts = slices.DeleteFunc(k.Facts, func(f diag.Field) bool { return f.Key == "clause" || f.Key == "write_at" })
 			k.Fixes = nil
@@ -237,6 +238,19 @@ func mergeStoreFix(k, d *diag.Diagnostic) {
 		Why: "write `" + both + "`: the signature declares the stores the body makes"}
 }
 
+// intoParts splits an outer clause, `x: T into p` or a receiver's
+// `&self into p`, into the stored parameter's name and p.
+func intoParts(clause string) (x, p string) {
+	head := clause
+	if i := strings.LastIndex(clause, " into "); i >= 0 {
+		head, p = clause[:i], clause[i+len(" into "):]
+	}
+	if name, _, ok := strings.Cut(head, ":"); ok {
+		return name, p
+	}
+	return strings.TrimPrefix(strings.TrimPrefix(head, "&"), "mut "), p
+}
+
 // storeFactText is d's text fact key, "" when it has none.
 func storeFactText(d *diag.Diagnostic, key string) string {
 	for _, f := range d.Facts {
@@ -247,10 +261,11 @@ func storeFactText(d *diag.Diagnostic, key string) string {
 	return ""
 }
 
-// noClauseAlt says why E0604 d offers no clause for loan l, and what does
-// instead: a parameter already flowing into another takes no second `into`,
-// and a receiver's own loan has no clause.
-func (c *checker) noClauseAlt(d *diag.Diagnostic, l loanID) {
+// noClauseAlt says why E0604 d offers no clause for storing loan l into p,
+// and what does instead: a parameter or receiver already flowing into
+// another takes no second `into`, so the two targets go in one struct that
+// it flows into.
+func (c *checker) noClauseAlt(d *diag.Diagnostic, l loanID, p types.ParamIndex) {
 	s := c.env.Sig
 	lo := &c.loans[l]
 	x := lo.param
@@ -258,13 +273,16 @@ func (c *checker) noClauseAlt(d *diag.Diagnostic, l loanID) {
 		return
 	}
 	name := sigParam(c, s, x)
-	if px := &s.Params[x-1]; px.Into != types.NoParam {
-		d.Alt("`" + name + "` already flows into `" + sigParam(c, s, px.Into) + "`, and a parameter takes one `into`: keep both in one struct and pass that")
+	px := &s.Params[x-1]
+	if px.Into == types.NoParam || p == types.NoParam || int(p) > len(s.Params) {
 		return
 	}
+	one := "a parameter takes"
 	if int(x) == 1 && s.Receiver != types.NoReceiver {
-		d.Alt("no clause stores the receiver's own loan: copy what is stored (`Dup` it into an arena), or take the container as a parameter")
+		one = "the receiver takes"
 	}
+	q := sigParam(c, s, px.Into)
+	d.Alt("`" + name + "` already flows into `" + q + "`, and " + one + " one `into`: keep `" + sigParam(c, s, p) + "` and `" + q + "` in one struct and let `" + name + "` flow into it")
 }
 
 // implMethod reports whether the body is an impl's method. Its flows must

@@ -61,6 +61,7 @@ File [0,0) "every.mk"
             Path [0,0)
               Ident [0,0) int
       SelfParam [0,0) mut self
+        Ident [0,0) from
       Param [0,0) var
         Ident [0,0) from
         PathType [0,0)

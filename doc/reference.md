@@ -2622,7 +2622,7 @@ export Main(sys: &System): WriteError!void {
 | `mut self` | An exclusive reference | `c` must be `var` (E0508), and is borrowed `mut` for the call |
 
 - The prefix supplies the receiver's type, and `self`, `&self` or `mut self` its mode. This is the only way to write a receiver.
-- `c.M(a)` is `Type.M(&c, a)`, `Type.M(mut c, a)` or `Type.M(c, a)`, as the receiver's mode says, and borrows or moves `c` to match.
+- `c.M(a)` is `Type.M(&c, a)`, `Type.M(mut c, a)` or `Type.M(c, a)`, as the receiver's mode says, and borrows or moves `c` to match. A `mut T` `c` is reborrowed: `mut *c` or `&*c`.
 - A function without `self`, such as `Counter.New`, is called through the type's name. It is how a type offers constructors.
 - A function in a type's namespace must be declared in that type's module. A method on `int` or on another module's type is E0704: write a free function that takes the value.
 - On a generic type, the prefix names the type parameters, `Stack2[T].Push`, and their bounds come from the type.
@@ -5064,7 +5064,7 @@ export Main(sys: &System): OutOfMemory|WriteError!void {
 | `mut p` | An exclusive borrow: reads and writes, nothing else touches `p` meanwhile. A local `p` must be `var` (E0508) | [R5](memory.md#r5-the-conflict-table) |
 | `self`, `&self`, `mut self` | A method takes its receiver by value, by shared borrow or by exclusive borrow | [Functions and methods](#functions-and-methods) |
 | `for x in mut xs` | Borrows each element exclusively in turn | [R20](memory.md#r20-disjoint-elements) |
-| `from`, `into`, `ends`, `view struct`, `linear struct` | What signatures and type declarations promise about loans and consumption | [Signatures at a glance](memory.md#5-signatures-at-a-glance) |
+| `from`, `into`, `ends`, `view struct`, `linear struct` | What signatures and type declarations promise about loans and consumption. A receiver takes `into` like a parameter: `Names.Keys(&self into arena, arena: &Arena)` | [Signatures at a glance](memory.md#5-signatures-at-a-glance) |
 | `defer s`, `onerr s` | Run `s` at every exit, or at error exits only | [R21](memory.md#r21-onerr-and-exits), [`onerr`](#cleanup-on-the-error-path-onerr) |
 
 - A borrow lasts until the last use of anything that holds it, not until the end of the block.
