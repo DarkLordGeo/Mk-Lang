@@ -1609,6 +1609,8 @@ Pick(d: &Mutex[?&i32]): &Mutex[?&i32] {
 
 Fix: return `d`, as the signature promises, or drop the parameter so that the result has no source and holds the static pseudo-loan.
 
+The walk over what a parameter refers to stops after more than 64 distinct instances of one generic type, or 4,096 referents in all, and from there takes the parameter to reach any type, as it must for a polymorphically recursive type. What a referent past the stop takes stays with the parameter, so the bound changes no verdict. When the only memory behind a parameter that takes stores is a referent past the stop, the E0604 for a static stored into it names the bound (`bound: more than 64 instances of `B``), so the reader can tell which type takes the store.
+
 In a generic body, a result is also judged for its instances:
 
 - These results count when an instance could take stores: a `&T`, `?&T` or `T` from a `fn` value or from a callee with no source, and the bare `T` of an interface method that names no source.

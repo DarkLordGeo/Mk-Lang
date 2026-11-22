@@ -361,6 +361,7 @@ func (c *checker) storeAbstract(ctx *stmtCtx, t rootID, l loanID) {
 				c.staticStore = map[*diag.Diagnostic]bool{}
 			}
 			c.staticStore[d] = true
+			c.boundAlt(d, t) // the walk stopped at a bound (boundmsg.go)
 			if c.env.Sig != nil {
 				d.Text("signature", c.sigString(c.env.Sig))
 			}
@@ -389,7 +390,8 @@ func (c *checker) storeAbstract(ctx *stmtCtx, t rootID, l loanID) {
 		}
 		d := c.errAt(diag.E0604, ctx.span, "this stores a loan of %s into %s, which the signature does not declare%s",
 			c.paramName(lo.param), c.paramName(p), c.viaText(t)).Fact("loan", c.loanFact(l))
-		c.storeFix(d, l, p) // the clause to write, and its edit
+		c.storeFix(d, l, p)       // the clause to write, and its edit
+		c.ctxStateAlt(d, t, l, p) // state reached through a Ctx's field (ctxstore.go)
 		if ctx.term {
 			c.sigFact(d, ctx)
 		} else if c.env.Sig != nil {

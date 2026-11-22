@@ -89,6 +89,62 @@ Handle(c: &Ctx, stats: mut Stats, name: str): OutOfMemory!str from c.arena {
 
 A `Ctx` holding `&Arena` is not `Share`, because no `&Arena` crosses tasks ([concurrency](reference.md#12-concurrency)). Each task builds its own `Ctx` from the `&Heap` it is given.
 
+State reached through a field of the `Ctx` is part of what the `Ctx` refers to. A store into it, here a value allocated with `c.a` put into the shared map, needs a clause on `c`, `*c into c`, and that clause ties every later use of the state to the `Ctx`. E0604 names the field the store lands in:
+
+```mk
+// verdict: reject E0604
+struct Shared {
+    m: Mutex[TextMap[HeapText]]
+}
+
+struct Ctx {
+    st: &Shared
+    a: &Alloc
+    io: Io
+}
+
+Put(c: &Ctx, key: str, value: str): Canceled|OutOfMemory!void {
+    var g := try c.st.m.Lock(c.io)
+    defer g.Unlock()
+    var v := HeapText.New(c.a)
+    onerr v.Free(c.a)
+    try v.Push(c.a, value)
+    try g.Mut().Set(c.a, key, v) // <- E0604
+}
+```
+
+Pass the state beside the `Ctx` and declare the store into it, `*c into st`. The caller can then take the state apart once the call is over:
+
+```mk
+// verdict: ok
+struct Shared {
+    m: Mutex[TextMap[HeapText]]
+}
+
+struct Ctx {
+    a: &Alloc
+    io: Io
+}
+
+Put(c: &Ctx, st: &Shared, key: str, value: str): Canceled|OutOfMemory!void *c into st {
+    var g := try st.m.Lock(c.io)
+    defer g.Unlock()
+    var v := HeapText.New(c.a)
+    onerr v.Free(c.a)
+    try v.Push(c.a, value)
+    try g.Mut().Set(c.a, key, v)
+}
+
+export Main(sys: &System) {
+    a := sys.heap.Alloc()
+    st := Shared(m: Mutex.New(TextMap[HeapText].New(a)))
+    c := Ctx(a: a, io: sys.io)
+    Put(&c, &st, "k", "v") else { }
+    Shared(m) := st
+    m.Into().Free(a)
+}
+```
+
 ## 4. Allocators in a library module
 
 A library function never chooses its caller's memory. It takes the arena its result lives in as `a: &Arena`, after the receiver and before `io`, and its result says `from a`. A heap container takes `a: &Alloc` and is linear. Scratch memory comes from `a.Sub()` and is freed before return, so the caller's arena holds only the result.

@@ -77,6 +77,11 @@ type rootInfo struct {
 	// static node it is set when the global's memory takes stores at some
 	// level (staticOf).
 	takes bool
+	// cut is, on an abstract node whose takes comes only from a referent
+	// its layer-2 walk stopped at (cutTakes), the bound it stopped at
+	// (cutReason), which E0604 names (boundAlt); the zero cutReason
+	// otherwise.
+	cut cutReason
 }
 
 // frame reports whether r is storage in this function's frame: a
@@ -316,17 +321,22 @@ func (c *checker) addRoot(ri rootInfo) rootID {
 func (c *checker) addAbstract(p types.ParamIndex, depth uint8, n *nodeInfo) rootID {
 	carrier, writable, view, alloc := c.w.nodeFlags(n)
 	// A referent the walk stopped at counts as its types do (cutTakes).
-	takes, walk := n.cutTakes, false
+	takes, walk, cut := n.cutTakes, false, n.cut
 	for _, t := range n.types {
 		// For every instance (storesFirstGen) when the type mentions a
 		// parameter: a generic body's `mut ?T`, `mut ?&T` or `&Cell[?T]` may
 		// point into such memory at some instance. A concrete type is judged
 		// as written.
-		takes = takes || c.w.takesStores(t)
+		if c.w.takesStores(t) {
+			takes, cut = true, cutReason{}
+		}
 		walk = walk || !view && c.w.walkExtra(t)
 	}
+	if !n.cutTakes {
+		cut = cutReason{}
+	}
 	return c.addRoot(rootInfo{kind: rkAbstract, local: mir.NoLocal, param: p, depth: depth, typ: types.NoType,
-		carrier: carrier, writable: writable, view: view, allocator: alloc, takes: takes, walk: walk})
+		carrier: carrier, writable: writable, view: view, allocator: alloc, takes: takes, walk: walk, cut: cut})
 }
 
 func (c *checker) addLoan(l loan) loanID {

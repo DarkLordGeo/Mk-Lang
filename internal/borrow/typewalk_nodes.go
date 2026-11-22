@@ -2,9 +2,9 @@
 // parameter stands for its referents through a few abstract nodes, and
 // every loan rule on a parameter works on those nodes.
 //
-// What: nodeInfo, abstractNodes (p#1, p#2 and p#A of a parameter's type),
-// takesStores, maxReferents, grows and recordInstances, splitAllocators,
-// nodeFlags and allocRefs.
+// What: nodeInfo and cutReason, abstractNodes (p#1, p#2 and p#A of a
+// parameter's type), takesStores, maxReferents, grows and recordInstances,
+// splitAllocators, nodeFlags and allocRefs.
 //
 // How: p#1 stands for the first layer of referents, p#2 for the second and
 // everything reached from it, p#A for the allocators below the first level,
@@ -24,13 +24,27 @@ import (
 // targets it is exclusive. cutTakes reports that a referent the walk
 // stopped at (grows) takes stores (takesStores): ANY stands for the
 // referents past the stop, but the node's takes is computed from its types,
-// so the stop carries what they take.
+// so the stop carries what they take. cut says which bound stopped the
+// walk, for the diagnostics that land on the node.
 type nodeInfo struct {
 	types    []types.TypeID
 	any      bool
 	excl     bool
 	cutTakes bool
+	cut      cutReason
 }
+
+// cutReason is the bound the layer-2 walk stopped at, the first time it
+// stopped: all is maxReferents in all, else item is the constructor that
+// met more than maxReferentsPerItem instances, directly or (record) held
+// in distinct records. The zero cutReason is no stop.
+type cutReason struct {
+	all, record bool
+	item        types.ItemID
+}
+
+// stopped reports whether the walk stopped at a bound.
+func (r cutReason) stopped() bool { return r.all || r.item != types.NoItem }
 
 // takesStores reports whether memory of type t takes stores, as addAbstract
 // judges each type of a node: storesFirst, or storesFirstGen for every
@@ -81,7 +95,7 @@ func (w *walker) abstractNodes(t types.TypeID) (n1, n2, nA nodeInfo) {
 			case s.any:
 				n2.any = true
 			case seen[s.referent]:
-			case w.grows(s.referent, perItem, perRecord, len(seen)):
+			case w.grows(s.referent, perItem, perRecord, len(seen), &n2.cut):
 				// A polymorphically recursive type (struct G[T] { next:
 				// ?&G[?T] }) reaches a new referent type at every hop;
 				// the walk stops at ANY, which stands for all of them.
@@ -134,10 +148,17 @@ const (
 // one constructor has more distinct instances there than maxReferentsPerItem:
 // a polymorphic recursion through a record (`next: ?&(a: G[?T], b: int)`)
 // meets a new record holding a new G at every hop, while records that share
-// their instances (each holding B[int]) never stop it.
-func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, perRecord map[types.ItemID]map[types.TypeID]bool, seen int) bool {
-	if seen >= maxReferents {
+// their instances (each holding B[int]) never stop it. The first stop is
+// recorded in cut.
+func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, perRecord map[types.ItemID]map[types.TypeID]bool, seen int, cut *cutReason) bool {
+	note := func(r cutReason) bool {
+		if !cut.stopped() {
+			*cut = r
+		}
 		return true
+	}
+	if seen >= maxReferents {
+		return note(cutReason{all: true})
 	}
 	ty := w.tab.Get(t)
 	for ty.Kind == types.KOptional || ty.Kind == types.KArray || ty.Kind == types.KErrorUnion {
@@ -151,7 +172,9 @@ func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, perRecord m
 				perRecord[it] = map[types.TypeID]bool{}
 			}
 			perRecord[it][inst] = true
-			over = over || len(perRecord[it]) > maxReferentsPerItem
+			if len(perRecord[it]) > maxReferentsPerItem && !over {
+				over = note(cutReason{record: true, item: it})
+			}
 		}
 		return over
 	}
@@ -159,7 +182,7 @@ func (w *walker) grows(t types.TypeID, perItem map[types.ItemID]int, perRecord m
 		return false
 	}
 	perItem[ty.Item]++
-	return perItem[ty.Item] > maxReferentsPerItem
+	return perItem[ty.Item] > maxReferentsPerItem && note(cutReason{item: ty.Item})
 }
 
 // recordInstances is the generic instances a record holds inline: each
