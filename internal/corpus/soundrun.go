@@ -114,6 +114,8 @@ type SoundConfig struct {
 	CheckOnly bool
 	// Generated stops after this many programs are judged (0: no bound),
 	// so a fixed sample is a run of its own (the smoke, the determinism test).
+	// In RunReject it replaces Reject as the bound: the sample is the first
+	// Generated programs, whatever the sampled count.
 	Generated int
 	// Stop ends the run at the first violation (MK_SOUND_STOP=1).
 	Stop bool

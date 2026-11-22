@@ -310,7 +310,9 @@ func BenchmarkSoundPipeline(b *testing.B) {
 // TestSound_Reject is the false-rejection measurement (MK_SOUND=1):
 // MK_SOUND_REJECT programs (default 20,000) a loan code rejects, each run
 // with Rejected and 8 seeds; the false-rejection rate with its Wilson
-// interval, overall and per code, in the record's t7 section. Above 20
+// interval, overall and per code, in the record's t7 section. With
+// MK_SOUND_GENERATED=n the sample is the first n programs generated
+// instead, whatever the count a loan code rejects. Above 20
 // percent is not a failure here: the per-code table shows which rules to
 // look at.
 func TestSound_Reject(t *testing.T) {
@@ -320,6 +322,11 @@ func TestSound_Reject(t *testing.T) {
 	cfg.Budget = 0
 	cfg.Reject = soundInt(t, "MK_SOUND_REJECT", 20000)
 	cfg.Command["MK_SOUND_REJECT"] = strconv.Itoa(cfg.Reject)
+	// MK_SOUND_GENERATED=n: the first n programs instead, whatever the
+	// sampled count, so two checkers are compared over one index range.
+	if cfg.Generated = soundInt(t, "MK_SOUND_GENERATED", 0); cfg.Generated > 0 {
+		cfg.Command["MK_SOUND_GENERATED"] = strconv.Itoa(cfg.Generated)
+	}
 	rep, t7, err := RunReject(context.Background(), cfg, g.compiler(NewSessionCompiler(driver.Config{}, nil)))
 	if err != nil {
 		t.Fatal(err)

@@ -1,7 +1,8 @@
 // Why: the soundness runner's bookkeeping (budgets, the oracle hand-over,
 // session recycling, error counts) must be right whatever state std is in.
 // What: TestSound_BudgetCutNotJudged, TestSound_OracleHandoff,
-// TestSound_RejectForgetsAndRecycles, TestSound_RejectErroredNotClean,
+// TestSound_RejectForgetsAndRecycles, TestSound_RejectGenerated,
+// TestSound_RejectErroredNotClean,
 // TestSoundRejectCountsICE and TestSound_RunICESeeds.
 // How: a scripted SoundCompiler (scriptSound) with no compiler behind it
 // gives fixed outcomes per program index.
@@ -202,6 +203,42 @@ func TestSound_RejectForgetsAndRecycles(t *testing.T) {
 		}
 	}
 	t.Logf("%d units checked (%d twins), %d recycles, at most %d checks in a session", len(f.checked), twins, f.recycles, f.maxSince)
+}
+
+// TestSound_RejectGenerated: with Generated set the sample is exactly the
+// first Generated programs, whatever the sampled count (Reject is no bound
+// then), the same with 1 and 3 workers: two checkers are compared over one
+// index range.
+func TestSound_RejectGenerated(t *testing.T) {
+	for _, reject := range []int{0, 1, 1000} {
+		var got []string
+		for _, w := range []int{1, 3} {
+			label := fmt.Sprintf("t7gen-%d", soundUnitN.Add(1))
+			f := &scriptSound{reject: func(u string) bool { return unitIndex(u)%3 == 0 }}
+			cfg := SoundConfig{Base: DefaultSoundBase, First: 5, Reject: reject, Generated: 25, Recycle: 10, Workers: w, Label: label}
+			_, t7, err := RunReject(context.Background(), cfg, f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Indexes 5 to 29; 6, 9, ..., 27 are rejected: 8 sampled.
+			if t7.Generated != 25 || t7.Sampled != 8 || t7.Accepted != 17 {
+				t.Fatalf("Reject %d, workers %d: generated %d, sampled %d, accepted %d; want 25, 8, 17", reject, w, t7.Generated, t7.Sampled, t7.Accepted)
+			}
+			seen := map[int]bool{}
+			for _, u := range f.checked {
+				if !strings.Contains(u, "-twin/") {
+					seen[unitIndex(u)] = true
+				}
+			}
+			if len(seen) != 25 || !seen[5] || !seen[29] {
+				t.Errorf("Reject %d, workers %d: checked %d programs (5: %v, 29: %v), want indexes 5 to 29", reject, w, len(seen), seen[5], seen[29])
+			}
+			got = append(got, fmt.Sprintf("%+v %+v", t7.Overall, t7.Adjusted))
+		}
+		if got[0] != got[1] {
+			t.Errorf("Reject %d: 1 and 3 workers differ:\n%s\n%s", reject, got[0], got[1])
+		}
+	}
 }
 
 // TestSound_RejectErroredNotClean: a sampled program whose run ends in an

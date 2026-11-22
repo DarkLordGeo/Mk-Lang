@@ -159,8 +159,8 @@ type rejectSlot struct {
 // unless the sample is full, so a sample of any size holds at most one
 // window's units.
 func RunReject(ctx context.Context, cfg SoundConfig, c SoundCompiler) (*SoundReport, *RejectReport, error) {
-	if cfg.Reject <= 0 {
-		return nil, nil, fmt.Errorf("sound: RunReject needs Reject > 0")
+	if cfg.Reject <= 0 && cfg.Generated <= 0 {
+		return nil, nil, fmt.Errorf("sound: RunReject needs Reject > 0 or Generated > 0")
 	}
 	cfg = rejectConfig(cfg)
 	if err := c.Start(); err != nil {
@@ -190,8 +190,9 @@ func rejectConfig(cfg SoundConfig) SoundConfig {
 	return cfg
 }
 
-// rejectFill judges programs cfg.First onwards until cfg.Reject are sampled,
-// in windows of cfg.Recycle indexes, forgetting every unit of a window (a
+// rejectFill judges programs cfg.First onwards until cfg.Reject are sampled
+// (with cfg.Generated set, until the first Generated programs are judged,
+// whatever the sampled count), in windows of cfg.Recycle indexes, forgetting every unit of a window (a
 // program's and its twin's, in batches of 256) and recycling the session
 // between windows. The slots are in index order, so a cut at the
 // Reject-th sampled program (rejectCut) is the same whatever the timing; a
@@ -214,9 +215,9 @@ func rejectFill(ctx context.Context, cfg SoundConfig, c SoundCompiler) ([]reject
 			go func() {
 				defer wg.Done()
 				source.Guard("t7 worker", source.Span{}, func() {
-					for ctx.Err() == nil && sampled.Load() < int64(cfg.Reject) {
+					for ctx.Err() == nil && !rejectFull(cfg, sampled.Load(), next.Load()) {
 						i := next.Add(1) - 1
-						if i >= hi {
+						if i >= hi || cfg.Generated > 0 && i >= int64(cfg.Generated) {
 							next.Add(-1)
 							return
 						}
@@ -250,7 +251,7 @@ func rejectFill(ctx context.Context, cfg SoundConfig, c SoundCompiler) ([]reject
 			c.Forget(names[:n])
 			names = names[n:]
 		}
-		if ctx.Err() != nil || sampled.Load() >= int64(cfg.Reject) {
+		if ctx.Err() != nil || rejectFull(cfg, sampled.Load(), next.Load()) {
 			break
 		}
 		if err := c.Recycle(); err != nil {
@@ -261,13 +262,27 @@ func rejectFill(ctx context.Context, cfg SoundConfig, c SoundCompiler) ([]reject
 	return slots, recycles, nil
 }
 
-// rejectCut is slots up to the Reject-th sampled program in index order, the
-// sample the rejection rate counts: the same whatever the timing.
+// rejectFull reports whether the sample is full: Generated programs taken
+// when cfg.Generated is set (a fixed index range, so a checker that accepts
+// more is compared over the same programs), else Reject sampled.
+func rejectFull(cfg SoundConfig, sampled, taken int64) bool {
+	if cfg.Generated > 0 {
+		return taken >= int64(cfg.Generated)
+	}
+	return sampled >= int64(cfg.Reject)
+}
+
+// rejectCut is slots up to the Reject-th sampled program in index order, or
+// the first Generated slots when cfg.Generated is set: the sample the
+// rejection rate counts, the same whatever the timing.
 func rejectCut(cfg SoundConfig, slots []rejectSlot) []rejectSlot {
 	n := 0
 	for i, sl := range slots {
-		if sl.class == "" {
+		if sl.class == "" || cfg.Generated > 0 && i >= cfg.Generated {
 			return slots[:i]
+		}
+		if cfg.Generated > 0 {
+			continue
 		}
 		if sl.class == "sampled" {
 			n++
