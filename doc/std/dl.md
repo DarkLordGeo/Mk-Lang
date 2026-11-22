@@ -70,14 +70,17 @@ On Linux, every failed load under `System` is `NotFound`. Under `Application` an
 
 ## Linux
 
-`Open` fails with `Unsupported` unless the bin is built in [system-libc mode](libc.md#system-libc-mode-on-linux). A program that needs only `std.dl` turns the mode on by linking the C library itself:
+`Open` fails with `Unsupported` unless the bin is built in [system-libc mode](libc.md#system-libc-mode-on-linux). A program that needs only `std.dl` turns the mode on by linking the C library itself, once per Linux target it builds for:
 
 ```mk
 // verdict: parse
 const Package = pkg.Package(
     name: "plugins",
     bins: [pkg.Bin(name: "plugins", root: "src", subsystem: "console")],
-    links: [pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "x86_64-linux")],
+    links: [
+        pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "x86_64-linux"),
+        pkg.Link(name: "libc.so.6", kind: "dynamic", path: "", target: "aarch64-linux"),
+    ],
 )
 ```
 

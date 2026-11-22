@@ -9040,7 +9040,7 @@ A target is the machine and system a program is built for. `--target name` picks
 | `x86_64-linux` | Yes | Yes: a static executable, or one that loads the system C library ([std.libc](std/libc.md#system-libc-mode-on-linux)) |
 | `x86_64-freestanding` | Yes | Yes: a static ELF that runs with no operating system ([below](#freestanding)) |
 | `x86_64-nutshell` | Yes | Yes ([below](#nutshell)) |
-| `aarch64-linux` | Yes | Yes: a static executable. Not a library, and not system-libc mode ([below](#macos-and-aarch64)) |
+| `aarch64-linux` | Yes | Yes: a static executable, or one that loads the system C library ([std.libc](std/libc.md#system-libc-mode-on-linux)) |
 | `aarch64-macos`, `x86_64-macos` | Yes | Yes: a Mach-O executable that loads libSystem, macOS 11 or later. Preliminary: never run by the project ([below](#macos-and-aarch64)) |
 | `aarch64-nutshell` | Yes | No: E0202, `reason: not-built` |
 
@@ -9144,7 +9144,7 @@ src/f.mk:1:8: E0202 unknown-module: module std.fs is not available on x86_64-fre
 
 | Target | What the project checks | Not yet |
 |---|---|---|
-| `aarch64-linux` | CI builds and runs the checks, std's test blocks and `tests/programs` natively on GitHub's `ubuntu-24.04-arm` runner; the programs also pass under qemu-user | System-libc mode and libraries (`pkg.Lib`) are x86_64-only; `std.linux` (the raw system call) is x86_64-only, since its numbers are x86_64's |
+| `aarch64-linux` | CI builds and runs the checks, std's test blocks, `tests/programs`, system-libc mode and libraries (`pkg.Lib`, called from a C host) natively on GitHub's `ubuntu-24.04-arm` runner; the programs also pass under qemu-user | `std.linux` (the raw system call) is x86_64-only, since its numbers are x86_64's |
 | `aarch64-macos`, `x86_64-macos` | `mk check` of std, its tests included, and `mk corpus` for the target; `mk build` links every program of `tests/programs` but the x86- and Linux-specific ones. A small program's load commands, imports and reproducible bytes are checked by a test. None has run | Libraries, `pkg.Link`, `c_sources` and C imports; source-level debugging (no `.dSYM` is made); the parts of `std.sys` listed in [std.sys on macOS](#stdsys-on-macos) |
 
 - The C ABI is AAPCS64 on `aarch64-linux`, Apple's arm64 variant of it on `aarch64-macos` (the caller extends small integers, and every variadic argument goes on the stack), and System V on `x86_64-macos`.
@@ -9689,7 +9689,7 @@ const Package = pkg.Package(
 | `name` | A dynamic library's exact file name, as the loader looks it up, with no separator. A static library's name labels it in diagnostics |
 | `kind` | `"dynamic"`: the OS loader opens it when the program starts. `"static"`: an archive linked into the executable |
 | `path` | Package-relative. A Windows DLL: `""` for the host's System32 copy (on a Windows host only), a `.def` file listing one exported name per line (on any host), or the `.dll` itself, which mk copies beside the executable. A Linux library: `""`, or a `.def` whose names may carry `@VERSION`. An archive: the `.lib` or `.a` file |
-| `target` | `"x86_64-windows"` or `"x86_64-linux"` |
+| `target` | `"x86_64-windows"`, `"x86_64-linux"` or `"aarch64-linux"` |
 
 - A fault in a `Link` is E0202 at the `Link`, `reason: link`. An import library (`.lib` for a DLL) is not an archive (E0202).
 - A name an archive defines wins over any DLL. A library enters the executable only when a name it supplies is used.

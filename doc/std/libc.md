@@ -41,13 +41,13 @@ Outside system-libc mode, C sources and static archives link against `std.libc` 
 
 ## System-libc mode on Linux
 
-A bin for `x86_64-linux` whose package graph holds a dynamic link for that target (a `pkg.Link` with `kind: "dynamic"`) is built in system-libc mode. It loads the system's dynamic loader and links `libc.so.6` and the named `.so` files. Every other Linux bin is static and loads no C library. [std.dl](dl.md#linux) shows the manifest of a program that needs only `std.dl`.
+A bin for `x86_64-linux` or `aarch64-linux` whose package graph holds a dynamic link for that target (a `pkg.Link` with `kind: "dynamic"`) is built in system-libc mode. It loads the system's dynamic loader (`/lib64/ld-linux-x86-64.so.2` or `/lib/ld-linux-aarch64.so.1`) and links `libc.so.6` and the named `.so` files. Every other Linux bin is static and loads no C library. [std.dl](dl.md#linux) shows the manifest of a program that needs only `std.dl`.
 
 In system-libc mode:
 
 - `std.libc` is not linked, and a bin that reaches it is E0001. C sources and archives use the system's C library, so all C code shares one allocator.
 - A C function that std's list of `libc.so.6` names does not include needs a link whose `.def` file names it: `fabs`, for one, is in `libm.so.6`.
-- mk links against a stub made from each link's list of names, so it builds from any host. A `.def` name with `@VERSION` binds that version. A name without one binds whichever version the loader picks, which for glibc is the oldest, so a list should give a version for every name. The oldest supported glibc is 2.34.
+- mk links against a stub made from each link's list of names, so it builds from any host. A `.def` name with `@VERSION` binds that version. A name without one binds whichever version the loader picks, which for glibc is the oldest, so a list should give a version for every name. Versions differ by architecture: glibc's oldest is `GLIBC_2.2.5` on x86_64 and `GLIBC_2.17` on aarch64, so each target takes its own link and list. The oldest supported glibc is 2.34.
 - The program starts through `__libc_start_main`, and its threads are made with `pthread_create`. std keeps its own system calls for I/O, signals (never signals 32 and 33), processes and exit. So C `atexit` handlers do not run, and C stdio buffers are not flushed, at exit.
 - The executable exports nothing. A name that a link's list supplies and the executable also defines is E0001. Such names are the compiler's `memcpy`, `memmove`, `memset`, `memcmp` and `bcmp`, an `export extern` function, or a function of a C source.
 - A list cannot say whether a name is a function or data. So C built without `-fPIC` may only call a listed name, and taking its address there is E0001. Position-independent C, Clang's default, reaches a listed data object through the GOT.

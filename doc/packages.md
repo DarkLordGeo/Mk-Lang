@@ -320,7 +320,7 @@ const Package = pkg.Package(
 
 ## 15. Libraries
 
-A `pkg.Bin` with `kind: "dynamic"` or `kind: "static"` builds a library for C and other languages instead of an executable. Libraries are built for `x86_64-windows` and `x86_64-linux`.
+A `pkg.Bin` with `kind: "dynamic"` or `kind: "static"` builds a library for C and other languages instead of an executable. Libraries are built for `x86_64-windows`, `x86_64-linux` and `aarch64-linux`.
 
 ```mk
 // verdict: parse

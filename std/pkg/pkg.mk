@@ -105,8 +105,8 @@ export struct Module {
 
 /// A library the package's extern functions resolve to, for one target:
 /// kind "dynamic", which the OS loader opens
-/// at start, or "static", an archive linked in; target "x86_64-windows" or
-/// "x86_64-linux"; a dynamic name is the loader's exact file name; path is
+/// at start, or "static", an archive linked in; target "x86_64-windows",
+/// "x86_64-linux" or "aarch64-linux"; a dynamic name is the loader's exact file name; path is
 /// package-relative: "", a .def name list, the .dll, or the .lib or .a.
 export struct Link {
     export name: str
