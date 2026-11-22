@@ -1,7 +1,9 @@
-// Why: a reset ends what was stored into an arena, but an arena made over
-// another allocator still holds that allocator's loan afterwards; a checker
-// that ended that loan at the Reset too let the backing be reset or freed
-// under a live arena. The generator draws that form so a run shows it.
+// Why: a Reset ends what was stored into an arena, but an arena made over
+// another allocator keeps that allocator's loan across it, so the backing
+// is not reset or freed under the live arena. The generator draws the
+// Arena half of that rule (an arena from Arena.NewIn or Sub); the Fixed,
+// FixedHeap and Fallback half, whose Reset the dynamic checker does not
+// observe, is pinned by std's memNewLoanCases.
 //
 // What: resetBack, shape S89 (profiles full and fields), its writer
 // resetText with resetForm, and resetMakes and resetViews, the forms of the
@@ -15,9 +17,10 @@
 // Fmt or a sub-arena with a cell. One time in holeOdds (the hole) p is
 // reset, after the intermediate arena is freed in the Sub form, while c is
 // still live and before the view is read: c's chunks are p's memory, so the
-// read is of memory p's Reset ended, and the tree rejects the Reset (c
-// still holds p's loan). Otherwise the view is read, c is freed and only
-// then is p reset (one time in two) and freed, which both checkers accept.
+// read is of memory p's Reset ended. The checker rejects the hole: p's
+// Reset while c holds p's loan (E0501), or in the Sub form m's Free while c
+// holds m's loan (E0503). Otherwise the view is read, c is freed and only
+// then is p reset (one time in two) and freed, which is accepted.
 
 package corpus
 

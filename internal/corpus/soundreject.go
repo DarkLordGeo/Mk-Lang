@@ -147,7 +147,9 @@ type rejectSlot struct {
 	twin    *rejectSlot // the clause-restored twin, when a sampled program dropped a clause
 }
 
-// RunReject samples cfg.Reject programs of profile reject: each a
+// RunReject samples cfg.Reject programs of profile reject (with
+// cfg.Generated set, the loan-code rejections among the first Generated
+// programs instead, whatever their count): each a
 // loan code rejects runs with Rejected and RejectSeeds run seeds, stopping at
 // its first violation; clean means every run completed with no violation
 // and none was Skipped. The report is written as <Out>/runs/<Label>.json

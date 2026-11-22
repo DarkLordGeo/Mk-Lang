@@ -2,7 +2,8 @@
 // arena that was reset itself; its hole must stay rejected and its correct
 // form accepted and clean, or a run of it shows nothing.
 //
-// What: TestSoundGen_ResetForms and resetProgram.
+// What: TestSoundGen_ResetForms, resetProgram, resetRuns and
+// resetStoredText.
 //
 // How: every (make, view, hole) form of resetText, alone in a program whose
 // Run calls it, is checked on the shared session; a correct form is also
@@ -35,7 +36,8 @@ func resetProgram(f resetForm) string {
 }
 
 // TestSoundGen_ResetForms: each hole form of S89 is rejected, with loan
-// codes only; each correct form is accepted and runs clean.
+// codes only; each correct form, and resetStoredText, is accepted and runs
+// clean.
 func TestSoundGen_ResetForms(t *testing.T) {
 	s := soundSess(t)
 	for mk := range resetMakes {
@@ -73,7 +75,57 @@ func TestSoundGen_ResetForms(t *testing.T) {
 			}
 		}
 	}
+	// A loan stored into c, of a local that dies after c's Reset while c
+	// lives on: accepted only because the Reset ends what was stored.
+	unit := fmt.Sprintf("sound/reset%d", soundUnitN.Add(1))
+	out := s.CheckUnit(driver.UnitInput{Name: unit, Files: []driver.UnitFile{{Path: "sound.mk", Text: resetStoredText}}})
+	if len(out.Report.Diags) > 0 {
+		t.Errorf("stored loan across the Reset: rejected, want accepted\n%s", out.Report.Text(out.Sources))
+	} else if r := resetRuns(s, unit); r != "" {
+		t.Errorf("stored loan across the Reset: %s", r)
+	}
+	s.Forget([]string{unit})
 }
+
+// resetStoredText is a correct form beside S89's: c holds a block local's
+// loan, is reset inside the block, and is used after the local is gone.
+const resetStoredText = `Rd1(a: &Arena): i64 {
+    var h: i64 = 0
+    var p := a.Sub() else {
+        return h
+    }
+    var c := Arena.NewIn(p.Alloc()) else {
+        p.Free()
+        return h
+    }
+    if h == 0 {
+        var v: i64 = 7
+        w0 := c.Put(&v) else {
+            c.Free()
+            p.Free()
+            return h
+        }
+        h = h *% 31 +% **w0
+        c.Reset()
+    }
+    w := c.Put(i64(7)) else {
+        c.Free()
+        p.Free()
+        return h
+    }
+    h = h *% 31 +% *w
+    c.Free()
+    p.Free()
+    return h
+}
+
+export Run(k: i64, a: &Arena): i64 {
+    var h: i64 = 0
+    h = h *% 31 +% Rd1(a)
+    h = h *% 31 +% k
+    return h
+}
+`
 
 // resetRuns runs unit's Run on four run seeds, the last failing page
 // allocations, and is "" when every run completes with no violation.

@@ -669,7 +669,8 @@ func TestSoundDefectSeeds(t *testing.T) {
 }
 
 // TestSoundRejectBreakdown (MK_SOUND=1) splits the false-rejection sample of
-// profile reject7 (MK_SOUND_REJECT programs, default 5,000, base
+// profile reject7 (MK_SOUND_REJECT programs, default 5,000, or with
+// MK_SOUND_GENERATED=n those among the first n generated; base
 // DefaultSoundBase) by shape: the raw and the adjusted clean rate of the
 // sampled programs with no m7 shape, with any, and with each m7 shape, so a
 // rise of the rate over reject's is placed on the m7 forms that carry it.
@@ -680,8 +681,10 @@ func TestSoundRejectBreakdown(t *testing.T) {
 	soundLong(t)
 	s := soundSess(t)
 	n := soundInt(t, "MK_SOUND_REJECT", 5000)
-	cfg := rejectConfig(SoundConfig{Profile: ProfileReject7, Base: DefaultSoundBase, Reject: n, Recycle: soundInt(t, "MK_SOUND_RECYCLE", 0),
-		Label: fmt.Sprintf("t7m7-%d", soundUnitN.Add(1))})
+	// MK_SOUND_GENERATED=n: the first n programs instead, so a per-shape
+	// before and after compares one index range.
+	cfg := rejectConfig(SoundConfig{Profile: ProfileReject7, Base: DefaultSoundBase, Reject: n, Generated: soundInt(t, "MK_SOUND_GENERATED", 0),
+		Recycle: soundInt(t, "MK_SOUND_RECYCLE", 0), Label: fmt.Sprintf("t7m7-%d", soundUnitN.Add(1))})
 	c := NewSessionCompiler(driver.Config{}, s)
 	if err := c.Start(); err != nil {
 		t.Fatal(err)

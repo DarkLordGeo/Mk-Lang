@@ -326,6 +326,7 @@ func TestSound_Reject(t *testing.T) {
 	// sampled count, so two checkers are compared over one index range.
 	if cfg.Generated = soundInt(t, "MK_SOUND_GENERATED", 0); cfg.Generated > 0 {
 		cfg.Command["MK_SOUND_GENERATED"] = strconv.Itoa(cfg.Generated)
+		delete(cfg.Command, "MK_SOUND_REJECT") // not a bound then
 	}
 	rep, t7, err := RunReject(context.Background(), cfg, g.compiler(NewSessionCompiler(driver.Config{}, nil)))
 	if err != nil {

@@ -61,7 +61,7 @@ func TestSoundGen_StreamsKept(t *testing.T) {
 		got := soundStreamDigest(p, n)
 		t.Logf("%s %d: %s", p, n, got)
 		if got != w {
-			t.Errorf("%s: the first %d programs differ from GenVersion 14's (digest %s, want %s)", p, n, got, w)
+			t.Errorf("%s: the first %d programs differ from the pinned stream (digest %s, want %s): a change to this profile's text writes the new digest and names the profile in GenVersion's list", p, n, got, w)
 		}
 	}
 }
