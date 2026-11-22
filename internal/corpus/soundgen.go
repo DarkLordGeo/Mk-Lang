@@ -84,7 +84,12 @@ import (
 //     of its own, with the header's callees StashL to KkPoke.
 //   - 14: a hole function writes its hole one time in three (holeOdds 3, was
 //     2).
-const GenVersion = 14
+//   - 15: S89 (soundreset.go) in profiles full and fields only: an arena
+//     made over a sub-arena's Alloc (Arena.NewIn, the header's NewIn, or
+//     the Sub of such an arena) reset, then a cell, List, mem.Pool, str or
+//     sub-arena made in it and read, with the backing reset first one time
+//     in three, in a function of its own.
+const GenVersion = 15
 
 // Profile selects the shapes a program may use.
 type Profile uint8

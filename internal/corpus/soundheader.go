@@ -133,6 +133,8 @@ const (
 	itemKkStar
 	itemKkNm
 	itemKkPoke
+	// GenVersion 15: an arena over another arena's Alloc (S89).
+	itemNewIn
 	nItems
 )
 
@@ -143,7 +145,8 @@ var itemNames = [nItems]string{"Deep", "D2", "Sl", "Lx", "Put", "SetRef", "Deep.
 	"Cr", "Cr.Keep", "Gr", "Bf", "Bf.Next", "HalvesR", "PairR", "PiecesMutR",
 	"Fp", "FpMk", "FpSw", "FpMix", "FpShow", "FpSet", "FpTake", "FpPick", "Fp.Rot", "Fq", "Fw", "Fw.Stow",
 	"Fa", "FaStash", "Fs", "Fh", "FhPut", "FpK", "FwMix", "Fr", "FrSet",
-	"StashL", "StashC2", "StashC3", "Yes", "Kk", "Ks", "Kn", "KkName", "KkCell", "KkSlot", "KkMid", "KkStar", "KkNm", "KkPoke"}
+	"StashL", "StashC2", "StashC3", "Yes", "Kk", "Ks", "Kn", "KkName", "KkCell", "KkSlot", "KkMid", "KkStar", "KkNm", "KkPoke",
+	"NewIn"}
 
 // itemDeps are the items an item's text names.
 var itemDeps = map[int][]int{
@@ -699,5 +702,10 @@ KkPoke(k: mut Kk, y: &i64 into k) {
     if c := k.c {
         c.Store(y)
     }
+}
+
+// item NewIn
+NewIn(p: &Arena): OutOfMemory!Arena from p {
+    return try Arena.NewIn(p.Alloc())
 }
 `

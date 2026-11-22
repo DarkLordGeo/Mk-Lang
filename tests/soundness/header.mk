@@ -513,3 +513,8 @@ KkPoke(k: mut Kk, y: &i64 into k) {
         c.Store(y)
     }
 }
+
+// item NewIn
+NewIn(p: &Arena): OutOfMemory!Arena from p {
+    return try Arena.NewIn(p.Alloc())
+}

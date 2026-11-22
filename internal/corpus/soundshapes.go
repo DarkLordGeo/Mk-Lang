@@ -2,7 +2,7 @@
 // small statement form that creates, moves or uses loans; their ids, weights
 // and readiness rules decide what every profile draws.
 //
-// What: the shape IDs S01 to S88 (stable and append-only, like
+// What: the shape IDs S01 to S89 (stable and append-only, like
 // types.PanicCode, so coverage counts stay comparable across generator
 // versions), shapeBase and shapeWeight, stmt and helperShapes, and the
 // general shapes S01 to S24, S30, S33 and S34 (deep, d2, mutField, lx, array,
@@ -12,8 +12,8 @@
 // are empty; nested blocks weight locals, stores and helper calls up. The
 // io, arena and task shapes are in soundfull.go, the shapes aimed at one
 // rule each in soundrules.go, and the later strata in soundlang.go,
-// soundviews.go, soundblocklocal.go, soundfields.go and soundholes.go; the header
-// they call is soundheader.go.
+// soundviews.go, soundblocklocal.go, soundfields.go, soundholes.go and
+// soundreset.go; the header they call is soundheader.go.
 
 package corpus
 
@@ -113,7 +113,8 @@ const (
 	sFpCross                 // S86 W2: a per-field result crossed one time in three, kept by a caller of its own (M-F8-W2-ret-union)
 	sShallow                 // S87 shallow stores: a cell's loan put into a holder deep, shallow or both, then a later store through it (the M-F3 rows)
 	sGlobalCall              // S88 a local's loan stored into S31's global mutex reached through a call, or the global returned for a result from a parameter, one time in three (M-D756-result, -indirect, -boundary)
-	nShapes       = sGlobalCall
+	sResetBack               // S89 an arena over a sub-arena p (NewIn, or the Sub of one) reset, then a view or allocator made in it and read; one time in three p is reset first (soundreset.go)
+	nShapes       = sResetBack
 )
 
 // shapeBase is each shape's ProfileFull weight.
@@ -130,6 +131,7 @@ var shapeBase = [nShapes + 1]uint16{0,
 	2, 2, 2, 2, 2, // S65 to S69 (GenVersion 10)
 	8, 8, 6, 6, 3, 2, 4, 4, 2, 2, 2, 3, // S70 to S81 (GenVersion 11, profiles fields and rejectf only)
 	holeWeight, holeWeight, holeWeight, holeWeight, holeWeight, holeWeight, holeWeight, // S82 to S88 (GenVersion 13, profile fields only; soundholes.go)
+	2, // S89 (GenVersion 15, profiles full and fields only; soundreset.go)
 }
 
 // needsIo and needsArena are the shapes that make Run take io or a.
@@ -138,12 +140,20 @@ func needsIo(id int) bool {
 }
 func needsArena(id int) bool {
 	return id == sSubArena || id == sArenaCell || id == sDefer || id == sOnerr || id == sArenaBranch || id == sDeferFree || id == sArenaTie || id == sDropSlot || id == sFmtShort || id == sPoolPair ||
-		id == sC3List || id == sC3Nest || id == sC3Front
+		id == sC3List || id == sC3Nest || id == sC3Front || id == sResetBack
 }
 
 // shapeWeight is shape id's weight in profile p.
 func shapeWeight(id int, p Profile) int {
 	w := int(shapeBase[id])
+	if id == sResetBack {
+		// Full and fields only, so every other profile's stream, the
+		// rejection samples' among them, keeps its text.
+		if p != ProfileFull && p != ProfileFields {
+			return 0
+		}
+		return w
+	}
 	if id >= sFpNew {
 		return fieldWeight(id, p, w)
 	}
@@ -290,6 +300,9 @@ func (g *sgen) emit(id int) bool {
 
 func (g *sgen) emitShape(id int) bool {
 	inRun := g.cur == nil
+	if id == sResetBack {
+		return g.resetBack()
+	}
 	if id >= sFpNew {
 		return g.fieldShape(id, inRun)
 	}
