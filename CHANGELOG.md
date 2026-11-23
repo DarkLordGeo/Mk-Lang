@@ -6,7 +6,7 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 
 ### Fixed
 
-- The borrow checker now counts a non-generic free constructor in a view's defining module when its result borrows from memory that can take stores. It applies the same rule to private constructors and to optional or error results.
+- The borrow checker now counts a non-generic free constructor in a view's defining module when its result borrows from memory that can take stores, as it counted a constructor in the view's namespace. It applies the same rule to private constructors and to optional or error results. This rejects, with E0605 or E0602, programs 0.5.0 accepted: a local stored through such a view into global memory, which then read a dead frame.
 
 ## 0.5.0 (2026-11-23)
 

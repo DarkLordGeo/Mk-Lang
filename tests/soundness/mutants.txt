@@ -690,6 +690,16 @@ note a view counted only through its type arguments: a view with no type argumen
 witness G756-viewkeeps-out G756-viewkeeps-result G756-viewkeeps-ctor G756-viewkeeps-store G756-viewkeeps-impl-both G756-viewkeeps-impl-both-fwd G756-viewkeeps-impl-store G756-viewkeeps-impl-store-fwd G756-viewkeeps-impl-view G756-viewkeeps-impl-view-direct G756-viewkeeps-implref-store G756-viewkeeps-implmut-store G756-viewkeeps-implref-get G756-viewkeeps-hold-fn G756-viewkeeps-hold-nsfn G756-viewkeeps-hold-struct G756-viewkeeps-hold-starq G756-viewkeeps-hold-impl G756-viewkeeps-hold-ref G756-viewkeeps-hold-own-other G756-viewkeeps-hold-own-holder G756-viewkeeps-hold-fnlit G756-viewkeeps-hold-const G756-viewkeeps-hold-global G756-viewkeeps-hold-callback G756-viewkeeps-hold-callback2
 end
 
+mutant M-D756-viewkeeps-free
+rule R16 R9
+class R
+file internal/borrow/typewalk.go
+anchor \t\tif it.Owner == types.NoItem && it.BorrowedConstructorResult(w.tab) == ty.Item {\n
+replace \t\tif false && it.Owner == types.NoItem && it.BorrowedConstructorResult(w.tab) == ty.Item {\n
+note a view's keep by a non-generic free constructor of its module is not counted: Of(m: &Mutex[?&i32]): V from m keeps &GM and Put stores into it, so a local stored through a source-less MakeV() reaches GM; the witness is accepted and reads a dead frame when run; expected VDeadScope
+witness G756-viewkeeps-free
+end
+
 mutant M-D756-viewkeeps-implscan
 rule R16 R9
 class R

@@ -1638,7 +1638,8 @@ Known gaps: the compiler does not count the following stores into a `view`, and 
 - a store through a free function of another module reached by the view's raw accessor;
 - a store through a `fn` value whose impl the reading module does not see;
 - a store through a storing `fn` literal bound to a local;
-- a keep by a generic free constructor or one outside the view's defining module, or a hand-out by a function without a receiver;
+- a keep by a generic free constructor, one outside the view's defining module, or one in another type's namespace or impl (`Factory.Make(m): V from m`), or a hand-out by a function without a receiver;
+- a keep through a result that holds the view inside another type (`Of(m): W from m` with `struct W { v: V }`);
 - a store through an exported function whose `into` parameter is a bare type parameter.
 
 A `view`'s raw pointer must reach only memory its signatures name. An `unsafe` module whose safe code points it elsewhere, such as a `V.Global(): V` that sets it to a global, breaks its `unsafe` blocks' obligation, and no rule checks that.
