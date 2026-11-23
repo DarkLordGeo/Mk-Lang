@@ -48,6 +48,8 @@ var knownTypesFindings = []struct {
 		"the stand-in List is an empty struct, so a Bag holding one is Plain"},
 	{"doc/reference.md", "    xs := try a.Slice[str](4) // <- E0701", "has no member `Slice`",
 		"Arena.Slice is std's; the stand-in Arena has no members"},
+	{"doc/reference.md", "    return p // <- E0301", "has no member `Put`",
+		"Arena.Put is std's; the stand-in Arena has no members"},
 	{"doc/reference.md", "gen derive.Eq(P) // <- E0704", "module std.derive",
 		"std.derive is not in the stand-in std"},
 	{"doc/reference.md", "    s := io.Scope() // <- E1003", "has no member `Scope`",
