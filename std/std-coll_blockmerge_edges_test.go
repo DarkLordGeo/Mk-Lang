@@ -1,4 +1,4 @@
-// Why: the raw moves of SortStable that one range check guards must be driven
+// Why: the raw moves of SortStableInPlace that one range check guards must be driven
 // to the edges of the slice, the cache and their runs on tests_sort.mk's inputs.
 // What: TestStdColl_BlockMergeModelEdges, with tsKeyAt, tsLengths, tlCoin and
 // tsTypes (Go copies of tests_sort.mk's and tests_list.mk's helpers).
@@ -68,7 +68,7 @@ var tsTypes = []struct {
 	{"TsBig", 0, 200, 0x7FFFFFFF},
 }
 
-// TestStdColl_BlockMergeModelEdges runs the Go model of SortStable
+// TestStdColl_BlockMergeModelEdges runs the Go model of SortStableInPlace
 // (blkModel.stableSort) over the inputs std/core/tests_sort.mk sorts for
 // its elements of 2 bytes and more (every length of TsLengths, TsKeyAt's
 // seven patterns under the order, and always true, always false and
