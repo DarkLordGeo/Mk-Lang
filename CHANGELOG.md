@@ -2,6 +2,12 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
+## Unreleased
+
+### Loan checker
+
+- A spawned task's clauses hold until its scope joins. A later store into what a task's `*q into p` reads, or into what its `x into p` receives (another task's send, the parent's own `Chan.Send`, a plain call), also reaches `p`. This rejects, with E0505 or E0604, programs 0.4.1 accepted: a task that moves a value out of a channel into a reference that outlives what a later send put there.
+
 ## 0.4.1 (2026-11-22)
 
 ### Changed

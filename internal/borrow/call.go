@@ -264,6 +264,7 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 			endsProv[i] = c.allocSelf(r, c.sets.minus(e.held, e.stored))
 		}
 	}
+	c.flowCall = ctx.b + 1
 	if fv != nil {
 		// Steps 3 and 4 repeat until a round grows no argument's set and no
 		// root's held set: a clause applied early in a round may make a cell
@@ -341,11 +342,15 @@ func (c *checker) call(st *state, ctx *stmtCtx, t *mir.Terminator) []out {
 			}
 		}
 	}
+	c.flowCall = 0
+	newFlows := c.noteTaskFlows(st, ctx, t, fv, entryH)
 	if t.Spawn != mir.NoLocal {
 		c.spawnStores(st, ctx, t, argH)
+		c.closeFlows(st, ctx, newFlows)
 		c.endSlots(st, ctx)
 		return []out{{t.Target, st}}
 	}
+	c.closeFlows(st, ctx, newFlows)
 	var outs []out
 	if t.HasErr {
 		es := st.clone()
@@ -532,6 +537,7 @@ func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, ro
 		roots, fld = c.writableSkip(st, c.sets.unite(own[p], c.sets.minus(argH[p], S)), S, c.argRoot(st, own[p]))
 	}
 	grew := false
+	c.taskGrew = false
 	later, mem := c.laterAlloc, c.allocMem
 	for i, r := range roots {
 		before, beforeSh := c.held(st, r), st.get(r).sh
@@ -597,6 +603,9 @@ func (c *checker) storeArg(st *state, ctx *stmtCtx, argH, argSh, own []setID, ro
 				stored[i] = c.sets.unite(stored[i], S)
 			}
 		}
+	}
+	if c.taskGrew {
+		grew = true // a store followed through a task's clause grew a root
 	}
 	oldSh := argSh[p]
 	c.addMarked(argH, argSh, p, S, sh)

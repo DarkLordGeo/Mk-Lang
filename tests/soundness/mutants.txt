@@ -991,3 +991,13 @@ replace \t\twalk = walk || !view && c.w.walkExtra(t) && !c.w.paramFrom(t, 0)\n
 note the type-parameter clause of the direct write's walk on cut for a parameter's abstract nodes (addAbstract), the twin of M-D790-walk-param; expected VDeadScope
 pending no program found that the cut changes: built as mk with this patch, the witnesses of tests/soundness/witness and two more programs (G790-tparam-walk with S[T] as a parameter, and the stored reference a parameter declared `into sv`) keep their verdicts (E0505 each), since a write through a parameter's node is already a store into the caller's memory at the first level, judged by the store and escape rules whatever the walk reaches
 end
+
+mutant M-R17-task-flow
+rule R17
+class R
+file internal/borrow/store.go
+anchor \tif len(c.taskFlows) != 0 {\n\t\tdefer c.followTaskFlows(st, ctx, t)\n\t}\n
+replace \n
+note a task's `*q into p` applied once, at the spawn or at a call passing the scope: a later store into what q points at or what p reaches (a second task's send, the parent's own Send, a plain call) never reaches p, so the reader moves a reference to a dead local into `*p`; each witness is accepted and reads a dead frame when run; expected VDeadScope
+witness TF-chain.mk TF-chan-param.mk TF-field.mk TF-locals.mk TF-nested.mk TF-parent-send.mk TF-plain-call.mk TF-spawn-writer.mk TF-undeclared.mk TF-reach-grows.mk TF-self.mk TF-helper.mk TF-restore.mk TF-struct-scope.mk TF-loop-retarget.mk TF-into-mut.mk TF-into-chan.mk
+end

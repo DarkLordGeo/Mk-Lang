@@ -130,6 +130,9 @@ func (c *checker) writableSkip(st *state, l0, skip setID, arg rootID) (out []roo
 			continue
 		}
 		ti := &c.roots[t]
+		if c.walkRead != nil && (ti.carrier || ti.kind == rkAbstract) {
+			c.walkRead[t] = true // the region of a task flow (taskflow.go)
+		}
 		e := h.excl && lo.excl
 		if ti.allocator && !h.first && h.fromAlloc != noRoot && !c.allocContent(h.fromAlloc, h.l) {
 			continue // an allocator its holder holds by provenance
@@ -236,6 +239,9 @@ type viaHop struct {
 // rules say it may; the clause shows the reader the holder that made t a
 // target.
 func (c *checker) viaText(t rootID) string {
+	if s := c.taskFlowText(); s != "" {
+		return s // a store followed through a task's clause names the task
+	}
 	v, ok := c.via[t]
 	if !ok {
 		return ""
@@ -268,7 +274,13 @@ func (c *checker) allocOf(t rootID) rootID {
 // storeInto is the store cases: storing S into root t at the current
 // statement. fld is, for a split frame root, the field the store lands in (the
 // field a loan's place names), or -1 for every loan-holding field.
+//
+// While a spawned task may run, its `*q into p` clauses are applied again
+// after the store (followTaskFlows).
 func (c *checker) storeInto(st *state, ctx *stmtCtx, t rootID, S setID, fld int) {
+	if len(c.taskFlows) != 0 {
+		defer c.followTaskFlows(st, ctx, t)
+	}
 	ti := &c.roots[t]
 	switch ti.kind {
 	case rkStatic:
@@ -316,6 +328,7 @@ func (c *checker) noteAllocContent(t rootID, S setID) {
 	if u := c.sets.unite(c.allocStored[t], S); u != c.allocStored[t] {
 		c.allocStored[t] = u
 		c.allocGrew = true
+		c.allocGen++
 	}
 }
 

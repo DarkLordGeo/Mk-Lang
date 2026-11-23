@@ -128,6 +128,32 @@ type checker struct {
 	// growth since solve's last round.
 	allocStored map[rootID]setID
 	allocGrew   bool
+	// taskFlows are the tasks' clauses `*q into p`, one per site and
+	// clause (taskFlowAt), grow-only for the body (taskflow.go);
+	// taskFlowGrew marks a growth since solve's last round. flowVia is the
+	// flow being applied, which E0505 and E0604 name; flowDepth is set
+	// while the flows are applied; flowSeen is, per root, the loans the
+	// report pass judged there through a flow; taskGrew is set when an
+	// applied flow grows a root, for the call rule's fixpoint.
+	taskFlows    []taskFlow
+	taskFlowAt   map[siteKey]int
+	taskFlowGrew bool
+	taskGrew     bool
+	flowVia      *taskFlow
+	flowDepth    int
+	// flowCall is the block of the call whose steps 3 and 4 run, plus
+	// one, else 0.
+	flowCall mir.BlockID
+	flowSeen map[rootID]setID
+	// flowAt indexes, per root, the flows whose region holds it
+	// (flowAtSeen: root<<32 | flow); walkRead, when set, collects the
+	// roots the writable walk reads.
+	flowAt     map[rootID][]int
+	flowAtSeen map[uint64]bool
+	walkRead   map[rootID]bool
+	// allocGen counts the growths of allocStored, which the cached walks
+	// of task flows depend on.
+	allocGen int
 	// loanHolders is the same index per loan: loanHolders[l] lists every
 	// root that held l in some state, in holders[root(l)]'s order, so the
 	// seeds of liveHolder are those of a scan of holders[root(l)]
@@ -307,10 +333,11 @@ func (c *checker) solve() {
 				}
 			}
 		}
-		// The writable walk reads allocStored, which grew: every block
-		// reached so far runs again.
-		if c.allocGrew {
-			c.allocGrew = false
+		// The writable walk reads allocStored, and every store reads
+		// taskFlows: when either grew, every block reached so far runs
+		// again.
+		if c.allocGrew || c.taskFlowGrew {
+			c.allocGrew, c.taskFlowGrew = false, false
 			for _, b := range c.rpo {
 				if c.entries[b] != nil {
 					dirty[b] = true

@@ -1626,7 +1626,7 @@ Fix: a `Cell` is not `Share`, so `&Cell` cannot reach another task. Use an `atom
 
 | Rule | Detail |
 |---|---|
-| Spawn | `s.go F(args)` acts as a call with every argument `into s`. Each argument type must be `Send`. A task always starts; it sees cancellation at its first cancellable operation |
+| Spawn | `s.go F(args)` acts as a call with every argument `into s`. Each argument type must be `Send`. A task always starts; it sees cancellation at its first cancellable operation. A task's clauses hold until the join: for `*q into p`, a later store into what `q` points at, or into what `p` reaches, also reaches `p`; for `x into p`, a later store into what `p` reaches receives `x` too. A call an argument of which reaches a `Scope` holds its callee's clauses the same way, since a task it spawns is bound by them |
 | Scope | `Scope` is a `view` and is `Share`. It exists only as the binding of a `scope` statement (E1003) |
 | Exit order | `defer`s and `onerr`s run, then the tasks are cancelled if the exit is early, then joined, then the scope's loans end, then locals end. The join waits until no task remains, including tasks spawned during it. `s.go` in a `defer` of that block is E1003 |
 | Helpers | A helper takes `s: &Scope`, and its arguments need `into s`. `&s` may be passed to a task. A spawn writes only the scope's own memory, so a helper may spawn the same arguments again |
@@ -1700,6 +1700,49 @@ Helper(s: &Scope, x: mut i32) {
 ```
 
 Fix: `Helper(s: &Scope, x: mut i32 into s)`.
+
+A task runs until the join, so its `*q into p` is not applied once at the spawn. A value stored into the channel after the reader starts may still be received and stored into `*p`:
+
+```mk
+// verdict: reject E0505
+Receive(ch: &Chan[&i32], io: Io, out: mut &i32) *ch into out {
+    v := ch.Recv(io) else {
+        return
+    }
+    *out = v
+}
+
+Late(io: Io, h: &Heap, p: mut &i32): OutOfMemory!void {
+    short: i32 = 22
+    ch := try Chan[&i32].New(h.Alloc(), 1)
+    scope s := io.Scope() {
+        s.go Receive(&ch, io, p)
+        ch.Send(io, &short) else {} // <- E0505
+    }
+    ch.Free(h.Alloc())
+}
+```
+
+Fix: send only what may live in `*p`, such as a value the caller declares `into p`:
+
+```mk
+// verdict: ok
+Receive(ch: &Chan[&i32], io: Io, out: mut &i32) *ch into out {
+    v := ch.Recv(io) else {
+        return
+    }
+    *out = v
+}
+
+Late(io: Io, h: &Heap, p: mut &i32, v: &i32 into p): OutOfMemory!void {
+    ch := try Chan[&i32].New(h.Alloc(), 1)
+    scope s := io.Scope() {
+        s.go Receive(&ch, io, p)
+        ch.Send(io, v) else {}
+    }
+    ch.Free(h.Alloc())
+}
+```
 
 ### R18. `view` and `ends`
 
@@ -1958,7 +2001,7 @@ This section collects, in one place, what each construct does to the loans a val
 | `for x in mut xs` | `x` is `mut T` (R20) | `mut` of `xs` |
 | `defer`, `onerr` | Code that runs at each exit (R21) | At each exit |
 | `scope s := e { }` | `s` cannot move. Exit order in R17 | |
-| `s.go F(args)` | A call with every argument `into s` | `Send` |
+| `s.go F(args)` | A call with every argument `into s`. The task's clauses hold until the join: after a later store into what `q` points at, or into what `p` reaches, `*q into p` and `x into p` apply again. So do a call's clauses when an argument reaches a `Scope` | `Send` |
 | End of `x`'s scope | `x` is dead | Scope end, shallow |
 
 A **shallow** access, a write or a scope end, conflicts with loans on the place and its fields but not with loans on what it points at, because a reference's target outlives the reference (R5). A **deep** access conflicts with loans on anything under the place.
