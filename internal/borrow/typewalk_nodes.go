@@ -241,11 +241,12 @@ func (w *walker) splitAllocators(n nodeInfo) (rest, alloc nodeInfo) {
 }
 
 // nodeFlags are the flags of an abstract node: carrier (some type is
-// a carrier or ANY), writable (some type is ANY, interior or holds a view),
-// view (ANY or holds a view), allocator (the node stands for allocators
-// alone: it has types, no ANY, and every type is Arena, Alloc or Heap). A
-// node that merges an allocator with anything else is no allocator, so the
-// writable walk and the direct write rule pass it.
+// a carrier or ANY), writable (some type is ANY or writableByType: a mut view
+// struct, Arena, Scope, or carrier Cell/Mutex/Chan inline), view (ANY or holds
+// a view), allocator (the node stands for allocators alone: it has types, no
+// ANY, and every type is Arena, Alloc or Heap). A node that merges an
+// allocator with anything else is no allocator, so the writable walk and the
+// direct write rule pass it.
 func (w *walker) nodeFlags(n *nodeInfo) (carrier, writable, view, allocator bool) {
 	if n.any {
 		carrier, writable, view = true, true, true
@@ -255,7 +256,7 @@ func (w *walker) nodeFlags(n *nodeInfo) (carrier, writable, view, allocator bool
 		f := w.factsOf(t)
 		carrier = carrier || f.Carrier
 		hv := w.holdsView(t)
-		writable = writable || f.Interior || hv
+		writable = writable || w.writableByType(t)
 		view = view || hv
 		allocator = allocator && f.Allocator
 	}
@@ -277,4 +278,40 @@ func (w *walker) allocRefs(t types.TypeID) bool {
 		}
 	}
 	return true
+}
+
+// reachesAlloc reports whether t reaches an allocator (Arena, Alloc or Heap)
+// or ANY through its reference steps at any depth. A tagged inner loan whose
+// field type reaches no allocator (such as `&str` beside an `&Arena` field)
+// cannot lead to p#A; one that does (or an untagged p.inner) can.
+func (w *walker) reachesAlloc(t types.TypeID) bool {
+	seen := map[types.TypeID]bool{}
+	rc := w.newRecur()
+	var walk func(types.TypeID) bool
+	walk = func(u types.TypeID) bool {
+		if seen[u] {
+			return false
+		}
+		seen[u] = true
+		if stop, leave := rc.enter(u); stop {
+			return true
+		} else if leave != nil {
+			defer leave()
+		}
+		if w.factsOf(u).Allocator {
+			return true
+		}
+		for _, f := range w.inlineFields(u) {
+			if walk(f) {
+				return true
+			}
+		}
+		for _, s := range w.refSteps(u).steps {
+			if s.any || walk(s.referent) {
+				return true
+			}
+		}
+		return false
+	}
+	return walk(t)
 }
