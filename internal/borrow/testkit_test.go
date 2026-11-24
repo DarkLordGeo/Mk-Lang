@@ -64,6 +64,7 @@ func newKit(t testing.TB) *kit {
 	// what a walk can see.
 	k.known.Cell = k.structItem(k.std, "Cell", 1, false, false, field("value", p0))
 	k.known.Mutex = k.structItem(k.std, "Mutex", 1, false, false, field("state", types.U32), field("value", p0))
+	k.known.SpinCore = k.structItem(k.std, "SpinCore", 1, false, false, field("state", types.U32), field("value", p0))
 	k.known.Chan = k.structItem(k.std, "Chan", 1, true, false, field("p", raw))
 	k.known.Arena = k.structItem(k.std, "Arena", 0, true, true, field("hdr", raw))
 	k.known.Alloc = k.structItem(k.std, "Alloc", 0, false, false, field("ctx", raw))
@@ -270,14 +271,14 @@ func (k *kit) computeFacts(t types.TypeID) types.Facts {
 		return types.Facts{Kind: types.Linear, Carrier: true}
 	case types.KArray, types.KOptional:
 		f := k.facts(ty.Elem)
-		f.View, f.MutView, f.Allocator, f.IsFn = false, false, false, false
+		f.View, f.MutView, f.PlainView, f.Allocator, f.IsFn = false, false, false, false, false
 		return f
 	case types.KErrorUnion:
 		if ty.Elem == types.Void {
 			return plain
 		}
 		f := k.facts(ty.Elem)
-		f.View, f.MutView, f.Allocator, f.IsFn = false, false, false, false
+		f.View, f.MutView, f.PlainView, f.Allocator, f.IsFn = false, false, false, false, false
 		return f
 	case types.KRecord:
 		f := plain
@@ -308,12 +309,19 @@ func (k *kit) namedFacts(t types.TypeID, ty *types.Type) types.Facts {
 		f = combine(f, k.facts(ft))
 	}
 	it := k.items.Get(ty.Item)
+	if _, isIface := it.Decl.(*types.InterfaceDecl); isIface {
+		return types.Facts{Kind: types.Linear, Carrier: true}
+	}
 	if sd, ok := it.Decl.(*types.StructDecl); ok {
 		if sd.View {
 			f.View, f.Carrier = true, true
-			f.Kind = max(f.Kind, types.Unique)
+			if !sd.PlainView {
+				f.Kind = max(f.Kind, types.Unique)
+			}
 		}
-		if sd.MutView {
+		if sd.PlainView {
+			f.PlainView = true
+		} else if sd.MutView {
 			f.MutView, f.Interior, f.LoanInterior, f.Freeze = true, true, true, false
 		} else if sd.View {
 			for _, a := range ty.Args {
@@ -333,7 +341,7 @@ func (k *kit) namedFacts(t types.TypeID, ty *types.Type) types.Facts {
 		if len(ty.Args) > 0 && !ty.Args[0].IsConst && k.facts(ty.Args[0].Type).Carrier {
 			f.LoanInterior = true
 		}
-	case k.known.Mutex, k.known.Chan:
+	case k.known.Mutex, k.known.SpinCore, k.known.Chan:
 		f.Interior, f.Freeze = true, false
 		f.Kind = max(f.Kind, types.Unique)
 		if len(ty.Args) > 0 && !ty.Args[0].IsConst && k.facts(ty.Args[0].Type).Carrier {

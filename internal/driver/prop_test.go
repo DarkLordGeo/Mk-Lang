@@ -609,3 +609,139 @@ clamp(s: str, n: int, m: int): int
 		t.Errorf("Clamp and clamp in one module: want E0206 and no prop run:\n%s", b.String())
 	}
 }
+
+// TestPropIEEE754EdgesAndShrink checks that f64 and f32 IEEE-754 edge values
+// (canonical NaN, non-canonical NaN payloads, -0.0, +Inf, -Inf, subnormals) are
+// discovered deterministically, rendered cleanly, shrunk without looping, and
+// persisted/replayed through the JSON corpus.
+func TestPropIEEE754EdgesAndShrink(t *testing.T) {
+	const src = `FailNaN(x: f64): bool
+    ensures result
+{
+    return x == x
+}
+
+FailPayloadNaN(x: f64): bool
+    ensures result
+{
+    return x.Bits() != 0x7FF8000000001234
+}
+
+FailNegZero(x: f64): bool
+    ensures result
+{
+    return !(x == 0.0 && x.Bits() != 0)
+}
+
+FailPosInf(x: f64): bool
+    ensures result
+{
+    return x.Bits() != 0x7FF0000000000000
+}
+
+FailNegInf(x: f64): bool
+    ensures result
+{
+    return x.Bits() != 0xFFF0000000000000
+}
+
+FailSubnormal64(x: f64): bool
+    ensures result
+{
+    return !(x > 0.0 && x < f64.FromBits(0x0010000000000000))
+}
+
+FailSubnormal32(x: f32): bool
+    ensures result
+{
+    return !(x > 0.0 && x < f32.FromBits(0x00800000))
+}
+
+FailNaN32(x: f32): bool
+    ensures result
+{
+    return x == x
+}
+`
+	dir := testPkg(t, map[string]string{"t.mk": src})
+	cache := t.TempDir()
+	cfg := Config{Root: filepath.Join(dir, "t.mk"), CacheDir: cache}
+	rep, text := propTest(t, nil, cfg, TestOptions{PropCases: 30})
+	if rep.Failed != 8 || rep.Passed != 0 {
+		t.Fatalf("want all 8 IEEE-754 traps to fail, got:\n%s", text)
+	}
+	for _, tc := range rep.Tests {
+		if tc.Result != "fail" {
+			t.Errorf("%s: want fail, got %s", tc.Name, tc.Result)
+		}
+		if strings.Contains(tc.Output, "stopped at the limit") {
+			t.Errorf("%s: float shrinking did not terminate:\n%s", tc.Name, tc.Output)
+		}
+		if strings.Contains(tc.Name, "NaN") && !strings.Contains(tc.Output, "FromBits(") {
+			t.Errorf("%s: expected FromBits rendering in output:\n%s", tc.Name, tc.Output)
+		}
+	}
+	if tc := propCaseOf(t, rep, "FailNaN"); !strings.Contains(tc.Output, "f64.FromBits(0x7FF8000000000000)") {
+		t.Errorf("FailNaN should shrink to canonical qNaN:\n%s", tc.Output)
+	}
+	if tc := propCaseOf(t, rep, "FailNegZero"); !strings.Contains(tc.Output, "f64.FromBits(0x8000000000000000)") {
+		t.Errorf("FailNegZero should preserve -0.0:\n%s", tc.Output)
+	}
+	if tc := propCaseOf(t, rep, "FailPosInf"); !strings.Contains(tc.Output, "f64.FromBits(0x7FF0000000000000)") {
+		t.Errorf("FailPosInf should render +Inf via FromBits:\n%s", tc.Output)
+	}
+	if tc := propCaseOf(t, rep, "FailNegInf"); !strings.Contains(tc.Output, "f64.FromBits(0xFFF0000000000000)") {
+		t.Errorf("FailNegInf should render -Inf via FromBits:\n%s", tc.Output)
+	}
+	// Corpus replay must succeed for all 8 JSON entries (including NaN and ±Inf).
+	rep2, text2 := propTest(t, nil, cfg, TestOptions{PropCases: 30})
+	if rep2.Failed != 8 {
+		t.Fatalf("corpus replay failed:\n%s", text2)
+	}
+	for _, name := range []string{"FailNaN", "FailPayloadNaN", "FailNegZero", "FailPosInf", "FailNegInf", "FailSubnormal64", "FailSubnormal32", "FailNaN32"} {
+		if tc := propCaseOf(t, rep2, name); !strings.Contains(tc.Output, "from the corpus") {
+			t.Errorf("%s: second run did not replay from corpus:\n%s", name, tc.Output)
+		}
+	}
+}
+
+// TestPropCasesEightMixesRandomAndCompletes verifies that --prop-cases 8 caps
+// edge-case enumeration so random inputs still run within small budgets and a
+// single-integer property still runs all requested cases without stalling at 7.
+func TestPropCasesEightMixesRandomAndCompletes(t *testing.T) {
+	passSrc := `SingleInt(x: i32): bool
+    ensures result
+{
+    return x == x
+}
+
+TwoInts(x: i32, y: i32): bool
+    ensures result
+{
+    return (x +% y) == (y +% x)
+}
+`
+	rep, text := propTest(t, map[string]string{"t.mk": passSrc}, Config{}, TestOptions{PropCases: 8})
+	if rep.Failed != 0 || rep.Passed != 2 {
+		t.Fatalf("want both passing properties at PropCases=8:\n%s", text)
+	}
+	var singleValid int
+	if tc := propCaseOf(t, rep, "SingleInt"); func() bool {
+		_, err := fmt.Sscanf(tc.Output, "%d cases", &singleValid)
+		return err != nil || singleValid < 8
+	}() {
+		t.Fatalf("SingleInt should complete >= 8 cases (not stall after 7 edges): %q", propCaseOf(t, rep, "SingleInt").Output)
+	}
+
+	failSrc := `OnlyEdges(x: i32, y: i32): bool
+    ensures result
+{
+    _ = y
+    return x == 0 || x == 1 || x == -1 || x == 2147483647 || x == -2147483648 || x == 2147483646 || x == -2147483647
+}
+`
+	repFail, textFail := propTest(t, map[string]string{"t.mk": failSrc}, Config{}, TestOptions{PropCases: 8})
+	if repFail.Failed != 1 {
+		t.Fatalf("want OnlyEdges to fail via random draw within --prop-cases 8:\n%s", textFail)
+	}
+}

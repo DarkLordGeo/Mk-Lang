@@ -95,7 +95,7 @@ var intrinsicSigs = map[string]string{
 // TestIntrinsicTableMatchesStd checks them once std declares them.
 var runtimeSigs = map[string]string{
 	"std.rt.PanicAt": "(u32, &Site): never", "std.rt.PanicMsg": "(u32, &Site, str): never",
-	"std.rt.PanicErr": "(u32, &Site, u32): never", "std.task.Start": "(*u8): never",
+	"std.rt.PanicErr": "(u32, &Site, u32): never", "std.rt.CoverCmp": "(u64, u64, u8)", "std.task.Start": "(*u8): never",
 	"std.free.PanicAt": "(u32, &Site): never", "std.free.PanicMsg": "(u32, &Site, str): never",
 	"std.free.PanicErr":   "(u32, &Site, u32): never",
 	"std.task.Enter":      "(*u8, Io, int, StackSize, int, &Site)",
@@ -132,7 +132,7 @@ func (s *support) intrinsicBodies(u *Unit, env Env) { s.rtBodies(u, env) }
 func (fg *fnGen) supportCall(fi int, t *mir.Terminator, args []value) {
 	g := fg.g
 	fn := g.funcDecl(fi)
-	fg.finishCall(t, fn.Ref(), fn.Type(), g.funcSigOf(fi), args, fg.b.PlaceType(t.Dest), callAttrs(fn))
+	fg.finishCall(t, fn.Ref(), fn.Type(), g.funcSigOf(fi), args, fg.b.PlaceType(t.Dest), fg.coldCallAttrs(callAttrs(fn)))
 }
 
 // intrinsicCall inlines a call of the std intrinsic item, stores its

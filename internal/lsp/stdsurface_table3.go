@@ -4,6 +4,10 @@
 package lsp
 
 var surfaceDocs3 = map[string]surfaceDoc{
+	"sqlite.Stmt.Str":            {Module: "std.db.sqlite", Lines: []string{"Stmt.Str(&self, col: int): str from self"}},
+	"str.AsBytes":                {Module: "", Lines: []string{"str.AsBytes(self): []u8"}},
+	"str.Byte":                   {Module: "", Lines: []string{"str.Byte(self, i: int): u8"}},
+	"str.EndsWith":               {Module: "", Lines: []string{"str.EndsWith(self, suffix: str): bool"}},
 	"str.Find":                   {Module: "", Lines: []string{"str.Find(self, sub: str): ?int"}},
 	"str.From":                   {Module: "", Lines: []string{"str.From(bytes: []u8): Utf8Error!str"}},
 	"str.FromC":                  {Module: "", Lines: []string{"str.FromC(p: *u8): str"}},
@@ -211,6 +215,7 @@ var surfaceDocs3 = map[string]surfaceDoc{
 	"url.Url.Username":           {Module: "std.url", Lines: []string{"Url.Username(&self): str from self"}},
 	"vm.CodeRegion.Commit":       {Module: "std.vm", Lines: []string{"CodeRegion.Commit(mut self, offset: int, len: int): vm.Error!void"}},
 	"vm.CodeRegion.Edit":         {Module: "std.vm", Lines: []string{"CodeRegion.Edit(mut self): vm.Error!CodeWriter from self"}},
+	"vm.CodeRegion.EditRange":    {Module: "std.vm", Lines: []string{"CodeRegion.EditRange(mut self, offset: int, len: int): vm.Error!CodeWriter from self"}},
 	"vm.CodeRegion.Entry":        {Module: "std.vm", Lines: []string{"CodeRegion.Entry(&self, offset: int): uint"}},
 	"vm.CodeRegion.New":          {Module: "std.vm", Lines: []string{"CodeRegion.New(size: int): vm.Error!CodeRegion"}},
 	"vm.CodeRegion.Release":      {Module: "std.vm", Lines: []string{"CodeRegion.Release(self)"}},
