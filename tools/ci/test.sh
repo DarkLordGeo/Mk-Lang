@@ -11,9 +11,11 @@
 #   driver runs shard SHARD_INDEX (0 to SHARD_COUNT-1) of internal/driver:
 #     every SHARD_COUNT-th top-level test, with -parallel DRIVER_PARALLEL
 #     (default 4) and no GOMEMLIMIT: a soft memory cap slowed the shards'
-#     tests down, and -parallel bounds their heap instead.
+#     tests down, and -parallel bounds their heap instead. Set TEST_SHORT=1
+#     to pass -short to go test.
 #   others runs PKGS (a list of import paths), or when PKGS is empty every
 #     package but std, internal/driver and EXCLUDE_PKGS, with -p OTHER_P.
+#     Set TEST_SHORT=1 to pass -short to go test for every package in PKGS.
 #     The packages of SHORT_PKGS among them run in a second `go test`, with
 #     -short: tools/bench's full tests build cells with whatever C, Rust and
 #     MSVC toolchains the machine has, which a hosted image does not match.
@@ -89,8 +91,10 @@ driver)
         echo "shard $index of $count has no tests"
         exit 0
     fi
-    echo "== $driver shard $index of $count: $(echo "$group" | tr '|' '\n' | wc -l) tests"
-    cmd=(go test -v -p 1 -parallel "${DRIVER_PARALLEL:-4}" -timeout "$timeout" -run "^(${group})$" ./internal/driver)
+    short_flag=()
+    [ "${TEST_SHORT:-}" = 1 ] && short_flag=(-short)
+    echo "== $driver shard $index of $count: $(echo "$group" | tr '|' '\n' | wc -l) tests${short_flag:+ (short)}"
+    cmd=(go test "${short_flag[@]}" -v -p 1 -parallel "${DRIVER_PARALLEL:-4}" -timeout "$timeout" -run "^(${group})$" ./internal/driver)
     if [ "${DRY_RUN:-}" = 1 ]; then
         echo "${cmd[*]}" | cut -c1-200
         echo "$group" | tr '|' '\n'
@@ -117,8 +121,10 @@ others)
             short="$short $p"
         fi
     done
+    short_flag=()
+    [ "${TEST_SHORT:-}" = 1 ] && short_flag=(-short)
     # $pkgs and $short unquoted: one argument per package.
-    cmd=(go test -p "$otherp" -timeout "$timeout" $pkgs)
+    cmd=(go test "${short_flag[@]}" -p "$otherp" -timeout "$timeout" $pkgs)
     scmd=(go test -short -p "$otherp" -timeout "$timeout" $short)
     if [ "${DRY_RUN:-}" = 1 ]; then
         [ -n "$pkgs" ] && echo "${cmd[*]}"

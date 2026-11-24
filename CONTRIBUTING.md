@@ -122,9 +122,9 @@ The machine lock:
 
 GitHub Actions runs three workflows ([.github/runners](.github/runners/README.md) says what runs where):
 
-- On every push to `main` and every pull request, forks included, CI runs on GitHub-hosted Windows and Linux runners: `go build ./...`, `go vet ./...`, `gofmt`, `go run ./cmd/mk corpus`, and `go test` over every package but `./std`, split across parallel jobs by `tools/ci/test.sh`. It has a read-only token and no secrets. A pull request from outside the project waits for a maintainer to approve its run.
-- A nightly run on `main`, on the project's self-hosted Windows and Linux runners, adds the gate's build, test and corpus steps, `./std` included.
-- A `v*` tag of a commit on `main` runs CI on Windows and Linux, builds and signs the binary bundles, and drafts a GitHub release ([Releases](#releases)).
+- On every push to `main` and every pull request, forks included, CI runs its fast 18-job tier on GitHub-hosted Linux and Windows runners (under GitHub's 20-job free concurrency cap): `go build ./...`, `go vet ./...`, `gofmt`, `go run ./cmd/mk corpus`, `-short` compiler unit/integration tests on both OSes, 12 `-short` `internal/driver` shards and `internal/lsp` on Linux, and a curated Windows-native `driver-win-smoke` suite (`MK_GATE=1`), driven by `tools/ci/test.sh`. It has a read-only token and no secrets. A pull request from outside the project waits for a maintainer to approve its run. Full non-short CI (including macOS and AArch64 Linux) can also be triggered manually via `workflow_dispatch` (`mode=full`).
+- A nightly run on `main` runs full non-short 5-OS CI (`windows-2025`, `ubuntu-24.04`, `macos-15`, `macos-15-intel`, `ubuntu-24.04-arm`) on GitHub-hosted cloud runners, plus the PC-guarded self-hosted `tools/gate` quick tier (`./std` and `MK_SLOW=1` included).
+- A `v*` tag of a commit on `main` runs full non-short CI on Windows and Linux, builds and signs the binary bundles, and drafts a GitHub release ([Releases](#releases)).
 
 Run the same commands locally before you open a pull request.
 

@@ -1,67 +1,320 @@
-# Why: the standard library's own test suite takes hours, too long for every
-# push, but a regression in it must still be caught within a day.
+# Why: PR/push CI runs a fast 18-job subset so merges stay snappy, while full
+# non-short cross-OS validation (Windows, Linux, Apple silicon/Intel macOS,
+# AArch64 Linux) and the multi-hour ./std + evidence gate still catch any
+# regression within a day.
 #
-# What: the project's test gate (build, vet, gofmt, every Go test including
-# std's, the documentation tests) on the self-hosted Windows and Linux
-# runners; the Windows one holds the evidence directory the gate reads.
+# What:
+#   1. full-ci (GitHub-hosted cloud runners, zero local PC load):
+#      calls ci.yml in full mode across all 5 hosted OS targets.
+#   2. gate-linux (self-hosted mk-linux-docker container):
+#      runs tools/gate quick tier (incl. ./std and MK_SLOW=1) with disk-space
+#      guards, bounded incremental caches, GOMAXPROCS/GOMEMLIMIT caps,
+#      nice/ionice throttling, report upload, and mandatory temp cleanup.
+#   3. gate-windows (self-hosted mk-windows Windows service, opt-in & serialized):
+#      waits for gate-linux so both runners never hammer the same physical PC
+#      at once, and runs only when explicitly enabled via repository variable
+#      NIGHTLY_WINDOWS_LOCAL=true (for schedule) or workflow_dispatch input
+#      run_windows_local=true (avoiding 24h queue hangs when mk-windows is off).
 #
-# How: runs once a night on main and by hand on main, through tools/gate's
-# quick tier; never for a pull request. The Linux-through-WSL, dogfood,
-# timing and fuzz steps are skipped: the Linux runner covers Linux natively,
-# and timing needs an idle machine. Pushes and pull requests run ci.yml on
-# GitHub-hosted runners instead.
+# How: runs ONLY on schedule (01:00 UTC) or manual workflow_dispatch on main,
+# NEVER on pull requests. Every self-hosted job double-checks repository, ref,
+# event, and owner actor in addition to the runners' root/admin-owned
+# ACTIONS_RUNNER_HOOK_JOB_STARTED hooks (.github/runners/README.md).
 name: Nightly
 
 on:
   schedule:
     - cron: "0 1 * * *"
   workflow_dispatch:
+    inputs:
+      run_full_cloud:
+        description: Run full 5-OS non-short CI on GitHub-hosted cloud runners
+        type: boolean
+        default: true
+      run_linux_local:
+        description: Run self-hosted mk-linux-docker gate (quick tier + ./std)
+        type: boolean
+        default: true
+      run_windows_local:
+        description: Run self-hosted mk-windows gate (serialized after Linux; enable only when mk-windows is online)
+        type: boolean
+        default: false
+      max_cpus:
+        description: GOMAXPROCS cap for self-hosted PC runners (2-8)
+        type: string
+        default: "4"
 
 permissions:
   contents: read
 
+# Never overlap two nightly runs on the same local PC.
+concurrency:
+  group: nightly-local-pc
+  cancel-in-progress: false
+
 jobs:
-  gate:
-    name: gate (${{ matrix.os }})
-    if: github.repository == 'zerodayokay/Mk-Lang' && github.ref == 'refs/heads/main'
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows
-            shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
-          - os: linux
-            shell: bash
-    runs-on: [self-hosted, "${{ matrix.os }}", x64, mk]
-    timeout-minutes: 600
+  full-ci:
+    if: >-
+      github.repository == 'zerodayokay/Mk-Lang' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || inputs.run_full_cloud != false)
+    uses: ./.github/workflows/ci.yml
+    with:
+      mode: full
+      include_extra_hosts: true
+
+  gate-linux:
+    name: gate (linux)
+    if: >-
+      github.repository == 'zerodayokay/Mk-Lang' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.actor == 'zerodayokay') &&
+      (github.event_name == 'schedule' || inputs.run_linux_local != false)
+    runs-on: [self-hosted, linux, x64, mk]
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Verify provenance
+        run: |
+          if [ "${GITHUB_REPOSITORY:-}" != "zerodayokay/Mk-Lang" ] || [ "${GITHUB_REF:-}" != "refs/heads/main" ]; then
+            echo "::error::Refusing self-hosted run outside zerodayokay/Mk-Lang@main"
+            exit 1
+          fi
+          case "${GITHUB_EVENT_NAME:-}" in
+            schedule) ;;
+            workflow_dispatch)
+              if [ "${GITHUB_ACTOR:-}" != "zerodayokay" ]; then
+                echo "::error::Manual self-hosted dispatch is restricted to repository owner"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Unsupported event ${GITHUB_EVENT_NAME:-} for self-hosted runner"
+              exit 1
+              ;;
+          esac
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          submodules: false
+          lfs: false
+          clean: true
+          fetch-depth: 1
+
+      # Protect the host PC: enforce >=15 GiB free disk, prune runaway cache
+      # growth while preserving fast incremental nightly runs, isolate temp
+      # files, and cap Go CPU/RAM budgets below container limits.
+      - name: PC guardrails and environment
+        env:
+          REQ_CPUS: ${{ inputs.max_cpus || '4' }}
+        run: |
+          gate_work="$GITHUB_WORKSPACE/../.gate"
+          tmp="$RUNNER_TEMP/tmp"
+          mkdir -p "$gate_work" "$tmp"
+
+          avail_kb=$(df -Pk "$gate_work" | awk 'NR==2 {print $4}')
+          min_kb=$((15 * 1024 * 1024))
+          if [ -z "$avail_kb" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+            echo "::error::Less than 15 GiB free on $gate_work (${avail_kb:-0} KiB available); aborting to protect host disk"
+            exit 1
+          fi
+
+          # Clear stale temp files and logs older than 7 days.
+          rm -rf "$gate_work/tmp"
+          find "$gate_work" -maxdepth 2 -type f -name '*.log' -mtime +7 -delete 2>/dev/null || true
+
+          # Cap incremental caches so the runner volume never grows without bound.
+          if [ -d "$gate_work/mkcache" ]; then
+            mk_mb=$(du -sm "$gate_work/mkcache" | awk '{print $1}')
+            if [ "${mk_mb:-0}" -gt 4096 ]; then
+              echo "Pruning mkcache (${mk_mb} MiB > 4096 MiB)"
+              rm -rf "$gate_work/mkcache"
+            fi
+          fi
+          if [ -d "$gate_work/gocache" ]; then
+            go_mb=$(du -sm "$gate_work/gocache" | awk '{print $1}')
+            if [ "${go_mb:-0}" -gt 8192 ]; then
+              echo "Pruning gocache (${go_mb} MiB > 8192 MiB)"
+              rm -rf "$gate_work/gocache"
+            fi
+          fi
+
+          avail_cpus=$(nproc 2>/dev/null || echo 4)
+          cpus="$REQ_CPUS"
+          if ! [[ "$cpus" =~ ^[0-9]+$ ]]; then cpus=4; fi
+          if [ "$cpus" -lt 2 ]; then cpus=2; fi
+          if [ "$cpus" -gt 8 ]; then cpus=8; fi
+          if [ "$cpus" -gt "$avail_cpus" ]; then cpus=$avail_cpus; fi
+
+          echo "Gate budget: GOMAXPROCS=$cpus GOMEMLIMIT=10GiB free_disk=$((avail_kb / 1024 / 1024))GiB"
+          {
+            echo "TMP=$tmp"
+            echo "TEMP=$tmp"
+            echo "TMPDIR=$tmp"
+            echo "GATE_WORK=$gate_work"
+            echo "GOMAXPROCS=$cpus"
+            echo "GOMEMLIMIT=10GiB"
+          } >> "$GITHUB_ENV"
+
+      # MK_SLOW=1: the tests that check a sample on every push run in
+      # full here (CONTRIBUTING.md, "Full test variants"). Run at lowest CPU
+      # and idle disk I/O priority so the host stays responsive.
+      - name: Gate
+        env:
+          MK_SLOW: "1"
+        run: |
+          if command -v ionice >/dev/null 2>&1; then
+            nice -n 15 ionice -c 3 go run ./tools/gate -tier quick -stdtimeout 3h -skip linux,dogfood,timing,fuzz -work "$GATE_WORK" -json "$RUNNER_TEMP/gate-linux.json"
+          else
+            nice -n 15 go run ./tools/gate -tier quick -stdtimeout 3h -skip linux,dogfood,timing,fuzz -work "$GATE_WORK" -json "$RUNNER_TEMP/gate-linux.json"
+          fi
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gate-linux-report
+          path: ${{ runner.temp }}/gate-linux.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/../.gate/tmp" "$RUNNER_TEMP/tmp"
+
+  # Serialized after gate-linux so Windows and Docker/WSL2 never contend on
+  # the same PC. Opt-in so an offline mk-windows runner never stalls Nightly
+  # for 24h in GitHub's queue; enable on schedule by setting repository
+  # variable NIGHTLY_WINDOWS_LOCAL=true.
+  gate-windows:
+    name: gate (windows)
+    needs: [gate-linux]
+    if: >-
+      !cancelled() &&
+      (needs.gate-linux.result == 'success' || needs.gate-linux.result == 'failure' || needs.gate-linux.result == 'skipped') &&
+      github.repository == 'zerodayokay/Mk-Lang' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.actor == 'zerodayokay') &&
+      ((github.event_name == 'workflow_dispatch' && inputs.run_windows_local == true) ||
+       (github.event_name == 'schedule' && vars.NIGHTLY_WINDOWS_LOCAL == 'true'))
+    runs-on: [self-hosted, windows, x64, mk]
+    timeout-minutes: 240
     defaults:
       run:
         # Git Bash by its short path: a plain `bash` on a Windows runner can
         # resolve to C:\Windows\System32\bash.exe, WSL's launcher, which cannot
         # run the step's script, and CI must never start wsl.exe here.
-        shell: ${{ matrix.shell }}
+        shell: C:\PROGRA~1\Git\bin\bash.exe --noprofile --norc -e -o pipefail {0}
     steps:
+      - name: Verify provenance
+        run: |
+          if [ "${GITHUB_REPOSITORY:-}" != "zerodayokay/Mk-Lang" ] || [ "${GITHUB_REF:-}" != "refs/heads/main" ]; then
+            echo "::error::Refusing self-hosted run outside zerodayokay/Mk-Lang@main"
+            exit 1
+          fi
+          case "${GITHUB_EVENT_NAME:-}" in
+            schedule) ;;
+            workflow_dispatch)
+              if [ "${GITHUB_ACTOR:-}" != "zerodayokay" ]; then
+                echo "::error::Manual self-hosted dispatch is restricted to repository owner"
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::Unsupported event ${GITHUB_EVENT_NAME:-} for self-hosted runner"
+              exit 1
+              ;;
+          esac
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          submodules: false
+          lfs: false
+          clean: true
+          fetch-depth: 1
 
-      # A temporary directory of the job's own, which the runner empties after
-      # each job: files another program left in the user's temp directory (a
-      # stray pkg.mk there once made every test fixture one package) never
-      # reach the tests.
-      - name: Temporary directory
+      # service.ps1 already runs the Windows runner service at BelowNormal CPU
+      # priority under a restricted service SID with drive-level deny ACLs.
+      # Add disk-space, cache-cap, CPU/RAM budget, and temp-isolation guards.
+      - name: PC guardrails and environment
+        env:
+          REQ_CPUS: ${{ inputs.max_cpus || '4' }}
         run: |
-          mkdir -p "$RUNNER_TEMP/tmp"
-          tmp="$RUNNER_TEMP/tmp"
-          # Git Bash on Windows: a native path, not one with mixed separators.
-          if command -v cygpath >/dev/null; then tmp=$(cygpath -w "$tmp"); fi
-          echo "TMP=$tmp" >> "$GITHUB_ENV"
-          echo "TEMP=$tmp" >> "$GITHUB_ENV"
-          echo "TMPDIR=$tmp" >> "$GITHUB_ENV"
+          ws_posix=$(cygpath -u "$GITHUB_WORKSPACE")
+          rt_posix=$(cygpath -u "$RUNNER_TEMP")
+          gate_work_posix="$ws_posix/../.gate"
+          tmp_posix="$rt_posix/tmp"
+          mkdir -p "$gate_work_posix" "$tmp_posix"
+
+          avail_kb=$(df -Pk "$gate_work_posix" | awk 'NR==2 {print $4}')
+          min_kb=$((15 * 1024 * 1024))
+          if [ -z "$avail_kb" ] || [ "$avail_kb" -lt "$min_kb" ]; then
+            echo "::error::Less than 15 GiB free on $gate_work_posix (${avail_kb:-0} KiB available); aborting to protect host disk"
+            exit 1
+          fi
+
+          rm -rf "$gate_work_posix/tmp"
+          find "$gate_work_posix" -maxdepth 2 -type f -name '*.log' -mtime +7 -delete 2>/dev/null || true
+
+          if [ -d "$gate_work_posix/mkcache" ]; then
+            mk_mb=$(du -sm "$gate_work_posix/mkcache" | awk '{print $1}')
+            if [ "${mk_mb:-0}" -gt 4096 ]; then
+              echo "Pruning mkcache (${mk_mb} MiB > 4096 MiB)"
+              rm -rf "$gate_work_posix/mkcache"
+            fi
+          fi
+          if [ -d "$gate_work_posix/gocache" ]; then
+            go_mb=$(du -sm "$gate_work_posix/gocache" | awk '{print $1}')
+            if [ "${go_mb:-0}" -gt 8192 ]; then
+              echo "Pruning gocache (${go_mb} MiB > 8192 MiB)"
+              rm -rf "$gate_work_posix/gocache"
+            fi
+          fi
+
+          cpus="$REQ_CPUS"
+          if ! [[ "$cpus" =~ ^[0-9]+$ ]]; then cpus=4; fi
+          if [ "$cpus" -lt 2 ]; then cpus=2; fi
+          if [ "$cpus" -gt 8 ]; then cpus=8; fi
+
+          tmp_win=$(cygpath -w "$tmp_posix")
+          gate_work_win=$(cygpath -w "$gate_work_posix")
+          gate_json_win=$(cygpath -w "$rt_posix/gate-windows.json")
+
+          echo "Gate budget: GOMAXPROCS=$cpus GOMEMLIMIT=10GiB free_disk=$((avail_kb / 1024 / 1024))GiB"
+          {
+            echo "TMP=$tmp_win"
+            echo "TEMP=$tmp_win"
+            echo "TMPDIR=$tmp_win"
+            echo "GATE_WORK=$gate_work_win"
+            echo "GATE_JSON=$gate_json_win"
+            echo "GOMAXPROCS=$cpus"
+            echo "GOMEMLIMIT=10GiB"
+          } >> "$GITHUB_ENV"
 
       # MK_SLOW=1: the tests that check a sample on every push run in
       # full here (CONTRIBUTING.md, "Full test variants").
       - name: Gate
         env:
           MK_SLOW: "1"
-        run: go run ./tools/gate -tier quick -skip linux,dogfood,timing,fuzz -work "${{ github.workspace }}/../.gate" -json "${{ runner.temp }}/gate.json"
+        run: go run ./tools/gate -tier quick -stdtimeout 3h -skip linux,dogfood,timing,fuzz -work "$GATE_WORK" -json "$GATE_JSON"
+
+      - name: Upload gate report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gate-windows-report
+          path: ${{ runner.temp }}/gate-windows.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          ws_posix=$(cygpath -u "$GITHUB_WORKSPACE")
+          rt_posix=$(cygpath -u "$RUNNER_TEMP")
+          rm -rf "$ws_posix/../.gate/tmp" "$rt_posix/tmp"

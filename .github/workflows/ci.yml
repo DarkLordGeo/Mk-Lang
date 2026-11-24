@@ -1,19 +1,29 @@
-# Why: every change to main, and every pull request, must build and pass its
-# tests on both supported hosts before anyone builds on top of it.
+# Why: pull requests and pushes to main need fast, reliable feedback on both
+# supported hosts without queuing behind GitHub's 20-job free concurrency
+# limit, while release tags and nightly runs still need full non-short
+# coverage across every host and target.
 #
-# What: on GitHub-hosted Windows and Linux runners, a checks job (build, vet,
-# gofmt, the documentation tests) and the Go tests of every package but std
-# (std's long suite runs nightly), split across parallel jobs:
-# internal/driver in SHARD_COUNT shards, corpus, lsp, and the rest. On
-# hosted Macs (Apple silicon and Intel) and the hosted ARM Linux runner, a
-# trimmed set (the macos and arm64-linux jobs). There is no aarch64-windows
-# job: mk does not build for aarch64-windows.
+# What: two modes selected by the lightweight `plan` job:
+#   - fast (default on pull_request, push to main, and default dispatch):
+#     18 parallel jobs (< 20 concurrency limit, zero queue delay):
+#       * checks (build, vet, gofmt, mk corpus) on ubuntu-24.04 & windows-2025
+#       * compiler (-short tests for all non-driver/corpus/lsp/stdtest/bench
+#         packages) on ubuntu-24.04 & windows-2025
+#       * driver-0..11 (-short, 12 shards of internal/driver) on ubuntu-24.04
+#       * driver-win-smoke (curated Windows-native driver suite, MK_GATE=1) on
+#         windows-2025
+#       * lsp (-short, internal/lsp) on ubuntu-24.04
+#   - full (default for workflow_call from release.yml/nightly.yml, or manual
+#     workflow_dispatch with mode=full):
+#     the complete non-short matrix on every OS in inputs.oses (checks,
+#     driver-0..7, corpus, lsp, others with only tools/bench in -short), plus
+#     native macOS (Apple silicon & Intel) and AArch64 Linux jobs when
+#     include_extra_hosts is true (or on manual full dispatch).
 #
-# How: runs on pushes to main, on every pull request (forks included), by
-# hand, and from release.yml as a reusable workflow. It runs with a
-# read-only token and no secrets, so a pull request from a fork runs it as
-# it is. A newer push to a pull request cancels the run it supersedes;
-# runs on main always finish. tools/ci/test.sh runs each test job's part.
+# How: runs with a read-only token and no secrets, so a pull request from a
+# fork runs it as it is. A newer push to a pull request cancels the run it
+# supersedes; runs on main always finish. tools/ci/test.sh runs each test
+# job's part.
 name: CI
 
 on:
@@ -21,12 +31,26 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "fast (18-job PR/push suite) or full (every package + macOS/ARM64)"
+        type: choice
+        options: [fast, full]
+        default: fast
   workflow_call:
     inputs:
+      mode:
+        description: "fast or full (defaults to full for release.yml and nightly.yml)"
+        type: string
+        default: full
       oses:
-        description: JSON list of runner images to test on
+        description: JSON list of runner images to test on (full mode)
         type: string
         default: '["windows-2025", "ubuntu-24.04"]'
+      include_extra_hosts:
+        description: Also run macos (ARM64/Intel) and arm64-linux jobs
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -38,35 +62,95 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # The number of internal/driver shards: keep it equal to the number of
-  # driver-N entries in the matrix below.
-  SHARD_COUNT: "8"
   LLVM_VERSION: 21.1.8
   # SHA-256 of LLVM-21.1.8-win64.exe, from the release's asset digest.
   LLVM_WIN64_SHA256: 7a5386c26497db1691f320121e5b113364dd0274b98e55f15f4dbc00c0450113
 
 jobs:
+  plan:
+    name: Plan CI matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      extra_hosts: ${{ steps.plan.outputs.extra_hosts }}
+    steps:
+      - id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_OSES: ${{ inputs.oses }}
+          INPUT_EXTRA_HOSTS: ${{ inputs.include_extra_hosts }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+
+          event = os.environ.get("EVENT_NAME", "")
+          mode = os.environ.get("INPUT_MODE", "").strip()
+          if not mode:
+              mode = "full" if event == "workflow_call" else "fast"
+          if mode not in ("fast", "full"):
+              raise SystemExit(f"unknown CI mode: {mode!r}")
+
+          oses_raw = os.environ.get("INPUT_OSES", "").strip()
+          oses = json.loads(oses_raw) if oses_raw else ["windows-2025", "ubuntu-24.04"]
+
+          extra_raw = os.environ.get("INPUT_EXTRA_HOSTS", "").strip().lower()
+          if extra_raw in ("true", "1", "yes"):
+              extra_hosts = True
+          elif extra_raw in ("false", "0", "no"):
+              extra_hosts = False
+          else:
+              # Manual full dispatch runs macOS/ARM64 too; release.yml calls
+              # workflow_call without include_extra_hosts and builds/tests
+              # macOS/ARM64 in its own bundle jobs.
+              extra_hosts = (mode == "full" and event != "workflow_call")
+
+          if mode == "fast":
+              entries = [
+                  {"os": "ubuntu-24.04", "part": "checks", "mode": "fast", "shards": "12"},
+                  {"os": "windows-2025", "part": "checks", "mode": "fast", "shards": "12"},
+                  {"os": "ubuntu-24.04", "part": "compiler", "mode": "fast", "shards": "12"},
+                  {"os": "windows-2025", "part": "compiler", "mode": "fast", "shards": "12"},
+                  {"os": "windows-2025", "part": "driver-win-smoke", "mode": "fast", "shards": "12"},
+                  {"os": "ubuntu-24.04", "part": "lsp", "mode": "fast", "shards": "12"},
+              ]
+              for i in range(12):
+                  entries.append({
+                      "os": "ubuntu-24.04",
+                      "part": f"driver-{i}",
+                      "mode": "fast",
+                      "shards": "12",
+                  })
+          else:
+              parts = [
+                  "checks",
+                  "driver-0", "driver-1", "driver-2", "driver-3",
+                  "driver-4", "driver-5", "driver-6", "driver-7",
+                  "corpus", "lsp", "others",
+              ]
+              entries = [
+                  {"os": runner_os, "part": part, "mode": "full", "shards": "8"}
+                  for runner_os in oses
+                  for part in parts
+              ]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"mode={mode}\n")
+              out.write(f"matrix={json.dumps(entries, separators=(',', ':'))}\n")
+              out.write(f"extra_hosts={'true' if extra_hosts else 'false'}\n")
+          PY
+
   ci:
+    needs: plan
     name: ${{ matrix.part }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ fromJSON(inputs.oses || '["windows-2025", "ubuntu-24.04"]') }}
-        part:
-          - checks
-          - driver-0
-          - driver-1
-          - driver-2
-          - driver-3
-          - driver-4
-          - driver-5
-          - driver-6
-          - driver-7
-          - corpus
-          - lsp
-          - others
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 150
+    timeout-minutes: ${{ needs.plan.outputs.mode == 'full' && 150 || 60 }}
     defaults:
       run:
         # Git Bash on the hosted Windows images.
@@ -190,12 +274,23 @@ jobs:
         if: matrix.part != 'checks'
         env:
           PART: ${{ matrix.part }}
-          OTHER_P: "2"
+          CI_TIER: ${{ matrix.mode }}
+          SHARD_COUNT: ${{ matrix.shards }}
+          OTHER_P: ${{ matrix.mode == 'fast' && (startsWith(matrix.os, 'windows') && '3' || '4') || '2' }}
           # Well below timeout-minutes, so a hung test prints its stacks.
-          TEST_TIMEOUT: 120m
+          TEST_TIMEOUT: ${{ matrix.mode == 'fast' && '45m' || '120m' }}
         run: |
+          if [ "$CI_TIER" = "fast" ]; then
+            export TEST_SHORT=1
+          fi
           case "$PART" in
+            driver-win-smoke)
+              exec go test -short -v -p 1 -parallel 4 -timeout 30m \
+                -run '^(TestBuildFizzWindows|TestBecome_PreserveNone.*|TestBecome_EmitsMustTail|TestBecome_Chains|TestCImport_EndToEndWindows|TestDebugPlacesPDB|TestDebugReuseCopiesPDB|TestDep_DiamondWorkspaceWindows|TestFFI_Entry|TestFFI_Wins|TestLibGate_Windows|TestLibHost_Windows|TestMutCaptureNativeRun|TestNativeWorkDirUnderCache|TestOmittedSubsystemAndWindowsLinksGUI|TestSliceCallerAgreesNative|TestWire_DeadlinesNative)$' \
+                ./internal/driver
+              ;;
             driver-*) export CI_MODE=driver SHARD_INDEX=${PART#driver-} ;;
+            compiler) export CI_MODE=others EXCLUDE_PKGS="mk/internal/corpus mk/internal/lsp mk/internal/stdtest mk/tools/bench" ;;
             corpus) export CI_MODE=others PKGS=mk/internal/corpus ;;
             lsp) export CI_MODE=others PKGS=mk/internal/lsp ;;
             others) export CI_MODE=others EXCLUDE_PKGS="mk/internal/corpus mk/internal/lsp" SHORT_PKGS=mk/tools/bench ;;
@@ -205,14 +300,12 @@ jobs:
 
   # macOS: the targets mk cross-compiles everywhere, built and run natively
   # on GitHub's hosted Macs (Apple silicon for aarch64-macos, Intel for
-  # x86_64-macos). A trimmed set, for the five hosted macOS runners a public
-  # repository gets at once: the checks with the documentation tests for
-  # the host target, std's tests of the modules the macOS system layer
-  # serves, and the programs of tests/programs run natively. Not a required
-  # check. Skipped when another workflow calls this one.
+  # x86_64-macos). Runs in nightly full CI and manual mode=full dispatches,
+  # keeping PRs fast and well under GitHub's hosted concurrency caps.
   macos:
+    needs: plan
     name: ${{ matrix.part }} (${{ matrix.os }})
-    if: inputs.oses == ''
+    if: needs.plan.outputs.extra_hosts == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -323,13 +416,12 @@ jobs:
           SKIP_PROGRAMS: coderegion linuxsyscall
         run: bash tools/ci/programs.sh
 
-  # aarch64-linux, natively on GitHub's hosted ARM runner: the same trimmed
-  # set as the macos job (checks with the documentation tests for the host
-  # target, std's tests, the programs of tests/programs). Not a required
-  # check. Skipped when another workflow calls this one.
+  # aarch64-linux, natively on GitHub's hosted ARM runner. Runs in nightly
+  # full CI and manual mode=full dispatches.
   arm64-linux:
+    needs: plan
     name: ${{ matrix.part }} (${{ matrix.os }})
-    if: inputs.oses == ''
+    if: needs.plan.outputs.extra_hosts == 'true'
     strategy:
       fail-fast: false
       matrix:

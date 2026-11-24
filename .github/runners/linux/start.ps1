@@ -17,7 +17,8 @@ param(
     [string]$Repo = "zerodayokay/Mk-Lang",
     [string]$Name = "mk-linux-docker",
     [int]$Cpus = 6,
-    [string]$Memory = "16g"
+    [string]$Memory = "16g",
+    [int]$PidsLimit = 1024
 )
 $ErrorActionPreference = "Stop"
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -47,6 +48,10 @@ if ($registered -ne "yes") {
     }
 }
 
-docker run -d --name $image --restart unless-stopped --cpus $Cpus --memory $Memory @volumes $image
+docker run -d --name $image --restart unless-stopped `
+    --cpus $Cpus --memory $Memory --memory-swap $Memory `
+    --pids-limit $PidsLimit `
+    --cap-drop ALL --security-opt no-new-privileges:true `
+    @volumes $image
 if ($LASTEXITCODE -ne 0) { throw "docker run failed" }
 Write-Host "Linux runner $Name started; check it under Settings > Actions > Runners."

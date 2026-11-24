@@ -4,15 +4,15 @@
 
 | Workflow | Runs on | When |
 |---|---|---|
-| `ci.yml` | GitHub-hosted `windows-2025` and `ubuntu-24.04`; a trimmed set on `macos-15`, `macos-15-intel` and `ubuntu-24.04-arm` | every push to `main`, every pull request (forks included), by hand |
+| `ci.yml` | Fast mode (18 jobs, zero queue wait): GitHub-hosted `ubuntu-24.04` and `windows-2025`. Full mode (33 jobs): adds full non-short `windows-2025`/`ubuntu-24.04` plus `macos-15`, `macos-15-intel`, and `ubuntu-24.04-arm` | fast on every push to `main`, every pull request (forks included), and default dispatch; full on `release.yml`, `nightly.yml`, and `workflow_dispatch` with `mode=full` |
 | `release.yml` | GitHub-hosted `windows-2025`, `ubuntu-24.04`, `ubuntu-24.04-arm` and `macos-15` (Apple silicon) | a `v*` tag pushed to this repository |
-| `nightly.yml` | the self-hosted runners below, labelled `mk` | once a night on `main`, and by hand on `main` |
+| `nightly.yml` | GitHub-hosted cloud runners (`full-ci`, 5 OSes) + self-hosted runners below, labelled `mk` (serialized, PC-guarded) | once a night on `main` (01:00 UTC), and by hand on `main` |
 
 The hosted images are pinned by version; moving to a newer one is a change of its own.
 
-`ci.yml` runs with a read-only token and no secrets, so it runs a fork's pull request as it is. It installs Go and LLVM 21 on each job, runs a checks job (build, vet, gofmt, the documentation tests), and splits the Go tests across parallel jobs: `internal/driver` in shards, `internal/corpus`, `internal/lsp`, and the other packages. `tools/ci/test.sh` runs each part. `release.yml` calls `ci.yml` on both hosts and builds a bundle on each, and two more on `ubuntu-24.04-arm` (AArch64 Linux) and `macos-15` (Apple silicon Macs). Only its signing job gets the release key, from the `release` environment, and only its publishing job gets a token that can write ([Releases](../../CONTRIBUTING.md#releases)).
+`ci.yml` runs with a read-only token and no secrets, so it runs a fork's pull request as it is. In default `fast` mode it stays under GitHub's 20-job free concurrency cap (18 jobs: `checks` and `-short` `compiler` tests on Linux and Windows, 12 `-short` `internal/driver` shards and `lsp` on Linux, and a curated Windows-native `driver-win-smoke` suite). `tools/ci/test.sh` runs each part. `release.yml` calls `ci.yml` in `full` mode on both hosts and builds a bundle on each, plus `ubuntu-24.04-arm` (AArch64 Linux) and `macos-15` (Apple silicon Macs). Only its signing job gets the release key, from the `release` environment, and only its publishing job gets a token that can write ([Releases](../../CONTRIBUTING.md#releases)).
 
-The nightly gate runs on the self-hosted runners because it reads the evidence directory, which is not in the repository, and runs std's own test suite, which takes hours:
+`nightly.yml` runs `ci.yml` in `full` mode (all 5 cloud OSes, zero PC load) in parallel with the self-hosted `tools/gate` quick tier (`./std` + `MK_SLOW=1` + optional evidence directory). The self-hosted jobs serialize `gate-windows` after `gate-linux` so both never contend on the same PC, enforce disk-space (`>= 15 GiB`), cache-size (`mkcache <= 4 GiB`, `gocache <= 8 GiB`), CPU (`GOMAXPROCS` + `nice`/`ionice` or `BelowNormal`), and memory (`GOMEMLIMIT=10GiB`) limits, and clean temp files on exit. To enable the scheduled Windows self-hosted gate when `mk-windows` is online, set repository variable `NIGHTLY_WINDOWS_LOCAL=true` (leaving it unset prevents 24-hour queue hangs when `mk-windows` is off):
 
 | Runner | Where | Started by |
 |---|---|---|
