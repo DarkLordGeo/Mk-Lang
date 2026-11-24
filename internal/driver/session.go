@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"mk/internal/cache"
 	"mk/internal/diag"
 	"mk/internal/source"
 	"mk/std"
@@ -83,18 +84,35 @@ type Session struct {
 	// as testing for the Main rule, with no runner.
 	prop bool
 	// disc is the toolchain discovery a native command starts before its
-	// check (startTools).
-	disc discovery
+	// check (startTools); prepDone joins startNativePrep (workdir.go).
+	disc     discovery
+	prepDone chan struct{}
 	// cres is clang's resource directory, once asked (cimport.go).
 	cres string
 	// lsp is lspapi.go's memo of the last Check's answers, dropped when a
 	// Check makes a new world.
 	lsp *lspMemo
+	// fullStd forces all std modules and std test files to load (apidiff,
+	// doc --std, query, StdTests, BrowseStd; stdlazy.go). lastFullStd records
+	// whether the last Check ran with fullStd.
+	fullStd     bool
+	lastFullStd bool
+	// customReadFile is true when the caller supplied a non-nil Config.ReadFile
+	// before normalize filled the os.ReadFile default (fastbuild.go).
+	customReadFile bool
+	// preStore and preBuildID carry a store/buildID already opened during a
+	// tryFastBuild miss into runCheck's world (fastbuild.go).
+	preStore   *cache.Store
+	preBuildID source.Hash
+	// fastSnap is the background input-directory/file snapshot overlapped with
+	// native stages on Session.Build (fastbuild.go).
+	fastSnap *fastSnapshot
 }
 
 // NewSession validates the config and finds the root. The error is a
 // *UsageError (exit 2), never a diagnostic.
 func NewSession(cfg Config) (*Session, error) {
+	customReadFile := cfg.ReadFile != nil
 	cfg, err := cfg.normalize()
 	if err != nil {
 		return nil, err
@@ -104,13 +122,13 @@ func NewSession(cfg Config) (*Session, error) {
 		if err != nil {
 			return nil, usagef("cannot use the working directory: %v", err)
 		}
-		return &Session{cfg: cfg, root: rootInfo{kind: rootNone, dir: wd, name: "mk-test"}}, nil
+		return &Session{cfg: cfg, root: rootInfo{kind: rootNone, dir: wd, name: "mk-test"}, customReadFile: customReadFile}, nil
 	}
 	root, err := findRoot(cfg.Root)
 	if err != nil {
 		return nil, err
 	}
-	return &Session{cfg: cfg, root: root}, nil
+	return &Session{cfg: cfg, root: root, customReadFile: customReadFile}, nil
 }
 
 // Result is a command's compile outcome.
@@ -210,6 +228,9 @@ type pipeline struct {
 	deferWalk bool
 	tail      *walkTail
 	walkBad   bool // the joined walk reported something
+	// lazyStd loads only transitively reached std modules (stdlazy.go).
+	lazyStd bool
+	testing bool
 }
 
 // step runs one barrier: f's diagnostics are recorded, and the pipeline
@@ -233,6 +254,11 @@ func (p *pipeline) stepNamed(name string, st Stage, f func() []*diag.Diagnostic)
 func (p *pipeline) front() bool {
 	var tooLarge []*diag.Diagnostic
 	if !p.step(StageLoad, func() []*diag.Diagnostic {
+		if p.lazyStd && len(p.builds) > 1 && p.builds[0].isStd {
+			var fails []*diag.Diagnostic
+			fails, tooLarge = p.loadLazyStd(p.testing)
+			return fails
+		}
 		var fails []*diag.Diagnostic
 		for _, b := range p.builds {
 			for _, ci := range p.w.allCImports() {
@@ -305,9 +331,28 @@ func (s *Session) runCheck() Result {
 	p := &pipeline{w: w, deferWalk: s.deferWalk}
 	s.p, s.pkgB, s.pkgMan, s.deps, s.depBs = p, nil, nil, nil, nil
 	p.guard("check "+s.root.name, func() {
+		if s.preStore != nil {
+			w.seedStore(s.preStore, s.preBuildID)
+			s.preStore, s.preBuildID = nil, source.Hash{}
+		}
 		w.startFront(s.cacheDir())
+		if w.front != nil {
+			w.front.deferWrites = s.deferWalk
+		}
+		if s.deferWalk && s.cfg.Target.Built && s.cfg.TestHooks.OnStage == nil {
+			s.startNativePrep(w)
+		}
 		s.check(p)
 	})
+	if p.tail == nil {
+		// No deferred walk outlives runCheck: drain any background store writes
+		// (e.g. deferred parse-index writes after an early parse error) and the
+		// async buildID hash before returning.
+		p.diags = append(p.diags, w.front.join()...)
+		if w.store.idDone != nil {
+			<-w.store.idDone
+		}
+	}
 	s.localizeDiags(p.diags) // a dependency by its local name (deps_walk.go)
 	// The manifest step's notes (an older-layout vendor/, an ignored members
 	// or replace) are the pipeline's, so every result of it carries them:
@@ -361,6 +406,17 @@ func (s *Session) run(p *pipeline, stdT, pkgT *srcTree, stdMan, pkgMan *Manifest
 	w := p.w
 	stdB := newBuild(w, nil)
 	pkgB := newBuild(w, stdB)
+	// A plain Check (mk lsp, the Query APIs) loads all of std unless the
+	// caller opts in with Config.LazyStd; build, run and test are lazy.
+	lazyCaller := s.forBuild || s.testing || s.prop || s.cfg.LazyStd
+	fullStd := !lazyCaller || s.fullStd || s.cfg.StdTests != "" || s.cfg.BrowseStd || s.cfg.KeepSyntax || s.root.kind == rootNone || (!s.forBuild && s.cfg.StdDir != "")
+	s.lastFullStd = fullStd
+	// A std directory of the caller's (MK_STD, --std) may carry test
+	// fixtures (tests_*.mk) its programs use, so only the embedded std,
+	// which carries none a program can reach, skips its test files.
+	stdB.skipStdTests = !fullStd && s.cfg.StdDir == ""
+	p.lazyStd = !fullStd
+	p.testing = s.testing
 	if err := stdB.listStd(stdT, stdMan); err != nil {
 		p.diags = append(p.diags, listFailure(stdT, err))
 		return
@@ -489,13 +545,18 @@ func (p *pipeline) modules(testPrelude, checkOn bool, builds ...*build) {
 		// writes first (walktail.go), so they need not end the stage.
 		w.front.deferWrites = p.deferWalk
 	}
+	deferCompute := p.deferWalk && w.front != nil && !w.front.verify && len(p.gro) == 0
 	p.timed("signatures, bodies, flow", func() {
 		for _, b := range builds {
 			b.pipelineAll(checkOn)
 		}
 		// Every store is encoded by now, and written unless deferWrites
 		// (lazybody.go); a hit's function results are decoded when read.
-		p.diags = append(p.diags, w.front.joinCompute()...)
+		// On a clean Build with deferred walk, store encoding finishes beside
+		// native and is joined before the walk reads m.ifKey (walktail.go).
+		if !deferCompute {
+			p.diags = append(p.diags, w.front.joinCompute()...)
+		}
 	})
 	for _, b := range builds {
 		p.diags = append(p.diags, b.stageDiags()...)
@@ -513,6 +574,7 @@ func (p *pipeline) modules(testPrelude, checkOn bool, builds ...*build) {
 			p.startWalk(builds[len(builds)-1]) // joined by Build (walktail.go)
 		} else {
 			p.timed("instance-limit walk", func() {
+				p.diags = append(p.diags, w.front.joinCompute()...)
 				w.front.joinWrites() // the walk keys read the stores' ifKey
 				p.diags = append(p.diags, w.walk(builds[len(builds)-1], p.diags)...)
 				p.diags = append(p.diags, w.groWalk(builds[len(builds)-1], p.gro, p.diags)...)
@@ -574,7 +636,7 @@ func (p *pipeline) result(w *world, max int) Result {
 		tr.ModulesWalked = append(tr.ModulesWalked, b.trace.ModulesWalked...)
 	}
 	if w.front != nil {
-		tr.NotStored = append(tr.NotStored, w.front.notStored...)
+		tr.NotStored = append(tr.NotStored, w.front.copyNotStored()...)
 		p.diags = append(p.diags, w.front.takeVerify()...)
 	}
 	w.packs.into(tr)

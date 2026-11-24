@@ -56,13 +56,14 @@ struct TaskState {
     armed_at: raw.Atomic[i64]
     // need_arm is 1 while a timer may be earlier than armed_at (OweArm).
     need_arm: raw.Atomic[u32]
-    // Slot waits (spawn.mk NewSlot), one pair per slot class: the
-    // generation a task end bumps, and how many spawns wait on it
-    // (a task end takes the bucket lock only when one waits).
+    // Slot waits (spawn.mk NewSlot), on their own cache line apart from
+    // WakeOne's nspinning/nidle and the global queue.
+    pad_slot: [8]u64
     slot_gen: raw.Atomic[u32]
     slot_gen_large: raw.Atomic[u32]
     slot_waiters: raw.Atomic[u32]
     slot_waiters_large: raw.Atomic[u32]
+    slot_cache: bool
     // Test counters (one atomic add each, on paths that just made a
     // system call or are about to wait): Idle returns from a PollWait
     // with no timeout, and NewSlot's slot waits.
@@ -75,10 +76,8 @@ struct TaskState {
     // path about to publish itself idle; "RT-Linger-Ends").
     linger_ends: raw.Atomic[u64]
     backend: u32
-    // Carriers (carrier.mk): want is CarrierCount, ncarriers the started
-    // ones (indices 0 to ncarriers - 1), nidle those inside Idle, nspinning
-    // those looking for work, waking 1 while a PollWake for an idle carrier
-    // is in flight.
+    // Carriers (carrier.mk), padded from slot waits and the global queue.
+    pad_wake: [8]u64
     carriers: *Carrier
     want: raw.Atomic[u32]
     ncarriers: raw.Atomic[u32]
@@ -87,7 +86,8 @@ struct TaskState {
     waking: raw.Atomic[u32]
     // npending counts poller operations submitted and not yet reaped.
     npending: raw.Atomic[u32]
-    // The global queue (runq.mk), under the leaf lock glock.
+    // The global queue (runq.mk), under the leaf lock glock, on its own line.
+    pad_g: [8]u64
     glock: raw.Atomic[u32]
     ghead: *Task
     gtail: *Task
@@ -290,6 +290,24 @@ ReadyPut(c: *Carrier, t: *Task): bool {
     return false
 }
 
+// ReadyPutNew is ReadyPut for a newly spawned task t that no other thread has
+// seen yet, avoiding an atomic Swap on t.state before runnext/GlobalPush publishes it.
+ReadyPutNew(c: *Carrier, t: *Task) {
+    unsafe "t is a fresh unshared task; c is this thread's carrier" {
+        // Edge: relaxed store published by runnext.Swap or GlobalPush below.
+        (*t).state.StoreOrd(TaskRunnable, 0)
+        if raw.IsNull(c) {
+            GlobalPush(t)
+            return
+        }
+        // Edge: the swap publishes t to thieves (StealNext) and takes the previous task.
+        old := (*c).runnext.Swap(AddrOf(t))
+        if old != 0 {
+            PushLocal(c, TaskAt(old))
+        }
+    }
+}
+
 // ReadyClaim is the ready's state change, Runnable from Parked or New.
 ReadyClaim(t: *Task) {
     unsafe "t's context is saved (it is new or parked)" {
@@ -403,13 +421,57 @@ Spin(c: *Carrier) {
     }
 }
 
-// SwitchOut saves t and resumes the scheduler with the given after-action.
+// FinishHandoff releases the lock left by a direct task-to-task handoff
+// (SwitchOut) once Switch has saved the departing task's context.
+FinishHandoff(t: *Task) {
+    unsafe "t is running on its carrier; a direct handoff leaves only AfterUnlock" {
+        c := (*t).carrier
+        if (*c).after.kind == AfterUnlock {
+            w := (*c).after.word
+            (*c).after.kind = AfterNone
+            // Edge: release (order 2, as RunAfter) after Switch saved the
+            // departing task's context; a waker acquiring this lock sees the
+            // saved context before readying it.
+            (*w).StoreOrd(0, 2)
+        }
+    }
+}
+
+// SwitchOut saves t and switches directly to c's runnext task on an
+// unpinned AfterUnlock park (one Switch instead of task -> sys_ctx -> next),
+// or resumes c's scheduler loop otherwise.
 SwitchOut(t: *Task, kind: u32, word: *raw.Atomic[u32]) {
     Jitter(JitterPark)
     unsafe "t is the running task on carrier c" {
         c := (*t).carrier
         (*c).after = AfterSwitch(kind: kind, word: word, task: t)
+        st := TS()
+        if kind == AfterUnlock && raw.IsNull((*c).home) && (*st).jitter_seed == 0 && !(*c).spinning {
+            tick := (*c).tick +% 1
+            // Edge: hint reads; TimerTick falls through to FindRunnable for
+            // timers, polling and fairness, and Swap(0) claims runnext.
+            if tick % TimerTick != 0 && (*st).need_arm.LoadOrd(0) == 0 && (*c).runnext.LoadOrd(0) != 0 {
+                // Edge: atomic claim of runnext, matching TakeNext.
+                next_addr := (*c).runnext.Swap(0)
+                if next_addr != 0 {
+                    (*c).tick = tick
+                    next := TaskAt(next_addr)
+                    // Edge: atomic Swap enforces one-resume even under double-dequeue bugs.
+                    if (*next).state.Swap(TaskRunning) != TaskRunnable {
+                        rt.Fatal("scheduler: switched to a task that is not runnable")
+                    }
+                    (*HeaderOf(t)).carrier = rt.NoCarrier
+                    (*c).current = next
+                    (*next).carrier = c
+                    (*HeaderOf(next)).carrier = Trunc[u16]((*c).index)
+                    Switch(raw.Of(&(*t).ctx), raw.Of(&(*next).ctx))
+                    FinishHandoff(t)
+                    return
+                }
+            }
+        }
         Switch(raw.Of(&(*t).ctx), raw.Of(&(*c).sys_ctx))
+        FinishHandoff(t)
     }
 }
 
@@ -537,8 +599,27 @@ RunAfter(c: *Carrier) {
                 (*h).committed_pages = Trunc[u16]((top - Trunc[uint]((*a.task).ctx[2])) / 4096)
             }
             class := (*h).class
-            rt.FreeSlot(h)
-            SlotFreed(c, class)
+            st := TS()
+            // Edge: cache only when no waiter exists, TrimGate is unarmed, and
+            // the region cap is large; recheck slot_waiters after caching to
+            // close the Dekker window with NewSlot.
+            if class == rt.ClassDefault && (*st).slot_cache && (*st).slot_waiters.Load() == 0 && rt.TrimGateGet() == 0 {
+                (*h).state = 1
+                (*h).next_free = (*c).slot_free
+                (*c).slot_free = h
+                (*c).slot_count += 1
+                if (*st).slot_waiters.Load() != 0 || rt.TrimGateGet() != 0 {
+                    FlushSlots(c, int((*c).slot_count))
+                } else if (*c).slot_count >= 128 {
+                    FlushSlots(c, 64)
+                }
+            } else {
+                if class == rt.ClassDefault && (*c).slot_count > 0 {
+                    FlushSlots(c, int((*c).slot_count))
+                }
+                rt.FreeSlot(h)
+                SlotFreed(c, class)
+            }
         }
     }
 }
@@ -859,6 +940,11 @@ FindRunnable(c: *Carrier): *Task {
             }
         }
         if due {
+            unsafe "c is the calling thread's carrier; flush cached slots if any spawner waits" {
+                if (*c).slot_count > 0 && ((*TS()).slot_waiters.Load() != 0 || rt.TrimGateGet() != 0) {
+                    FlushSlots(c, int((*c).slot_count))
+                }
+            }
             _ = FireTimersOn(c)
             // One other carrier's heap, in turn, so a carrier that
             // runs a task that never suspends has its timers fired by a
@@ -1028,7 +1114,30 @@ Idle(c: *Carrier) {
 // argument in spawn.mk). A task it readies is on c's queues before the
 // AnyWork recheck below, so c does not go idle past it. With nothing over
 // the bounds it costs three atomic loads.
+// FlushSlots returns up to want cached ClassDefault slots from c's local
+// free list to the region in one batch lock and bumps SlotFreed once.
+FlushSlots(c: *Carrier, want: int) {
+    unsafe "c is the calling thread's carrier; its slot_free list is owner-only" {
+        head := (*c).slot_free
+        if raw.IsNull(head) || want <= 0 {
+            return
+        }
+        var tail := head
+        var n := 1
+        for n < want && !raw.IsNull((*tail).next_free) {
+            tail = (*tail).next_free
+            n += 1
+        }
+        (*c).slot_free = (*tail).next_free
+        (*tail).next_free = raw.Null[rt.SlotHeader]()
+        (*c).slot_count -= Trunc[u32](n)
+        rt.FreeSlotBatch(rt.ClassDefault, head, tail, n)
+        SlotFreedBatch(c, rt.ClassDefault, n)
+    }
+}
+
 TrimSpare(c: *Carrier) {
+    FlushSlots(c, 128)
     n := rt.TrimSlots(rt.ClassDefault)
     for _ in 0..n {
         SlotFreed(c, rt.ClassDefault)
@@ -1113,14 +1222,14 @@ Run(c: *Carrier) {
             (*t).carrier = c
             // Invariant (one resume): only a runnable task is resumed;
             // a task resumed twice (two carriers holding it) stops here.
-            // Edge: reads the readier's Swap(Runnable); the context it resumes was
-            // saved before that ready.
+            // Edge: atomic Swap enforces one-resume across carriers.
             if (*t).state.Swap(TaskRunning) != TaskRunnable {
                 rt.Fatal("scheduler: switched to a task that is not runnable")
             }
             (*h).carrier = Trunc[u16]((*c).index)
             Switch(raw.Of(&(*c).sys_ctx), raw.Of(&(*t).ctx))
-            (*h).carrier = rt.NoCarrier
+            cur := (*c).current
+            (*HeaderOf(cur)).carrier = rt.NoCarrier
             (*c).current = raw.Null[Task]()
         }
         RunAfter(c)

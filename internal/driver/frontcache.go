@@ -41,6 +41,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -60,9 +61,10 @@ import (
 // world (--no-cache, a corpus session, a test hook that changes what a
 // stage computes, or a store that does not open).
 type frontCache struct {
-	st      *cache.Store
-	ctx     source.Hash   // the build ID, target and profile (context)
-	anchors *anchorLayers // the parse summaries' and the generated files' (genref.go)
+	st          *cache.Store
+	noManifests bool          // true when <cache>/v1/manifest did not exist at startFront (cold cache)
+	ctx         source.Hash   // the build ID, target and profile (context), initialized in anchorFiles
+	anchors     *anchorLayers // the parse summaries' and the generated files' (genref.go)
 	// bodyHashes memoizes a ReadBody's hash per MIR body (genref.go): every
 	// module a generator ran in reads the generator's bodies.
 	bodyHashes sync.Map
@@ -131,11 +133,8 @@ func (w *world) startFront(dir string) {
 	if st == nil {
 		return
 	}
-	c := source.NewHasher("mk.driver.front.v1")
-	c.Hash(w.buildID())
-	c.String(w.cfg.Target.Name)
-	c.Uvarint(uint64(w.cfg.Profile))
-	w.front = &frontCache{st: st, ctx: c.Sum(), verify: w.cfg.CacheVerify, writeDelay: h.StoreWritesDelay}
+	_, err := os.Stat(filepath.Join(dir, "v1", string(cache.KindManifest)))
+	w.front = &frontCache{st: st, noManifests: err != nil, verify: w.cfg.CacheVerify, writeDelay: h.StoreWritesDelay}
 }
 
 // anchorFiles gives every parsed file of the builds its file anchor, after
@@ -157,6 +156,11 @@ func (fc *frontCache) anchorFiles(w *world, builds []*build) {
 		}
 	}
 	fc.anchors = newAnchorLayers(set)
+	c := source.NewHasher("mk.driver.front.v1")
+	c.Hash(w.buildID())
+	c.String(w.cfg.Target.Name)
+	c.Uvarint(uint64(w.cfg.Profile))
+	fc.ctx = c.Sum()
 	fc.ctx = fc.stdContext(w, builds)
 	if w.libcBuild() {
 		// A system-libc build folds std.sys.LibcBuild() to true, so
@@ -211,6 +215,13 @@ func (fc *frontCache) skip(m *modNode, why string) {
 	fc.mu.Lock()
 	fc.notStored = append(fc.notStored, m.path+": "+why)
 	fc.mu.Unlock()
+}
+
+// copyNotStored returns a snapshot of the recorded not-stored reasons.
+func (fc *frontCache) copyNotStored() []string {
+	fc.mu.Lock()
+	defer fc.mu.Unlock()
+	return append([]string(nil), fc.notStored...)
 }
 
 // closure is m's transitive dependency closure, in slot order of each
@@ -817,7 +828,7 @@ func (b *build) storeEntries(m *modNode, items []types.ItemID, shapes []iface.Sh
 					continue
 				}
 			}
-			r := &iface.FuncResult{Item: it.Key, Accept: e.state == eval.BodyReady, Body: e.mir, Borrow: encodeFlow(e)}
+			r := &iface.FuncResult{Item: it.Key, Accept: e.state == eval.BodyReady, Body: e.mir, Borrow: encodeFlow(w, it, e)}
 			fb := iface.EncodeFuncResult(fc.env, s.hash, r)
 			k := funcEntryKey(ifKey, it.Key)
 			outs = append(outs, fres{key: k, bytes: fb})
@@ -1131,7 +1142,7 @@ func funcEntryKey(ifKey source.Hash, item types.Key) source.Hash {
 // exists, but the guard decisions are all a later stage reads of
 // borrow.Facts (flowCheck), so the driver stores them and not the facts they
 // are derived from.
-func encodeFlow(e *bodyEntry) []byte {
+func encodeFlow(w *world, it *types.Item, e *bodyEntry) []byte {
 	var enc iface.Encoder
 	enc.Uvarint(uint64(e.state))
 	enc.Bool(e.flowed)
@@ -1139,6 +1150,12 @@ func encodeFlow(e *bodyEntry) []byte {
 	enc.Uvarint(uint64(len(e.onerr)))
 	for _, r := range e.onerr {
 		enc.Bool(r)
+	}
+	if canCacheBodyHash(w, it, e) {
+		enc.Bool(true)
+		enc.Hash(w.sem5.hash.Body(e.mir))
+	} else {
+		enc.Bool(false)
 	}
 	return enc.Out()
 }
@@ -1154,6 +1171,10 @@ func decodeFlow(b []byte) (*bodyEntry, error) {
 		for i := range e.onerr {
 			e.onerr[i] = d.Bool()
 		}
+	}
+	if d.Bool() {
+		e.bodyHash = d.Hash()
+		e.hasBodyHash = true
 	}
 	if err := d.Done(); err != nil {
 		return nil, fmt.Errorf("flow facts: %w", err)

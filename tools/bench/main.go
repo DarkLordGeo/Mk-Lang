@@ -56,6 +56,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -166,8 +167,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fpCount                              = "time"
 		// publish inside WSL, and publish-linux
 		platform, prebuilt, only, mkLabel, mkSHA, mkVersion string
-		noLock                                              bool
+		noLock, treeOnly                                    bool
 		distroWork                                          string
+		// render -doc (docbench.go)
+		docOut    bool
+		docBefore string
 	)
 	switch sub {
 	case "publish":
@@ -189,6 +193,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fs.StringVar(&mkVersion, "mk-version", "", "the commit it was built from and its LLVM (mkIdentity)")
 		fs.BoolVar(&budgets, "budgets", false, "the check-budget table: the same rows' Mk columns with and without bounds and overflow checks, into results/<date>/budgets (budgets.go)")
 		fs.BoolVar(&pgoTable, "pgo", false, "the labelled PGO table: the same rows' Mk column built with --pgo=off and with a profile trained on the row's quick input, into results/<date>/pgo (pgo.go)")
+		fs.BoolVar(&treeOnly, "tree", false, "tree rows under tests/bench only (leave out tests/bench-lanes)")
 	case "publish-linux":
 		fs.StringVar(&lockPath, "lock", lockPath, "machine lock file (tools/machinelock)")
 		fs.StringVar(&date, "date", date, "results directory name")
@@ -278,10 +283,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fs.StringVar(&linkOut, "o", "", "copy the program here (default: printed, under the work directory)")
 	case "render":
 		fs.StringVar(&date, "date", date, "results directory to render")
+		fs.BoolVar(&docOut, "doc", false, "write doc/benchmarks.md comparing -before with -date (docbench.go) instead of RESULTS.md")
+		fs.StringVar(&docBefore, "before", "", "with -doc: the results directory of the before run")
 	case "verify":
 		fs.BoolVar(&pubSize, "publish-size", false, "run the publish arguments instead of the quick ones")
 		fs.BoolVar(&budgets, "budgets", false, "build and check the check-budget columns too (mk-nobounds, mk-noovf)")
 		fs.BoolVar(&pgoTable, "pgo", false, "the PGO table's columns only: mk, then a training run at the quick arguments and mk-pgo, for the same rows with an mk source (pgo.go)")
+		fs.BoolVar(&treeOnly, "tree", false, "tree rows under tests/bench only (leave out tests/bench-lanes)")
 	}
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -391,6 +399,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 		rows, err := discover(root)
 		if err == nil {
 			logBroken(rows, log)
+			if treeOnly {
+				rows = slices.DeleteFunc(rows, func(r *row) bool { return r.Lane != "" })
+			}
 			rows, err = selectRows(rows, *table, fs.Args())
 		}
 		if err != nil {
@@ -511,7 +522,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		err = publish(publishOptions{Root: root, Work: *work, Mk: m, Rows: fs.Args(), Table: *table, LockPath: lockPath,
 			Mask: mv, Sweeps: sweeps, HF: hfOptions{Warmup: warmup, Runs: runs}, Date: date, Merge: merge, Resume: resume, Log: log,
-			Platform: platform, NoLock: noLock, Prebuilt: prebuilt, Only: onlyCols, MkLabel: mkLabel, MkSHA: mkSHA, MkVersion: mkVersion, Budgets: budgets, PGO: pgoTable})
+			Platform: platform, NoLock: noLock, Prebuilt: prebuilt, Only: onlyCols, MkLabel: mkLabel, MkSHA: mkSHA, MkVersion: mkVersion, Budgets: budgets, PGO: pgoTable, Tree: treeOnly})
 		if err != nil {
 			return fail(err)
 		}
@@ -726,6 +737,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, idx)
 		return 0
 	case "render":
+		if docOut {
+			if docBefore == "" {
+				return fail(errors.New("render -doc needs -before"))
+			}
+			if err := writeBenchDoc(root, docBefore, date); err != nil {
+				return fail(err)
+			}
+			fmt.Fprintln(stdout, "wrote doc/benchmarks.md from tests/bench/results/"+docBefore+" and tests/bench/results/"+date)
+			return 0
+		}
 		if err := writeResultsMD(root, date); err != nil {
 			return fail(err)
 		}

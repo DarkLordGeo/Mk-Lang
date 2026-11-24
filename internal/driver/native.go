@@ -114,10 +114,14 @@ func notBuilt(t types.Target) *diag.Diagnostic {
 // with the error in err.
 func (s *Session) Build(out string) (Result, []string, error) {
 	s.forBuild = true
-	s.deferWalk = true // walktail.go; Check, Run and Test on this session walk synchronously
-	defer func() { s.deferWalk = false }()
 	s.startTools()
 	defer s.joinTools()
+	defer s.joinNativePrep()
+	if r, paths, ok := s.tryFastBuild(out); ok {
+		return r, paths, nil
+	}
+	s.deferWalk = true // walktail.go; Check, Run and Test on this session walk synchronously
+	defer func() { s.deferWalk = false }()
 	r := s.runCheck()
 	defer s.w.maybeGC() // once, after the executables are written
 	p := s.p
@@ -150,9 +154,11 @@ func (s *Session) Build(out string) (Result, []string, error) {
 		s.p.diags = append(s.p.diags, d)
 		return s.p.result(s.w, s.cfg.MaxDiags), nil, nil
 	}
+	defer s.startFastSnapshot(bins)()
 	var paths []string
 	var ds []*diag.Diagnostic
-	for _, bin := range bins {
+	fastOuts := make([]fastBinOut, len(bins))
+	for bi, bin := range bins {
 		dest := out
 		if dest == "" || len(bins) > 1 || outIsDir(out) {
 			dest = filepath.Join(out, bin.name+exeSuffix(s.cfg.Target))
@@ -176,12 +182,13 @@ func (s *Session) Build(out string) (Result, []string, error) {
 		if !s.cfg.NoCache && bin.script == "" {
 			keyed = bin.name + exeSuffix(s.cfg.Target)
 		}
-		exe, bds := s.native(bin, func(tmp string) (string, []*diag.Diagnostic) {
+		fastOuts[bi].name = bin.name
+		exe, bds := s.nativeStored(bin, func(tmp string) (string, []*diag.Diagnostic) {
 			if p.joinWalk() {
 				return "", nil // no executable after an E0708 (walktail.go)
 			}
 			return placeExe(tmp, dest)
-		}, keyed)
+		}, keyed, &fastOuts[bi])
 		ds = append(ds, bds...)
 		if exe != "" {
 			paths = append(paths, exe)
@@ -197,6 +204,7 @@ func (s *Session) Build(out string) (Result, []string, error) {
 	}
 	r = s.p.result(s.w, s.cfg.MaxDiags)
 	r.Reached = StageNative
+	s.recordFastBuild(bins, fastOuts, r)
 	return r, paths, nil
 }
 
@@ -285,8 +293,10 @@ func (s *Session) startTools() {
 				if !s.cfg.NoCache && !s.cfg.CacheVerify {
 					st, _ = cache.Open(s.cacheDir(), cache.Options{Budget: s.cfg.CacheBudget, Now: s.cfg.TestHooks.CacheNow})
 				}
+				cc1Get, cc1Put := cc1StoreHooks(st)
 				s.disc.t, s.disc.err = toolchain.Discover(toolchain.Options{LLVMDir: s.cfg.LLVMDir,
-					VersionLine: func(clang string) (string, error) { return versionLine(st, clang, run) }})
+					VersionLine: func(clang string) (string, error) { return versionLine(st, clang, run) },
+					CC1Get:      cc1Get, CC1Put: cc1Put})
 			}); ie != nil {
 				s.disc.err = fmt.Errorf("%s", ie.What)
 			}
@@ -422,6 +432,10 @@ func scrubWork(s, work string) string {
 // temporary goes to place(tmp), or, with keyed set instead, to
 // <store>/bin/<link key>/<keyed>.
 func (s *Session) native(bin binTarget, place func(tmp string) (string, []*diag.Diagnostic), keyed string) (string, []*diag.Diagnostic) {
+	return s.nativeStored(bin, place, keyed, nil)
+}
+
+func (s *Session) nativeStored(bin binTarget, place func(tmp string) (string, []*diag.Diagnostic), keyed string, stored *fastBinOut) (string, []*diag.Diagnostic) {
 	if d := notBuilt(s.cfg.Target); d != nil {
 		return "", []*diag.Diagnostic{d} // before any tool runs
 	}
@@ -435,7 +449,7 @@ func (s *Session) native(bin binTarget, place func(tmp string) (string, []*diag.
 	}
 	s.w.display = s.displayNames(nil) // run-time reports name dependencies locally (sitedisplay.go)
 	return s.w.native(nativeJob{tools: tools, name: bin.name, mainMod: bin.mod.path, pkg: s.binMods(bin.mod), timed: s.p.timed, pkgRoot: s.root.dir,
-		place: place, keyed: keyed, cache: cache, gro: generalRegsOnly(s.cfg.Target, bin.cpu), script: bin.script, subsystem: bin.subsystem})
+		place: place, keyed: keyed, cache: cache, gro: generalRegsOnly(s.cfg.Target, bin.cpu), script: bin.script, subsystem: bin.subsystem, stored: stored})
 }
 
 // nativeJob is one executable to build: the tools, the bin's name and
@@ -484,6 +498,8 @@ type nativeJob struct {
 	// (libout.go): never stored under <cache>/bin, and its packs
 	// are native objects when it is static.
 	lib *libJob
+	// stored, when non-nil, receives the <cache>/bin paths for fastbuild.go.
+	stored *fastBinOut
 }
 
 // native runs stages 8 to 10 for one bin: collection over the build roots, the
@@ -535,6 +551,11 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 	var ds []*diag.Diagnostic
 	var ie *source.InternalError
 	j.timed("instances", func() {
+		// Decode cached non-std bodies reachable from this bin's modules in
+		// parallel before mono.Collect runs single-threaded; otherwise edit
+		// builds decode every unchanged module's bodies sequentially on one
+		// goroutine.
+		w.prefetchBinBodies(j)
 		ie = source.Guard("instances of "+j.mainMod, source.Span{}, func() {
 			insts, ds = mono.Collect(env, w.fromCRoots(w.buildRoots(j.mainMod, j.pkg, j.allFuncs, j.gro), j.lib != nil), opt)
 		})
@@ -560,7 +581,9 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 		j.place, j.keyed = nil, ""
 	}
 	var packs []mono.Pack
-	if ie := source.Guard("partition of "+j.mainMod, source.Span{}, func() { packs = mono.Partition(env, insts, opt) }); ie != nil {
+	if ie := source.Guard("partition of "+j.mainMod, source.Span{}, func() {
+		packs = w.coalescePacks(insts, mono.Partition(env, insts, opt))
+	}); ie != nil {
 		return "", []*diag.Diagnostic{diag.FromInternal(ie)}
 	}
 	unit := w.unitOf(insts, packs, j.pkg)
@@ -714,6 +737,9 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 			default:
 				if copyOut(dest, job.Output) == nil && (storedPDB == "" || copyOut(storedPDB, pdbOf(job)) == nil) {
 					w.packs.noteAll(len(okeys), true)
+					if j.stored != nil {
+						j.stored.storedExe, j.stored.storedPDB = dest, storedPDB
+					}
 					return placeLinked(j, job, plan)
 				}
 				// The stored file went (GC) or cannot be read: link.
@@ -721,12 +747,7 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 			}
 		}
 	}
-	var objs []string
-	j.timed("clang", func() { objs, ds = w.compilePacks(ctx, tools, st, ir, cfg, work) })
-	if len(ds) > 0 {
-		return "", ds
-	}
-	libs, ds := w.writeImportLibs(ctx, tools, st, specs, work)
+	objs, libs, ds := w.compileAndImportLibs(ctx, tools, st, ir, cfg, specs, work, j.timed)
 	if len(ds) > 0 {
 		return "", ds
 	}
@@ -794,14 +815,17 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 		// placement: the output path is the user's, and another process
 		// may replace it before this one reads it back.
 		stagedExe, stagedPDB := "", ""
+		var exeHash, pdbHash source.Hash
+		var exeSize, pdbSize int64
 		if build {
 			stagedExe = job.Output + ".store"
-			if copyOut(job.Output, stagedExe) != nil {
+			var err error
+			if exeHash, exeSize, err = copyOutHash(job.Output, stagedExe); err != nil {
 				stagedExe = ""
 			}
 			if stagedExe != "" && pdb != "" {
 				stagedPDB = pdb + ".store"
-				if copyOut(pdb, stagedPDB) != nil {
+				if pdbHash, pdbSize, err = copyOutHash(pdb, stagedPDB); err != nil {
 					stagedExe = ""
 				}
 			}
@@ -811,7 +835,10 @@ func (w *world) native(j nativeJob) (string, []*diag.Diagnostic) {
 			// PDB first, so that the executable's presence implies the
 			// PDB's; a failure costs the next build a link.
 			if storedPDB == "" || storeStaged(st, stagedPDB, storedPDB) {
-				storeStaged(st, stagedExe, dest)
+				if storeStaged(st, stagedExe, dest) && j.stored != nil {
+					j.stored.storedExe, j.stored.exeSize, j.stored.exeHash = dest, exeSize, exeHash
+					j.stored.storedPDB, j.stored.pdbSize, j.stored.pdbHash = storedPDB, pdbSize, pdbHash
+				}
 			}
 		}
 		return exe, ds

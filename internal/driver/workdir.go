@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"mk/internal/cache"
 	"mk/internal/diag"
@@ -180,8 +181,28 @@ func (w *world) buildCPU(ctx context.Context, tools *toolchain.Tools, st *cache.
 		}
 	}
 	w.cpuRuns++
+	// When want != "native" on hosted x86_64, ResolveCPU and cpuFloor(want) are
+	// independent clang invocations. Run cpuFloor concurrently so a valid --cpu
+	// pays one clang startup instead of two; if ResolveCPU fails we still return
+	// ResolveCPU's diagnostic.
+	var floorCh chan *diag.Diagnostic
+	if want != toolchain.CPUNative && w.cfg.Target.Arch == types.ArchX64 && !isFree(w.cfg.Target) {
+		floorCh = make(chan *diag.Diagnostic, 1)
+		var fd *diag.Diagnostic
+		go func() {
+			defer func() { floorCh <- fd }()
+			if ie := source.Guard("cpu floor", source.Span{}, func() {
+				fd = w.cpuFloor(ctx, tools, triple, want, want)
+			}); ie != nil {
+				fd = diag.FromInternal(ie)
+			}
+		}()
+	}
 	name, err := tools.ResolveCPU(ctx, triple, want)
 	if err != nil {
+		if floorCh != nil {
+			<-floorCh
+		}
 		var te *toolchain.ToolError
 		if errors.As(err, &te) && te.Started() && !te.Cancelled && te.Signal == "" {
 			msg := fmt.Sprintf("clang does not accept the CPU %q for %s (--cpu=%s)", want, w.cfg.Target.Name, want)
@@ -190,14 +211,142 @@ func (w *world) buildCPU(ctx context.Context, tools *toolchain.Tools, st *cache.
 		}
 		return "", toolErr(err, fmt.Sprintf("cannot resolve --cpu=%s for %s", want, w.cfg.Target.Name)).Text("flag", "--cpu")
 	}
-	if d := w.cpuFloor(ctx, tools, triple, want, name); d != nil {
-		return "", d
+	var floorDiag *diag.Diagnostic
+	if floorCh != nil {
+		floorDiag = <-floorCh
+		if name != want {
+			floorDiag = w.cpuFloor(ctx, tools, triple, want, name)
+		}
+	} else {
+		floorDiag = w.cpuFloor(ctx, tools, triple, want, name)
+	}
+	if floorDiag != nil {
+		return "", floorDiag
 	}
 	if st != nil && want != toolchain.CPUNative {
 		_ = st.Put(cache.KindLayout, key, []byte(name))
 	}
 	w.cpuName = name
 	return name, nil
+}
+
+// cc1StoreHooks returns optional KindLayout get/put callbacks for persisting
+// probed `clang -cc1` argv templates across processes.
+func cc1StoreHooks(st *cache.Store) (func(source.Hash) ([]byte, bool), func(source.Hash, []byte)) {
+	if st == nil {
+		return nil, nil
+	}
+	get := func(k source.Hash) ([]byte, bool) {
+		b, ok, _ := st.Get(cache.KindLayout, k)
+		return b, ok
+	}
+	put := func(k source.Hash, b []byte) {
+		_ = st.Put(cache.KindLayout, k, b)
+	}
+	return get, put
+}
+
+// startNativePrep overlaps clang target-layout probing, explicit --cpu
+// resolution, and -cc1 template probing with runCheck on mk build, once
+// startTools finishes. All results are memoized so world.native reuses them
+// without running extra driver probes on the critical path.
+func (s *Session) startNativePrep(w *world) {
+	if s.prepDone != nil {
+		return
+	}
+	tools := s.cfg.Tools
+	discDone := s.disc.done
+	if tools == nil && discDone == nil {
+		return
+	}
+	var st *cache.Store
+	if !s.cfg.NoCache {
+		st = w.openStore(s.cacheDir())
+	}
+	triple := s.cfg.Target.LLVMTriple
+	hasCPU := w.cfg.CPU != ""
+	done := make(chan struct{})
+	s.prepDone = done
+	go func() {
+		defer close(done)
+		_ = source.Guard("native prep", source.Span{}, func() {
+			t := tools
+			if t == nil {
+				<-discDone
+				if s.disc.err != nil {
+					return
+				}
+				t = s.disc.t
+			}
+			if t == nil {
+				return
+			}
+			ctx := context.Background()
+			opt, lto := compileOpts(w.cfg.Profile, 0, 1)
+			opt, lto = w.profileCompile(opt, lto)
+			var tune toolchain.Tuning
+			if lto {
+				tune = w.cfg.Tune
+			}
+			warmTemplates := func(probedTriple, cpuName string) {
+				var twg sync.WaitGroup
+				twg.Add(1)
+				go func() {
+					defer twg.Done()
+					_ = source.Guard("warm cc1 pack", source.Span{}, func() {
+						t.WarmCC1(ctx, toolchain.CompileJob{Triple: probedTriple, Opt: opt, LTO: lto, CPU: cpuName, Tune: tune})
+					})
+				}()
+				if lto && toolchain.FormatOf(probedTriple) == toolchain.COFF && !w.cfg.Tune.FatLTO {
+					twg.Add(1)
+					go func() {
+						defer twg.Done()
+						_ = source.Guard("warm cc1 thin", source.Span{}, func() {
+							t.WarmThinCC1(ctx, w.cfg.Tune)
+						})
+					}()
+				}
+				twg.Wait()
+			}
+			var probedTriple string
+			var cpuName string
+			var probeErr error
+			var cpuDiag *diag.Diagnostic
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_ = source.Guard("probe", source.Span{}, func() {
+					var f toolchain.TargetFacts
+					f, probeErr = w.probe(ctx, t, st, triple)
+					probedTriple = f.Triple
+				})
+			}()
+			if hasCPU {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					_ = source.Guard("build cpu", source.Span{}, func() {
+						cpuName, cpuDiag = w.buildCPU(ctx, t, st, triple)
+					})
+				}()
+			} else {
+				cpuName = w.cpu()
+			}
+			wg.Wait()
+			if probeErr == nil && cpuDiag == nil && probedTriple != "" {
+				warmTemplates(probedTriple, cpuName)
+			}
+		})
+	}()
+}
+
+// joinNativePrep waits for startNativePrep if one was launched.
+func (s *Session) joinNativePrep() {
+	if s.prepDone != nil {
+		<-s.prepDone
+		s.prepDone = nil
+	}
 }
 
 // cpuKey is the store key of an explicit --cpu name clang accepted:

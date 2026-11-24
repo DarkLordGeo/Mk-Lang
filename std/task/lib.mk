@@ -336,12 +336,22 @@ export RunFromC(entry: fn(*u8), frame: *u8) {
     var req := FromCReq(entry: entry, frame: frame, sem: TakeSem())
     need := TopBytes + FrameReserve
     var h := rt.TakeSlot(rt.ClassDefault)
-    for raw.IsNull(h) || !rt.GrowTop(h, need) {
-        if !raw.IsNull(h) {
-            rt.FreeSlot(h)
+    if raw.IsNull(h) || !rt.GrowTop(h, need) {
+        waiters := SlotWaiters(rt.ClassDefault)
+        unsafe "the TaskState page Start mapped, which lives until exit; slot_waiters is atomic" {
+            // Raise slot_waiters so busy carriers flush their per-carrier slot caches.
+            _ = (*waiters).Add(1)
         }
-        sys.ThreadYield()
-        h = rt.TakeSlot(rt.ClassDefault)
+        for raw.IsNull(h) || !rt.GrowTop(h, need) {
+            if !raw.IsNull(h) {
+                rt.FreeSlot(h)
+            }
+            sys.ThreadYield()
+            h = rt.TakeSlot(rt.ClassDefault)
+        }
+        unsafe "matching decrement for slot_waiters" {
+            _ = (*waiters).Add(0xFFFF_FFFF)
+        }
     }
     t := Lay(h, rt.NextTaskId())
     unsafe "the fresh task, readied once; req lives in this frame until the task posted" {
@@ -362,6 +372,7 @@ export RunFromC(entry: fn(*u8), frame: *u8) {
 FromCEntry(p: *u8) {
     unsafe "p is this task's record; its block is RunFromC's request, alive until the post" {
         t := raw.PtrCast[u8, Task](p)
+        FinishHandoff(t)
         req := raw.PtrCast[u8, FromCReq]((*t).block)
         f := (*req).entry
         f((*req).frame)

@@ -36,6 +36,9 @@ type build struct {
 	mods []*modNode // in listing order until the import step, then by (depth, path)
 	// byName finds this build's own modules by import name.
 	byName map[string]*modNode
+	// allNames keeps every listed module name of std even after lazy pruning
+	// so E0202 case-mismatch suggestions stay identical to a full load.
+	allNames []string
 	// selDirs maps the import path of a target-selected directory to the
 	// selection's name (E0202 target-selected).
 	selDirs map[string]string
@@ -75,6 +78,9 @@ type build struct {
 	// keepSyntax: the build's modules keep their front-end output after
 	// their check (release.go): the manifest's, whose AST decode reads.
 	keepSyntax bool
+	// skipStdTests omits std unit-test files (tests_*.mk, *_test.mk) in
+	// listStd when not running std tests or browsing std (stdlazy.go).
+	skipStdTests bool
 }
 
 // reservedDirEntry is a directory refused because its import path would
@@ -217,6 +223,9 @@ func (b *build) listStd(t *srcTree, man *Manifest) error {
 	if err != nil {
 		return err
 	}
+	if b.skipStdTests {
+		files = slices.DeleteFunc(files, isStdTestFile)
+	}
 	dirs, byDir := groupByDir(files)
 	for _, d := range dirs {
 		if d == "" { // std/pkg.mk and nothing else lives at the root
@@ -240,6 +249,9 @@ func (b *build) listStd(t *srcTree, man *Manifest) error {
 				fs, err := t.mkFiles(ms.Dir, true, nil)
 				if err != nil {
 					return err
+				}
+				if b.skipStdTests {
+					fs = slices.DeleteFunc(fs, isStdTestFile)
 				}
 				m := moduleFrom(t, ms.Dir, fs)
 				m.name, m.std, m.selected = "std."+ms.Name, true, true
@@ -524,11 +536,12 @@ func (b *build) parseAll() []*diag.Diagnostic {
 	keys := make([]source.Hash, len(files))
 	encs := make([][]byte, len(files))
 	put := make([]bool, len(files))
+	coldParse := fc != nil && fc.noManifests && !fc.verify
 	faults := b.w.parallel(len(files), func(i int) string { return "parse " + files[i].f.src.Path }, func(i int) {
 		m, f := files[i].m, files[i].f
 		var key source.Hash
 		var stored []byte
-		if fc != nil {
+		if fc != nil && !coldParse {
 			var content source.Hash
 			key, content = fc.parseSummaryKeyOf(b.w, m, f)
 			keys[i] = key
@@ -546,7 +559,18 @@ func (b *build) parseAll() []*diag.Diagnostic {
 		}
 		slots[i], encs[i], put[i] = b.parseFile(f, key, stored)
 	})
-	faults = append(faults, b.storeParseIndexes(mods, keys, encs, put)...)
+	if coldParse {
+		// On a cold cache build, defer encoding, key computation (which joins
+		// async buildID), and parse-index writes to storeParseIndexesCold.
+		fNodes := make([]*fileNode, len(files))
+		for i, j := range files {
+			fNodes[i] = j.f
+			put[i] = len(slots[i]) == 0 && j.f.sum != nil
+		}
+		faults = append(faults, b.storeParseIndexesCold(mods, fNodes, put)...)
+	} else {
+		faults = append(faults, b.storeParseIndexes(mods, keys, encs, put)...)
+	}
 	releaseParseIndexes(mods)
 	var out []*diag.Diagnostic
 	for i, j := range files {

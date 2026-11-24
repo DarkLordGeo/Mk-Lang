@@ -40,12 +40,14 @@ import (
 )
 
 // packIR is emitPacks' result: per pack, then the support pack, the .ll
-// path ("" when the object key hit, so no .ll was written), the object key
-// and, on a hit, the stored object.
+// path ("" when the object key hit, so no .ll was written), the .ll byte
+// size (for LPT scheduling in compilePacks), the object key and, on a hit,
+// the stored object.
 type packIR struct {
-	lls  []string
-	keys []source.Hash
-	hits []string
+	lls   []string
+	sizes []int
+	keys  []source.Hash
+	hits  []string
 }
 
 // emitPacks generates each pack and the support pack in parallel, at most
@@ -63,7 +65,7 @@ type packIR struct {
 // copy is in no key. A codegen ICE is E0000.
 func (w *world) emitPacks(u *codegen.Unit, cfg codegen.Config, work, llDir string, tools *toolchain.Tools, st *cache.Store) (packIR, []*diag.Diagnostic) {
 	n := len(u.Packs)
-	out := packIR{lls: make([]string, n+1), keys: make([]source.Hash, n+1), hits: make([]string, n+1)}
+	out := packIR{lls: make([]string, n+1), sizes: make([]int, n+1), keys: make([]source.Hash, n+1), hits: make([]string, n+1)}
 	errs := make([]*diag.Diagnostic, n+1)
 	env := cgEnv{w}
 	pks := w.prekeysFor(u, tools, st, llDir) // nil emits every pack
@@ -138,6 +140,7 @@ func (w *world) emitPacks(u *codegen.Unit, cfg codegen.Config, work, llDir strin
 			return
 		}
 		out.lls[i] = ll
+		out.sizes[i] = b.Len()
 	})
 	return out, append(collect(errs), faults...)
 }
@@ -171,6 +174,11 @@ func (w *world) packJob(cfg codegen.Config, in, out string, i, n int) toolchain.
 		// and an unroll=<N> threshold); the support pack (no LTO) never
 		// takes one.
 		job.Tune = w.cfg.Tune
+	}
+	if i == n {
+		// The support pack is a single compile with its own -O3 non-LTO options;
+		// probing clang -### for one file costs more than invoking the driver.
+		job.DirectDriver = true
 	}
 	return job
 }
@@ -213,7 +221,23 @@ func (w *world) compilePacks(ctx context.Context, tools *toolchain.Tools, st *ca
 		w.packs.note(name, true)
 		return true
 	}
-	faults := w.parallel(n+1, func(i int) string { return "clang " + packFile(i, n) }, func(i int) {
+	// Schedule packs largest .ll first (LPT) so giant packs like main start at
+	// t=0 instead of forming a single-core tail. Results still write to slot i,
+	// so object order and outputs are identical.
+	order := make([]int, n+1)
+	for i := range order {
+		order[i] = i
+	}
+	sort.Slice(order, func(a, b int) bool {
+		ia, ib := order[a], order[b]
+		sa, sb := ir.sizes[ia], ir.sizes[ib]
+		if sa != sb {
+			return sa > sb
+		}
+		return ia < ib
+	})
+	faults := w.parallel(n+1, func(k int) string { return "clang " + packFile(order[k], n) }, func(k int) {
+		i := order[k]
 		name := packFile(i, n)
 		obj := filepath.Join(work, name+".o")
 		if ir.hits[i] != "" {
@@ -441,6 +465,39 @@ func (w *world) neededImportLibs(in *mono.Instances, cUndef []string, plan *link
 		libs, all = plan.namedImportLibs(libs, all)
 	}
 	return addSystemLibs(libs, all), nil
+}
+
+// compileAndImportLibs runs compilePacks (under j.timed("clang", ...)) while
+// overlapping writeImportLibs on a guarded goroutine when specs is non-empty,
+// hiding llvm-lib latency behind clang on cold caches.
+func (w *world) compileAndImportLibs(ctx context.Context, tools *toolchain.Tools, st *cache.Store, ir packIR, cfg codegen.Config, specs []importLib, work string, timed func(string, func())) ([]string, []string, []*diag.Diagnostic) {
+	var libs []string
+	var lds []*diag.Diagnostic
+	var libDone chan struct{}
+	if len(specs) > 0 {
+		libDone = make(chan struct{})
+		go func() {
+			defer close(libDone)
+			if ie := source.Guard("import libs", source.Span{}, func() {
+				libs, lds = w.writeImportLibs(ctx, tools, st, specs, work)
+			}); ie != nil {
+				lds = append(lds, diag.FromInternal(ie))
+			}
+		}()
+	}
+	var objs []string
+	var ds []*diag.Diagnostic
+	timed("clang", func() { objs, ds = w.compilePacks(ctx, tools, st, ir, cfg, work) })
+	if libDone != nil {
+		<-libDone
+	}
+	if len(ds) > 0 {
+		return nil, nil, ds
+	}
+	if len(lds) > 0 {
+		return nil, nil, lds
+	}
+	return objs, libs, nil
 }
 
 // writeImportLibs writes each library of specs into work with llvm-lib and

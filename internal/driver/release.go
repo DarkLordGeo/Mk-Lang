@@ -67,9 +67,6 @@ func (b *build) release(m *modNode) {
 	if m.cmod != nil {
 		m.cmod.Release()
 	}
-	if m.info != nil {
-		m.genKnown, m.genLines = true, len(m.info.Gens)
-	}
 	for _, f := range m.files {
 		f.ast = nil
 	}
@@ -101,8 +98,8 @@ func (b *build) releaseStored(m *modNode) {
 // noGenLines reports whether stage 3 ran on m and found no gen line (the
 // gen view's removal rule, genview.go), before or after release.
 func (m *modNode) noGenLines() bool {
-	if m.info != nil {
-		return len(m.info.Gens) == 0
+	if m.genKnown {
+		return m.genLines == 0
 	}
-	return m.genKnown && m.genLines == 0
+	return m.info != nil && len(m.info.Gens) == 0
 }

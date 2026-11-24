@@ -74,12 +74,13 @@ func (fg *fnGen) switchTerm(t *mir.Terminator) {
 	}
 	if on.v.Ty.Bits() == 1 {
 		var tb, fb *llvm.Block = def, def
+		tMir, fMir := t.Default, t.Default
 		tj, fj := len(cases), len(cases) // the edge each side takes, for weights
 		for j, c := range cases {
 			if c.Value&1 == 1 {
-				tb, tj = fg.edge(j, fg.blocks[c.Target]), j
+				tb, tj, tMir = fg.edge(j, fg.blocks[c.Target]), j, c.Target
 			} else {
-				fb, fj = fg.edge(j, fg.blocks[c.Target]), j
+				fb, fj, fMir = fg.edge(j, fg.blocks[c.Target]), j, c.Target
 			}
 		}
 		if tb == nil || fb == nil {
@@ -101,6 +102,12 @@ func (fg *fnGen) switchTerm(t *mir.Terminator) {
 				return counts[j]
 			}
 			w = fg.weights([]uint64{at(tj), at(fj)}) // br: true, then false
+		} else if cold, ok := fg.coldGuard[fg.bi]; ok {
+			if tMir == cold && fMir != cold {
+				w = []llvm.Attach{fg.trapWeights(true)}
+			} else if fMir == cold && tMir != cold {
+				w = []llvm.Attach{fg.trapWeights(false)}
+			}
 		}
 		fg.cur.CondBr(on.v, tb, fb, w...)
 		return
@@ -111,6 +118,8 @@ func (fg *fnGen) switchTerm(t *mir.Terminator) {
 		def.Unreachable()
 	} else if counts != nil {
 		dc = counts[len(cases)]
+	} else if fg.tryBitmaskSwitch(on.v, cases, t.Default, def) {
+		return
 	}
 	var lc []llvm.Case
 	for j, c := range cases {
@@ -140,4 +149,290 @@ func (fg *fnGen) ret() {
 		}
 	}
 	fg.cur.Ret(&v)
+}
+
+// tryBitmaskSwitch lowers a 2-target integer switch (all >= 4 cases branching
+// to one target, default to another) spanning at most 128 values to a 1- or
+// 2-word constant bitmask test. This eliminates indirect jump tables on
+// character-class matches and keeps small predicates inlineable by LLVM.
+func (fg *fnGen) tryBitmaskSwitch(on llvm.Value, cases []mir.SwitchCase, defID mir.BlockID, def *llvm.Block) bool {
+	if fg.pgo != nil || fg.g.cfg.Cover || fg.g.cfg.Debug || fg.fi < 0 || fg.g.ctModule(fg.fi) {
+		return false
+	}
+	if def == nil || len(cases) < 4 {
+		return false
+	}
+	bits := on.Ty.Bits()
+	if bits < 8 || bits > 64 {
+		return false
+	}
+	yesID := cases[0].Target
+	if yesID == defID {
+		return false
+	}
+	for _, c := range cases[1:] {
+		if c.Target != yesID {
+			return false
+		}
+	}
+	valMask := ^uint64(0)
+	if bits < 64 {
+		valMask = (uint64(1) << bits) - 1
+	}
+	minV := cases[0].Value & valMask
+	maxV := minV
+	for _, c := range cases[1:] {
+		v := c.Value & valMask
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+	}
+	span := maxV - minV
+	if span >= 128 {
+		return false
+	}
+	var loMask, hiMask uint64
+	for _, c := range cases {
+		d := (c.Value & valMask) - minV
+		if d < 64 {
+			loMask |= uint64(1) << d
+		} else {
+			hiMask |= uint64(1) << (d - 64)
+		}
+	}
+	m := fg.g.m
+	i64 := m.I(64)
+	x := on
+	if bits < 64 {
+		x = fg.cur.Cast(llvm.ZExt, x, i64)
+	}
+	off := x
+	if minV != 0 {
+		off = fg.cur.Bin(llvm.Sub, x, m.ConstInt(i64, minV), 0)
+	}
+	inRange := fg.cur.ICmp(llvm.IULE, off, m.ConstInt(i64, span))
+	var mask llvm.Value
+	if span < 64 {
+		mask = m.ConstInt(i64, loMask)
+	} else {
+		isHi := fg.cur.ICmp(llvm.IUGE, off, m.ConstInt(i64, 64))
+		mask = fg.cur.Select(isHi, m.ConstInt(i64, hiMask), m.ConstInt(i64, loMask))
+	}
+	shft := fg.cur.Bin(llvm.And, off, m.ConstInt(i64, 63), 0)
+	bit := fg.cur.Cast(llvm.Trunc, fg.cur.Bin(llvm.LShr, mask, shft, 0), m.I(1))
+	hit := fg.cur.Bin(llvm.And, inRange, bit, 0)
+	fg.cur.CondBr(hit, fg.blocks[yesID], def)
+	return true
+}
+
+// findColdGuards identifies nested-loop versioning guard chains (from lower's
+// versionNestedBounds) so unprofiled codegen marks their fallback edges cold.
+// Marking a 2D fallback loop cold stops LLVM's LoopVectorizer and register
+// allocator from bloating/spilling the hot fast nest for the cold fallback,
+// while leaving 1D loops (whose guards often take the 0-trip exit) untouched.
+func findColdGuards(b *mir.Body) map[int]mir.BlockID {
+	nb := len(b.Blocks)
+	isHeader := func(id mir.BlockID) bool {
+		blk := &b.Blocks[id]
+		if len(blk.Stmts) != 1 || blk.Term.Kind != mir.TermSwitch || blk.Term.Cases.Len != 1 || blk.Term.Default == mir.NoBlock {
+			return false
+		}
+		s := &blk.Stmts[0]
+		return s.Kind == mir.StAssign && s.Place.Proj.Len == 0 && s.Rvalue.Kind == mir.RvBinary && s.Rvalue.Bin.IsCompare()
+	}
+	var candEnds []int
+	for i := range nb {
+		blk := &b.Blocks[i]
+		if len(blk.Stmts) == 0 && blk.Term.Kind == mir.TermGoto && isHeader(blk.Term.Target) {
+			candEnds = append(candEnds, i)
+		}
+	}
+	if len(candEnds) == 0 {
+		return nil
+	}
+	succ := make([][]int, nb)
+	preds := make([][]int, nb)
+	for i := range nb {
+		for _, s := range b.Successors(mir.BlockID(i), nil) {
+			si := int(s)
+			succ[i] = append(succ[i], si)
+			preds[si] = append(preds[si], i)
+		}
+	}
+	// Compute dominators once to test whether a fallback header encloses an inner loop.
+	var idom, rpoPos []int32
+	var isNested func(slow mir.BlockID) bool
+	isNested = func(slow mir.BlockID) bool {
+		if idom == nil {
+			idom, rpoPos = mirDominators(nb, succ, preds)
+		}
+		dom := func(a, c int) bool {
+			if rpoPos[a] < 0 || rpoPos[c] < 0 {
+				return false
+			}
+			for x := int32(c); ; x = idom[x] {
+				if int(x) == a {
+					return true
+				}
+				if x == 0 {
+					return false
+				}
+			}
+		}
+		h := int(slow)
+		var stack []int
+		for _, p := range preds[h] {
+			if dom(h, p) {
+				stack = append(stack, p)
+			}
+		}
+		if len(stack) == 0 {
+			return false
+		}
+		in := make([]bool, nb)
+		in[h] = true
+		for len(stack) > 0 {
+			u := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if in[u] {
+				continue
+			}
+			in[u] = true
+			for _, p := range preds[u] {
+				if dom(u, p) {
+					return true // u != h is an inner loop header inside slow
+				}
+				stack = append(stack, p)
+			}
+		}
+		return false
+	}
+
+	var out map[int]mir.BlockID
+	for _, end := range candEnds {
+		fast := b.Blocks[end].Term.Target
+		if len(preds[end]) != 1 {
+			continue
+		}
+		cur := preds[end][0]
+		child := mir.BlockID(end)
+		slow := mir.NoBlock
+		var chain []int
+		seen := map[int]bool{end: true}
+		for !seen[cur] {
+			seen[cur] = true
+			t := &b.Blocks[cur].Term
+			if t.Kind != mir.TermSwitch || t.Cases.Len != 1 || t.Default == mir.NoBlock {
+				break
+			}
+			c0 := b.Cases[t.Cases.Start].Target
+			c1 := t.Default
+			var other mir.BlockID
+			if c0 == child && c1 != child {
+				other = c1
+			} else if c1 == child && c0 != child {
+				other = c0
+			} else {
+				break
+			}
+			if slow == mir.NoBlock {
+				if other == fast || !isHeader(other) {
+					break
+				}
+				fb, sb := &b.Blocks[fast], &b.Blocks[other]
+				if fb.Term.Span != sb.Term.Span || fb.Stmts[0].Rvalue != sb.Stmts[0].Rvalue {
+					break
+				}
+				if !isNested(other) {
+					break
+				}
+				slow = other
+			} else if other != slow {
+				break
+			}
+			chain = append(chain, cur)
+			if len(preds[cur]) != 1 {
+				break
+			}
+			child = mir.BlockID(cur)
+			cur = preds[cur][0]
+		}
+		if len(chain) > 0 && slow != mir.NoBlock {
+			if out == nil {
+				out = make(map[int]mir.BlockID, len(chain))
+			}
+			for _, g := range chain {
+				out[g] = slow
+			}
+		}
+	}
+	return out
+}
+
+func mirDominators(nb int, succ, preds [][]int) (idom, pos []int32) {
+	pos = make([]int32, nb)
+	idom = make([]int32, nb)
+	for i := range nb {
+		pos[i], idom[i] = -1, -1
+	}
+	seen := make([]bool, nb)
+	type frame struct{ b, i int }
+	var post []int
+	stack := []frame{{0, 0}}
+	seen[0] = true
+	for len(stack) > 0 {
+		f := &stack[len(stack)-1]
+		if f.i < len(succ[f.b]) {
+			s := succ[f.b][f.i]
+			f.i++
+			if !seen[s] {
+				seen[s] = true
+				stack = append(stack, frame{s, 0})
+			}
+			continue
+		}
+		post = append(post, f.b)
+		stack = stack[:len(stack)-1]
+	}
+	rpo := make([]int, 0, len(post))
+	for i := len(post) - 1; i >= 0; i-- {
+		pos[post[i]] = int32(len(rpo))
+		rpo = append(rpo, post[i])
+	}
+	idom[0] = 0
+	inter := func(x, y int32) int32 {
+		for x != y {
+			for pos[x] > pos[y] {
+				x = idom[x]
+			}
+			for pos[y] > pos[x] {
+				y = idom[y]
+			}
+		}
+		return x
+	}
+	for changed := true; changed; {
+		changed = false
+		for _, u := range rpo[1:] {
+			nd := int32(-1)
+			for _, p := range preds[u] {
+				if idom[p] < 0 {
+					continue
+				}
+				if nd < 0 {
+					nd = int32(p)
+				} else {
+					nd = inter(nd, int32(p))
+				}
+			}
+			if nd >= 0 && idom[u] != nd {
+				idom[u] = nd
+				changed = true
+			}
+		}
+	}
+	return idom, pos
 }

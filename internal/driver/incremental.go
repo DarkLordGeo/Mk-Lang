@@ -36,15 +36,17 @@ import (
 // optimization, and a build with no build ID must not share entries with
 // another compiler.
 type storeState struct {
-	once sync.Once
-	st   *cache.Store
-	id   source.Hash // the build ID, set with st
+	once   sync.Once
+	st     *cache.Store
+	idDone chan struct{}
+	id     source.Hash // the build ID, ready once idDone is closed (or nil)
 }
 
 // openStore opens the store under dir once per world and computes the
 // build ID: Config.BuildID when set (tests, TestInvalidation_CompilerVersion),
 // else iface.BuildIDFrom over cache.Store.FileHash of the running
-// executable, which the store memoizes by stat.
+// executable on a guarded background goroutine so hashing the compiler binary
+// overlaps StageManifest/StageLoad/StageParse on cold caches.
 // dir "" means --no-cache.
 func (w *world) openStore(dir string) *cache.Store {
 	if dir == "" || w.cfg.NoCache {
@@ -55,25 +57,62 @@ func (w *world) openStore(dir string) *cache.Store {
 		if err != nil {
 			return
 		}
-		id := w.cfg.BuildID
-		if id.IsZero() {
-			exe, err := os.Executable()
-			var h source.Hash
-			if err == nil {
-				h, err = st.FileHash(exe)
-			}
-			if err != nil {
-				return
-			}
-			id = iface.BuildIDFrom(h)
+		w.store.st = st
+		if !w.cfg.BuildID.IsZero() {
+			w.store.id = w.cfg.BuildID
+			return
 		}
-		w.store.st, w.store.id = st, id
+		w.startBuildID(st)
 	})
 	return w.store.st
 }
 
-// buildID is the world's build ID; zero until openStore succeeded.
-func (w *world) buildID() source.Hash { return w.store.id }
+// seedStore pre-populates w.store with an already-opened store and build ID
+// (e.g. from a tryFastBuild miss) so openStore avoids reopening hints.db and
+// re-hashing the compiler executable.
+func (w *world) seedStore(st *cache.Store, id source.Hash) {
+	if st == nil || w.cfg.NoCache {
+		return
+	}
+	w.store.once.Do(func() {
+		w.store.st = st
+		if !w.cfg.BuildID.IsZero() {
+			w.store.id = w.cfg.BuildID
+			return
+		}
+		if !id.IsZero() {
+			w.store.id = id
+			return
+		}
+		w.startBuildID(st)
+	})
+}
+
+func (w *world) startBuildID(st *cache.Store) {
+	done := make(chan struct{})
+	w.store.idDone = done
+	go func() {
+		defer close(done)
+		_ = source.Guard("build id", source.Span{}, func() {
+			exe, err := os.Executable()
+			if err != nil {
+				return
+			}
+			if h, err := st.FileHash(exe); err == nil {
+				w.store.id = iface.BuildIDFrom(h)
+			}
+		})
+	}()
+}
+
+// buildID is the world's build ID; zero until openStore succeeded (or if
+// hashing the executable failed).
+func (w *world) buildID() source.Hash {
+	if w.store.idDone != nil {
+		<-w.store.idDone
+	}
+	return w.store.id
+}
 
 // objKey is the key of one pack's object: the build ID, the toolchain
 // identity, the triple, the CPU, the -O level, -flto, and the pack's IR. The
@@ -274,6 +313,9 @@ func (l *packLog) into(t *Trace) {
 // the cache is an optimization.
 func (w *world) maybeGC() {
 	if w != nil && w.store.st != nil {
+		if w.store.idDone != nil {
+			<-w.store.idDone
+		}
 		_ = w.store.st.MaybeGC()
 	}
 }

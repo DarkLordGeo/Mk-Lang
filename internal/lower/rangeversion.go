@@ -1,31 +1,14 @@
 // Why: a bounds check in a hot loop blocks vectorisation even when one test
 // before the loop could show every index in range.
 //
-// What: VersionLoops and VersionOptions, a codegen-only rewrite that versions
-// loops on a hoisted bounds test for affine indexes (versionBounds) and
-// checked reductions (rangereduce.go); countedLoops, shape, affineOf,
-// checkOf and lenOf find them; versionMut holds the test-only mutants.
+// What: VersionLoops and VersionOptions — accumulator TRE (rectre.go), 2D nest
+// versioning (rangenest.go), counted-loop versioning (versionBounds), monotone
+// while-loop versioning (rangemono.go), and reduction versioning (rangereduce.go).
 //
-// How: it runs after mono, in a release build. The range analysis in Lower
-// changes no CFG, and ProvedBounds.Fold keeps the block count and the
-// compares, so eval's step count and borrow's block-indexed onerr decisions
-// stay valid. Versioning adds blocks and statements, so it never runs on a
-// body eval, borrow or a cache holds: VersionLoops returns a new body and
-// leaves its argument as it was, and the driver calls it only on the
-// instance bodies it hands codegen (internal/driver/loopversion.go).
-//
-// Before an innermost counted loop `for c in c0..hi` whose bounds checks
-// index s[x], with x the counter or a counter stepped once per iteration,
-// plus or minus a loop-invariant base, a guard tests once, in arithmetic
-// that never traps, that every index the loop can form lies in
-// [0, s.Len()). When it holds, a copy of the loop runs in which those
-// checks are `goto ok` and the index additions cannot overflow; otherwise
-// the original loop runs, every check as lower emitted it, so a failing
-// index traps at the same site, in the same order (a check not proved stays
-// explicit MIR; the fast copy carries its proof in the guard).
-//
-// The decision reads the body alone, so equal bodies give equal output (no
-// whole-unit fact is read here). The size limits are functions of the MIR.
+// How: runs after mono in release builds (internal/driver/loopversion.go),
+// returning a new body so eval/borrow/cache stay untouched. Non-trapping entry
+// guards prove all indices in [0, len); fast copies drop proved checks, while
+// fallback runs the original loop with identical trap sites and order.
 
 package lower
 
@@ -84,12 +67,9 @@ const (
 	verMaxDepth   = 6       // definitions followed back from one operand
 )
 
-// VersionLoops is b with its bounds versions (unless opt.NoBounds) and
-// then its reduction versions (unless opt.NoReduce), or b itself when
-// no loop qualifies. b is never modified: a new body shares none of the
-// slices it appends to. b must be an instance body (GenericCount 0) that
-// borrow accepted; cfg gives the type and const tables. With cfg.NoRanges
-// it returns b.
+// VersionLoops returns b with accumulator tail-recursion elimination
+// (rectre.go), bounds versions (!opt.NoBounds), and reduction versions
+// (!opt.NoReduce), leaving b unmodified. b must be an instance body.
 func VersionLoops(cfg *Config, b *mir.Body, opt VersionOptions) *mir.Body {
 	out, _, _ := versionLoops(cfg, b, opt)
 	return out
@@ -97,14 +77,30 @@ func VersionLoops(cfg *Config, b *mir.Body, opt VersionOptions) *mir.Body {
 
 // versionLoops is VersionLoops, and how many loops each rewrite versioned.
 func versionLoops(cfg *Config, b *mir.Body, opt VersionOptions) (out *mir.Body, bounds, reduce int) {
-	if cfg.NoRanges || b == nil || b.GenericCount != 0 || len(b.Blocks) > verMaxBlocks || !hasLatch(b) {
+	if cfg.NoRanges || b == nil || b.GenericCount != 0 || len(b.Blocks) > verMaxBlocks {
 		return b, 0, 0
 	}
-	out = b
-	if !opt.NoBounds {
-		out, bounds = versionBounds(cfg, out, opt.mut)
+	out = elimAccTailRec(cfg, b, opt)
+	if len(out.Loops) == 0 && !hasLatch(out) || len(out.Blocks) > verMaxBlocks {
+		return out, 0, 0
 	}
-	if !opt.NoReduce && len(out.Blocks) <= verMaxBlocks {
+	if !opt.NoBounds {
+		var skip map[mir.BlockID]bool
+		if hasLatch(out) {
+			out, bounds, skip = versionNestedBounds(cfg, out, opt.mut)
+		}
+		if bounds < verMaxLoops && hasLatch(out) && len(out.Blocks) <= verMaxBlocks {
+			var sb int
+			out, sb = versionBounds(cfg, out, opt.mut, skip, verMaxLoops-bounds)
+			bounds += sb
+		}
+		if bounds < verMaxLoops && len(out.Blocks) <= verMaxBlocks {
+			var mb int
+			out, mb = versionMonotone(cfg, out, opt.mut, verMaxLoops-bounds)
+			bounds += mb
+		}
+	}
+	if !opt.NoReduce && hasLatch(out) && len(out.Blocks) <= verMaxBlocks {
 		chunk := opt.chunk
 		if chunk == 0 {
 			chunk = redChunk
@@ -396,8 +392,8 @@ func (l *vloop) shape(g *vcfg, tab *types.Table) bool {
 			case mir.StAsm, mir.StJoin:
 				return false
 			case mir.StAssign:
-				if st.Rvalue.Kind == mir.RvRef && st.Rvalue.Origin == mir.OriginLoopHolder {
-					return false // a holder loan is made once (a MIR verifier rule)
+				if (st.Rvalue.Kind == mir.RvRef || st.Rvalue.Kind == mir.RvSlice) && st.Rvalue.Origin != mir.OriginPlain {
+					return false // loop holder/element loans cannot be cloned outside their loop (M9)
 				}
 				if st.Place.Proj.Len == 0 || !sliceLike(tab, b.Locals[st.Place.Local].Type) {
 					// A write through a slice's index is an element's,
@@ -1061,15 +1057,18 @@ func (x *vctx) retarget(from, old, nw mir.BlockID) {
 	}
 }
 
-// versionBounds versions every qualifying loop of b on its bounds test.
-func versionBounds(cfg *Config, b *mir.Body, mut versionMut) (*mir.Body, int) {
+// versionBounds versions up to limit qualifying innermost loops of b.
+func versionBounds(cfg *Config, b *mir.Body, mut versionMut, skip map[mir.BlockID]bool, limit int) (*mir.Body, int) {
+	if limit <= 0 {
+		return b, 0
+	}
 	x := newVctx(cfg, b, mut)
 	done := 0
 	for _, l := range countedLoops(x.g, x.tab) {
-		if done == verMaxLoops {
+		if done >= limit {
 			break
 		}
-		if l.ops > verMaxLoopOps || l.small || !x.hiInvariant(l) || x.addr[l.c] {
+		if skip[l.h] || l.ops > verMaxLoopOps || l.small || !x.hiInvariant(l) || x.addr[l.c] {
 			continue
 		}
 		var checks []vcheck
@@ -1090,22 +1089,10 @@ func versionBounds(cfg *Config, b *mir.Body, mut versionMut) (*mir.Body, int) {
 	return x.out, done
 }
 
-// versionLoop builds the guard and the fast copy of l. The guard runs
-// between l's predecessor and its header, in fresh temporaries, with only
-// wrapping operators and compares (it never traps, so a loop of no
-// iteration and the trap order are unchanged). With c0 the counter on
-// entry, T = (hi - 1) - c0 is the last iteration's k when the loop runs
-// (hi > c0: hi - 1 cannot wrap, and T is tested). For each check, with S
-// its counter's start (c0, or p0 for a stepped p) and base B:
-//
-//	lo = S + B (or S - B)   exact, and lo >= 0
-//	up = lo + T             exact, and uint(up) < uint(len)
-//
-// so every index S + k ± B, k in [0, T], lies in [lo, up], inside [0,
-// len): the check passes, and its sum (lo <= S + k ± B <= up, both in
-// the type) cannot overflow. A stepped p also gets p0 + T < max, so its
-// step never overflows. A loop of no iteration runs no check whatever the
-// guard decides.
+// versionLoop builds the non-trapping entry guard and check-free fast copy of l.
+// With c0 on entry and T = (hi - 1) - c0, each check proves lo = S ± B exact
+// with lo >= 0 and up = lo + T exact with uint(up) < uint(len); stepped
+// counters also prove p0 + T < max. Zero-trip loops run no check either way.
 func (x *vctx) versionLoop(l *vloop, checks []vcheck) {
 	b := x.b
 	span := b.Blocks[l.h].Term.Span

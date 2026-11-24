@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"mk/internal/source"
@@ -667,31 +668,100 @@ func (t *Tools) thinBackends(ctx context.Context, j LinkJob, work string, module
 	if jobs <= 0 {
 		jobs = runtime.NumCPU()
 	}
+	if jobs > len(modules) {
+		jobs = len(modules)
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	read := func(name string) ([]byte, error) {
-		if !filepath.IsAbs(name) {
-			name = filepath.Join(work, name)
-		}
-		return os.ReadFile(name)
+
+	// Memoize file reads across workers: ThinCacheKey reads each imported
+	// bitcode module once per importer, so caching each path's bytes avoids
+	// reading the same file from disk dozens of times.
+	type cachedFile struct {
+		once sync.Once
+		data []byte
+		err  error
 	}
+	var cacheMu sync.Mutex
+	files := make(map[string]*cachedFile, len(modules)*3)
+	read := func(name string) ([]byte, error) {
+		path := name
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(work, path)
+		}
+		cacheMu.Lock()
+		cf := files[path]
+		if cf == nil {
+			cf = &cachedFile{}
+			files[path] = cf
+		}
+		cacheMu.Unlock()
+		cf.once.Do(func() {
+			cf.data, cf.err = os.ReadFile(path)
+		})
+		return cf.data, cf.err
+	}
+
+	// Schedule largest modules first (LPT): a hub module like main with many
+	// ThinLTO imports can dominate wall time, so starting it at t=0 hides it
+	// behind the rest of the build. Outputs stay indexed by i, so the final
+	// link order is unchanged.
+	order := make([]int, len(modules))
+	weights := make([]int64, len(modules))
+	for i, name := range modules {
+		order[i] = i
+		var w int64
+		if fi, err := os.Stat(filepath.Join(work, name)); err == nil {
+			w += fi.Size()
+		}
+		if fi, err := os.Stat(filepath.Join(work, name+".thinlto.bc")); err == nil {
+			w += fi.Size() * 4
+		}
+		if fi, err := os.Stat(filepath.Join(work, name+".imports")); err == nil {
+			w += fi.Size() * 256
+		}
+		weights[i] = w
+	}
+	sort.Slice(order, func(a, b int) bool {
+		ia, ib := order[a], order[b]
+		if weights[ia] != weights[ib] {
+			return weights[ia] > weights[ib]
+		}
+		return ia < ib
+	})
+
+	emptyCache := j.LTOCacheDir != "" && thinCacheEmpty(j.LTOCacheDir)
 	natives := make([]string, len(modules))
 	errs := make([]error, len(modules))
-	sem := make(chan struct{}, jobs)
+	var next atomic.Int64
 	var wg sync.WaitGroup
-	for i, name := range modules {
+	var workerErr atomic.Pointer[error]
+	for range jobs {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			ie := source.Guard("ThinLTO backend "+name, source.Span{}, func() {
-				sem <- struct{}{}
-				defer func() { <-sem }()
-				natives[i], errs[i] = t.thinBackend(ctx, j, work, name, read)
-			})
-			if ie != nil {
-				errs[i] = errors.New(ie.String())
-			}
-			if errs[i] != nil {
+			if ie := source.Guard("ThinLTO backend worker", source.Span{}, func() {
+				for {
+					k := int(next.Add(1) - 1)
+					if k >= len(order) {
+						return
+					}
+					i := order[k]
+					name := modules[i]
+					ie := source.Guard("ThinLTO backend "+name, source.Span{}, func() {
+						natives[i], errs[i] = t.thinBackend(ctx, j, work, name, read, emptyCache)
+					})
+					if ie != nil {
+						errs[i] = errors.New(ie.String())
+					}
+					if errs[i] != nil {
+						cancel()
+						return
+					}
+				}
+			}); ie != nil {
+				e := errors.New(ie.String())
+				workerErr.CompareAndSwap(nil, &e)
 				cancel()
 			}
 		}()
@@ -704,6 +774,11 @@ func (t *Tools) thinBackends(ctx context.Context, j LinkJob, work string, module
 			first = e
 		}
 	}
+	if first == nil {
+		if ep := workerErr.Load(); ep != nil {
+			first = *ep
+		}
+	}
 	if first != nil {
 		return nil, first
 	}
@@ -714,9 +789,28 @@ func (t *Tools) thinBackends(ctx context.Context, j LinkJob, work string, module
 	return byName, nil
 }
 
+// thinCacheTouchInterval avoids redundant Chtimes syscalls on rapid rebuilds
+// while keeping LRU mtime updates well within thinCacheMaxAge (48h).
+const thinCacheTouchInterval = 5 * time.Minute
+
+// thinCacheEmpty reports whether dir currently contains no mkdt-*.o cache files.
+func thinCacheEmpty(dir string) bool {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return true
+	}
+	for _, e := range ents {
+		name := e.Name()
+		if strings.HasPrefix(name, "mkdt-") && strings.HasSuffix(name, ".o") {
+			return false
+		}
+	}
+	return true
+}
+
 // thinBackend compiles one module of work with its index, through the
 // cache, and returns its native object's path.
-func (t *Tools) thinBackend(ctx context.Context, j LinkJob, work, name string, read func(string) ([]byte, error)) (string, error) {
+func (t *Tools) thinBackend(ctx context.Context, j LinkJob, work, name string, read func(string) ([]byte, error), emptyCache bool) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -724,24 +818,60 @@ func (t *Tools) thinBackend(ctx context.Context, j LinkJob, work, name string, r
 	args := thinBackendArgs(name, name+".thinlto.bc", out, j.Tune)
 	native := filepath.Join(work, out)
 	cached := ""
+	var keyDone chan struct{}
+	var keyErr error
 	if j.LTOCacheDir != "" {
-		imports, err := read(name + ".imports")
-		if err != nil {
-			return "", err
-		}
-		key, err := ThinCacheKey(t.Version.Line, args, name, name+".thinlto.bc", imports, read)
-		if err != nil {
-			return "", err
-		}
-		cached = filepath.Join(j.LTOCacheDir, "mkdt-"+key+".o")
-		if linkOrCopy(cached, native) == nil {
-			now := time.Now()
-			os.Chtimes(cached, now, now) // the prune keeps what is used
-			return native, nil
+		if emptyCache {
+			// On a cold cache no lookup can hit; overlap ThinCacheKey I/O and
+			// SHA-256 with clang so the largest module starts at t=0.
+			keyDone = make(chan struct{})
+			go func() {
+				defer close(keyDone)
+				if ie := source.Guard("ThinLTO cache key "+name, source.Span{}, func() {
+					imports, err := read(name + ".imports")
+					if err != nil {
+						keyErr = err
+						return
+					}
+					key, err := ThinCacheKey(t.Version.Line, args, name, name+".thinlto.bc", imports, read)
+					if err != nil {
+						keyErr = err
+						return
+					}
+					cached = filepath.Join(j.LTOCacheDir, "mkdt-"+key+".o")
+				}); ie != nil {
+					keyErr = errors.New(ie.String())
+				}
+			}()
+		} else {
+			imports, err := read(name + ".imports")
+			if err != nil {
+				return "", err
+			}
+			key, err := ThinCacheKey(t.Version.Line, args, name, name+".thinlto.bc", imports, read)
+			if err != nil {
+				return "", err
+			}
+			cached = filepath.Join(j.LTOCacheDir, "mkdt-"+key+".o")
+			if linkOrCopy(cached, native) == nil {
+				now := time.Now()
+				if fi, err := os.Stat(cached); err != nil || now.Sub(fi.ModTime()) > thinCacheTouchInterval {
+					os.Chtimes(cached, now, now) // the prune keeps what is used
+				}
+				return native, nil
+			}
 		}
 	}
-	if _, err := run(ctx, NameClang, t.Clang, args, work); err != nil {
-		return "", err
+	runArgs := t.thinCC1Args(ctx, j.Tune, name, name+".thinlto.bc", out, args)
+	_, runErr := run(ctx, NameClang, t.Clang, runArgs, work)
+	if keyDone != nil {
+		<-keyDone
+	}
+	if runErr != nil {
+		return "", runErr
+	}
+	if keyErr != nil {
+		return "", keyErr
 	}
 	if cached != "" {
 		storeThinCache(native, cached)
@@ -945,15 +1075,28 @@ func linkOrCopy(src, dst string) error {
 	return os.WriteFile(dst, b, 0o644)
 }
 
+var thinTmpSeq atomic.Uint64
+
 // storeThinCache puts a backend's object into the cache through a
 // temporary file and a rename, so a reader never sees half an object. A
 // failure only loses the entry.
 func storeThinCache(obj, cached string) {
+	dir := filepath.Dir(cached)
+	// Fast path: hard-link obj directly to a temp name in the cache dir and
+	// rename into place, avoiding a full read+write copy when on the same volume.
+	// Prefix with mkdt-tmp- so pruneThinCache cleans up after a crashed writer.
+	tmpLink := filepath.Join(dir, fmt.Sprintf("mkdt-tmp-%d-%d", os.Getpid(), thinTmpSeq.Add(1)))
+	if os.Link(obj, tmpLink) == nil {
+		if os.Rename(tmpLink, cached) == nil {
+			return
+		}
+		os.Remove(tmpLink)
+	}
 	b, err := os.ReadFile(obj)
 	if err != nil {
 		return
 	}
-	tmp, err := os.CreateTemp(filepath.Dir(cached), "mkdt-tmp-")
+	tmp, err := os.CreateTemp(dir, "mkdt-tmp-")
 	if err != nil {
 		return
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"mk/internal/diag"
 	"mk/internal/eval"
@@ -30,6 +31,7 @@ import (
 // lazyBody decodes one function result into its bodyEntry, once.
 type lazyBody struct {
 	once   sync.Once
+	done   atomic.Bool
 	decode func()
 	// err is a decode failure: a payload that passed its frame and does not
 	// decode is a compiler bug, an ICE where the body is used and an E0000
@@ -63,7 +65,10 @@ func (fc *frontCache) lazyEntry(path string, item types.Key, b []byte) *bodyEntr
 	e := &bodyEntry{}
 	lz := &lazyBody{}
 	lz.decode = func() {
-		defer func() { b = nil }()
+		defer func() {
+			b = nil
+			lz.done.Store(true)
+		}()
 		var r *iface.FuncResult
 		var err error
 		if ie := source.Guard("decode "+item.String(), source.Span{}, func() { r, err = iface.DecodeFuncResult(fc.env, b) }); ie != nil {
@@ -81,7 +86,7 @@ func (fc *frontCache) lazyEntry(path string, item types.Key, b []byte) *bodyEntr
 			e.state = eval.BodyPoisoned
 			return
 		}
-		e.mir, e.state, e.onerr, e.flowed = r.Body, fl.state, fl.onerr, fl.flowed
+		e.mir, e.state, e.onerr, e.flowed, e.bodyHash, e.hasBodyHash = r.Body, fl.state, fl.onerr, fl.flowed, fl.bodyHash, fl.hasBodyHash
 	}
 	e.lazy = lz
 	return e
@@ -212,4 +217,126 @@ func (fc *frontCache) join() []*diag.Diagnostic {
 	fc.preWG.Wait()
 	fc.writeWG.Wait()
 	return fc.takeDiags()
+}
+
+// prefetchBinBodies decodes unforced lazy cached bodies of non-std modules
+// reachable from j's root modules in parallel across w.parallel workers before
+// mono.Collect walks them sequentially.
+func (w *world) prefetchBinBodies(j nativeJob) {
+	if w.front == nil || len(j.pkg) == 0 {
+		return
+	}
+	seen := make(map[*modNode]bool, len(j.pkg))
+	var stack []*modNode
+	push := func(m *modNode) {
+		if m != nil && !m.std && !seen[m] {
+			seen[m] = true
+			stack = append(stack, m)
+		}
+	}
+	for _, m := range j.pkg {
+		if j.allFuncs || m.path == j.mainMod {
+			push(m)
+			continue
+		}
+		if m.mod == nil {
+			continue
+		}
+		for _, id := range m.mod.Items {
+			if fd, ok := w.items.Get(id).Decl.(*types.FuncDecl); ok && (fd.Sig.Extern && w.items.Get(id).Exported || fd.Section != "") {
+				push(m)
+				break
+			}
+		}
+	}
+	var todo []*bodyEntry
+	for len(stack) > 0 {
+		m := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if m.hit != nil {
+			for _, e := range m.hit.lazy {
+				if e != nil && e.lazy != nil && !e.lazy.done.Load() {
+					todo = append(todo, e)
+				}
+			}
+		}
+		for _, d := range m.deps {
+			push(d)
+		}
+	}
+	if len(todo) == 0 {
+		return
+	}
+	chunks := (len(todo) + prefetchChunk - 1) / prefetchChunk
+	if chunks <= 1 {
+		for _, e := range todo {
+			e.lazy.once.Do(e.lazy.decode)
+		}
+		return
+	}
+	w.parallel(chunks, func(int) string { return "prefetch bodies" }, func(c int) {
+		lo := c * prefetchChunk
+		hi := min(lo+prefetchChunk, len(todo))
+		for _, e := range todo[lo:hi] {
+			e.lazy.once.Do(e.lazy.decode)
+		}
+	})
+}
+
+// canCacheBodyHash reports whether e's lowered MIR body hash depends solely on
+// e.mir's own fields, item keys, and immutable types/consts (no generics,
+// fn literals, or relocated consts), so it can be cached in FuncResult's flow
+// payload and reused by InstanceContentHash on warm builds.
+func canCacheBodyHash(w *world, it *types.Item, e *bodyEntry) bool {
+	if e == nil || e.state != eval.BodyReady || e.mir == nil || e.mir.GenericCount != 0 || it.Kind != types.KindFunc {
+		return false
+	}
+	if fd, ok := it.Decl.(*types.FuncDecl); !ok || len(fd.Sig.Generics) > 0 {
+		return false
+	}
+	b := e.mir
+	if len(b.Asms) > 0 {
+		return false
+	}
+	items := w.items
+	consts := w.tab.Consts()
+	hasReloc := func(c types.ConstID) bool {
+		return c != types.NoConst && len(consts.Get(c).Relocs) > 0
+	}
+	isLit := func(id types.ItemID) bool {
+		return id != types.NoItem && items.Get(id).Kind == types.KindLiteral
+	}
+	for i := range b.GenericArgs {
+		a := &b.GenericArgs[i]
+		if a.IsConst && a.Const.Kind == types.CAValue && hasReloc(a.Const.Value) {
+			return false
+		}
+	}
+	for i := range b.Operands {
+		if hasReloc(b.Operands[i].Const) {
+			return false
+		}
+	}
+	for i := range b.Args {
+		if hasReloc(b.Args[i].Operand.Const) {
+			return false
+		}
+	}
+	for i := range b.Blocks {
+		bl := &b.Blocks[i]
+		for j := range bl.Stmts {
+			rv := &bl.Stmts[j].Rvalue
+			if hasReloc(rv.A.Const) || hasReloc(rv.B.Const) || isLit(rv.Fn.Item) {
+				return false
+			}
+			if rv.Len.Kind == types.CAValue && hasReloc(rv.Len.Value) {
+				return false
+			}
+		}
+		t := &bl.Term
+		if hasReloc(t.On.Const) || hasReloc(t.Msg.Const) || hasReloc(t.Callee.Value.Const) || isLit(t.Callee.Fn.Item) {
+			return false
+		}
+	}
+	return true
 }
