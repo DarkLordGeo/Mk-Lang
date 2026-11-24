@@ -2,7 +2,7 @@
 
 Every user-visible change to Mk, newest first. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/). What a 0.x release may change, at each stability level, is in [stability](doc/std/README.md#9-stability).
 
-## Unreleased
+## 0.6.0 (2026-11-24)
 
 ### Language
 
@@ -13,7 +13,7 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 ### Loan checker
 
 - Passing a local split struct to a `mut` / `mut self` call without explicit `into` clauses no longer collapses unrelated carrier fields (`fv = 0`); instead, the checker computes per-struct store-compatibility components (`canReceiveFrom`) and merges only fields whose reachable carriers can hold/supply loans into each other.
-- Bundled mutable context structs (`cx: mut CallCx`) track distinct tagged depth-2 inner loans (`n2F`, `outerKeep`, and `behindSource` with sub-field prefixes), preventing inner allocations and field borrows (such as `Alloc(cx.heap, cx.roots)`) from falsely conflating unrelated context fields.
+- Bundled mutable context structs (`cx: mut CallCx`) track distinct tagged depth-2 inner loans (`n2F`, `outerKeep`, and `directWrite`), preventing inner allocations and field borrows (such as `Alloc(cx.heap, cx.roots)`) from falsely conflating unrelated context fields while preserving depth-3 interior and raw-pointer/view/`SpinCore` alias soundness.
 - `Cell[T]`, `Mutex[T]`, `Chan[T]`, `atomic.Spin[T]` and `raw.Atomic[T]` whose payload `T` holds no loans (a non-carrier) no longer restore loan-store writability through `&` or mark global memory as taking loan stores, while remaining not `Freeze` for codegen.
 - Closed all six R16 global-store soundness gaps for views by deriving loan-store writability directly from the explicit `mut view` / carrier-interior type invariant instead of scanning imported module closures: cross-module free constructors, unseen-module impl methods, local `fn` literals, factory/wrapper constructors, and generic `into` parameters are now judged soundly, while read-only views (containers, iterators, `Response`, `Inflater`, `ZstdDecoder`, `net.Conn`, `tls.Conn`) no longer produce false `*x into x` clauses or false global-store rejections.
 - Fixed `fn` literal checking so explicit parameter `into` clauses on local `fn` literals without an expected type are preserved.
@@ -33,9 +33,10 @@ Every user-visible change to Mk, newest first. The format follows [Keep a Change
 
 ### Tools
 
-- `mk check --all-targets` now checks declared `pkg.Select` target OSes, reports missing `pkg.Select` entries for declared OSes, and compares exported `Breaking` APIs (`signature`, `int` vs `i64`, `from`/`into` flows, errors, contracts, modifiers, exported fields, and `impl`s) across targets via `E0213`, while letting private helpers, private fields, sizes, and constant values differ per OS.
-- `mk test --prop` now generates full `f32`/`f64` IEEE-754 edge values (`±0.0`, `±Inf`, canonical/payload/negative `NaN`, subnormals, `MinNormal`, `MaxFloat`), renders and persists non-finite and subnormal floats losslessly with `f64.FromBits`/`f32.FromBits` (JSON-safe without `NaN`/`Inf` errors), and shrinks floats under a strictly terminating bit-exact order.
+- `mk check --all-targets` now checks declared `pkg.Select` target OSes, reports missing `pkg.Select` entries for declared OSes, clears incompatible host `--cpu` flags on cross-architecture targets, seeds comparisons cleanly when the host OS is omitted, and compares exported `Breaking` APIs (`signature`, `int` vs `i64`, `from`/`into` flows, errors, contracts, modifiers, exported fields, and `impl`s) across targets via `E0213`, while letting private helpers, private fields, sizes, and constant values differ per OS.
+- `mk test --prop` now generates full `f32`/`f64` IEEE-754 edge values (`±0.0`, `±Inf`, canonical/payload/negative `NaN`, subnormals, `MinNormal`, `MaxFloat`), bounds fixed edge-case enumeration to both the parameter edge-product and `--prop-cases` so small budgets mix random cases without stalling on small integer domains, renders and persists non-finite and subnormal floats losslessly with `f64.FromBits`/`f32.FromBits` (JSON-safe without `NaN`/`Inf` errors), and shrinks floats under a strictly terminating bit-exact order.
 - `mk test --fuzz` (`std.testing`) now tracks per-run block counter deltas using AFL 8-bit hit-count buckets, splices across pooled inputs, and instruments 2/4/8-byte integer `==`/`!=` comparisons and non-boolean integer switches with live `std.rt.CoverCmp` operands for Redqueen replacement and constant splicing.
+- Default pull-request and `main`-push CI runs an 18-job fast matrix (`TEST_SHORT=1` for compiler/driver suites) while nightly and release workflows run the full non-short multi-OS test and bundle suites.
 
 ### Platforms
 
