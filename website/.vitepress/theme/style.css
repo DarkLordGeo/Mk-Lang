@@ -316,21 +316,15 @@ pre {
   font-size: 15px;
 }
 
+/* The home page's markdown already sits in VitePress's centred container,
+   which lines up with the hero and features, so add vertical space only. */
 .mk-home {
-  max-width: 1152px;
-  margin: 0 auto;
-  padding: 48px 24px 96px;
-}
-
-@media (min-width: 640px) {
-  .mk-home {
-    padding: 64px 48px 96px;
-  }
+  padding: 48px 0 96px;
 }
 
 @media (min-width: 960px) {
   .mk-home {
-    padding: 72px 64px 112px;
+    padding: 72px 0 112px;
   }
 }
 
@@ -360,7 +354,7 @@ pre {
 
 @media (min-width: 960px) {
   .mk-taste {
-    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
     align-items: start;
   }
 }
